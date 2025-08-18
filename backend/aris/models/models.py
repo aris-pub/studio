@@ -389,6 +389,8 @@ class FileAsset(Base):
         MIME type (e.g., image/png).
     content : str
         File contents (stored inline).
+    content_encoding : str
+        Content encoding format ("plain" or "base64").
     uploaded_at : datetime
         Timestamp of upload.
     deleted_at : datetime
@@ -412,6 +414,7 @@ class FileAsset(Base):
     filename = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    content_encoding = Column(String, nullable=False, default="plain")
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 

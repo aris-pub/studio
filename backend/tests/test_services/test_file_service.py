@@ -686,6 +686,7 @@ class TestInMemoryFileServiceAssetIntegration:
             filename="test_figure.html",
             mime_type="text/html",
             content=base64_content,  # Store as base64 like the real system
+            content_encoding="base64",
             file_id=created_file.id,
             owner_id=123
         )

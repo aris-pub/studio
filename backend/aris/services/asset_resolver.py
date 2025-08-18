@@ -23,13 +23,13 @@ class FileAssetResolver:
     synchronous access to them.
     """
     
-    def __init__(self, assets: dict[str, str]):
+    def __init__(self, assets: dict[str, tuple[str, str]]):
         """Initialize resolver with pre-loaded assets.
         
         Parameters
         ----------
         assets
-            Dictionary mapping asset filenames to their content
+            Dictionary mapping asset filenames to (content, encoding) tuples
         """
         self._assets = assets
         
@@ -46,7 +46,19 @@ class FileAssetResolver:
         Optional[str]
             The asset content as a string, or None if not found
         """
-        return self._assets.get(path)
+        asset_info = self._assets.get(path)
+        if not asset_info:
+            return None
+            
+        content, encoding = asset_info
+        if encoding == "base64":
+            try:
+                return base64.b64decode(content).decode('utf-8')
+            except Exception as e:
+                logger.error(f"Failed to decode base64 asset {path}: {e}")
+                return None
+        else:  # plain
+            return content
     
     @classmethod
     async def create_for_file(cls, file_id: int, db: AsyncSession) -> 'FileAssetResolver':
@@ -74,17 +86,18 @@ class FileAssetResolver:
             )
             assets = result.scalars().all()
             
-            # Create assets dictionary with base64 decoding
-            assets_dict: dict[str, str] = {}
+            # Create assets dictionary with content and encoding
+            assets_dict: dict[str, tuple[str, str]] = {}
             for asset in assets:
                 try:
-                    # Decode base64 content to get actual asset content
-                    decoded_content = base64.b64decode(asset.content).decode('utf-8')
-                    assets_dict[str(asset.filename)] = decoded_content
-                    logger.info(f"Decoded asset {asset.filename}: {len(decoded_content)} chars, starts with: {decoded_content[:100]!r}")
+                    # Store content and encoding as tuple
+                    content = str(asset.content)
+                    encoding = getattr(asset, 'content_encoding', 'plain')  # Default to plain for backward compatibility
+                    assets_dict[str(asset.filename)] = (content, encoding)
+                    logger.info(f"Loaded asset {asset.filename} ({encoding}): {len(content)} chars")
                 except Exception as e:
-                    logger.error(f"Failed to decode asset {asset.filename} for file {file_id}: {e}")
-                    # Skip this asset if decoding fails
+                    logger.error(f"Failed to load asset {asset.filename} for file {file_id}: {e}")
+                    # Skip this asset if loading fails
                     continue
             
             logger.info(f"Loaded {len(assets_dict)} assets for file {file_id}")

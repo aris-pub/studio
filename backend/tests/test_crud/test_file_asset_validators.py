@@ -7,13 +7,13 @@ from aris.crud.file_assets import FileAssetCreate, FileAssetUpdate
 
 def test_fileassetcreate_valid_image_content():
     content = base64.b64encode(b"pngdata").decode()
-    payload = FileAssetCreate(filename="f.png", mime_type="image/png", content=content, file_id=999)
+    payload = FileAssetCreate(filename="f.png", mime_type="image/png", content=content, content_encoding="base64", file_id=999)
     assert payload.content == content
 
 
 def test_fileassetcreate_invalid_image_content_raises():
     with pytest.raises(ValueError):
-        FileAssetCreate(filename="f.jpg", mime_type="image/jpeg", content="not_base64", file_id=999)
+        FileAssetCreate(filename="f.jpg", mime_type="image/jpeg", content="not_base64", content_encoding="base64", file_id=999)
 
 
 def test_fileassetcreate_non_image_allows_bad_content():

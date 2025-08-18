@@ -3,7 +3,7 @@ import binascii
 from datetime import UTC, datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,18 +19,24 @@ class FileAssetCreate(BaseModel):
     filename: str
     mime_type: str
     content: str
+    content_encoding: str = "plain"  # "plain" or "base64"
     file_id: int
 
-    @field_validator("content")
+    @field_validator("content_encoding")
     @classmethod
-    def validate_content(cls, v, info):
-        mime = info.data.get("mime_type", "") if info.data else ""
-        if mime.startswith("image/"):
+    def validate_content_encoding(cls, v):
+        if v not in ("plain", "base64"):
+            raise ValueError("content_encoding must be 'plain' or 'base64'")
+        return v
+
+    @model_validator(mode="after")
+    def validate_base64_content(self):
+        if self.content_encoding == "base64":
             try:
-                base64.b64decode(v)
+                base64.b64decode(self.content)
             except (TypeError, binascii.Error):
                 raise ValueError("Invalid base64-encoded string")
-        return v
+        return self
 
 
 class FileAssetUpdate(BaseModel):
@@ -65,6 +71,7 @@ class FileAssetOut(BaseModel):
     filename: str
     mime_type: str
     content: str
+    content_encoding: str
     uploaded_at: datetime
     deleted_at: datetime | None
     file_id: int
@@ -86,6 +93,7 @@ class FileAssetDB:
             filename=payload.filename,
             mime_type=payload.mime_type,
             content=payload.content,
+            content_encoding=payload.content_encoding,
             file_id=payload.file_id,
             owner_id=user_id,
         )

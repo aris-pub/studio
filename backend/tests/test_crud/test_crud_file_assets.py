@@ -223,7 +223,11 @@ async def test_file_asset_create_validation_invalid_base64():
     """Test FileAssetCreate validation fails for invalid base64 image content"""
     with pytest.raises(ValueError, match="Invalid base64-encoded string"):
         FileAssetCreate(
-            filename="test.jpg", mime_type="image/jpeg", content="invalid_base64!@#", file_id=999
+            filename="test.jpg", 
+            mime_type="image/jpeg", 
+            content="invalid_base64!@#", 
+            content_encoding="base64",
+            file_id=999
         )
 
 

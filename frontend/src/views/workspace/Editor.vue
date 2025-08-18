@@ -56,6 +56,7 @@
         filename: asset.name,
         mime_type: asset.type,
         content: base64Content,
+        content_encoding: "base64",
         file_id: file.value.id,
       };
 

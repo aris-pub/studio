@@ -113,6 +113,7 @@ async def test_upload_asset_invalid_base64_image(
             "filename": "test.png",
             "mime_type": "image/png",
             "content": "not-valid-base64!@#",
+            "content_encoding": "base64",
             "file_id": test_file["id"],
         },
     )

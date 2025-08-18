@@ -342,6 +342,7 @@ describe("Editor Integration Tests", () => {
         filename: "test.txt",
         mime_type: "text/plain",
         content: "dGVzdCBjb250ZW50",
+        content_encoding: "base64",
         file_id: mockFile.value.id,
       });
     });

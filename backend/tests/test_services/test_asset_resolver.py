@@ -19,8 +19,8 @@ class TestFileAssetResolver:
     def test_resolver_with_assets(self):
         """Test resolver with pre-loaded assets."""
         assets = {
-            "test.html": "<div>Test HTML</div>",
-            "style.css": "body { color: red; }",
+            "test.html": ("<div>Test HTML</div>", "plain"),
+            "style.css": ("body { color: red; }", "plain"),
         }
         resolver = FileAssetResolver(assets)
         
