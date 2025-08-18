@@ -31,7 +31,7 @@ export default defineConfig({
   /* Retry configuration */
   retries: process.env.CI ? 1 : 0, // Minimal retries in CI, none locally
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 2, // Limit workers for faster startup
+  workers: 1, // Run sequentially to avoid auth state race conditions
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? "github" : "line", // Use line reporter for minimal output; --quiet flag suppresses stdout
   /* Global timeout for each test */
