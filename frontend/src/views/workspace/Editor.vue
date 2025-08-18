@@ -17,9 +17,9 @@
   const api = inject("api");
   const onCompile = async () => {
     // Use private render endpoint with file_id for asset resolution
-    const response = await api.post("render/private", { 
-      source: file.value.source, 
-      file_id: file.value.id 
+    const response = await api.post("render/private", {
+      source: file.value.source,
+      file_id: file.value.id,
     });
     file.value.html = response.data;
   };

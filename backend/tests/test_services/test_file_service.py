@@ -668,19 +668,17 @@ class TestInMemoryFileServiceAssetIntegration:
         
         # Mock database session and asset resolver behavior
         from unittest.mock import AsyncMock, MagicMock
-        from aris.services.asset_resolver import FileAssetResolver
+
         
         # Create mock database session
         mock_db = AsyncMock()
         
         # Create a real database session and asset to test the integration properly
-        import pytest
-        from sqlalchemy import text
-        from aris.models.models import FileAsset
-        
         # Create a real test database asset that the real resolver will find (HTML file)
         # Asset content should be base64 encoded as it's stored in the database
         import base64
+
+        from aris.models.models import FileAsset
         html_content = "<div class='test-asset'>Test Asset Content</div>"
         base64_content = base64.b64encode(html_content.encode('utf-8')).decode('ascii')
         
@@ -693,7 +691,7 @@ class TestInMemoryFileServiceAssetIntegration:
         )
         
         # Mock the database execute call to return our test asset
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
         
         # Create proper mock for the database query result
         mock_scalars = MagicMock()

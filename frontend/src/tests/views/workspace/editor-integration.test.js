@@ -199,8 +199,9 @@ describe("Editor Integration Tests", () => {
       await topbar.vm.$emit("compile");
       await nextTick();
 
-      expect(mockApi.post).toHaveBeenCalledWith("render", {
+      expect(mockApi.post).toHaveBeenCalledWith("render/private", {
         source: mockFile.value.source,
+        file_id: mockFile.value.id,
       });
       expect(mockFile.value.html).toBe(compiledHtml);
     });
