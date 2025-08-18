@@ -89,7 +89,7 @@ export class MobileHelpers {
 
       // Take screenshot for debugging
       try {
-        await this.page.screenshot({ path: `debug-element-visibility-${Date.now()}.png` });
+        await this.page.screenshot({ path: `debug/debug-element-visibility-${Date.now()}.png` });
       } catch (screenshotError) {
         console.error(`[Element Visibility] Failed to take screenshot: ${screenshotError.message}`);
       }
