@@ -26,7 +26,7 @@
   author={${fileData.authors || "Unknown Author"}},
   year={${fileData.published_at ? new Date(fileData.published_at).getFullYear() : new Date().getFullYear()}},
   journal={Aris Preprint},
-  url={https://aris.com/ication/${fileData.public_uuid || ""}},
+  url={}, % Publication URLs will be handled by separate publishing app
   abstract={${fileData.abstract || ""}},
   keywords={${fileData.keywords || ""}}
 }`;

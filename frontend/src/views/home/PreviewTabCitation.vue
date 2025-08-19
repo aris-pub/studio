@@ -22,7 +22,7 @@
 
     const authors = fileData.authors || "Unknown Author";
     const title = fileData.title || "Untitled";
-    const url = fileData.public_uuid ? `https://aris.com/ication/${fileData.public_uuid}` : "";
+    const url = ""; // Publication URLs will be handled by separate publishing app
 
     return {
       title,
