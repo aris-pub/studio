@@ -5,9 +5,11 @@ from the database instead of the filesystem.
 """
 
 import base64
+import binascii
 import logging
 from typing import Optional
 
+from rsm.asset_resolver import AssetResolver
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.models import FileAsset
@@ -16,7 +18,7 @@ from ..models.models import FileAsset
 logger = logging.getLogger(__name__)
 
 
-class FileAssetResolver:
+class FileAssetResolver(AssetResolver):
     """Simple asset resolver that fetches assets from the database.
     
     This resolver loads all assets for a given file_id upfront and provides
@@ -54,7 +56,7 @@ class FileAssetResolver:
         if encoding == "base64":
             try:
                 return base64.b64decode(content).decode('utf-8')
-            except Exception as e:
+            except (binascii.Error, UnicodeDecodeError) as e:
                 logger.error(f"Failed to decode base64 asset {path}: {e}")
                 return None
         else:  # plain
@@ -95,7 +97,7 @@ class FileAssetResolver:
                     encoding = getattr(asset, 'content_encoding', 'plain')  # Default to plain for backward compatibility
                     assets_dict[str(asset.filename)] = (content, encoding)
                     logger.info(f"Loaded asset {asset.filename} ({encoding}): {len(content)} chars")
-                except Exception as e:
+                except (AttributeError, TypeError, ValueError) as e:
                     logger.error(f"Failed to load asset {asset.filename} for file {file_id}: {e}")
                     # Skip this asset if loading fails
                     continue
@@ -104,6 +106,6 @@ class FileAssetResolver:
             
             return cls(assets_dict)
             
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error(f"Failed to load assets for file {file_id}: {e}")
             return cls({})

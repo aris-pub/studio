@@ -78,6 +78,10 @@ We developed a proof-of-concept platform using\\:
 
 Our findings demonstrate significant advantages of web-native publishing across multiple dimensions. The methodology validation confirmed our hypothesis that web-native platforms provide superior accessibility and engagement compared to traditional PDF-based systems.
 
+:figure:
+  :path: plotly-chart.html
+::
+
 ## Discussion
 
 The transition to web-native publishing represents more than a technological upgrade—it's a fundamental shift toward more inclusive and accessible research communication.
