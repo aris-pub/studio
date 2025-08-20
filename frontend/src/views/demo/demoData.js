@@ -14,6 +14,8 @@ export const demoFile = {
 
 ## Introduction
 
+:label: intro-section
+
 The current landscape of scientific publishing relies heavily on static document formats that were designed for print media. While PDFs have served the academic community for decades, they present significant limitations in our increasingly digital world\\:
 
 :itemize:
@@ -87,7 +89,7 @@ Our findings demonstrate significant advantages of web-native publishing across 
 
 ## Discussion
 
-The transition to web-native publishing represents more than a technological upgrade—it's a fundamental shift toward more inclusive and accessible research communication.
+The transition to web-native publishing represents more than a technological upgrade—it's a fundamental shift toward more inclusive and accessible research communication. As discussed in our :ref:intro-section::, traditional formats present significant limitations.
 
 ### Key Benefits
 
@@ -168,22 +170,7 @@ export const demoFileStore = {
   loadTags: () => Promise.resolve(),
 };
 
-export const demoAnnotations = [
-  {
-    id: 1,
-    type: "comment",
-    content: "This is an excellent point about accessibility barriers in traditional publishing.",
-    user: demoUser,
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 2,
-    type: "note",
-    content: "Consider adding more details about the technical implementation here.",
-    user: demoUser,
-    created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-  },
-];
+export const demoAnnotations = [];
 
 // Mock API that returns demo data
 export const createDemoApi = () => ({
