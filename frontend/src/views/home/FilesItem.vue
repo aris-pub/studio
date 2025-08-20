@@ -38,6 +38,7 @@
   import { ref, inject, watch, useTemplateRef, computed } from "vue";
   import { useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
+  import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { File } from "@/models/File.js";
   import { getLogger } from "@/utils/logger.js";
   import Date from "./FilesItemDate.vue";
@@ -49,6 +50,9 @@
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
   const user = inject("user");
+
+  // Head injection composable for tooltip support
+  const { processStructuredContent } = useHeadInjection(api);
 
   // Async file validation and enhancement with real API calls
   if (file.value && file.value.id && api && user?.value?.id) {
@@ -78,13 +82,46 @@
         logger.debug("File assets loaded", { fileId, assetCount: assetsResponse.data.length });
       }
 
-      // 3. For files without HTML content, pre-load it for faster viewing
+      // 3. For files without HTML content, pre-load structured content for faster viewing with tooltip support
       if (!file.value.html) {
         logger.debug("Loading file content", { fileId });
-        const contentResponse = await api.get(`/files/${fileId}/content`).catch(() => null);
-        if (contentResponse?.data) {
-          file.value.html = contentResponse.data;
-          logger.debug("File content loaded successfully", { fileId });
+        try {
+          // Try structured format first for tooltip support
+          const structuredResponse = await api.get(`/files/${fileId}/content?format=structured`);
+          if (
+            structuredResponse?.data &&
+            typeof structuredResponse.data === "object" &&
+            structuredResponse.data.body
+          ) {
+            // Got structured response with head/body/init_script
+            file.value.html = structuredResponse.data.body;
+
+            // Process head content for tooltip dependencies
+            await processStructuredContent(structuredResponse.data);
+            file.value._structuredProcessed = true;
+
+            logger.debug("File structured content loaded successfully", { fileId });
+          } else {
+            // Fallback to plain HTML
+            const contentResponse = await api.get(`/files/${fileId}/content`);
+            if (contentResponse?.data) {
+              file.value.html = contentResponse.data;
+              file.value._structuredProcessed = false;
+              logger.debug("File plain content loaded successfully", { fileId });
+            }
+          }
+        } catch (error) {
+          logger.debug("Error loading structured content, trying plain HTML", {
+            fileId,
+            error: error.message,
+          });
+          // Final fallback to plain HTML
+          const contentResponse = await api.get(`/files/${fileId}/content`).catch(() => null);
+          if (contentResponse?.data) {
+            file.value.html = contentResponse.data;
+            file.value._structuredProcessed = false;
+            logger.debug("File content loaded successfully (fallback)", { fileId });
+          }
         }
       }
 

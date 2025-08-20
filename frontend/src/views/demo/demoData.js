@@ -175,9 +175,38 @@ export const demoAnnotations = [];
 // Mock API that returns demo data
 export const createDemoApi = () => ({
   get: async (url) => {
-    // Add support for file content endpoint
+    // Add support for file content endpoint with structured format
     if (url && url.includes("/files/") && url.includes("/content")) {
-      return Promise.resolve({ data: demoFile.html || "" });
+      // Check if structured format is requested
+      if (url.includes("format=structured")) {
+        // Use the actual backend endpoint for structured content to get head/body/init_script
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/render`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              source: demoFile.source,
+              format: "structured",
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const structuredData = await response.json();
+          return { data: structuredData };
+        } catch (error) {
+          console.error("Failed to get structured content:", error);
+          // Fallback to plain HTML
+          return Promise.resolve({ data: demoFile.html || "" });
+        }
+      } else {
+        // Plain HTML format (backward compatibility)
+        return Promise.resolve({ data: demoFile.html || "" });
+      }
     }
     return Promise.resolve({ data: {} });
   },

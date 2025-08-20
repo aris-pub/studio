@@ -75,18 +75,9 @@
   provide("focusMode", focusMode);
 
   // Initialize demo content
-  onMounted(async () => {
-    try {
-      const response = await api.post("/render", { source: file.value.source });
-      demoFileReactive.html = response.data;
-      isContentLoaded.value = true;
-    } catch (error) {
-      console.error("Failed to initialize demo content:", error);
-      // Provide fallback HTML content
-      demoFileReactive.html =
-        "<div class='manuscript'><h1>The Future of Web-Native Publishing</h1><p>Demo content loaded with fallback.</p></div>";
-      isContentLoaded.value = true;
-    }
+  onMounted(() => {
+    // Let Canvas.vue handle content loading with structured format for tooltip support
+    isContentLoaded.value = true;
   });
 
   // Keyboard shortcuts

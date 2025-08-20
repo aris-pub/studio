@@ -15,6 +15,7 @@
   import { useElementSize, useScroll } from "@vueuse/core";
   import useElementVisibilityObserver from "@/composables/useElementVisibilityObserver";
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
+  import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
   import Dock from "./Dock.vue";
   import Editor from "./Editor.vue";
@@ -78,19 +79,51 @@
 
   // File and file settings
   const api = inject("api");
+
+  // Head injection composable
+  const { processStructuredContent } = useHeadInjection(api);
+
   watchEffect((onCleanup) => {
-    if (!file.value || file.value.html || !file.value.id) return;
+    if (!file.value || !file.value.id) return;
+
+    // Skip if we already have HTML and structured content has been processed
+    if (file.value.html && file.value._structuredProcessed) return;
 
     let cancelled = false;
     const fetchContent = async () => {
       try {
-        const response = await api.get(`/files/${file.value.id}/content`);
+        // Try structured format first for tooltip support
+        const response = await api.get(`/files/${file.value.id}/content?format=structured`);
         if (!cancelled && file.value) {
-          file.value.html = response.data;
+          const data = response.data;
+
+          // Check if we got a structured response
+          if (data && typeof data === "object" && data.body) {
+            // Process structured response
+            file.value.html = data.body;
+            await processStructuredContent(data, manuscriptRef);
+            file.value._structuredProcessed = true;
+          } else {
+            // Fallback to plain HTML response
+            file.value.html = data;
+            file.value._structuredProcessed = false;
+          }
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("Error fetching HTML:", error);
+          console.error("Error fetching structured content, trying plain HTML:", error);
+          // Fallback to plain HTML endpoint
+          try {
+            const fallbackResponse = await api.get(`/files/${file.value.id}/content`);
+            if (!cancelled && file.value) {
+              file.value.html = fallbackResponse.data;
+              file.value._structuredProcessed = false;
+            }
+          } catch (fallbackError) {
+            if (!cancelled) {
+              console.error("Error fetching HTML:", fallbackError);
+            }
+          }
         }
       }
     };
