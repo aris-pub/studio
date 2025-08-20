@@ -448,18 +448,21 @@ async def duplicate_file(
     return {"id": new_doc.id, "message": "File duplicated successfully"}
 
 
-@router.get("/{file_id}/content", response_class=HTMLResponse)
-async def get_file_html(
-    file_id: int, 
+@router.get("/{file_id}/content")
+async def get_file_content(
+    file_id: int,
+    format: str = "html",
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieve rendered HTML content for a file.
+    """Retrieve rendered content for a file in specified format.
 
     Parameters
     ----------
     file_id : int
         The unique identifier of the file to render.
+    format : str, optional
+        Response format: "html" for HTML response or "structured" for JSON with head/body/init_script (default: "html").
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -467,27 +470,40 @@ async def get_file_html(
 
     Returns
     -------
-    HTMLResponse
-        Rendered HTML content with handrails enabled.
+    HTMLResponse or dict
+        For format="html": HTMLResponse with rendered HTML content.
+        For format="structured": JSON dict with keys: head, body, init_script.
 
     Raises
     ------
     HTTPException
         404 error if file is not found.
+        400 error if format parameter is invalid.
 
     Notes
     -----
-    Requires authentication. Uses file service for cached HTML rendering.
+    Requires authentication. Uses file service for cached rendering.
+    Structured format enables tooltip support by providing head dependencies and init scripts.
     """
+    # Validate format parameter
+    if format not in ["html", "structured"]:
+        raise HTTPException(status_code=400, detail="Format must be 'html' or 'structured'")
+    
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
     
-    # Get HTML from file service with database session for asset resolution
-    html = await file_service.get_file_html(file_id, db=db)
-    if not html:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    return HTMLResponse(content=html)
+    if format == "structured":
+        # Get structured content with head, body, and init_script
+        content = await file_service.get_file_content_structured(file_id, db=db)
+        if not content:
+            raise HTTPException(status_code=404, detail="File not found")
+        return content
+    else:
+        # Get HTML content (backward compatibility)
+        html = await file_service.get_file_html(file_id, db=db)
+        if not html:
+            raise HTTPException(status_code=404, detail="File not found")
+        return HTMLResponse(content=html)
 
 
 @router.get("/{file_id}/content/{section_name}", response_class=HTMLResponse)

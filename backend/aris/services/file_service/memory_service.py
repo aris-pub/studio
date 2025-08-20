@@ -157,6 +157,63 @@ class InMemoryFileService(FileServiceInterface):
         # Call create_file without holding the lock to avoid deadlock
         return await self.create_file(duplicate_data)
     
+    async def get_file_content_structured(self, file_id: int, db: Optional[AsyncSession] = None) -> Optional[dict]:
+        """Get structured content for a file's RSM content.
+        
+        Parameters
+        ----------
+        file_id : int
+            The ID of the file to render
+        db : AsyncSession, optional
+            Database session for asset resolution. If provided, will use FileAssetResolver
+            to load assets from database for RSM rendering.
+            
+        Returns
+        -------
+        Optional[dict]
+            Structured content with keys: head, body, init_script, or None if file not found
+        """
+        async with self._lock:
+            file_data = self._files.get(file_id)
+            if not file_data or file_data.is_deleted():
+                return None
+            
+            # Generate cache key based on whether we have database assets
+            cache_key = "structured_with_assets" if db is not None else "structured_no_assets"
+            
+            # Check cache first - use different cache for asset vs non-asset rendering
+            cached_content: Optional[dict] = getattr(file_data, f'_rendered_{cache_key}', None)
+            if cached_content is not None:
+                return cached_content
+            
+            # Render using RSM make with structured output
+            try:
+                if db is not None:
+                    from ..asset_resolver import FileAssetResolver
+                    asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
+                    rendered_content = await asyncio.to_thread(rsm.make, file_data.source, handrails=True, asset_resolver=asset_resolver, structured=True)
+                else:
+                    rendered_content = await asyncio.to_thread(rsm.make, file_data.source, handrails=True, structured=True)
+                
+                # Ensure it's a dict
+                if not isinstance(rendered_content, dict):
+                    logger.error(f"Expected dict from RSM structured render, got {type(rendered_content)}")
+                    rendered_content = {"head": "", "body": str(rendered_content), "init_script": ""}
+                
+                # Cache the result
+                setattr(file_data, f'_rendered_{cache_key}', rendered_content)
+                return rendered_content
+            except Exception as e:
+                logger.error(f"Failed to render structured RSM content for file {file_id}: {e}")
+                # Fallback to placeholder if rendering fails
+                fallback_content = {
+                    "head": "",
+                    "body": f"<p>Rendered: {file_data.source}</p>",
+                    "init_script": ""
+                }
+                setattr(file_data, f'_rendered_{cache_key}', fallback_content)
+                return fallback_content
+
     async def get_file_html(self, file_id: int, db: Optional[AsyncSession] = None) -> Optional[str]:
         """Get rendered HTML for a file's RSM content.
         

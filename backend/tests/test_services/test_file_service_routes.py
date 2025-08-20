@@ -121,9 +121,9 @@ class TestFileServiceRouteIntegration:
         """Test that GET /files/{file_id}/content should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import get_file_html
+        from aris.routes.file import get_file_content
         
-        sig = inspect.signature(get_file_html)
+        sig = inspect.signature(get_file_content)
         params = list(sig.parameters.keys())
         
         # Should have file_service parameter
