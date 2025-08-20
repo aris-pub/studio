@@ -137,6 +137,7 @@ enabled = false
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:fs",
+    "ignore::UserWarning:fs",  # Suppress fs pkg_resources deprecation warnings
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

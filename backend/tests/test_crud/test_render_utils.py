@@ -7,13 +7,13 @@ from aris.crud.render import render
 
 
 def test_render_success(monkeypatch):
-    monkeypatch.setattr(rsm, "render", lambda src, handrails=True: "<p>OK</p>")
+    monkeypatch.setattr(rsm, "render", lambda src, handrails=True, asset_resolver=None: "<p>OK</p>")
     result = asyncio.run(render("src"))
     assert result == "<p>OK</p>"
 
 
 def test_render_error(monkeypatch, caplog):
-    def raise_error(src, handrails=True):
+    def raise_error(src, handrails=True, asset_resolver=None):
         raise rsm.RSMApplicationError("fail")
 
     monkeypatch.setattr(rsm, "render", raise_error)
