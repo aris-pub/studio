@@ -293,10 +293,10 @@ describe("Editor Integration Tests", () => {
       const mockResponse = { data: { id: 123, url: "/assets/test.txt" } };
       mockApi.post.mockResolvedValue(mockResponse);
 
-      // Mock FileReader
+      // Mock FileReader - text files now use readAsText
       const mockFileReader = {
-        readAsDataURL: vi.fn(),
-        result: "data:text/plain;base64,dGVzdCBjb250ZW50",
+        readAsText: vi.fn(),
+        result: "test content",
         onload: null,
         onerror: null,
       };
@@ -341,7 +341,66 @@ describe("Editor Integration Tests", () => {
       expect(mockApi.post).toHaveBeenCalledWith("/assets", {
         filename: "test.txt",
         mime_type: "text/plain",
-        content: "dGVzdCBjb250ZW50",
+        content: "test content",
+        content_encoding: "plain",
+        file_id: mockFile.value.id,
+      });
+    });
+
+    it("handles binary file upload with base64 encoding", async () => {
+      const mockAsset = new File(["fake image data"], "image.png", { type: "image/png" });
+      const mockResponse = { data: { id: 123, url: "/assets/image.png" } };
+      mockApi.post.mockResolvedValue(mockResponse);
+
+      // Mock FileReader - binary files use readAsDataURL with base64
+      const mockFileReader = {
+        readAsDataURL: vi.fn(),
+        result: "data:image/png;base64,ZmFrZSBpbWFnZSBkYXRh",
+        onload: null,
+        onerror: null,
+      };
+
+      global.FileReader = vi.fn(() => mockFileReader);
+
+      const wrapper = mount(Editor, {
+        props: {
+          modelValue: mockFile.value,
+        },
+        global: {
+          provide: { api: mockApi },
+          stubs: {
+            EditorTopbar: {
+              name: "EditorTopbar",
+              template: "<div />",
+              emits: ["compile", "upload"],
+            },
+            EditorSource: {
+              name: "EditorSource",
+              template: "<div />",
+              props: ["modelValue", "saveStatus"],
+              emits: ["update:modelValue", "input"],
+            },
+            EditorFiles: {
+              name: "EditorFiles",
+              template: "<div />",
+            },
+          },
+        },
+      });
+
+      const topbar = wrapper.findComponent({ name: "EditorTopbar" });
+
+      // Trigger upload
+      topbar.vm.$emit("upload", mockAsset);
+
+      // Simulate FileReader success
+      mockFileReader.onload();
+      await nextTick();
+
+      expect(mockApi.post).toHaveBeenCalledWith("/assets", {
+        filename: "image.png",
+        mime_type: "image/png",
+        content: "ZmFrZSBpbWFnZSBkYXRh",
         content_encoding: "base64",
         file_id: mockFile.value.id,
       });
@@ -351,9 +410,9 @@ describe("Editor Integration Tests", () => {
       const mockAsset = new File(["test"], "test.txt", { type: "text/plain" });
       const uploadError = new Error("Upload failed");
 
-      // Mock FileReader that fails
+      // Mock FileReader that fails - text files use readAsText
       const mockFileReader = {
-        readAsDataURL: vi.fn(),
+        readAsText: vi.fn(),
         result: null,
         onload: null,
         onerror: null,
@@ -563,10 +622,11 @@ describe("Editor Integration Tests", () => {
         .mockResolvedValueOnce({ data: "<h1>First</h1>" })
         .mockResolvedValueOnce({ data: { id: 1 } });
 
-      // Mock FileReader for the upload operation
+      // Mock FileReader for the upload operation - support both text and binary
       const mockFileReader = {
+        readAsText: vi.fn(),
         readAsDataURL: vi.fn(),
-        result: "data:text/plain;base64,dGVzdA==",
+        result: "test",
         onload: null,
         onerror: null,
       };
@@ -601,7 +661,7 @@ describe("Editor Integration Tests", () => {
       const topbar = wrapper.findComponent({ name: "EditorTopbar" });
 
       // Trigger both compile and upload simultaneously
-      const mockAsset = new File(["test"], "test.txt");
+      const mockAsset = new File(["test"], "test.txt", { type: "text/plain" });
       topbar.vm.$emit("compile");
       topbar.vm.$emit("upload", mockAsset);
 

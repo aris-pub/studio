@@ -80,6 +80,9 @@ Our findings demonstrate significant advantages of web-native publishing across 
 
 :figure:
   :path: plotly-chart.html
+
+  :caption: This interactive plot shows the famous Iris dataset with species clustering by petal dimensions.
+
 ::
 
 ## Discussion

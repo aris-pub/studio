@@ -33,6 +33,18 @@
   });
 
   // File asset upload
+  const isTextMimeType = (mimeType) => {
+    return (
+      mimeType.startsWith("text/") ||
+      mimeType === "application/javascript" ||
+      mimeType === "application/json" ||
+      mimeType === "application/xml" ||
+      mimeType === "text/html" ||
+      mimeType === "text/css" ||
+      mimeType === "text/plain"
+    );
+  };
+
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -46,17 +58,38 @@
     });
   };
 
+  const fileToText = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const onUpload = async (asset) => {
     console.log("upload", asset);
 
     try {
-      const base64Content = await fileToBase64(asset);
+      const isText = isTextMimeType(asset.type);
+      let content;
+      let contentEncoding;
+
+      if (isText) {
+        content = await fileToText(asset);
+        contentEncoding = "plain";
+      } else {
+        content = await fileToBase64(asset);
+        contentEncoding = "base64";
+      }
 
       const payload = {
         filename: asset.name,
         mime_type: asset.type,
-        content: base64Content,
-        content_encoding: "base64",
+        content: content,
+        content_encoding: contentEncoding,
         file_id: file.value.id,
       };
 
