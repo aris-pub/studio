@@ -65,7 +65,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
@@ -256,7 +256,7 @@ jobs:
       run: npm ci
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
@@ -432,7 +432,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
@@ -615,7 +615,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
@@ -933,7 +933,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
@@ -1130,7 +1130,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
         enable-cache: true
