@@ -2,6 +2,15 @@
   import { h, useTemplateRef } from "vue";
   import FeedbackIcon from "./FeedbackIcon.vue";
 
+  // Simple hash function for generating keys
+  const hashString = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return hash.toString(36);
+  };
+
   export default {
     name: "Manuscript",
 
@@ -94,6 +103,14 @@
 
             if (Object.keys(attrs).length) {
               data.attrs = attrs;
+            }
+
+            // Key math elements to force Vue replacement when document changes
+            const isMathElement =
+              (node.tagName.toLowerCase() === "span" && node.classList?.contains("math")) ||
+              (node.tagName.toLowerCase() === "div" && node.classList?.contains("mathblock"));
+            if (isMathElement) {
+              data.key = `math-${hashString(node.textContent)}-${hashString(htmlString)}`;
             }
 
             // Get child nodes recursively

@@ -11,9 +11,14 @@
   const emit = defineEmits(["mounted-at"]);
 
   const api = inject("api");
+
+  // Key to force Manuscript re-creation when content changes
+  const manuscriptKey = ref(0);
+  watch(() => props.htmlString, () => { manuscriptKey.value++; });
   const onload = ref(null);
   const onrender = ref(null);
   const onloadCalled = ref(false);
+  let lastHtmlString = null;
 
   onBeforeMount(async () => {
     const base = api.defaults.baseURL;
@@ -33,7 +38,9 @@
 
   const executeRender = async () => {
     if (!selfRef.value || !props.htmlString || !onload.value) return;
+    if (props.htmlString === lastHtmlString) return;
 
+    lastHtmlString = props.htmlString;
     await nextTick();
 
     try {
@@ -60,7 +67,7 @@
       <link rel="stylesheet" :href="`${api.defaults.baseURL}/static/pseudocode.min.css`" />
     </div>
 
-    <Manuscript ref="manuscript-ref" :html-string="htmlString" :settings="settings" />
+    <Manuscript ref="manuscript-ref" :key="manuscriptKey" :html-string="htmlString" :settings="settings" />
 
     <div v-if="showFooter" class="middle-footer">
       <div class="footer-logo"><Logo type="small" /></div>
