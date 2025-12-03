@@ -138,23 +138,9 @@ describe("Demo Data Service", () => {
     });
 
     describe("demoAnnotations", () => {
-      it("is an array with annotation objects", () => {
+      it("is an empty array (annotations removed for cleaner demo)", () => {
         expect(Array.isArray(demoAnnotations)).toBe(true);
-        expect(demoAnnotations.length).toBeGreaterThan(0);
-      });
-
-      it("has properly structured annotations", () => {
-        demoAnnotations.forEach((annotation) => {
-          expect(annotation).toHaveProperty("id");
-          expect(annotation).toHaveProperty("content");
-          expect(annotation).toHaveProperty("user");
-          expect(annotation).toHaveProperty("created_at");
-
-          expect(typeof annotation.content).toBe("string");
-          expect(annotation.user).toHaveProperty("username");
-          expect(typeof annotation.created_at).toBe("string");
-          expect(isNaN(new Date(annotation.created_at).getTime())).toBe(false);
-        });
+        expect(demoAnnotations.length).toBe(0);
       });
     });
   });

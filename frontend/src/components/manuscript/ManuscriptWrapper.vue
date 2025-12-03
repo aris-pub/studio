@@ -12,6 +12,8 @@
 
   const api = inject("api");
   const onload = ref(null);
+  const onrender = ref(null);
+  const onloadCalled = ref(false);
 
   onBeforeMount(async () => {
     const base = api.defaults.baseURL;
@@ -21,18 +23,32 @@
       await import(/* @vite-ignore */ `${base}/static/tooltipster.bundle.js`);
       const module = await import(/* @vite-ignore */ `${base}/static/onload.js`);
       onload.value = module.onload;
+      onrender.value = module.onrender;
     } catch (error) {
       console.error(error);
     }
   });
 
   const selfRef = useTemplateRef("self-ref");
-  const tryExecuteOnload = async () => {
-    if (!onload.value || !selfRef.value || !props.htmlString) return;
+
+  const executeRender = async () => {
+    if (!selfRef.value || !props.htmlString || !onload.value) return;
+
     await nextTick();
-    onload.value(selfRef.value, { keys: props.keys });
+
+    try {
+      if (!onloadCalled.value) {
+        await onload.value(selfRef.value, { keys: props.keys });
+        onloadCalled.value = true;
+      } else if (onrender.value) {
+        await onrender.value(selfRef.value);
+      }
+    } catch (err) {
+      console.error("Render error:", err);
+    }
   };
-  watch([onload, () => selfRef.value, () => props.htmlString], tryExecuteOnload);
+
+  watch([onload, () => selfRef.value, () => props.htmlString], executeRender);
 
   const manuscriptRef = useTemplateRef("manuscript-ref");
   defineExpose({ mountPoint: computed(() => manuscriptRef.value?.mountPoint) });

@@ -335,34 +335,28 @@ describe("Demo View", () => {
     });
   });
 
-  describe("Async Content Loading", () => {
-    it("calls demo API to render RSM content on mount", async () => {
-      mockPost.mockClear();
-
+  describe("Content Loading Delegation", () => {
+    it("sets isContentLoaded to true on mount (Canvas.vue handles actual loading)", async () => {
       wrapper = mount(DemoView);
       await nextTick();
 
       // Wait for the onMounted hook to execute
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(mockPost).toHaveBeenCalledWith("/render", {
-        source: ":rsm:# Test Content::",
-      });
+      // View.vue now delegates content loading to Canvas.vue
+      expect(wrapper.vm.isContentLoaded).toBe(true);
     });
 
-    it("sets file.html property after successful API call", async () => {
-      mockPost.mockResolvedValue({ data: "<html>Rendered HTML</html>" });
-      mockPost.mockClear();
-
+    it("provides demo file to Canvas for rendering", async () => {
       wrapper = mount(DemoView);
       await nextTick();
 
-      // Wait for async API call
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await nextTick();
-
       const vm = wrapper.vm;
-      expect(vm.demoFileReactive.html).toBe("<html>Rendered HTML</html>");
+      const provided = vm.$.provides;
+
+      // The file should be provided to Canvas for content loading
+      expect(provided.file).toBeDefined();
+      expect(provided.file.value.source).toBe(":rsm:# Test Content::");
     });
   });
 

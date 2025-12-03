@@ -111,3 +111,5 @@ fly.toml.local
 .nitro
 .cache
 dist
+test-results/
+playwright-report/
