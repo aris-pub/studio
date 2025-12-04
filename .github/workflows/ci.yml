@@ -57,7 +57,7 @@ jobs:
         working-directory: backend
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -118,7 +118,7 @@ jobs:
         working-directory: frontend
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -159,7 +159,7 @@ jobs:
         working-directory: site
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -234,7 +234,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -426,7 +426,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -609,7 +609,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -734,7 +734,7 @@ jobs:
       COPILOT_PROVIDER: mock
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -930,7 +930,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -1128,7 +1128,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
@@ -1254,7 +1254,7 @@ jobs:
       COPILOT_PROVIDER: mock
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Clone RSM repository
       run: |
