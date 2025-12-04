@@ -80,12 +80,16 @@
       if (!onloadCalled.value) {
         console.log("[ManuscriptWrapper] Taking onload() path (first time)");
         await onload.value(selfRef.value, { keys: props.keys });
-        console.log("[ManuscriptWrapper] onload() returned");
+        const mjxRightAfterAwait = selfRef.value.querySelectorAll("mjx-container").length;
+        console.log(`[ManuscriptWrapper] RIGHT AFTER await onload: mjx=${mjxRightAfterAwait}, id=${selfRef.value._typesetId}`);
         onloadCalled.value = true;
+        const mjxAfterOnloadCalled = selfRef.value.querySelectorAll("mjx-container").length;
+        console.log(`[ManuscriptWrapper] AFTER onloadCalled=true: mjx=${mjxAfterOnloadCalled}`);
       } else if (onrender.value) {
         console.log("[ManuscriptWrapper] Taking onrender() path (subsequent)");
         await onrender.value(selfRef.value);
-        console.log("[ManuscriptWrapper] onrender() returned");
+        const mjxRightAfterAwait = selfRef.value.querySelectorAll("mjx-container").length;
+        console.log(`[ManuscriptWrapper] RIGHT AFTER await onrender: mjx=${mjxRightAfterAwait}, id=${selfRef.value._typesetId}`);
       }
     } catch (err) {
       console.error("Render error:", err);
@@ -93,6 +97,15 @@
       executeRenderInProgress = false;
       console.log("[ManuscriptWrapper] executeRenderInProgress = false");
     }
+
+    // Check immediately after onload/onrender returns
+    const mjxImmediateAfterOnload = selfRef.value.querySelectorAll("mjx-container").length;
+    console.log(`[ManuscriptWrapper] IMMEDIATE after onload/onrender: mjx=${mjxImmediateAfterOnload}`);
+
+    // Let any pending microtasks run
+    await Promise.resolve();
+    const mjxAfterMicrotask = selfRef.value.querySelectorAll("mjx-container").length;
+    console.log(`[ManuscriptWrapper] AFTER Promise.resolve(): mjx=${mjxAfterMicrotask}`);
 
     const rootMjxAfter = selfRef.value.querySelectorAll("mjx-container").length;
     const rootNestedAfter = selfRef.value.querySelectorAll("mjx-container mjx-container").length;
