@@ -25,9 +25,11 @@
   const onloadCalled = ref(false);
   let lastHtmlString = null;
   let executeRenderInProgress = false;
+  let staticPath = null;
 
   onBeforeMount(async () => {
     const base = api.defaults.baseURL;
+    staticPath = `${base}/static/`;
 
     try {
       await import(/* @vite-ignore */ `${base}/static/jquery-3.6.0.js`);
@@ -61,7 +63,7 @@
 
     try {
       if (!onloadCalled.value) {
-        await onload.value(selfRef.value, { keys: props.keys });
+        await onload.value(selfRef.value, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {
         await onrender.value(selfRef.value);
