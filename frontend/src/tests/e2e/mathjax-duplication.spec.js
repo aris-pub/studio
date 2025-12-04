@@ -347,6 +347,8 @@ test.describe("MathJax Duplication Bug @auth", () => {
       const viewport = page.viewportSize();
       const isMobile = viewport && viewport.width < 640;
       if (isMobile) {
+        // On mobile, sidebar items are in a drawer - open it first
+        await page.locator('[data-testid="mobile-menu-button"]').click();
         const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
         await manuscriptButton.click();
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
@@ -377,6 +379,8 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to source editor to make the second edit
       if (isMobile) {
+        // On mobile, sidebar items are in a drawer - open it first
+        await page.locator('[data-testid="mobile-menu-button"]').click();
         const editorButton = page.locator(".sb-item").filter({ hasText: "source" });
         await editorButton.click();
         await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
@@ -393,6 +397,8 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to manuscript view to check the rendered output
       if (isMobile) {
+        // On mobile, sidebar items are in a drawer - open it first
+        await page.locator('[data-testid="mobile-menu-button"]').click();
         const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
         await manuscriptButton.click();
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
