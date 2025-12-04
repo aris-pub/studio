@@ -437,12 +437,6 @@ jobs:
         cd ..
         git clone https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
-        cd rsm
-        echo "🔍 RSM commit: $(git log -1 --oneline)"
-        echo "🔍 Checking for MathJax.typeset in tooltips.js:"
-        grep -n "MathJax.typeset" rsm/static/tooltips.js || echo "NOT FOUND (correct after fix)"
-        echo "🔍 Checking for ENTER log in libraries.js:"
-        grep -n "ENTER" rsm/static/libraries.js || echo "NOT FOUND"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
@@ -463,10 +457,7 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        # Force reinstall RSM from local clone to override the locked git version
-        uv pip install --reinstall --no-deps -e ../../rsm
-        echo "🔍 Verifying RSM installation path:"
-        uv run python -c "import rsm; from pathlib import Path; print(f'rsm.__file__: {rsm.__file__}'); p = Path(rsm.__file__).parent / 'static/tooltips.js'; content = p.read_text(); print(f'MathJax.typeset in installed tooltips.js: {\"MathJax.typeset\" in content}')"
+        uv pip install -e ../../rsm
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
@@ -971,10 +962,7 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        # Force reinstall RSM from local clone to override the locked git version
-        uv pip install --reinstall --no-deps -e ../../rsm
-        echo "🔍 Verifying RSM installation path:"
-        uv run python -c "import rsm; from pathlib import Path; print(f'rsm.__file__: {rsm.__file__}'); p = Path(rsm.__file__).parent / 'static/tooltips.js'; content = p.read_text(); print(f'MathJax.typeset in installed tooltips.js: {\"MathJax.typeset\" in content}')"
+        uv pip install -e ../../rsm
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
