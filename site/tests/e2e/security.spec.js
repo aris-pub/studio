@@ -78,7 +78,8 @@ test.describe("Security", () => {
       await hamburger.click();
 
       // Wait for mobile menu animation and toggle to be visible
-      toggle = page.locator('[data-testid="dark-mode-toggle"]');
+      // Use .first() because both desktop and mobile nav have the toggle
+      toggle = page.locator('[data-testid="dark-mode-toggle"]').first();
       await expect(toggle).toBeVisible();
     } else {
       // On desktop, toggle should be directly visible

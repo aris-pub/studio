@@ -301,7 +301,8 @@ test.describe("Signup Form", () => {
       await hamburger.click();
 
       // Wait for mobile menu animation and CTA button to be visible
-      const ctaButton = page.locator(".nav-cta-button");
+      // Use .first() because both desktop and mobile nav have the CTA button
+      const ctaButton = page.locator(".nav-cta-button").first();
       await expect(ctaButton).toBeVisible();
       await ctaButton.click();
     } else {
