@@ -436,6 +436,12 @@ jobs:
         cd ..
         git clone https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
+        cd rsm
+        echo "🔍 RSM commit: $(git log -1 --oneline)"
+        echo "🔍 Checking for MathJax.typeset in tooltips.js:"
+        grep -n "MathJax.typeset" rsm/static/tooltips.js || echo "NOT FOUND (correct after fix)"
+        echo "🔍 Checking for ENTER log in libraries.js:"
+        grep -n "ENTER" rsm/static/libraries.js || echo "NOT FOUND"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
@@ -457,6 +463,10 @@ jobs:
         uv venv
         uv sync --group test --group dev
         uv pip install -e ../../rsm
+        echo "🔍 Verifying RSM installation:"
+        uv run python -c "import rsm; print(f'rsm.__file__: {rsm.__file__}')"
+        echo "🔍 Checking if MathJax.typeset in tooltips.js (should NOT be found after fix):"
+        grep -n "MathJax.typeset" ../../rsm/rsm/static/tooltips.js || echo "NOT FOUND (correct)"
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
@@ -960,6 +970,10 @@ jobs:
         uv venv
         uv sync --group test --group dev
         uv pip install -e ../../rsm
+        echo "🔍 Verifying RSM installation:"
+        uv run python -c "import rsm; print(f'rsm.__file__: {rsm.__file__}')"
+        echo "🔍 Checking if MathJax.typeset in tooltips.js (should NOT be found after fix):"
+        grep -n "MathJax.typeset" ../../rsm/rsm/static/tooltips.js || echo "NOT FOUND (correct)"
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
