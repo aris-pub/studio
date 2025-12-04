@@ -156,10 +156,9 @@ test.describe("RSM Initialization Guard @auth", () => {
       });
 
       // Wait for MathJax containers to appear (proves MathJax loaded and ran)
-      await page.waitForFunction(
-        () => document.querySelectorAll("mjx-container").length > 0,
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+        timeout: 10000,
+      });
 
       // Check for raw LaTeX that should NOT be visible
       const renderCheck = await page.evaluate(() => {
@@ -355,7 +354,9 @@ test.describe("MathJax Duplication Bug @auth", () => {
           titleCount: (text.match(/Test Document for MathJax Bug/g) || []).length,
           scriptCount: document.querySelectorAll('script[id="MathJax-script"]').length,
           inlineMjxCount: document.querySelectorAll("span.math > mjx-container").length,
-          blockMjxCount: document.querySelectorAll("div.mathblock > .hr-content-zone > mjx-container").length,
+          blockMjxCount: document.querySelectorAll(
+            "div.mathblock > .hr-content-zone > mjx-container"
+          ).length,
           totalMjxCount: document.querySelectorAll("mjx-container").length,
           nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
         };
@@ -375,7 +376,9 @@ test.describe("MathJax Duplication Bug @auth", () => {
           hasRawBlockLatex: text.includes("$$"),
           titleCount: (text.match(/Test Document for MathJax Bug/g) || []).length,
           inlineMjxCount: document.querySelectorAll("span.math > mjx-container").length,
-          blockMjxCount: document.querySelectorAll("div.mathblock > .hr-content-zone > mjx-container").length,
+          blockMjxCount: document.querySelectorAll(
+            "div.mathblock > .hr-content-zone > mjx-container"
+          ).length,
           totalMjxCount: document.querySelectorAll("mjx-container").length,
           nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
         };

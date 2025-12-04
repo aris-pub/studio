@@ -14,7 +14,12 @@
 
   // Key to force Manuscript re-creation when content changes
   const manuscriptKey = ref(0);
-  watch(() => props.htmlString, () => { manuscriptKey.value++; });
+  watch(
+    () => props.htmlString,
+    () => {
+      manuscriptKey.value++;
+    }
+  );
   const onload = ref(null);
   const onrender = ref(null);
   const onloadCalled = ref(false);
@@ -67,7 +72,12 @@
       <link rel="stylesheet" :href="`${api.defaults.baseURL}/static/pseudocode.min.css`" />
     </div>
 
-    <Manuscript ref="manuscript-ref" :key="manuscriptKey" :html-string="htmlString" :settings="settings" />
+    <Manuscript
+      ref="manuscript-ref"
+      :key="manuscriptKey"
+      :html-string="htmlString"
+      :settings="settings"
+    />
 
     <div v-if="showFooter" class="middle-footer">
       <div class="footer-logo"><Logo type="small" /></div>

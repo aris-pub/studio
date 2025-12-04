@@ -15,11 +15,13 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
 
   // Capture console logs
   page.on("console", (msg) => {
-    if (msg.text().includes("[typesetMath]") ||
-        msg.text().includes("[onload]") ||
-        msg.text().includes("[onrender]") ||
-        msg.text().includes("[executeRender]") ||
-        msg.text().includes("span.math")) {
+    if (
+      msg.text().includes("[typesetMath]") ||
+      msg.text().includes("[onload]") ||
+      msg.text().includes("[onrender]") ||
+      msg.text().includes("[executeRender]") ||
+      msg.text().includes("span.math")
+    ) {
       console.log("BROWSER:", msg.text());
     }
   });
@@ -41,13 +43,15 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
     // Navigate and wait for render
     await page.goto(`/file/${fileId}`);
     await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({ timeout: 10000 });
-    await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+      timeout: 10000,
+    });
 
     // Count initial state with structure
     const initial = await page.evaluate(() => {
       const containers = document.querySelectorAll("mjx-container");
-      const structure = Array.from(containers).map(c => ({
-        parent: c.parentElement?.tagName + '.' + c.parentElement?.className,
+      const structure = Array.from(containers).map((c) => ({
+        parent: c.parentElement?.tagName + "." + c.parentElement?.className,
       }));
       return {
         total: containers.length,
@@ -72,9 +76,9 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
     // Count after edit and inspect structure
     const afterEdit = await page.evaluate(() => {
       const containers = document.querySelectorAll("mjx-container");
-      const structure = Array.from(containers).map(c => ({
-        parent: c.parentElement?.tagName + '.' + c.parentElement?.className,
-        hasNestedContainer: c.querySelector('mjx-container') !== null,
+      const structure = Array.from(containers).map((c) => ({
+        parent: c.parentElement?.tagName + "." + c.parentElement?.className,
+        hasNestedContainer: c.querySelector("mjx-container") !== null,
       }));
       return {
         total: containers.length,
@@ -87,13 +91,14 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
     // Check for VISUAL duplication (ignoring assistive MathML)
     const visualContainers = await page.evaluate(() => {
       // Count only top-level mjx-containers (not inside mjx-assistive-mml)
-      return document.querySelectorAll("span.math > mjx-container, div.mathblock mjx-container:not(mjx-assistive-mml mjx-container)").length;
+      return document.querySelectorAll(
+        "span.math > mjx-container, div.mathblock mjx-container:not(mjx-assistive-mml mjx-container)"
+      ).length;
     });
     console.log("VISUAL CONTAINERS:", visualContainers);
 
     // The real bug: visual containers should equal initial count
     expect(visualContainers).toBe(1);
-
   } finally {
     await request.delete(`${baseURL}/files/${fileId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
