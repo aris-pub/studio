@@ -344,14 +344,14 @@ test.describe("MathJax Duplication Bug @auth", () => {
       });
 
       // On mobile, switch back to manuscript view to check the rendered output
+      // Mobile UI: toggle items (source, Ari, search) are in the bottom bar as .sb-item
+      // There is NO "manuscript" button - manuscript is the default view shown when
+      // all toggles are OFF. Click "source" again to toggle it OFF and show manuscript.
       const viewport = page.viewportSize();
       const isMobile = viewport && viewport.width < 640;
       if (isMobile) {
-        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
-        await page.locator('[data-testid="mobile-menu-button"]').click();
-        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
-        const manuscriptButton = page.locator("button.item").filter({ hasText: "manuscript" });
-        await manuscriptButton.click();
+        const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });
+        await sourceButton.click(); // Toggle OFF to hide editor, show manuscript
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
           timeout: 5000,
         });
@@ -380,11 +380,9 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to source editor to make the second edit
       if (isMobile) {
-        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
-        await page.locator('[data-testid="mobile-menu-button"]').click();
-        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
-        const editorButton = page.locator("button.item").filter({ hasText: "source" });
-        await editorButton.click();
+        // Click source toggle in bottom bar to turn it ON and show editor
+        const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });
+        await sourceButton.click();
         await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
           timeout: 5000,
         });
@@ -399,11 +397,9 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to manuscript view to check the rendered output
       if (isMobile) {
-        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
-        await page.locator('[data-testid="mobile-menu-button"]').click();
-        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
-        const manuscriptButton = page.locator("button.item").filter({ hasText: "manuscript" });
-        await manuscriptButton.click();
+        // Click source toggle in bottom bar to turn it OFF and show manuscript
+        const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });
+        await sourceButton.click();
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
           timeout: 5000,
         });
