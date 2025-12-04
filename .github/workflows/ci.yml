@@ -32,7 +32,6 @@ jobs:
   # Unit Tests and Linting (Parallel)
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   unit-backend:
-    if: false  # TEMPORARILY DISABLED
     runs-on: ubuntu-latest
     env:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || 'testpassword123' }}
@@ -112,7 +111,6 @@ jobs:
       run: uv run pytest -n4 --dist=loadscope --tb=short
 
   unit-frontend:
-    if: false  # TEMPORARILY DISABLED
     runs-on: ubuntu-latest
 
     defaults:
@@ -154,7 +152,6 @@ jobs:
       run: npm run test:run
 
   unit-site:
-    if: false  # TEMPORARILY DISABLED
     runs-on: ubuntu-latest
 
     defaults:
@@ -198,7 +195,6 @@ jobs:
   # Site E2E Tests (All Browsers)
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-site:
-    if: false  # TEMPORARILY DISABLED
     needs: [unit-backend, unit-frontend, unit-site]
     strategy:
       fail-fast: false
@@ -904,7 +900,6 @@ jobs:
   # Mobile E2E Tests (Optional - can fail without breaking CI)
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-chrome:
-    if: false  # TEMPORARILY DISABLED
     # needs: [e2e-desktop-chrome]
     continue-on-error: true  # Allow this job to fail
     strategy:
@@ -1098,7 +1093,6 @@ jobs:
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-firefox:
-    if: false  # TEMPORARILY DISABLED
     # needs: [e2e-desktop-firefox]
     continue-on-error: true  # Allow this job to fail
     strategy:
@@ -1246,7 +1240,6 @@ jobs:
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-safari:
-    if: false  # TEMPORARILY DISABLED
     # needs: [e2e-desktop-safari]
     continue-on-error: true  # Allow this job to fail
     strategy:
