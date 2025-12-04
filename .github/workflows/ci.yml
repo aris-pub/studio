@@ -280,7 +280,8 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
 
     - name: Run database migrations
       working-directory: backend
@@ -462,11 +463,10 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
-        echo "🔍 Verifying RSM installation:"
-        uv run python -c "import rsm; print(f'rsm.__file__: {rsm.__file__}')"
-        echo "🔍 Checking if MathJax.typeset in tooltips.js (should NOT be found after fix):"
-        grep -n "MathJax.typeset" ../../rsm/rsm/static/tooltips.js || echo "NOT FOUND (correct)"
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
+        echo "🔍 Verifying RSM installation path:"
+        uv run python -c "import rsm; from pathlib import Path; print(f'rsm.__file__: {rsm.__file__}'); p = Path(rsm.__file__).parent / 'static/tooltips.js'; content = p.read_text(); print(f'MathJax.typeset in installed tooltips.js: {\"MathJax.typeset\" in content}')"
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
@@ -649,7 +649,8 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
 
     - name: Run database migrations
       working-directory: backend
@@ -788,7 +789,8 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
@@ -969,11 +971,10 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
-        echo "🔍 Verifying RSM installation:"
-        uv run python -c "import rsm; print(f'rsm.__file__: {rsm.__file__}')"
-        echo "🔍 Checking if MathJax.typeset in tooltips.js (should NOT be found after fix):"
-        grep -n "MathJax.typeset" ../../rsm/rsm/static/tooltips.js || echo "NOT FOUND (correct)"
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
+        echo "🔍 Verifying RSM installation path:"
+        uv run python -c "import rsm; from pathlib import Path; print(f'rsm.__file__: {rsm.__file__}'); p = Path(rsm.__file__).parent / 'static/tooltips.js'; content = p.read_text(); print(f'MathJax.typeset in installed tooltips.js: {\"MathJax.typeset\" in content}')"
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
@@ -1172,7 +1173,8 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
 
     - name: Run database migrations
       working-directory: backend
@@ -1313,7 +1315,8 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        # Force reinstall RSM from local clone to override the locked git version
+        uv pip install --reinstall --no-deps -e ../../rsm
 
     - name: Run database migrations and setup test user (with debugging)
       working-directory: backend
