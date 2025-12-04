@@ -250,6 +250,19 @@ test.describe("MathJax Duplication Bug @auth", () => {
     page,
     request,
   }) => {
+    // Capture diagnostic logs for debugging mobile MathJax issue
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (
+        text.includes("[ManuscriptWrapper]") ||
+        text.includes("[RSM onload]") ||
+        text.includes("[RSM onrender]") ||
+        text.includes("[typesetMath]")
+      ) {
+        console.log("BROWSER:", text);
+      }
+    });
+
     // Create a fresh test file with math content
     const fileId = await createTestFileWithMath(request);
 

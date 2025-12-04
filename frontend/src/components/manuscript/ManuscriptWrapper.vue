@@ -18,12 +18,15 @@
     () => props.htmlString,
     () => {
       manuscriptKey.value++;
+      console.log(`[ManuscriptWrapper] manuscriptKey incremented to ${manuscriptKey.value}`);
     }
   );
   const onload = ref(null);
   const onrender = ref(null);
   const onloadCalled = ref(false);
   let lastHtmlString = null;
+
+  console.log("[ManuscriptWrapper] Component instance created, onloadCalled=false");
 
   onBeforeMount(async () => {
     const base = api.defaults.baseURL;
@@ -42,22 +45,41 @@
   const selfRef = useTemplateRef("self-ref");
 
   const executeRender = async () => {
-    if (!selfRef.value || !props.htmlString || !onload.value) return;
-    if (props.htmlString === lastHtmlString) return;
+    const preMjxCount = document.querySelectorAll("mjx-container").length;
+    const preNestedCount = document.querySelectorAll("mjx-container mjx-container").length;
+    console.log(`[ManuscriptWrapper] executeRender called, pre-existing mjx: ${preMjxCount}, nested: ${preNestedCount}`);
+
+    if (!selfRef.value || !props.htmlString || !onload.value) {
+      console.log("[ManuscriptWrapper] executeRender early return - missing refs");
+      return;
+    }
+    if (props.htmlString === lastHtmlString) {
+      console.log("[ManuscriptWrapper] executeRender early return - same htmlString");
+      return;
+    }
 
     lastHtmlString = props.htmlString;
     await nextTick();
 
+    const rootMjxBefore = selfRef.value.querySelectorAll("mjx-container").length;
+    console.log(`[ManuscriptWrapper] Before MathJax: mjx in root=${rootMjxBefore}, onloadCalled=${onloadCalled.value}`);
+
     try {
       if (!onloadCalled.value) {
+        console.log("[ManuscriptWrapper] Taking onload() path (first time)");
         await onload.value(selfRef.value, { keys: props.keys });
         onloadCalled.value = true;
       } else if (onrender.value) {
+        console.log("[ManuscriptWrapper] Taking onrender() path (subsequent)");
         await onrender.value(selfRef.value);
       }
     } catch (err) {
       console.error("Render error:", err);
     }
+
+    const rootMjxAfter = selfRef.value.querySelectorAll("mjx-container").length;
+    const rootNestedAfter = selfRef.value.querySelectorAll("mjx-container mjx-container").length;
+    console.log(`[ManuscriptWrapper] After MathJax: mjx in root=${rootMjxAfter}, nested=${rootNestedAfter}`);
   };
 
   watch([onload, () => selfRef.value, () => props.htmlString], executeRender);
