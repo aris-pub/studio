@@ -1229,7 +1229,7 @@ wheels = [
 [[package]]
 name = "rsm-markup"
 version = "0.3.2"
-source = { git = "https://github.com/aris-pub/rsm.git?rev=main#33d0c860c24bb08507b0475e39f450e4dbc4441e" }
+source = { git = "https://github.com/aris-pub/rsm.git?rev=main#9ae0811399f62ad64bfb837c10789db4bff98f72" }
 dependencies = [
     { name = "fs" },
     { name = "icecream" },
