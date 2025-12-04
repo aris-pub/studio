@@ -347,9 +347,10 @@ test.describe("MathJax Duplication Bug @auth", () => {
       const viewport = page.viewportSize();
       const isMobile = viewport && viewport.width < 640;
       if (isMobile) {
-        // On mobile, sidebar items are in a drawer - open it first
+        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
         await page.locator('[data-testid="mobile-menu-button"]').click();
-        const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
+        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
+        const manuscriptButton = page.locator("button.item").filter({ hasText: "manuscript" });
         await manuscriptButton.click();
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
           timeout: 5000,
@@ -379,9 +380,10 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to source editor to make the second edit
       if (isMobile) {
-        // On mobile, sidebar items are in a drawer - open it first
+        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
         await page.locator('[data-testid="mobile-menu-button"]').click();
-        const editorButton = page.locator(".sb-item").filter({ hasText: "source" });
+        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
+        const editorButton = page.locator("button.item").filter({ hasText: "source" });
         await editorButton.click();
         await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
           timeout: 5000,
@@ -397,9 +399,10 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       // On mobile, switch back to manuscript view to check the rendered output
       if (isMobile) {
-        // On mobile, sidebar items are in a drawer - open it first
+        // On mobile, drawer items are in a ContextMenu with ContextMenuItem (.item class)
         await page.locator('[data-testid="mobile-menu-button"]').click();
-        const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
+        await page.locator('[data-testid="context-menu"]').waitFor({ state: "visible" });
+        const manuscriptButton = page.locator("button.item").filter({ hasText: "manuscript" });
         await manuscriptButton.click();
         await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
           timeout: 5000,
