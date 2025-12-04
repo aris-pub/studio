@@ -343,6 +343,17 @@ test.describe("MathJax Duplication Bug @auth", () => {
         timeout: 5000,
       });
 
+      // On mobile, switch back to manuscript view to check the rendered output
+      const viewport = page.viewportSize();
+      const isMobile = viewport && viewport.width < 640;
+      if (isMobile) {
+        const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
+        await manuscriptButton.click();
+        await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
+          timeout: 5000,
+        });
+      }
+
       // Check state after first edit - includes mjx-container counts
       const afterFirstEdit = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
@@ -364,9 +375,30 @@ test.describe("MathJax Duplication Bug @auth", () => {
 
       console.log("After first edit:", JSON.stringify(afterFirstEdit));
 
+      // On mobile, switch back to source editor to make the second edit
+      if (isMobile) {
+        const editorButton = page.locator(".sb-item").filter({ hasText: "source" });
+        await editorButton.click();
+        await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
+          timeout: 5000,
+        });
+        // Re-focus the editor
+        const editor = page.locator("textarea.editor");
+        await editor.click();
+      }
+
       // Make another trivial edit to see if bug compounds
       await page.keyboard.type(" EDIT2");
       await page.waitForTimeout(3000);
+
+      // On mobile, switch back to manuscript view to check the rendered output
+      if (isMobile) {
+        const manuscriptButton = page.locator(".sb-item").filter({ hasText: "manuscript" });
+        await manuscriptButton.click();
+        await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
+          timeout: 5000,
+        });
+      }
 
       const afterSecondEdit = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
