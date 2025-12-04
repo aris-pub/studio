@@ -26,30 +26,12 @@
   let lastHtmlString = null;
   let executeRenderInProgress = false;
 
-  // Load a script as a regular (non-module) script tag
-  const loadScript = (src) => {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if (document.querySelector(`script[src="${src}"]`)) {
-        resolve();
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  };
-
   onBeforeMount(async () => {
     const base = api.defaults.baseURL;
 
     try {
-      // Load jQuery and Tooltipster as regular scripts (they're not ES modules)
-      await loadScript(`${base}/static/jquery-3.6.0.js`);
-      await loadScript(`${base}/static/tooltipster.bundle.js`);
-      // Load onload.js as ES module (it uses export)
+      await import(/* @vite-ignore */ `${base}/static/jquery-3.6.0.js`);
+      await import(/* @vite-ignore */ `${base}/static/tooltipster.bundle.js`);
       const module = await import(/* @vite-ignore */ `${base}/static/onload.js`);
       onload.value = module.onload;
       onrender.value = module.onrender;

@@ -30,6 +30,9 @@ The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.
 ::`;
 
 test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
+  // Skip on Firefox due to ES module loading issues with RSM static files
+  test.skip(({ browserName }) => browserName === "firefox", "Firefox has ES module loading issues");
+
   let authHelpers;
   let baseURL;
   let accessToken;
