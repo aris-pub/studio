@@ -29,7 +29,7 @@ The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.
 
 ::`;
 
-test.describe("Tooltip MathJax Rendering @auth", () => {
+test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   let authHelpers;
   let baseURL;
   let accessToken;
