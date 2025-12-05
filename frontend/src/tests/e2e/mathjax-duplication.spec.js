@@ -52,6 +52,11 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
     testUserId = userData.id;
   });
 
+  test.afterEach(async ({ page }) => {
+    // Wait for pending requests to complete before next test starts
+    await page.waitForLoadState("networkidle").catch(() => {});
+  });
+
   async function createTestFile(request, source) {
     const createResponse = await request.post(`${baseURL}/files`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -208,6 +213,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     // Get user ID for file creation
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Wait for pending requests to complete before next test starts
+    await page.waitForLoadState("networkidle").catch(() => {});
   });
 
   /**
