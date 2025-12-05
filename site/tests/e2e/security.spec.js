@@ -67,6 +67,12 @@ test.describe("Security", () => {
     // Enable dark mode first
     await page.goto("/");
 
+    // Wait for Nuxt hydration - toggles are disabled until hydrated
+    await page.waitForFunction(() => {
+      const toggles = document.querySelectorAll('[data-testid="dark-mode-toggle"]');
+      return toggles.length > 0 && !toggles[0].disabled;
+    });
+
     // Check if we're on mobile and need to open hamburger menu first
     const isMobile = page.viewportSize()?.width < 768;
 

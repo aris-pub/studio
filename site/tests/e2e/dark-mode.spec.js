@@ -10,6 +10,12 @@ test.describe("Dark Mode", () => {
   });
 
   test("dark mode toggle works @core", async ({ page }) => {
+    // Wait for Nuxt hydration - toggles are disabled until hydrated
+    await page.waitForFunction(() => {
+      const toggles = document.querySelectorAll('[data-testid="dark-mode-toggle"]');
+      return toggles.length > 0 && !toggles[0].disabled;
+    });
+
     // Check if we're on mobile and need to open hamburger menu first
     const isMobile = page.viewportSize()?.width < 768;
 
@@ -41,6 +47,12 @@ test.describe("Dark Mode", () => {
     await expect(page.locator("body")).toHaveClass(/dark-theme/);
 
     // 4. Toggle back to light mode to ensure it works both ways
+    // Wait for hydration after reload
+    await page.waitForFunction(() => {
+      const toggles = document.querySelectorAll('[data-testid="dark-mode-toggle"]');
+      return toggles.length > 0 && !toggles[0].disabled;
+    });
+
     let toggleAfterReload;
     if (isMobile) {
       // On mobile, open hamburger menu again after reload
