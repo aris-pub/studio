@@ -49,6 +49,12 @@ export function useHeadInjection(api = null) {
       scripts.forEach((script) => {
         let src = script.getAttribute("src");
         if (src && !loadedResources.has(src)) {
+          // Skip jQuery and Tooltipster - ManuscriptWrapper loads these from npm
+          if (src.includes("jquery") || src.includes("tooltipster")) {
+            loadedResources.add(src);
+            return;
+          }
+
           // Convert relative paths to use API base URL
           if (src.startsWith("/static/") && apiBaseUrl) {
             src = apiBaseUrl + src;
@@ -97,18 +103,11 @@ export function useHeadInjection(api = null) {
 
   /**
    * Execute initialization script after content is rendered
+   * NOTE: RSM init_script contains ES module code that ManuscriptWrapper already handles
+   * via dynamic import of onload.js, so we skip execution to avoid module errors.
    */
   const executeInitScript = (initScript) => {
-    try {
-      console.log("Executing RSM init script");
-      // Create a script element and execute it
-      const scriptElement = document.createElement("script");
-      scriptElement.textContent = initScript;
-      document.body.appendChild(scriptElement);
-      document.body.removeChild(scriptElement);
-    } catch (error) {
-      console.error("Error executing init script:", error);
-    }
+    // Skip - ManuscriptWrapper handles RSM initialization via onload.js import
   };
 
   /**
