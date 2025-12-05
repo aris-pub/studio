@@ -68,24 +68,34 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
     }
   }
 
+  /**
+   * Wait for MathJax to finish processing (no .MathJax_Processing elements)
+   */
+  async function waitForMathJaxDone(page) {
+    await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
+      timeout: 5000,
+    });
+  }
+
+  /**
+   * Wait for tooltip to contain rendered MathJax
+   */
+  async function waitForTooltipMath(page) {
+    await page.waitForFunction(
+      () => {
+        const tooltip = document.querySelector(".tooltipster-base");
+        if (!tooltip) return false;
+        // Tooltip has MathJax rendered when mjx-container exists inside it
+        return tooltip.querySelectorAll("mjx-container").length > 0;
+      },
+      { timeout: 5000 }
+    );
+  }
+
   test("tooltip should render MathJax content when hovering over reference", async ({
     page,
     request,
   }) => {
-    // Capture diagnostic logs
-    page.on("console", (msg) => {
-      const text = msg.text();
-      if (
-        text.includes("[ManuscriptWrapper]") ||
-        text.includes("[RSM onload]") ||
-        text.includes("[RSM onrender]") ||
-        text.includes("[typesetMath]") ||
-        text.includes("tooltip")
-      ) {
-        console.log("BROWSER:", text);
-      }
-    });
-
     const fileId = await createTestFile(request, RSM_SOURCE_WITH_MATH_REFERENCE);
 
     try {
@@ -101,7 +111,7 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         timeout: 10000,
       });
 
-      // Get initial MathJax container count (should be 1 for the equation)
+      // Get initial MathJax container count
       const initialState = await page.evaluate(() => ({
         mjxCount: document.querySelectorAll("mjx-container").length,
         nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
@@ -110,21 +120,17 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
 
       console.log("Initial state:", JSON.stringify(initialState));
 
-      // There should be at least one reference link
       expect(initialState.referenceLinks).toBeGreaterThan(0);
 
-      // Find the reference link and hover over it to trigger tooltip
+      // Find the reference link and hover over it
       const referenceLink = page.locator("a.reference").first();
       await expect(referenceLink).toBeVisible({ timeout: 5000 });
 
-      // Hover to trigger tooltip
       await referenceLink.hover();
 
-      // Wait for tooltip to appear (tooltipster adds .tooltipster-base class)
+      // Wait for tooltip to appear with rendered math
       await page.waitForSelector(".tooltipster-base", { timeout: 5000 });
-
-      // Give MathJax time to typeset the tooltip content
-      await page.waitForTimeout(1000);
+      await waitForTooltipMath(page);
 
       // Check the tooltip contains rendered math
       const tooltipState = await page.evaluate(() => {
@@ -135,7 +141,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         const tooltipText = tooltip.textContent || "";
         const hasRawLatex = tooltipText.includes("\\frac") || tooltipText.includes("\\sqrt");
 
-        // Check main document state
         const docMjx = document.querySelectorAll("mjx-container").length;
         const nestedMjx = document.querySelectorAll("mjx-container mjx-container").length;
 
@@ -150,19 +155,22 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
 
       console.log("Tooltip state:", JSON.stringify(tooltipState));
 
-      // Tooltip should have rendered MathJax (not raw LaTeX)
       expect(tooltipState.tooltipVisible).toBe(true);
       expect(tooltipState.tooltipMjxCount).toBeGreaterThan(0);
       expect(tooltipState.hasRawLatexInTooltip).toBe(false);
 
-      // CRITICAL: No nested mjx-containers (the duplication bug)
+      // No nested mjx-containers (the duplication bug)
       expect(tooltipState.nestedMjxCount).toBe(0);
 
       // Move mouse away to close tooltip
       await page.mouse.move(0, 0);
-      await page.waitForTimeout(500);
 
-      // Final check: document should still have no nested containers
+      // Wait for tooltip to close
+      await page.waitForFunction(() => !document.querySelector(".tooltipster-base"), {
+        timeout: 3000,
+      });
+
+      // Final check
       const finalState = await page.evaluate(() => ({
         mjxCount: document.querySelectorAll("mjx-container").length,
         nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
@@ -179,18 +187,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
     page,
     request,
   }) => {
-    // Capture diagnostic logs
-    page.on("console", (msg) => {
-      const text = msg.text();
-      if (
-        text.includes("[ManuscriptWrapper]") ||
-        text.includes("[RSM onrender]") ||
-        text.includes("[typesetMath]")
-      ) {
-        console.log("BROWSER:", text);
-      }
-    });
-
     const fileId = await createTestFile(request, RSM_SOURCE_WITH_MATH_REFERENCE);
 
     try {
@@ -205,10 +201,10 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         timeout: 10000,
       });
 
-      // Wait for rendering to stabilize
-      await page.waitForTimeout(1500);
+      // Wait for MathJax to finish processing
+      await waitForMathJaxDone(page);
 
-      // Get the count of mjx-containers in the MAIN manuscript (not tooltips)
+      // Get the count of mjx-containers in the MAIN manuscript
       const beforeTooltip = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
         return {
@@ -223,11 +219,11 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
       const referenceLink = page.locator("a.reference").first();
       await referenceLink.hover();
 
-      // Wait for tooltip
+      // Wait for tooltip with rendered math
       await page.waitForSelector(".tooltipster-base", { timeout: 5000 });
-      await page.waitForTimeout(1000);
+      await waitForTooltipMath(page);
 
-      // Check manuscript mjx count hasn't changed (tooltip mjx is separate)
+      // Check manuscript mjx count hasn't changed
       const afterTooltip = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
         const tooltip = document.querySelector(".tooltipster-base");
@@ -241,11 +237,10 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
 
       console.log("After tooltip:", JSON.stringify(afterTooltip));
 
-      // THE CRITICAL CHECK: manuscript mjx count should NOT increase
-      // The tooltip adds its own mjx-containers, but the manuscript shouldn't duplicate
+      // Manuscript mjx count should NOT increase
       expect(afterTooltip.manuscriptMjx).toBe(beforeTooltip.manuscriptMjx);
 
-      // No nested containers anywhere
+      // No nested containers
       expect(afterTooltip.nestedMjx).toBe(0);
     } finally {
       await deleteTestFile(request, fileId);
