@@ -20,12 +20,14 @@ test.describe("Dark Mode", () => {
       await expect(hamburger).toBeVisible();
       await hamburger.click();
 
-      // Wait for mobile menu animation to complete and toggle to be visible
-      toggle = page.locator('[data-testid="dark-mode-toggle"]');
+      // Wait for mobile menu to open and target the toggle inside it specifically
+      const mobileMenu = page.locator(".nav-mobile.nav-mobile-open");
+      await expect(mobileMenu).toBeVisible();
+      toggle = mobileMenu.locator('[data-testid="dark-mode-toggle"]');
       await expect(toggle).toBeVisible();
     } else {
-      // On desktop, toggle should be directly visible
-      toggle = page.locator('[data-testid="dark-mode-toggle"]').first();
+      // On desktop, toggle should be directly visible in nav-actions
+      toggle = page.locator('.nav-actions [data-testid="dark-mode-toggle"]');
     }
 
     await expect(toggle).toBeVisible();
@@ -44,10 +46,12 @@ test.describe("Dark Mode", () => {
       // On mobile, open hamburger menu again after reload
       const hamburgerAfterReload = page.locator(".nav-hamburger");
       await hamburgerAfterReload.click();
-      toggleAfterReload = page.locator('[data-testid="dark-mode-toggle"]');
+      const mobileMenuAfterReload = page.locator(".nav-mobile.nav-mobile-open");
+      await expect(mobileMenuAfterReload).toBeVisible();
+      toggleAfterReload = mobileMenuAfterReload.locator('[data-testid="dark-mode-toggle"]');
       await expect(toggleAfterReload).toBeVisible();
     } else {
-      toggleAfterReload = page.locator('[data-testid="dark-mode-toggle"]').first();
+      toggleAfterReload = page.locator('.nav-actions [data-testid="dark-mode-toggle"]');
     }
 
     await toggleAfterReload.click();
