@@ -50,7 +50,7 @@ export default defineConfig({
     video: "off",
     /* Environment-aware timeouts */
     actionTimeout: process.env.CI ? 3000 : 1500, // CI: 3s for container latency, Local: 1.5s for quick actions
-    navigationTimeout: process.env.CI ? 6000 : 3000, // CI: 6s for auth flows, Local: 3s for content load
+    navigationTimeout: process.env.CI ? 8000 : 3000, // CI: 8s for Safari/WebKit, Local: 3s for content load
   },
 
   /* Configure projects for major browsers */

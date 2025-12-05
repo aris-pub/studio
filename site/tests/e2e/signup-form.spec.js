@@ -291,6 +291,12 @@ test.describe("Signup Form", () => {
   });
 
   test("should navigate to signup section from navbar CTA", async ({ page }) => {
+    // Wait for Nuxt hydration - toggles are disabled until hydrated
+    await page.waitForFunction(() => {
+      const toggles = document.querySelectorAll('[data-testid="dark-mode-toggle"]');
+      return toggles.length > 0 && !toggles[0].disabled;
+    });
+
     // Check if we're on mobile and need to open hamburger menu first
     const isMobile = page.viewportSize()?.width < 768;
 
@@ -300,9 +306,10 @@ test.describe("Signup Form", () => {
       await expect(hamburger).toBeVisible();
       await hamburger.click();
 
-      // Wait for mobile menu animation and CTA button to be visible
-      // Use .first() because both desktop and mobile nav have the CTA button
-      const ctaButton = page.locator(".nav-cta-button").first();
+      // Wait for mobile menu to open and CTA button to be visible
+      const mobileMenu = page.locator(".nav-mobile.nav-mobile-open");
+      await expect(mobileMenu).toBeVisible();
+      const ctaButton = mobileMenu.locator(".nav-cta-button");
       await expect(ctaButton).toBeVisible();
       await ctaButton.click();
     } else {
