@@ -47,6 +47,8 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
     }
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
+    // Wait for any pending requests from post-login navigation to complete
+    await page.waitForLoadState("networkidle").catch(() => {});
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
@@ -206,6 +208,8 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
+    // Wait for any pending requests from post-login navigation to complete
+    await page.waitForLoadState("networkidle").catch(() => {});
 
     // Get access token from localStorage after login
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
