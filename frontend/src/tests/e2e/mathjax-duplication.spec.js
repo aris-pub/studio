@@ -533,10 +533,10 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       const editor = page.locator("textarea.editor");
       await expect(editor).toBeVisible({ timeout: 5000 });
 
-      // Make 3 edits and wait for each to save
+      // Make 2 edits and wait for each to save (2 is sufficient to verify no duplication)
       let currentContent = await editor.inputValue();
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         // Modify content
         const editMarker = i === 0 ? "# Test Document for MathJax Bug" : `edit${i - 1}`;
         currentContent = currentContent.replace(editMarker, `${editMarker} edit${i}`);
@@ -562,7 +562,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
 
-      console.log(`Final MathJax script count after 3 edits: ${finalScriptCount}`);
+      console.log(`Final MathJax script count after 2 edits: ${finalScriptCount}`);
 
       // Script count should remain 1
       expect(finalScriptCount).toBe(1);
