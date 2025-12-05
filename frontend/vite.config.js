@@ -38,6 +38,10 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+    dedupe: ["jquery"],
+  },
+  optimizeDeps: {
+    include: ["jquery", "tooltipster"],
   },
   test: {
     environment: "jsdom",

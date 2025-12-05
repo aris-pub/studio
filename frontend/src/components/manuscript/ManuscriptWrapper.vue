@@ -1,6 +1,25 @@
 <script setup>
   import { ref, watch, computed, inject, onBeforeMount, useTemplateRef, nextTick } from "vue";
   import Manuscript from "./Manuscript.vue";
+  import "tooltipster/dist/css/tooltipster.bundle.min.css";
+  import tooltipsterUrl from "tooltipster/dist/js/tooltipster.bundle.min.js?url";
+
+  // Load jQuery via import, then Tooltipster via script tag to bypass CommonJS detection
+  async function initializeTooltipster() {
+    const jqueryModule = await import("jquery");
+    window.$ = window.jQuery = jqueryModule.default;
+
+    // Load Tooltipster via script tag - this makes UMD use the global jQuery path
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = tooltipsterUrl;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  const tooltipsterReady = initializeTooltipster();
 
   const props = defineProps({
     htmlString: { type: String, required: true },
@@ -32,8 +51,10 @@
     staticPath = `${base}/static/`;
 
     try {
-      await import(/* @vite-ignore */ `${base}/static/jquery-3.6.0.js`);
-      await import(/* @vite-ignore */ `${base}/static/tooltipster.bundle.js`);
+      // Wait for jQuery and Tooltipster to be ready
+      await tooltipsterReady;
+
+      // Load RSM's onload.js
       const module = await import(/* @vite-ignore */ `${base}/static/onload.js`);
       onload.value = module.onload;
       onrender.value = module.onrender;

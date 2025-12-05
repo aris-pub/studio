@@ -97,10 +97,9 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
       });
 
       // Wait for MathJax to render the main content
-      await page.waitForFunction(
-        () => document.querySelectorAll("mjx-container").length > 0,
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+        timeout: 10000,
+      });
 
       // Get initial MathJax container count (should be 1 for the equation)
       const initialState = await page.evaluate(() => ({
@@ -202,10 +201,9 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
       });
 
       // Wait for MathJax to render
-      await page.waitForFunction(
-        () => document.querySelectorAll("mjx-container").length > 0,
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+        timeout: 10000,
+      });
 
       // Wait for rendering to stabilize
       await page.waitForTimeout(1500);

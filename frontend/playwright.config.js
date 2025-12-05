@@ -89,10 +89,14 @@ export default defineConfig({
         },
       ]
     : [
-        // Development: Run on Chromium only for speed
+        // Development: Chromium + Firefox for cross-browser testing
         {
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
+        },
+        {
+          name: "firefox",
+          use: { ...devices["Desktop Firefox"] },
         },
       ],
 
