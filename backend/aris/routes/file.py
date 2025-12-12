@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -554,6 +554,7 @@ async def get_file_section(
     return HTMLResponse(content=html)
 
 
+
 @router.get("/{file_id}/assets", response_model=list[FileAssetOut])
 async def get_assets_for_file(
     file_id: int,
@@ -590,4 +591,83 @@ async def get_assets_for_file(
     )
     assets = result.scalars().all()
     return assets
+
+
+@router.get("/{file_id}/download")
+async def download_file(
+    file_id: int,
+    file_service: InMemoryFileService = Depends(get_file_service),
+    db: AsyncSession = Depends(get_db),
+    user: UserRead = Depends(current_user)
+):
+    """Download file as a complete standalone HTML document.
+
+    Parameters
+    ----------
+    file_id : int
+        The unique identifier of the file to download.
+    file_service : InMemoryFileService
+        File service dependency.
+    db : AsyncSession
+        SQLAlchemy async database session dependency.
+    user : UserRead
+        Current authenticated user dependency.
+
+    Returns
+    -------
+    Response
+        Complete HTML document for download with proper Content-Disposition header.
+
+    Raises
+    ------
+    HTTPException
+        404 error if file is not found or has been deleted.
+        403 error if user does not own the file.
+
+    Notes
+    -----
+    Requires authentication. Uses rsm.make() to generate a complete HTML document
+    with all necessary CSS/JS includes for standalone viewing.
+    File is downloaded with .html extension using the file's title as filename.
+    """
+    import asyncio
+    import re
+    import rsm
+    from ..models.models import File
+
+    # Check file ownership first
+    result = await db.execute(select(File).where(File.id == file_id, File.deleted_at.is_(None)))
+    file_record = result.scalar_one_or_none()
+
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file_record.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Sync from database to ensure we have latest data
+    await file_service.sync_from_database(db)
+
+    # Get file data for source
+    file_data = await file_service.get_file(file_id)
+    if not file_data or not file_data.source:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Use rsm.make() with standalone=True to generate complete HTML document with CDN URLs
+    html = await asyncio.to_thread(rsm.make, file_data.source, handrails=False, lint=False, standalone=True)
+
+    # Get file title for filename
+    title = await file_service.get_file_title(file_id)
+    if not title:
+        title = str(file_record.title) if file_record.title else "manuscript"
+
+    # Sanitize filename (remove invalid characters)
+    filename = re.sub(r'[<>:"/\\|?*]', '_', title) + '.html'
+
+    # Return as downloadable file
+    return Response(
+        content=html,
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 

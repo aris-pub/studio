@@ -346,3 +346,173 @@ async def test_create_file_missing_required_fields(client: AsyncClient, authenti
     )
 
     assert response.status_code == 422  # Validation error
+
+
+# Download endpoint tests
+async def test_download_file_without_auth(client: AsyncClient):
+    """Test that download endpoint requires authentication."""
+    response = await client.get("/files/1/download")
+    assert response.status_code == 401
+
+
+async def test_download_file_success(client: AsyncClient, authenticated_user):
+    """Test successful file download."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    # First create a file
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Download Test",
+            "abstract": "A file for download testing",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:# Download Test\n\nThis is downloadable content::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    # Download the file
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "attachment; filename=" in response.headers["content-disposition"]
+    assert "Download Test.html" in response.headers["content-disposition"]
+    assert "<h1>Download Test</h1>" in response.text
+    assert "This is downloadable content" in response.text
+
+
+async def test_download_file_returns_complete_html_document(client: AsyncClient, authenticated_user):
+    """Test that downloaded file is a complete HTML document, not just body content.
+
+    Regression test: Previously the download endpoint only returned the body content
+    from rsm.render() instead of the full HTML document from rsm.make().
+    """
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Full HTML Test",
+            "abstract": "Testing complete HTML output",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:# Full Document\n\nContent here::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+
+    # Must be a complete HTML document with html, head, and body tags
+    assert "<html" in response.text.lower(), "Downloaded file must contain <html> tag"
+    assert "<head" in response.text.lower(), "Downloaded file must contain <head> tag"
+    assert "<body" in response.text.lower(), "Downloaded file must contain <body> tag"
+    assert "</html>" in response.text.lower(), "Downloaded file must contain closing </html> tag"
+
+    # Should include CSS/JS resources for standalone viewing
+    assert "rsm.css" in response.text or "<style" in response.text, "Downloaded file should include styles"
+
+
+async def test_download_file_permission_denied(client: AsyncClient, authenticated_user, second_authenticated_user):
+    """Test that users can only download files they own."""
+    headers_primary = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    headers_secondary = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    # Create a file with primary user
+    create_response = await client.post(
+        "/files",
+        headers=headers_primary,
+        json={
+            "title": "Private Download",
+            "abstract": "Should not be downloadable by others",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:private content::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    # Try to download with secondary user
+    response = await client.get(f"/files/{file_id}/download", headers=headers_secondary)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Access denied"
+
+
+# Standalone download tests - files that work when opened locally
+async def test_download_file_uses_cdn_urls(client: AsyncClient, authenticated_user):
+    """Test that downloaded file uses CDN URLs instead of /static/ paths.
+
+    Downloaded files must be standalone - they should load CSS/JS from CDN
+    so they work when opened as file:// URLs in a browser.
+    """
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Standalone Test",
+            "abstract": "Testing standalone output",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:# Standalone Document\n\nContent here::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+
+    # Should NOT use /static/ paths (these fail when opened locally)
+    assert 'href="/static/rsm.css"' not in response.text
+    assert 'src="/static/jquery' not in response.text
+    assert 'src="/static/tooltipster' not in response.text
+
+    # Should use CDN URLs for third-party libraries
+    assert "cdn.jsdelivr.net" in response.text
+
+
+async def test_download_file_uses_correct_jquery_version(client: AsyncClient, authenticated_user):
+    """Test that downloaded file uses jQuery 3.6.0 from CDN."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "jQuery Version Test",
+            "abstract": "Testing jQuery CDN version",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:Test content::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+
+    # Must use exact jQuery version to match bundled version
+    assert "jquery@3.6.0" in response.text
+
+
+async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authenticated_user):
+    """Test that downloaded file uses Tooltipster from CDN."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Tooltipster CDN Test",
+            "abstract": "Testing Tooltipster CDN",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:Test content::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+
+    # Should use Tooltipster 4.x from CDN
+    assert "tooltipster@4" in response.text

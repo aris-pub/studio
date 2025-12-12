@@ -41,6 +41,7 @@
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { File } from "@/models/File.js";
   import { getLogger } from "@/utils/logger.js";
+  import { downloadBlob } from "@/utils/download.js";
   import Date from "./FilesItemDate.vue";
   import ConfirmationModal from "@/components/ConfirmationModal.vue";
 
@@ -183,6 +184,26 @@
     if (!file.value) return;
     showDeleteModal.value = true;
   };
+  const onDownload = async () => {
+    if (!file.value?.id) return;
+
+    try {
+      const title = file.value.title || "manuscript";
+      const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".html";
+
+      // Use axios to fetch with authentication headers
+      const response = await api.get(`/files/${file.value.id}/download`, {
+        responseType: "blob",
+      });
+
+      // Create blob and download using utility
+      const blob = new Blob([response.data], { type: "text/html" });
+      downloadBlob(blob, filename);
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Could add user notification here if needed
+    }
+  };
 
   // Confirmation modal handlers
   const handleDeleteConfirm = async () => {
@@ -284,6 +305,7 @@
           @rename="onRename"
           @duplicate="onDuplicate"
           @delete="onDelete"
+          @download="onDownload"
         />
 
         <!-- Grid layout spacer to complete the row -->

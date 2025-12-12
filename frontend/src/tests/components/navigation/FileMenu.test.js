@@ -195,4 +195,32 @@ describe("FileMenu.vue - TDD ContextMenu Dots Variant", () => {
     await deleteItem.trigger("click");
     expect(wrapper.emitted("delete")).toBeTruthy();
   });
+
+  it("should emit download event when download menu item is clicked", async () => {
+    const wrapper = mount(FileMenu, {
+      props: {
+        mode: "ContextMenu",
+      },
+      global: {
+        provide: mockProvides,
+        stubs: {
+          ContextMenu: {
+            template: '<div data-testid="context-menu"><slot /></div>',
+          },
+          ContextMenuItem: {
+            template: '<div data-testid="context-menu-item" @click="$attrs.onClick"><slot /></div>',
+            props: ["icon", "caption"],
+          },
+          Separator: {
+            template: '<hr data-testid="separator" />',
+          },
+        },
+      },
+    });
+
+    // Test download button
+    const downloadItem = wrapper.find('[data-testid="file-menu-download"]');
+    await downloadItem.trigger("click");
+    expect(wrapper.emitted("download")).toBeTruthy();
+  });
 });
