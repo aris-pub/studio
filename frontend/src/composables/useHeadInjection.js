@@ -102,12 +102,22 @@ export function useHeadInjection(api = null) {
   };
 
   /**
-   * Execute initialization script after content is rendered
-   * NOTE: RSM init_script contains ES module code that ManuscriptWrapper already handles
-   * via dynamic import of onload.js, so we skip execution to avoid module errors.
+   * Execute initialization script after content is rendered.
+   * This runs asset scripts (IIFEs from HTML figures) that handle their own
+   * CDN loading and inline script execution.
    */
   const executeInitScript = (initScript) => {
-    // Skip - ManuscriptWrapper handles RSM initialization via onload.js import
+    if (!initScript || !initScript.trim()) {
+      return;
+    }
+
+    try {
+      // Execute the script content directly
+      // Asset IIFEs handle their own CDN loading and dependency management
+      new Function(initScript)();
+    } catch (error) {
+      console.error("Error executing init script:", error);
+    }
   };
 
   /**
