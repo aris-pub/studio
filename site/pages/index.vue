@@ -1389,6 +1389,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
   .rsm-rendered-output {
     padding: 1.5rem;
+    padding-right: 5rem;
     background: var(--surface-page);
   }
 
@@ -1397,6 +1398,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     padding: 0 !important;
     margin: 0 !important;
     max-width: none !important;
+    overflow: visible !important;
   }
 
   :deep(.rsm-rendered-output .manuscript) {
