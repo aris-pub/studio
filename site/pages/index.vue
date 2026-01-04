@@ -49,7 +49,7 @@
           </div>
           <div class="rsm-demo-panel rsm-output-panel">
             <div class="panel-header">Web Output</div>
-            <div class="rsm-rendered-output" v-html="rsmExample.rendered"></div>
+            <div ref="renderedOutputRef" class="rsm-rendered-output" v-html="rsmExample.rendered"></div>
           </div>
         </div>
       </div>
@@ -435,6 +435,7 @@ Reference equations :ref:gaussian:: and figures :ref:fig1:: to create clickable 
   const demoLoading = ref(false);
   const demoError = ref(false);
   const demoInitialized = ref(false);
+  const renderedOutputRef = ref(null);
 
   // Editable markup state
   const editableMarkup = ref("");
@@ -792,11 +793,64 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   };
 
   // Initialize demo on mount
+  // Execute embedded scripts in rendered HTML (needed for Plotly charts)
+  const executeEmbeddedScripts = async () => {
+    if (!renderedOutputRef.value) return;
+
+    await nextTick();
+
+    // Find all script tags within the rendered output
+    const scripts = renderedOutputRef.value.querySelectorAll('script');
+
+    for (const script of scripts) {
+      try {
+        if (script.src) {
+          // External script - create new script element and append to head
+          const newScript = document.createElement('script');
+          newScript.src = script.src;
+
+          // Copy other attributes
+          Array.from(script.attributes).forEach((attr) => {
+            if (attr.name !== 'src') {
+              newScript.setAttribute(attr.name, attr.value);
+            }
+          });
+
+          // Wait for script to load
+          await new Promise((resolve, reject) => {
+            newScript.onload = resolve;
+            newScript.onerror = reject;
+            document.head.appendChild(newScript);
+          });
+        } else if (script.textContent && script.textContent.trim()) {
+          // Inline script - create new script element and replace in place
+          const newScript = document.createElement('script');
+          newScript.textContent = script.textContent;
+
+          // Copy attributes
+          Array.from(script.attributes).forEach((attr) => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+
+          // Replace the old script with the new one to trigger execution
+          script.parentNode.insertBefore(newScript, script);
+          script.parentNode.removeChild(script);
+        }
+      } catch (error) {
+        console.error('Error executing embedded script:', error);
+      }
+    }
+  };
+
   onMounted(async () => {
     // Load rendered HTML from public directory
     try {
       const response = await fetch('/demo-rendered.html');
       rsmExample.rendered = await response.text();
+
+      // Execute scripts after HTML is rendered
+      await nextTick();
+      await executeEmbeddedScripts();
     } catch (error) {
       console.error('Failed to load demo rendered HTML:', error);
     }

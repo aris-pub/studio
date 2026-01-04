@@ -9,7 +9,8 @@
     </a>
 
     <div class="nav-links">
-      <a href="/#studio-features" class="nav-link">Studio</a>
+      <a href="/#what-is-rsm" class="nav-link">What is RSM</a>
+      <a href="/#studio-features" class="nav-link">Features</a>
       <a href="/#faq" class="nav-link">FAQ</a>
     </div>
 
@@ -25,7 +26,8 @@
     </button>
 
     <div class="nav-mobile" :class="{ 'nav-mobile-open': mobileMenuOpen }">
-      <a href="/#studio-features" class="nav-link" @click="closeMobileMenu">Studio</a>
+      <a href="/#what-is-rsm" class="nav-link" @click="closeMobileMenu">What is RSM</a>
+      <a href="/#studio-features" class="nav-link" @click="closeMobileMenu">Features</a>
       <a href="/#faq" class="nav-link" @click="closeMobileMenu">FAQ</a>
       <div class="nav-mobile-toggle">
         <DarkModeToggle />
