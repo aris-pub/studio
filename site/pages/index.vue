@@ -842,6 +842,128 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     }
   };
 
+  // Initialize tooltips using jQuery and Tooltipster
+  const initializeTooltips = async () => {
+    // Load jQuery from CDN if not already loaded
+    if (!window.jQuery) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js';
+        script.onload = () => {
+          window.$ = window.jQuery;
+          resolve();
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    // Load RSM CSS for tooltip content styling
+    if (!document.querySelector('link[href*="rsm.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/rsm.css';
+      document.head.appendChild(link);
+    }
+
+    // Load Tooltipster CSS
+    if (!document.querySelector('link[href*="tooltipster"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/css/tooltipster.bundle.min.css';
+      document.head.appendChild(link);
+    }
+
+    // Load Tooltipster JS
+    if (!window.jQuery.fn.tooltipster) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/js/tooltipster.bundle.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    // Helper to strip handrail UI elements from tooltip content
+    const stripHandrails = (element) => {
+      const $el = $(element);
+      $el.find('.hr-collapse-zone').remove();
+      $el.find('.hr-menu-zone').remove();
+      $el.find('.hr-border-zone').remove();
+      $el.find('.hr-spacer-zone').remove();
+      $el.find('.hr-info-zone').remove();
+      return $el;
+    };
+
+    // Create tooltips on reference links
+    const $ = window.jQuery;
+    $('.manuscriptwrapper a.reference:not(.tooltipstered)').tooltipster({
+      theme: ['tooltipster-shadow', 'tooltipster-shadow-rsm'],
+      minWidth: 100,
+      maxWidth: 600,
+      contentAsHTML: true,
+      trigger: 'custom',
+      triggerOpen: {
+        mouseenter: true,
+        touchstart: true
+      },
+      triggerClose: {
+        click: true,
+        mouseleave: true,
+        originClick: true,
+        touchleave: true
+      },
+      functionInit: function (instance, helper) {
+        const target = $(helper.origin).attr('href');
+        if (!target || target === '#') return;
+
+        // Escape special characters for jQuery selector
+        const escapedTarget = target.replaceAll('.', '\\.').replaceAll(':', '\\:');
+        const targetEl = $(escapedTarget)[0];
+
+        if (!targetEl) return;
+
+        let content = '';
+        const tag = targetEl.tagName;
+
+        // Handle different element types
+        if (tag === 'DIV' && targetEl.classList.contains('mathblock')) {
+          const clone = $(targetEl).clone();
+          stripHandrails(clone);
+          // Get content from the content zone
+          const contentZone = clone.find('.hr-content-zone');
+          content = contentZone.length > 0 ? contentZone.html() : clone.html();
+        } else if (tag === 'FIGURE') {
+          content = $(targetEl).html();
+        } else {
+          content = targetEl.innerHTML;
+        }
+
+        // Wrap content in manuscriptwrapper for proper styling
+        content = `<div class="manuscriptwrapper">${content}</div>`;
+        const $content = $(content);
+
+        instance.content($content);
+      },
+      functionReady: async function(instance, helper) {
+        // Trigger MathJax after tooltip is rendered in DOM
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          try {
+            const tooltipContent = document.querySelector('.tooltipster-content');
+            if (tooltipContent) {
+              await window.MathJax.typesetPromise([tooltipContent]);
+              // Reposition tooltip after MathJax changes content size
+              instance.reposition();
+            }
+          } catch (e) {
+            console.warn('MathJax rendering failed in tooltip:', e);
+          }
+        }
+      }
+    });
+  };
+
   onMounted(async () => {
     // Load rendered HTML from public directory
     try {
@@ -851,6 +973,10 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       // Execute scripts after HTML is rendered
       await nextTick();
       await executeEmbeddedScripts();
+
+      // Initialize tooltips after content is rendered
+      await nextTick();
+      await initializeTooltips();
     } catch (error) {
       console.error('Failed to load demo rendered HTML:', error);
     }
