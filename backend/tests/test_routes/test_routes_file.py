@@ -516,3 +516,84 @@ async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authentic
 
     # Should use Tooltipster 4.x from CDN
     assert "tooltipster@4" in response.text
+
+
+async def test_download_file_includes_html_assets(client: AsyncClient, authenticated_user):
+    """Test that downloaded file includes embedded HTML assets.
+
+    Regression test: Downloaded files showed "Unable to load HTML asset: filename.html"
+    because the download endpoint didn't use an asset resolver to load file assets
+    from the database.
+    """
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    # Create a file
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Chart Document",
+            "abstract": "Document with interactive chart",
+            "owner_id": authenticated_user["user_id"],
+            "source": ":rsm:Placeholder content::",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    # Upload an HTML asset (simulating a Plotly chart)
+    chart_html = """<!DOCTYPE html>
+<html><head><meta charset="utf-8" /></head>
+<body><div id="plotly-chart">Interactive Chart Content</div>
+<script>console.log("Chart initialized");</script>
+</body></html>"""
+
+    import base64
+    asset_content = base64.b64encode(chart_html.encode()).decode()
+
+    asset_response = await client.post(
+        "/assets",
+        headers=headers,
+        json={
+            "filename": "scatter-chart.html",
+            "mime_type": "text/html",
+            "content": asset_content,
+            "content_encoding": "base64",
+            "file_id": file_id,
+        },
+    )
+    assert asset_response.status_code == 200
+
+    # Update file source to reference the HTML asset
+    source_with_asset = """:rsm:
+
+# Document with Chart
+
+Here is the interactive chart:
+
+:html:
+  :path: scatter-chart.html
+  :caption: Interactive scatter plot.
+::
+
+::"""
+
+    update_response = await client.put(
+        f"/files/{file_id}",
+        headers=headers,
+        json={"source": source_with_asset},
+    )
+    assert update_response.status_code == 200
+
+    # Download the file
+    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    assert response.status_code == 200
+
+    # The asset content MUST be embedded in the downloaded HTML
+    assert "Interactive Chart Content" in response.text, \
+        "Downloaded file must include embedded HTML asset content"
+    assert "plotly-chart" in response.text, \
+        "Downloaded file must include the chart container"
+
+    # Should NOT contain the error message
+    assert "Unable to load HTML asset" not in response.text, \
+        "Downloaded file should not show asset loading error"

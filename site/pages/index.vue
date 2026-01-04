@@ -12,12 +12,46 @@
             <span class="brand-studio">Studio</span>
           </div>
         </div>
-        <h1 class="hero-title">Write research manuscripts designed for pixels, not&nbsp;paper</h1>
+        <h1 class="hero-title">Research manuscripts designed for pixels, not&nbsp;paper</h1>
         <p class="hero-subtitle">
-          Pure semantic markup, web-native from the first keystroke. Simple to start, powerful when
-          you need it.
+          Manuscripts that adapt to any screen—with interactive figures and PDF export.
         </p>
         <a href="#signup" class="hero-cta-button">Get early access</a>
+      </div>
+    </section>
+
+    <!-- What is RSM Section -->
+    <section id="what-is-rsm" class="what-is-rsm-section">
+      <div class="container">
+        <h2 class="section-header">Introducing Readable Science Markup (RSM)</h2>
+        <p class="section-subheader">
+          A markup language designed for the web, not the printing press
+        </p>
+
+        <div class="rsm-intro">
+          <p>
+            RSM is built for how research is consumed today. While LaTeX was designed for print in
+            the 1980s, RSM starts with the web—responsive layouts, interactive elements, and
+            accessibility built in from day one.
+          </p>
+          <p>
+            Your manuscripts live online, adapt to any screen size, and export to PDF when journals
+            require it. The same source file works everywhere: shared with colleagues, read on
+            phones, or submitted as a traditional PDF.
+          </p>
+        </div>
+
+        <!-- Live RSM Demo -->
+        <div class="rsm-demo-container">
+          <div class="rsm-demo-panel rsm-source-panel">
+            <div class="panel-header">RSM Source</div>
+            <pre class="rsm-source-code">{{ rsmExample.source }}</pre>
+          </div>
+          <div class="rsm-demo-panel rsm-output-panel">
+            <div class="panel-header">Web Output</div>
+            <div class="rsm-rendered-output" v-html="rsmExample.rendered"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -141,47 +175,57 @@
     <section id="studio-features" class="studio-features-section">
       <div class="container">
         <h2 class="section-header">RSM Studio</h2>
-        <p class="section-subheader">
-          Everything you expect from a collaborative editor, built for RSM
-        </p>
+        <p class="section-subheader">A collaborative editor for web-native manuscripts</p>
 
         <div class="studio-intro">
           <p>
-            Studio provides the familiar collaborative features researchers rely on: real-time
-            editing, comment threads, version history, without the learning curve. Write RSM with
-            your team just like you'd use any modern document editor.
+            Studio brings familiar collaborative editing to RSM. Write with your team in real-time,
+            preview your web-formatted output as you type, and export to any format journals
+            require. No learning curve for collaboration—just write.
           </p>
+        </div>
+
+        <!-- Screenshot placeholder for studio interface -->
+        <div class="studio-screenshot">
+          <div class="screenshot-placeholder">
+            <div class="placeholder-label">RSM Studio editor interface</div>
+          </div>
         </div>
 
         <div class="features-grid">
           <div class="feature-card">
-            <h3>Write together in real-time</h3>
-            <p>Multiple cursors, instant sync, no merge conflicts</p>
+            <h3>Collaborate in real-time</h3>
+            <p>
+              Multiple cursors, instant sync, no merge conflicts—see your co-authors' changes as
+              they type
+            </p>
           </div>
 
           <div class="feature-card">
-            <h3>Discuss in context</h3>
-            <p>Comments stay with the text they reference</p>
+            <h3>Preview as you write</h3>
+            <p>Live preview shows your web-formatted manuscript while you work</p>
           </div>
 
           <div class="feature-card">
-            <h3>Track every change</h3>
-            <p>Full version history with who changed what and when</p>
+            <h3>Comments that stay put</h3>
+            <p>
+              Thread discussions on specific paragraphs—comments move with the text they reference
+            </p>
           </div>
 
           <div class="feature-card">
-            <h3>Access from anywhere</h3>
-            <p>Works on any device with a browser</p>
+            <h3>Complete version history</h3>
+            <p>Track every change with full history of who changed what and when</p>
           </div>
 
           <div class="feature-card">
-            <h3>Export when needed</h3>
+            <h3>Export to any format</h3>
             <p>One click to PDF, LaTeX, or Word for journal submission</p>
           </div>
 
           <div class="feature-card">
-            <h3>Organize your manuscripts</h3>
-            <p>Folders, tags, and search to manage your work</p>
+            <h3>Work from anywhere</h3>
+            <p>Browser-based—works on any device without installation</p>
           </div>
         </div>
       </div>
@@ -192,12 +236,12 @@
       <div class="container">
         <div class="signup-content">
           <h2 id="signup" class="section-header">Be notified at launch</h2>
-          <p class="signup-subtitle">Coming late 2025</p>
+          <p class="signup-subtitle">Coming mid 2026</p>
 
           <!-- Success Message -->
           <div v-if="signupComplete" class="thank-you-message">
             <h3>Thank you for your interest!</h3>
-            <p>We'll be in touch with early access details as we approach the Q4 2025 launch.</p>
+            <p>We'll be in touch with early access details as we approach the mid 2026 launch.</p>
           </div>
 
           <!-- Signup Form -->
@@ -327,7 +371,32 @@
 
 <script setup>
   /* global $fetch */
-  import { ref, computed, onMounted, watch, nextTick } from "vue";
+  import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
+  import { useHead, useRuntimeConfig } from "#imports";
+
+  const config = useRuntimeConfig();
+  const backendUrl = config.public.backendUrl || "http://localhost:8000";
+
+  // Load MathJax and RSM CSS for rendering the RSM demo
+  useHead({
+    link: [
+      {
+        rel: "stylesheet",
+        href: `${backendUrl}/static/rsm.css`,
+      },
+      {
+        rel: "stylesheet",
+        href: `${backendUrl}/static/pygments.css`,
+      },
+    ],
+    script: [
+      {
+        src: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
+        async: true,
+        id: "MathJax-script",
+      },
+    ],
+  });
 
   // Reactive data
   const activeTab = ref("academic");
@@ -336,6 +405,31 @@
   const submitting = ref(false);
   const signupError = ref("");
   const openFaqs = ref(new Set());
+
+  // RSM Demo Example (meta, self-documenting)
+  const rsmExample = reactive({
+    source: `:rsm:
+# Writing with RSM
+
+Readable Science Markup is built with the full interactivity of the modern web in mind.
+
+:figure:
+  :label: fig1
+  :path: fig1.html
+  :caption: For example, you can embed interactive figures.
+::
+
+Write equations using LaTeX syntax. Inline math like $e^{i\\pi} + 1 = 0$ flows naturally in text. Display equations get automatic numbering.
+
+$$ :label: gaussian
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+$$
+
+Reference equations :ref:gaussian:: and figures :ref:fig1:: to create clickable links.
+
+::`,
+    rendered: '',
+  });
 
   // Demo rendering state
   const demoLoading = ref(false);
@@ -371,19 +465,14 @@
         "Web-native manuscripts are for your readers, not just journals. Most research is read online, shared via links, and accessed on phones and tablets. RSM lets you share living, accessible documents with colleagues while still exporting to PDF when journals require it. The same manuscript serves both audiences.",
     },
     {
-      question: "How is RSM different from other modern alternatives?",
-      answer:
-        "RSM is the only markup language built exclusively for web-native scientific publishing. Unlike Typst (designed for beautiful PDFs), Quarto (focused on computational notebooks), or MyST (built for technical documentation), RSM starts and ends with semantic web research documents. Complete separation of content and presentation means your manuscripts adapt to any reading context automatically.",
-    },
-    {
       question: "How is RSM different from LaTeX?",
       answer:
         "LaTeX was designed for print publishing in the 1980s. RSM is built for the web from day one, with responsive layouts, interactive elements, and accessibility features that work automatically without additional packages or configuration.",
     },
     {
-      question: "Can I import my existing LaTeX documents?",
+      question: "How is RSM different from other modern alternatives?",
       answer:
-        "Yes! RSM Studio will include conversion tools to help migrate your existing LaTeX manuscripts, preserving your content while upgrading to web-native formatting.",
+        "RSM is the only markup language built exclusively for web-native scientific publishing. Unlike Typst (designed for beautiful PDFs), Quarto (focused on computational notebooks), or MyST (built for technical documentation), RSM starts and ends with semantic web research documents. Complete separation of content and presentation means your manuscripts adapt to any reading context automatically.",
     },
     {
       question: "Will journals accept RSM submissions?",
@@ -397,9 +486,14 @@
         "Absolutely. RSM supports LaTeX-style math notation that renders beautifully on the web with proper accessibility support, including screen reader compatibility for mathematical expressions.",
     },
     {
+      question: "Can I import my existing LaTeX documents?",
+      answer:
+        "Yes! RSM Studio will include conversion tools to help migrate your existing LaTeX manuscripts, preserving your content while upgrading to web-native formatting.",
+    },
+    {
       question: "When will RSM Studio be available?",
       answer:
-        "We're targeting a late 2025 launch with full registration open to all academic writers. Sign up above to be notified when we go live.",
+        "We're targeting a mid 2026 launch with full registration open to all academic writers. Sign up above to be notified when we go live.",
     },
     {
       question: "What's The Aris Program?",
@@ -698,7 +792,15 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   };
 
   // Initialize demo on mount
-  onMounted(() => {
+  onMounted(async () => {
+    // Load rendered HTML from public directory
+    try {
+      const response = await fetch('/demo-rendered.html');
+      rsmExample.rendered = await response.text();
+    } catch (error) {
+      console.error('Failed to load demo rendered HTML:', error);
+    }
+
     // Set initial mobile state
     isMobile.value = window.innerWidth < 768;
 
@@ -711,6 +813,18 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       if (textarea) {
         textarea.style.height = "auto";
         textarea.style.height = textarea.scrollHeight + "px";
+      }
+
+      // Trigger MathJax to process the CLT demo math
+      if (window.MathJax) {
+        window.MathJax.typesetPromise();
+      } else {
+        // Wait for MathJax to load then typeset
+        setTimeout(() => {
+          if (window.MathJax) {
+            window.MathJax.typesetPromise();
+          }
+        }, 1000);
       }
     });
 
@@ -999,6 +1113,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
   /* Common Section Styles */
   .demo-section,
+  .what-is-rsm-section,
   .studio-features-section,
   .benefits-section,
   .signup-section,
@@ -1021,6 +1136,134 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     color: var(--text-body);
     line-height: var(--body-line-height);
     margin: 0 0 1.5rem 0;
+  }
+
+  /* RSM Section Styles */
+  .rsm-intro {
+    max-width: 800px;
+    margin: 0 auto 3rem;
+    text-align: center;
+  }
+
+  .rsm-intro p {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1.1rem;
+    color: var(--text-body);
+    line-height: var(--body-line-height);
+    margin: 0 0 1.5rem 0;
+  }
+
+  .rsm-intro p:last-child {
+    margin-bottom: 0;
+  }
+
+  .rsm-intro a {
+    color: var(--primary-600);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .rsm-intro a:hover {
+    color: var(--primary-700);
+    text-decoration: underline;
+  }
+
+  /* RSM Live Demo */
+  .rsm-demo-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .rsm-demo-panel {
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      var(--shadow-soft),
+      0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .panel-header {
+    background: var(--primary-600);
+    color: var(--primary-50);
+    padding: 0.75rem 1.5rem;
+    font-family: "Montserrat", sans-serif;
+    font-weight: var(--weight-semi);
+    font-size: 0.95rem;
+  }
+
+  .rsm-source-code {
+    font-family: "Source Code Pro", monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    padding: 1.5rem;
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-body);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .rsm-rendered-output {
+    padding: 1.5rem;
+    background: var(--surface-page);
+  }
+
+  /* Override manuscriptwrapper padding in demo */
+  :deep(.rsm-rendered-output .manuscriptwrapper) {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  :deep(.rsm-rendered-output .manuscript) {
+    padding: 0 !important;
+  }
+
+  :deep(.rsm-rendered-output .manuscriptwrapper.embedded .level-1) {
+    margin-block: 0 !important;
+  }
+
+  :deep(.rsm-rendered-output .manuscriptwrapper.embedded h1) {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Screenshot Placeholders */
+  .studio-screenshot {
+    max-width: 900px;
+    margin: 0 auto 3rem;
+    border-radius: 16px;
+    overflow: hidden;
+    border: var(--border-extrathin) solid var(--border-primary);
+    box-shadow:
+      var(--shadow-soft),
+      0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .screenshot-placeholder {
+    width: 100%;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-100) 0%, var(--secondary-100) 100%);
+    position: relative;
+  }
+
+  .placeholder-label {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1.1rem;
+    font-weight: var(--weight-medium);
+    color: var(--medium);
+    background: var(--surface-page);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    border: var(--border-thin) solid var(--border-primary);
+    box-shadow: var(--shadow-soft);
   }
 
   .philosophy-callout {
@@ -1744,6 +1987,24 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
     .hero-subtitle {
       font-size: 1.1rem;
+    }
+
+    .screenshot-placeholder {
+      height: 250px;
+    }
+
+    .placeholder-label {
+      font-size: 0.9rem;
+      padding: 0.75rem 1.5rem;
+    }
+
+    .rsm-demo-container {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .rsm-source-code {
+      font-size: 0.75rem;
     }
 
     .demo-controls {

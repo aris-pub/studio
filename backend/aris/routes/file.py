@@ -632,7 +632,9 @@ async def download_file(
     """
     import asyncio
     import re
+
     import rsm
+
     from ..models.models import File
 
     # Check file ownership first
@@ -653,8 +655,19 @@ async def download_file(
     if not file_data or not file_data.source:
         raise HTTPException(status_code=404, detail="File not found")
 
+    # Create asset resolver to load file assets from database
+    from ..services.asset_resolver import FileAssetResolver
+    asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
+
     # Use rsm.make() with standalone=True to generate complete HTML document with CDN URLs
-    html = await asyncio.to_thread(rsm.make, file_data.source, handrails=False, lint=False, standalone=True)
+    html = await asyncio.to_thread(
+        rsm.make,
+        file_data.source,
+        handrails=False,
+        lint=False,
+        standalone=True,
+        asset_resolver=asset_resolver
+    )
 
     # Get file title for filename
     title = await file_service.get_file_title(file_id)

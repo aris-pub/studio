@@ -366,5 +366,56 @@ describe("useHeadInjection", () => {
       expect(window.__chartResults).toEqual(["plotly", "d3"]);
       delete window.__chartResults;
     });
+
+    it("should not affect DOM content outside chart container", async () => {
+      const { executeInitScript } = useHeadInjection();
+
+      // Create a document structure with content before and after chart
+      const container = document.createElement("div");
+      container.innerHTML = `
+        <div id="before">Content before chart</div>
+        <div id="chart-container"></div>
+        <div id="after">Content after chart</div>
+      `;
+      document.body.appendChild(container);
+
+      // Execute script that only modifies the chart container
+      executeInitScript(`
+        (function() {
+          var chart = document.getElementById('chart-container');
+          if (chart) {
+            chart.innerHTML = '<svg>Chart rendered</svg>';
+          }
+        })();
+      `);
+
+      // Verify content before and after chart is preserved
+      expect(document.getElementById("before").textContent).toBe("Content before chart");
+      expect(document.getElementById("after").textContent).toBe("Content after chart");
+      expect(document.getElementById("chart-container").innerHTML).toBe("<svg>Chart rendered</svg>");
+
+      document.body.removeChild(container);
+    });
+
+    it("should not throw errors that could interrupt rendering", async () => {
+      const { executeInitScript } = useHeadInjection();
+      window.__afterError = false;
+
+      // Script with error followed by more code
+      executeInitScript(`
+        (function() {
+          try {
+            // This might throw but is caught
+            nonExistentFunction();
+          } catch (e) {
+            // Error handled gracefully
+          }
+          window.__afterError = true;
+        })();
+      `);
+
+      expect(window.__afterError).toBe(true);
+      delete window.__afterError;
+    });
   });
 });
