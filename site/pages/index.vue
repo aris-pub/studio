@@ -45,7 +45,7 @@
         <div class="rsm-demo-container">
           <div class="rsm-demo-panel rsm-source-panel">
             <div class="panel-header">RSM Source</div>
-            <pre class="rsm-source-code">{{ rsmExample.source }}</pre>
+            <pre class="rsm-source-code" v-html="highlightedSource"></pre>
           </div>
           <div class="rsm-demo-panel rsm-output-panel">
             <div class="panel-header">Web Output</div>
@@ -416,19 +416,54 @@ Readable Science Markup is built with the full interactivity of the modern web i
 :figure:
   :label: fig1
   :path: fig1.html
-  :caption: For example, you can embed interactive figures.
+  :caption: You can embed interactive figures.
 ::
 
-Write equations using LaTeX syntax. Inline math like $e^{i\\pi} + 1 = 0$ flows naturally in text. Display equations get automatic numbering.
+Write equations using LaTeX syntax. Display equations get automatic numbering.
 
 $$ :label: gaussian
 \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
 $$
 
-Reference equations :ref:gaussian:: and figures :ref:fig1:: to create clickable links.
+References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable tooltips.
 
 ::`,
     rendered: '',
+  });
+
+  // Syntax highlighted source
+  const highlightedSource = computed(() => {
+    let text = rsmExample.source;
+
+    // Highlight :figure: block with its closing ::
+    text = text.replace(/(:figure:[\s\S]*?)(::)/g, (match, content, close) => {
+      return content
+        .replace(/(:label:)\s+(\w+)/g, '<span class="rsm-directive">$1</span> <span class="rsm-value">$2</span>')
+        .replace(/(:figure:|:path:|:caption:)/g, '<span class="rsm-directive">$1</span>') +
+             '<span class="rsm-directive">::</span>';
+    });
+
+    // Highlight :rsm: and its closing ::
+    text = text.replace(/:rsm:/g, '<span class="rsm-delimiter">:rsm:</span>');
+    text = text.replace(/^::$/gm, '<span class="rsm-delimiter">::</span>');
+
+    // Highlight headers
+    text = text.replace(/^(#\s+.+)$/gm, '<span class="rsm-header">$1</span>');
+
+    // Highlight :ref: tags (with optional custom text)
+    text = text.replace(/(:ref:)(\w+)(,[^:]*?)?(::)/g, '<span class="rsm-directive">$1</span><span class="rsm-value">$2</span>$3<span class="rsm-directive">$4</span>');
+
+    // Highlight math delimiters and :label: inside math blocks
+    text = text.replace(/(\$\$)\s+(:label:)\s+(\w+)/g, '<span class="rsm-math-delim">$1</span> <span class="rsm-directive">$2</span> <span class="rsm-value">$3</span>');
+
+    // Highlight LaTeX syntax in the equation (do this before general $$ replacement)
+    text = text.replace(/(\\(?:int|sqrt|infty|pi))/g, '<span class="rsm-latex-command">$1</span>');
+    text = text.replace(/([_^])/g, '<span class="rsm-latex-operator">$1</span>');
+    text = text.replace(/([{}])/g, '<span class="rsm-latex-brace">$1</span>');
+
+    text = text.replace(/(\$\$|\$)/g, '<span class="rsm-math-delim">$1</span>');
+
+    return text;
   });
 
   // Demo rendering state
@@ -1387,6 +1422,43 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     word-break: break-word;
   }
 
+  /* RSM Syntax Highlighting */
+  :deep(.rsm-source-code .rsm-delimiter) {
+    color: var(--primary-700);
+    font-weight: var(--weight-semi);
+  }
+
+  :deep(.rsm-source-code .rsm-header) {
+    color: var(--primary-800);
+    font-weight: var(--weight-bold);
+  }
+
+  :deep(.rsm-source-code .rsm-directive) {
+    color: var(--primary-600);
+  }
+
+  :deep(.rsm-source-code .rsm-value) {
+    color: var(--secondary-400);
+  }
+
+  :deep(.rsm-source-code .rsm-math-delim) {
+    color: var(--primary-700);
+    font-weight: var(--weight-semi);
+  }
+
+  :deep(.rsm-source-code .rsm-latex-command) {
+    color: var(--orange-600);
+    font-weight: var(--weight-semi);
+  }
+
+  :deep(.rsm-source-code .rsm-latex-operator) {
+    color: var(--orange-500);
+  }
+
+  :deep(.rsm-source-code .rsm-latex-brace) {
+    color: var(--gray-500);
+  }
+
   .rsm-rendered-output {
     padding: 1.5rem;
     padding-left: 2.5rem;
@@ -1415,6 +1487,14 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     margin-bottom: 0 !important;
   }
 
+  :deep(.rsm-rendered-output .heading.hr) {
+    margin-bottom: 0 !important;
+  }
+
+  :deep(.rsm-rendered-output .paragraph.hr.hr-hidden) {
+    margin-bottom: 0 !important;
+  }
+
   /* Hide handrail UI elements but keep structure */
   :deep(.rsm-rendered-output .hr-collapse-zone) {
     display: none !important;
@@ -1437,9 +1517,9 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     left: calc(100% - 3rem) !important;
   }
 
-  /* Reduce figure margins */
+  /* Remove figure margins */
   :deep(.rsm-rendered-output figure) {
-    margin-block: 1rem !important;
+    margin-block: 0 !important;
   }
 
   /* Hide hr-info-zone in figcaption */
