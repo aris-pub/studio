@@ -59,122 +59,6 @@
       </div>
     </section>
 
-    <!-- Live Demo Section - DISABLED FOR NOW -->
-    <!-- <section id="demo" class="demo-section">
-      <div class="container">
-        <h2 class="section-header">Introducing Readable Science Markup (RSM)</h2>
-        <p class="section-subheader">Semantic markup that separates meaning from presentation</p>
-
-        <div class="intro-content">
-          <p>
-            RSM is built for the post-PDF era. While other tools convert print formats to web, RSM is web-native from the ground up. Your manuscripts live on the web, adapt to any screen, and only export to PDF when journals demand it, not the other way around.
-          </p>
-        </div>
-
-        <div class="philosophy-callout">
-          <h3 class="philosophy-tagline">Minimal by default, powerful by choice</h3>
-          <p>
-            RSM completely separates your content from its presentation. Write semantic markup like <code>:claim:</code>, <code>:evidence:</code>, and <code>:method:</code> instead of formatting commands. Your content carries meaning. Themes handle presentation.
-          </p>
-          <p>
-            When you're ready to work on styling, simply pick a theme and you're done. Or customize every detail. It's your choice, on your timeline.
-          </p>
-        </div>
-        <div class="demo-controls">
-          <div class="demo-tabs">
-            <button
-              :class="['tab-button', { active: activeTab === 'academic' }]"
-              data-testid="tab-academic"
-              @click="activeTab = 'academic'"
-            >
-              Academic-Grade Output
-            </button>
-            <button
-              :class="['tab-button', { active: activeTab === 'interactive' }]"
-              data-testid="tab-interactive"
-              @click="activeTab = 'interactive'"
-            >
-              Web-Native Interactions
-            </button>
-          </div>
-
-          <div class="view-controls">
-            <button
-              v-for="mode in viewModes"
-              :key="mode.value"
-              :class="['view-button', { active: viewMode === mode.value }]"
-              :data-testid="`view-${mode.value}`"
-              @click="viewMode = mode.value"
-            >
-              {{ mode.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="demo-content">
-          <div
-            v-show="viewMode === 'markup' || viewMode === 'both'"
-            class="demo-panel markup-panel"
-          >
-            <div class="markup-header">
-              <h3>Markup</h3>
-              <button
-                class="reset-button"
-                title="Reset to original example"
-                data-testid="reset-button"
-                @click="resetToExample"
-              >
-                Reset
-              </button>
-            </div>
-            <textarea
-              v-model="editableMarkup"
-              class="markup-content editable"
-              placeholder="Type RSM markup here..."
-              data-testid="markup-editor"
-              @input="handleMarkupInput"
-            ></textarea>
-          </div>
-
-          <div
-            v-show="viewMode === 'output' || viewMode === 'both'"
-            class="demo-panel output-panel"
-          >
-            <h3>Output</h3>
-            <div class="output-container">
-              <div v-if="demoError" class="demo-error" data-testid="demo-error">
-                <p><strong>Demo unavailable - showing static preview</strong></p>
-                <p>
-                  The live rendering service is temporarily unavailable. The content below shows
-                  what the rendered output would look like.
-                </p>
-              </div>
-              <div v-if="demoLoading" class="inline-loading" data-testid="demo-loading">
-                <div class="inline-spinner"></div>
-              </div>
-              <div class="output-content" v-html="currentExample.output"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="demo-callouts">
-          <p
-            v-show="viewMode === 'markup' || viewMode === 'both'"
-            class="demo-context demo-context-left"
-          >
-            {{ currentExample.context }}
-          </p>
-          <p
-            v-show="viewMode === 'output' || viewMode === 'both'"
-            class="demo-context demo-context-right"
-          >
-            Try resizing your browser or toggling dark mode (↗) to see RSM adapt
-          </p>
-        </div>
-
-      </div>
-    </section> -->
-
     <!-- RSM Studio Features Section -->
     <section id="studio-features" class="studio-features-section">
       <div class="container">
@@ -183,21 +67,33 @@
 
         <!-- Studio Screenshots with Tabs -->
         <div class="studio-screenshot-section">
-          <div class="screenshot-tabs">
+          <div class="screenshot-tabs" role="tablist" aria-label="Studio features">
             <button
               :class="['tab-button', { active: activeScreenshot === 'home' }]"
+              role="tab"
+              :aria-selected="activeScreenshot === 'home'"
+              :tabindex="activeScreenshot === 'home' ? 0 : -1"
+              aria-controls="screenshot-panel-home"
               @click="activeScreenshot = 'home'"
             >
               Organize
             </button>
             <button
               :class="['tab-button', { active: activeScreenshot === 'editor' }]"
+              role="tab"
+              :aria-selected="activeScreenshot === 'editor'"
+              :tabindex="activeScreenshot === 'editor' ? 0 : -1"
+              aria-controls="screenshot-panel-editor"
               @click="activeScreenshot = 'editor'"
             >
               Write & Preview
             </button>
             <button
               :class="['tab-button', { active: activeScreenshot === 'focus' }]"
+              role="tab"
+              :aria-selected="activeScreenshot === 'focus'"
+              :tabindex="activeScreenshot === 'focus' ? 0 : -1"
+              aria-controls="screenshot-panel-focus"
               @click="activeScreenshot = 'focus'"
             >
               Focus & Interact
@@ -205,21 +101,39 @@
           </div>
 
           <div class="studio-screenshot">
-            <img
+            <div
               v-show="activeScreenshot === 'home'"
-              :src="isDarkMode ? '/studio-editor-view-dark.png' : '/studio-home-view.png'"
-              alt="RSM Studio home view showing manuscript library"
-            />
-            <img
+              id="screenshot-panel-home"
+              role="tabpanel"
+              aria-labelledby="tab-home"
+            >
+              <img
+                :src="isDarkMode ? '/studio-editor-view-dark.png' : '/studio-home-view.png'"
+                alt="RSM Studio home view showing manuscript library"
+              />
+            </div>
+            <div
               v-show="activeScreenshot === 'editor'"
-              :src="isDarkMode ? '/studio-focus-view-dark.png' : '/studio-editor-view.png'"
-              alt="RSM Studio editor with source and preview panels"
-            />
-            <img
+              id="screenshot-panel-editor"
+              role="tabpanel"
+              aria-labelledby="tab-editor"
+            >
+              <img
+                :src="isDarkMode ? '/studio-focus-view-dark.png' : '/studio-editor-view.png'"
+                alt="RSM Studio editor with source and preview panels"
+              />
+            </div>
+            <div
               v-show="activeScreenshot === 'focus'"
-              :src="isDarkMode ? '/studio-home-view-dark.png' : '/studio-focus-view.png'"
-              alt="RSM Studio focus mode with interactive tooltip"
-            />
+              id="screenshot-panel-focus"
+              role="tabpanel"
+              aria-labelledby="tab-focus"
+            >
+              <img
+                :src="isDarkMode ? '/studio-home-view-dark.png' : '/studio-focus-view.png'"
+                alt="RSM Studio focus mode with interactive tooltip"
+              />
+            </div>
           </div>
 
           <div class="screenshot-description">
@@ -322,7 +236,13 @@
         <h2 class="section-header">Frequently Asked Questions</h2>
         <div class="faq-grid">
           <div v-for="(faq, index) in faqs" :key="index" class="faq-item">
-            <button class="faq-question" @click="toggleFaq(index)">
+            <button
+              :id="`faq-button-${index}`"
+              class="faq-question"
+              :aria-expanded="isFaqOpen(index)"
+              :aria-controls="`faq-answer-${index}`"
+              @click="toggleFaq(index)"
+            >
               <h3>{{ faq.question }}</h3>
               <svg
                 class="faq-chevron"
@@ -331,11 +251,18 @@
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
+                aria-hidden="true"
               >
                 <polyline points="6,9 12,15 18,9"></polyline>
               </svg>
             </button>
-            <div class="faq-answer" :class="{ open: isFaqOpen(index) }">
+            <div
+              :id="`faq-answer-${index}`"
+              class="faq-answer"
+              :class="{ open: isFaqOpen(index) }"
+              role="region"
+              :aria-labelledby="`faq-button-${index}`"
+            >
               <p>
                 <template v-if="faq.hasScrollPress">
                   RSM documents can export to traditional formats like PDF when needed for journal
@@ -427,7 +354,7 @@
   // Reactive data
   const activeTab = ref("academic");
   const viewMode = ref("both");
-  const activeScreenshot = ref("editor");
+  const activeScreenshot = ref("home");
   const signupComplete = ref(false);
   const submitting = ref(false);
   const signupError = ref("");
@@ -1192,6 +1119,12 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     return openFaqs.value.has(index);
   };
 </script>
+
+<style>
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
 
 <style scoped>
   .landing-page {
