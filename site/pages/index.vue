@@ -177,55 +177,57 @@
         <h2 class="section-header">RSM Studio</h2>
         <p class="section-subheader">A collaborative editor for web-native manuscripts</p>
 
-        <div class="studio-intro">
-          <p>
-            Studio brings familiar collaborative editing to RSM. Write with your team in real-time,
-            preview your web-formatted output as you type, and export to any format journals
-            require. No learning curve for collaboration—just write.
-          </p>
-        </div>
-
-        <!-- Screenshot placeholder for studio interface -->
-        <div class="studio-screenshot">
-          <div class="screenshot-placeholder">
-            <div class="placeholder-label">RSM Studio editor interface</div>
+        <!-- Studio Screenshots with Tabs -->
+        <div class="studio-screenshot-section">
+          <div class="screenshot-tabs">
+            <button
+              :class="['tab-button', { active: activeScreenshot === 'home' }]"
+              @click="activeScreenshot = 'home'"
+            >
+              Organize
+            </button>
+            <button
+              :class="['tab-button', { active: activeScreenshot === 'editor' }]"
+              @click="activeScreenshot = 'editor'"
+            >
+              Write & Preview
+            </button>
+            <button
+              :class="['tab-button', { active: activeScreenshot === 'focus' }]"
+              @click="activeScreenshot = 'focus'"
+            >
+              Focus & Interact
+            </button>
           </div>
-        </div>
 
-        <div class="features-grid">
-          <div class="feature-card">
-            <h3>Collaborate in real-time</h3>
-            <p>
-              Multiple cursors, instant sync, no merge conflicts—see your co-authors' changes as
-              they type
+          <div class="studio-screenshot">
+            <img
+              v-show="activeScreenshot === 'home'"
+              src="/studio-home-view.png"
+              alt="RSM Studio home view showing manuscript library"
+            />
+            <img
+              v-show="activeScreenshot === 'editor'"
+              src="/studio-editor-view.png"
+              alt="RSM Studio editor with source and preview panels"
+            />
+            <img
+              v-show="activeScreenshot === 'focus'"
+              src="/studio-focus-view.png"
+              alt="RSM Studio focus mode with interactive tooltip"
+            />
+          </div>
+
+          <div class="screenshot-description">
+            <p v-show="activeScreenshot === 'home'">
+              Organize manuscripts with tags, search, and full version history
             </p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Preview as you write</h3>
-            <p>Live preview shows your web-formatted manuscript while you work</p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Comments that stay put</h3>
-            <p>
-              Thread discussions on specific paragraphs—comments move with the text they reference
+            <p v-show="activeScreenshot === 'editor'">
+              Write markup on the left, see formatted output on the right—collaborate in real-time, export to any format
             </p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Complete version history</h3>
-            <p>Track every change with full history of who changed what and when</p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Export to any format</h3>
-            <p>One click to PDF, LaTeX, or Word for journal submission</p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Work from anywhere</h3>
-            <p>Browser-based—works on any device without installation</p>
+            <p v-show="activeScreenshot === 'focus'">
+              Interactive tooltips show equations, figures, and citations without breaking reading flow
+            </p>
           </div>
         </div>
       </div>
@@ -401,6 +403,7 @@
   // Reactive data
   const activeTab = ref("academic");
   const viewMode = ref("both");
+  const activeScreenshot = ref("editor");
   const signupComplete = ref(false);
   const submitting = ref(false);
   const signupError = ref("");
@@ -1209,6 +1212,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   /* Section Dividers */
   .hero-section::after,
   .demo-section::after,
+  .what-is-rsm-section::after,
   .studio-features-section::after,
   .benefits-section::after,
   .signup-section::after {
@@ -1325,7 +1329,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     font-size: 1.1rem;
     color: var(--dark);
     text-align: center;
-    margin: 0 0 3rem 0;
+    margin: 0 0 2rem 0;
     line-height: var(--body-line-height);
   }
 
@@ -1560,38 +1564,80 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     stroke: var(--text-body) !important;
   }
 
-  /* Screenshot Placeholders */
-  .studio-screenshot {
-    max-width: 900px;
+  /* Studio Screenshots with Tabs */
+  .studio-screenshot-section {
+    max-width: 993px;
     margin: 0 auto 3rem;
+  }
+
+  .screenshot-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .screenshot-tabs .tab-button {
+    padding: 0.75rem 1.5rem;
+    border: var(--border-thin) solid var(--border-action);
+    background: var(--surface-page);
+    color: var(--text-action);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1rem;
+    font-weight: var(--weight-medium);
+    transition: var(--transition-bg-color), var(--transition-bd-color);
+    outline: none;
+  }
+
+  .screenshot-tabs .tab-button:hover {
+    background: var(--surface-information);
+    border-color: var(--border-action-hover);
+    color: var(--text-action-hover);
+  }
+
+  .screenshot-tabs .tab-button:focus-visible {
+    outline: var(--border-med) solid var(--border-action);
+    outline-offset: var(--border-extrathin);
+  }
+
+  .screenshot-tabs .tab-button.active {
+    background: var(--surface-action);
+    color: var(--primary-50);
+    border-color: var(--surface-action);
+  }
+
+  .studio-screenshot {
     border-radius: 16px;
     overflow: hidden;
     border: var(--border-extrathin) solid var(--border-primary);
     box-shadow:
       var(--shadow-soft),
       0 8px 24px rgba(0, 0, 0, 0.12);
-  }
-
-  .screenshot-placeholder {
-    width: 100%;
-    height: 400px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--primary-100) 0%, var(--secondary-100) 100%);
     position: relative;
   }
 
-  .placeholder-label {
+  .studio-screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .screenshot-description {
+    margin-top: 1.5rem;
+    text-align: center;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .screenshot-description p {
     font-family: "Source Sans 3", sans-serif;
-    font-size: 1.1rem;
-    font-weight: var(--weight-medium);
-    color: var(--medium);
-    background: var(--surface-page);
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    border: var(--border-thin) solid var(--border-primary);
-    box-shadow: var(--shadow-soft);
+    font-size: 1rem;
+    color: var(--text-body);
+    line-height: var(--body-line-height);
+    margin: 0;
   }
 
   .philosophy-callout {
@@ -2317,15 +2363,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       font-size: 1.1rem;
     }
 
-    .screenshot-placeholder {
-      height: 250px;
-    }
-
-    .placeholder-label {
-      font-size: 0.9rem;
-      padding: 0.75rem 1.5rem;
-    }
-
     .rsm-demo-container {
       grid-template-columns: 1fr;
       gap: 1.5rem;
@@ -2333,6 +2370,15 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
     .rsm-source-code {
       font-size: 0.75rem;
+    }
+
+    .screenshot-tabs {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .screenshot-tabs .tab-button {
+      width: 100%;
     }
 
     .demo-controls {
@@ -2354,8 +2400,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       text-align: center;
     }
 
-    .benefits-grid,
-    .features-grid {
+    .benefits-grid {
       grid-template-columns: 1fr;
     }
 
@@ -2461,79 +2506,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     line-height: var(--body-line-height);
     margin: 0;
     font-style: italic;
-  }
-
-  /* RSM Studio Features Section */
-  .studio-intro {
-    max-width: 800px;
-    margin: 0 auto 3rem;
-    text-align: center;
-  }
-
-  .studio-intro p {
-    font-family: "Source Sans 3", sans-serif;
-    font-size: 1.1rem;
-    color: var(--text-body);
-    line-height: var(--body-line-height);
-    margin: 0;
-  }
-
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
-    margin-bottom: 3rem;
-  }
-
-  .feature-card {
-    background: var(--surface-page);
-    padding: 2rem;
-    border-radius: 16px;
-    border: var(--border-extrathin) solid var(--border-primary);
-    box-shadow: var(--shadow-soft);
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
-  }
-
-  .feature-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--primary-400);
-    box-shadow:
-      var(--shadow-soft),
-      0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .feature-screenshot {
-    height: 200px;
-    background: var(--very-light);
-    border-bottom: var(--border-extrathin) solid var(--border-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .screenshot-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--primary-100) 0%, var(--secondary-100) 100%);
-  }
-
-  .placeholder-content {
-    width: 80%;
-    height: 80%;
-    background: var(--surface-page);
-    border-radius: 8px;
-    box-shadow: var(--shadow-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
   }
 
   /* Feature mockup styles */
@@ -2698,23 +2670,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   .history-change {
     font-size: 0.7rem;
     color: var(--dark);
-  }
-
-  .feature-card h3 {
-    font-family: "Montserrat", sans-serif;
-    font-size: var(--h5-size);
-    font-weight: var(--weight-semi);
-    color: var(--text-body);
-    margin: 0 0 1rem 0;
-    line-height: var(--header-line-height);
-  }
-
-  .feature-card p {
-    font-family: "Source Sans 3", sans-serif;
-    color: var(--dark);
-    line-height: var(--body-line-height);
-    margin: 0;
-    font-size: 1rem;
   }
 
   .studio-cta {
