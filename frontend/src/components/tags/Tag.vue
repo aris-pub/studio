@@ -186,22 +186,22 @@
   .tag.on {
     &.red {
       background-color: var(--red-300);
-      color: var(--white);
+      color: var(--text-body);
     }
 
     &.purple {
       background-color: var(--purple-300);
-      color: var(--white);
+      color: var(--text-body);
     }
 
     &.green {
       background-color: var(--green-300);
-      color: var(--white);
+      color: var(--text-body);
     }
 
     &.orange {
       background-color: var(--orange-300);
-      color: var(--white);
+      color: var(--text-body);
     }
   }
 

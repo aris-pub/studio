@@ -207,17 +207,17 @@
           <div class="studio-screenshot">
             <img
               v-show="activeScreenshot === 'home'"
-              src="/studio-home-view.png"
+              :src="isDarkMode ? '/studio-editor-view-dark.png' : '/studio-home-view.png'"
               alt="RSM Studio home view showing manuscript library"
             />
             <img
               v-show="activeScreenshot === 'editor'"
-              src="/studio-editor-view.png"
+              :src="isDarkMode ? '/studio-focus-view-dark.png' : '/studio-editor-view.png'"
               alt="RSM Studio editor with source and preview panels"
             />
             <img
               v-show="activeScreenshot === 'focus'"
-              src="/studio-focus-view.png"
+              :src="isDarkMode ? '/studio-home-view-dark.png' : '/studio-focus-view.png'"
               alt="RSM Studio focus mode with interactive tooltip"
             />
           </div>
@@ -384,6 +384,24 @@
 
   const config = useRuntimeConfig();
   const backendUrl = config.public.backendUrl || "http://localhost:8000";
+
+  // Track dark mode by watching the actual body class
+  const isDarkMode = ref(false);
+
+  onMounted(() => {
+    // Set initial state
+    isDarkMode.value = document.body.classList.contains("dark-theme");
+
+    // Watch for changes to body class
+    const observer = new MutationObserver(() => {
+      isDarkMode.value = document.body.classList.contains("dark-theme");
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  });
 
   // Load MathJax and RSM CSS for rendering the RSM demo
   useHead({

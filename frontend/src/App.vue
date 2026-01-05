@@ -365,7 +365,7 @@
   </div>
   <template v-else>
     <RouterView :class="`bp-${breakpoints.active().value}`" />
-    <div v-if="isDev" id="env">{{ cloneInfo }}</div>
+    <!-- <div v-if="isDev" id="env">{{ cloneInfo }}</div> -->
 
     <ModalShortcuts v-if="showShortcutsModal" @close="showShortcutsModal = false" />
   </template>
