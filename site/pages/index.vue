@@ -1379,7 +1379,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     font-family: "Source Code Pro", monospace;
     font-size: 0.85rem;
     line-height: 1.6;
-    padding: 1.5rem;
+    padding: 2rem;
     margin: 0;
     background: var(--surface-page);
     color: var(--text-body);
@@ -1435,6 +1435,16 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   /* Position equation number closer to equation */
   :deep(.rsm-rendered-output .hr-offset > .hr-info-zone) {
     left: calc(100% - 3rem) !important;
+  }
+
+  /* Reduce figure margins */
+  :deep(.rsm-rendered-output figure) {
+    margin-block: 1rem !important;
+  }
+
+  /* Hide hr-info-zone in figcaption */
+  :deep(.rsm-rendered-output figcaption .hr-info-zone) {
+    display: none !important;
   }
 
   /* Screenshot Placeholders */
