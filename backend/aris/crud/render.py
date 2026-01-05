@@ -4,6 +4,7 @@ from typing import Optional
 
 import rsm
 from rsm.asset_resolver import AssetResolver
+from rsm.nodes import RSMNodeError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..logging_config import get_logger
@@ -78,7 +79,7 @@ async def render(src: str):
         result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render completed successfully in {render_time:.3f}s")
-    except rsm.RSMApplicationError as e:
+    except (rsm.RSMApplicationError, RSMNodeError) as e:
         render_time = time.time() - start_time
         logger.error(f"RSM render failed after {render_time:.3f}s: {e}")
         result = ""
@@ -93,11 +94,11 @@ async def render_with_assets(src: str, file_id: int, db: AsyncSession, user_id: 
     try:
         # Create asset resolver for this file with pre-loaded assets
         asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
-        
+
         result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render with assets completed successfully in {render_time:.3f}s")
-    except rsm.RSMApplicationError as e:
+    except (rsm.RSMApplicationError, RSMNodeError) as e:
         render_time = time.time() - start_time
         logger.error(f"RSM render with assets failed after {render_time:.3f}s: {e}")
         result = ""
