@@ -14,7 +14,8 @@
         </div>
         <h1 class="hero-title">Research manuscripts designed for pixels, not&nbsp;paper</h1>
         <p class="hero-subtitle">
-          Manuscripts that adapt to any screen—with interactive figures and PDF export.
+          Write once in RSM. Share as an interactive web document. Export to PDF when journals
+          require it.
         </p>
         <a href="#signup" class="hero-cta-button">Get early access</a>
       </div>
@@ -25,19 +26,19 @@
       <div class="container">
         <h2 class="section-header">Introducing Readable Science Markup (RSM)</h2>
         <p class="section-subheader">
-          A markup language designed for the web, not the printing press
+          A markup language designed for pixels, not the printing press
         </p>
 
         <div class="rsm-intro">
           <p>
-            RSM is built for how research is consumed today. While LaTeX was designed for print in
-            the 1980s, RSM starts with the web—responsive layouts, interactive elements, and
-            accessibility built in from day one.
+            Your research lives online. Shared via links, read in browsers, discussed in Slack
+            threads. But LaTeX forces you to design for printed pages, then export to PDF, then
+            upload to a server.
           </p>
           <p>
-            Your manuscripts live online, adapt to any screen size, and export to PDF when journals
-            require it. The same source file works everywhere: shared with colleagues, read on
-            phones, or submitted as a traditional PDF.
+            RSM reverses this: design for web first, export to PDF only when journals require it.
+            The same source file becomes an interactive document for colleagues and a traditional
+            PDF for submission.
           </p>
         </div>
 
@@ -160,6 +161,16 @@
           <h2 id="signup" class="section-header">Be notified at launch</h2>
           <p class="signup-subtitle">Coming mid 2026</p>
 
+          <!-- Signup Incentives -->
+          <div v-if="!signupComplete" class="signup-incentives">
+            <p class="incentives-header">Early signups help shape the product:</p>
+            <ul class="incentives-list">
+              <li>Vote on features during beta</li>
+              <li>Direct access to the founding team</li>
+              <li>First to try new capabilities</li>
+            </ul>
+          </div>
+
           <!-- Success Message -->
           <div v-if="signupComplete" class="thank-you-message">
             <h3>Thank you for your interest!</h3>
@@ -223,7 +234,7 @@
             </div>
 
             <button v-if="!signupComplete" type="submit" class="cta-button" :disabled="submitting">
-              {{ submitting ? "Submitting..." : "Be notified at launch" }}
+              {{ submitting ? "Submitting..." : "Join the waitlist" }}
             </button>
           </form>
         </div>
@@ -1968,6 +1979,51 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     color: var(--medium);
     margin: 0 0 2rem 0;
     font-weight: var(--weight-medium);
+  }
+
+  .signup-incentives {
+    background: var(--surface-information);
+    border: var(--border-extrathin) solid var(--border-information);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: left;
+  }
+
+  .incentives-header {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1rem;
+    font-weight: var(--weight-semi);
+    color: var(--text-body);
+    margin: 0 0 0.75rem 0;
+  }
+
+  .incentives-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .incentives-list li {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-body);
+    line-height: var(--body-line-height);
+    padding-left: 1.5rem;
+    position: relative;
+    margin-bottom: 0.5rem;
+  }
+
+  .incentives-list li:last-child {
+    margin-bottom: 0;
+  }
+
+  .incentives-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0.5rem;
+    color: var(--primary-600);
+    font-weight: var(--weight-bold);
   }
 
   .signup-form {
