@@ -411,7 +411,7 @@
     source: `:rsm:
 # Writing with RSM
 
-Readable Science Markup is built with the full interactivity of the modern web in mind.
+Readable Science Markup is built with the full power of the modern web in mind. % Try resizing your browser or switching to dark mode.
 
 :figure:
   :label: fig1
@@ -446,6 +446,9 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
     // Highlight :rsm: and its closing ::
     text = text.replace(/:rsm:/g, '<span class="rsm-delimiter">:rsm:</span>');
     text = text.replace(/^::$/gm, '<span class="rsm-delimiter">::</span>');
+
+    // Highlight comments (both line and inline)
+    text = text.replace(/(%.*?)$/gm, '<span class="rsm-comment">$1</span>');
 
     // Highlight headers
     text = text.replace(/^(#\s+.+)$/gm, '<span class="rsm-header">$1</span>');
@@ -1459,11 +1462,23 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     color: var(--gray-500);
   }
 
+  :deep(.rsm-source-code .rsm-comment) {
+    color: var(--gray-500);
+    font-style: italic;
+  }
+
   .rsm-rendered-output {
     padding: 1.5rem;
     padding-left: 2.5rem;
     padding-right: 0.5rem;
     background: var(--surface-page);
+  }
+
+  :deep(.rsm-rendered-output p),
+  :deep(.rsm-rendered-output h1),
+  :deep(.rsm-rendered-output figcaption),
+  :deep(.rsm-rendered-output .mathblock) {
+    color: var(--gray-1000) !important;
   }
 
   /* Override manuscriptwrapper padding in demo */
@@ -1525,6 +1540,24 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   /* Hide hr-info-zone in figcaption */
   :deep(.rsm-rendered-output figcaption .hr-info-zone) {
     display: none !important;
+  }
+
+  /* Plotly chart styling for theme compatibility */
+  :deep(.plotly-graph-div .xtick text),
+  :deep(.plotly-graph-div .ytick text),
+  :deep(.plotly-graph-div .xtitle),
+  :deep(.plotly-graph-div .ytitle),
+  :deep(.plotly-graph-div .legendtext) {
+    fill: var(--text-body) !important;
+  }
+
+  :deep(.plotly-graph-div .xgrid),
+  :deep(.plotly-graph-div .ygrid) {
+    stroke: var(--border-primary) !important;
+  }
+
+  :deep(.plotly-graph-div .crisp) {
+    stroke: var(--text-body) !important;
   }
 
   /* Screenshot Placeholders */
