@@ -49,7 +49,11 @@
           </div>
           <div class="rsm-demo-panel rsm-output-panel">
             <div class="panel-header">Web Output</div>
-            <div ref="renderedOutputRef" class="rsm-rendered-output" v-html="rsmExample.rendered"></div>
+            <div
+              ref="renderedOutputRef"
+              class="rsm-rendered-output"
+              v-html="rsmExample.rendered"
+            ></div>
           </div>
         </div>
       </div>
@@ -223,10 +227,12 @@
               Organize manuscripts with tags, search, and full version history
             </p>
             <p v-show="activeScreenshot === 'editor'">
-              Write markup on the left, see formatted output on the right—collaborate in real-time, export to any format
+              Write markup on the left, see formatted output on the right—collaborate in real-time,
+              export to any format
             </p>
             <p v-show="activeScreenshot === 'focus'">
-              Interactive tooltips show equations, figures, and citations without breaking reading flow
+              Interactive tooltips show equations, figures, and citations without breaking reading
+              flow
             </p>
           </div>
         </div>
@@ -431,7 +437,7 @@ $$
 References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable tooltips.
 
 ::`,
-    rendered: '',
+    rendered: "",
   });
 
   // Syntax highlighted source
@@ -440,10 +446,15 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
 
     // Highlight :figure: block with its closing ::
     text = text.replace(/(:figure:[\s\S]*?)(::)/g, (match, content, close) => {
-      return content
-        .replace(/(:label:)\s+(\w+)/g, '<span class="rsm-directive">$1</span> <span class="rsm-value">$2</span>')
-        .replace(/(:figure:|:path:|:caption:)/g, '<span class="rsm-directive">$1</span>') +
-             '<span class="rsm-directive">::</span>';
+      return (
+        content
+          .replace(
+            /(:label:)\s+(\w+)/g,
+            '<span class="rsm-directive">$1</span> <span class="rsm-value">$2</span>'
+          )
+          .replace(/(:figure:|:path:|:caption:)/g, '<span class="rsm-directive">$1</span>') +
+        '<span class="rsm-directive">::</span>'
+      );
     });
 
     // Highlight :rsm: and its closing ::
@@ -457,10 +468,16 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
     text = text.replace(/^(#\s+.+)$/gm, '<span class="rsm-header">$1</span>');
 
     // Highlight :ref: tags (with optional custom text)
-    text = text.replace(/(:ref:)(\w+)(,[^:]*?)?(::)/g, '<span class="rsm-directive">$1</span><span class="rsm-value">$2</span>$3<span class="rsm-directive">$4</span>');
+    text = text.replace(
+      /(:ref:)(\w+)(,[^:]*?)?(::)/g,
+      '<span class="rsm-directive">$1</span><span class="rsm-value">$2</span>$3<span class="rsm-directive">$4</span>'
+    );
 
     // Highlight math delimiters and :label: inside math blocks
-    text = text.replace(/(\$\$)\s+(:label:)\s+(\w+)/g, '<span class="rsm-math-delim">$1</span> <span class="rsm-directive">$2</span> <span class="rsm-value">$3</span>');
+    text = text.replace(
+      /(\$\$)\s+(:label:)\s+(\w+)/g,
+      '<span class="rsm-math-delim">$1</span> <span class="rsm-directive">$2</span> <span class="rsm-value">$3</span>'
+    );
 
     // Highlight LaTeX syntax in the equation (do this before general $$ replacement)
     text = text.replace(/(\\(?:int|sqrt|infty|pi))/g, '<span class="rsm-latex-command">$1</span>');
@@ -841,18 +858,18 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     await nextTick();
 
     // Find all script tags within the rendered output
-    const scripts = renderedOutputRef.value.querySelectorAll('script');
+    const scripts = renderedOutputRef.value.querySelectorAll("script");
 
     for (const script of scripts) {
       try {
         if (script.src) {
           // External script - create new script element and append to head
-          const newScript = document.createElement('script');
+          const newScript = document.createElement("script");
           newScript.src = script.src;
 
           // Copy other attributes
           Array.from(script.attributes).forEach((attr) => {
-            if (attr.name !== 'src') {
+            if (attr.name !== "src") {
               newScript.setAttribute(attr.name, attr.value);
             }
           });
@@ -865,7 +882,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
           });
         } else if (script.textContent && script.textContent.trim()) {
           // Inline script - create new script element and replace in place
-          const newScript = document.createElement('script');
+          const newScript = document.createElement("script");
           newScript.textContent = script.textContent;
 
           // Copy attributes
@@ -878,7 +895,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
           script.parentNode.removeChild(script);
         }
       } catch (error) {
-        console.error('Error executing embedded script:', error);
+        console.error("Error executing embedded script:", error);
       }
     }
   };
@@ -888,8 +905,8 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     // Load jQuery from CDN if not already loaded
     if (!window.jQuery) {
       await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js';
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js";
         script.onload = () => {
           window.$ = window.jQuery;
           resolve();
@@ -901,25 +918,27 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
     // Load RSM CSS for tooltip content styling
     if (!document.querySelector('link[href*="rsm.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/rsm.css';
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "/rsm.css";
       document.head.appendChild(link);
     }
 
     // Load Tooltipster CSS
     if (!document.querySelector('link[href*="tooltipster"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/css/tooltipster.bundle.min.css';
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/css/tooltipster.bundle.min.css";
       document.head.appendChild(link);
     }
 
     // Load Tooltipster JS
     if (!window.jQuery.fn.tooltipster) {
       await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/js/tooltipster.bundle.min.js';
+        const script = document.createElement("script");
+        script.src =
+          "https://cdn.jsdelivr.net/npm/tooltipster@4.2.8/dist/js/tooltipster.bundle.min.js";
         script.onload = resolve;
         script.onerror = reject;
         document.head.appendChild(script);
@@ -929,53 +948,53 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     // Helper to strip handrail UI elements from tooltip content
     const stripHandrails = (element) => {
       const $el = $(element);
-      $el.find('.hr-collapse-zone').remove();
-      $el.find('.hr-menu-zone').remove();
-      $el.find('.hr-border-zone').remove();
-      $el.find('.hr-spacer-zone').remove();
-      $el.find('.hr-info-zone').remove();
+      $el.find(".hr-collapse-zone").remove();
+      $el.find(".hr-menu-zone").remove();
+      $el.find(".hr-border-zone").remove();
+      $el.find(".hr-spacer-zone").remove();
+      $el.find(".hr-info-zone").remove();
       return $el;
     };
 
     // Create tooltips on reference links
     const $ = window.jQuery;
-    $('.manuscriptwrapper a.reference:not(.tooltipstered)').tooltipster({
-      theme: ['tooltipster-shadow', 'tooltipster-shadow-rsm'],
+    $(".manuscriptwrapper a.reference:not(.tooltipstered)").tooltipster({
+      theme: ["tooltipster-shadow", "tooltipster-shadow-rsm"],
       minWidth: 100,
       maxWidth: 600,
       contentAsHTML: true,
-      trigger: 'custom',
+      trigger: "custom",
       triggerOpen: {
         mouseenter: true,
-        touchstart: true
+        touchstart: true,
       },
       triggerClose: {
         click: true,
         mouseleave: true,
         originClick: true,
-        touchleave: true
+        touchleave: true,
       },
       functionInit: function (instance, helper) {
-        const target = $(helper.origin).attr('href');
-        if (!target || target === '#') return;
+        const target = $(helper.origin).attr("href");
+        if (!target || target === "#") return;
 
         // Escape special characters for jQuery selector
-        const escapedTarget = target.replaceAll('.', '\\.').replaceAll(':', '\\:');
+        const escapedTarget = target.replaceAll(".", "\\.").replaceAll(":", "\\:");
         const targetEl = $(escapedTarget)[0];
 
         if (!targetEl) return;
 
-        let content = '';
+        let content = "";
         const tag = targetEl.tagName;
 
         // Handle different element types
-        if (tag === 'DIV' && targetEl.classList.contains('mathblock')) {
+        if (tag === "DIV" && targetEl.classList.contains("mathblock")) {
           const clone = $(targetEl).clone();
           stripHandrails(clone);
           // Get content from the content zone
-          const contentZone = clone.find('.hr-content-zone');
+          const contentZone = clone.find(".hr-content-zone");
           content = contentZone.length > 0 ? contentZone.html() : clone.html();
-        } else if (tag === 'FIGURE') {
+        } else if (tag === "FIGURE") {
           content = $(targetEl).html();
         } else {
           content = targetEl.innerHTML;
@@ -987,28 +1006,28 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
         instance.content($content);
       },
-      functionReady: async function(instance, helper) {
+      functionReady: async function (instance, helper) {
         // Trigger MathJax after tooltip is rendered in DOM
         if (window.MathJax && window.MathJax.typesetPromise) {
           try {
-            const tooltipContent = document.querySelector('.tooltipster-content');
+            const tooltipContent = document.querySelector(".tooltipster-content");
             if (tooltipContent) {
               await window.MathJax.typesetPromise([tooltipContent]);
               // Reposition tooltip after MathJax changes content size
               instance.reposition();
             }
           } catch (e) {
-            console.warn('MathJax rendering failed in tooltip:', e);
+            console.warn("MathJax rendering failed in tooltip:", e);
           }
         }
-      }
+      },
     });
   };
 
   onMounted(async () => {
     // Load rendered HTML from public directory
     try {
-      const response = await fetch('/demo-rendered.html');
+      const response = await fetch("/demo-rendered.html");
       rsmExample.rendered = await response.text();
 
       // Execute scripts after HTML is rendered
@@ -1019,7 +1038,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       await nextTick();
       await initializeTooltips();
     } catch (error) {
-      console.error('Failed to load demo rendered HTML:', error);
+      console.error("Failed to load demo rendered HTML:", error);
     }
 
     // Set initial mobile state
