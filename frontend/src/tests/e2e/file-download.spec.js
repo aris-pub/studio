@@ -108,9 +108,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     fs.unlinkSync(downloadPath);
   });
 
-  test("downloaded file uses correct jQuery version from CDN", async ({
-    page,
-  }) => {
+  test("downloaded file uses correct jQuery version from CDN", async ({ page }) => {
     await fileHelpers.ensureFileDeselected(testFileId);
     await fileHelpers.openFileMenu(testFileId);
 

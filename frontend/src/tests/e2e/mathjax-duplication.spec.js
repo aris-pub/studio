@@ -282,11 +282,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         const current = getState();
         const prev = window.__mjxStabilityCheck.state;
 
-        if (
-          current.inline === prev.inline &&
-          current.block === prev.block &&
-          !current.processing
-        ) {
+        if (current.inline === prev.inline && current.block === prev.block && !current.processing) {
           window.__mjxStabilityCheck.stableCount++;
         } else {
           window.__mjxStabilityCheck.stableCount = 0;
@@ -428,9 +424,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       }
 
       // Get current content and make second edit
-      const editorAgainForEdit = isMobile
-        ? page.locator("textarea.editor")
-        : editor;
+      const editorAgainForEdit = isMobile ? page.locator("textarea.editor") : editor;
       const currentContent2 = await editorAgainForEdit.inputValue();
       const newContent2 = currentContent2.replace("EDIT1", "EDIT1 EDIT2");
 

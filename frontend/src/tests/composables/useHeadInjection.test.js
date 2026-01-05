@@ -392,7 +392,9 @@ describe("useHeadInjection", () => {
       // Verify content before and after chart is preserved
       expect(document.getElementById("before").textContent).toBe("Content before chart");
       expect(document.getElementById("after").textContent).toBe("Content after chart");
-      expect(document.getElementById("chart-container").innerHTML).toBe("<svg>Chart rendered</svg>");
+      expect(document.getElementById("chart-container").innerHTML).toBe(
+        "<svg>Chart rendered</svg>"
+      );
 
       document.body.removeChild(container);
     });
