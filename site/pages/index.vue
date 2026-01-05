@@ -1389,7 +1389,8 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
   .rsm-rendered-output {
     padding: 1.5rem;
-    padding-right: 5rem;
+    padding-left: 2.5rem;
+    padding-right: 0.5rem;
     background: var(--surface-page);
   }
 
@@ -1412,6 +1413,28 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   :deep(.rsm-rendered-output .manuscriptwrapper.embedded h1) {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
+  }
+
+  /* Hide handrail UI elements but keep structure */
+  :deep(.rsm-rendered-output .hr-collapse-zone) {
+    display: none !important;
+  }
+
+  :deep(.rsm-rendered-output .hr-menu-zone) {
+    display: none !important;
+  }
+
+  :deep(.rsm-rendered-output .hr-border-zone) {
+    display: none !important;
+  }
+
+  :deep(.rsm-rendered-output .hr-spacer-zone) {
+    display: none !important;
+  }
+
+  /* Position equation number closer to equation */
+  :deep(.rsm-rendered-output .hr-offset > .hr-info-zone) {
+    left: calc(100% - 3rem) !important;
   }
 
   /* Screenshot Placeholders */
