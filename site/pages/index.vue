@@ -139,15 +139,16 @@
 
           <div class="screenshot-description">
             <p v-show="activeScreenshot === 'home'">
-              Organize manuscripts with tags, search, and full version history
+              Find any manuscript instantly. Every draft auto-saved with full history. No more
+              files lost to ancient email threads.
             </p>
             <p v-show="activeScreenshot === 'editor'">
-              Write markup on the left, see formatted output on the right—collaborate in real-time,
-              export to any format
+              See the interactive document readers get. Build figures and tooltips, watch them work
+              as you write.
             </p>
             <p v-show="activeScreenshot === 'focus'">
-              Interactive tooltips show equations, figures, and citations without breaking reading
-              flow
+              Hover citations and equations to see them inline. No more losing your place hunting
+              for "Figure 3" or "Theorem 2.1".
             </p>
           </div>
         </div>
