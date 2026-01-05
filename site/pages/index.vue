@@ -17,7 +17,7 @@
           Write once in RSM. Share as an interactive web document. Export to PDF when journals
           require it.
         </p>
-        <a href="#signup" class="hero-cta-button">Get early access</a>
+        <a href="#signup" class="hero-cta-button">Join the waitlist</a>
       </div>
     </section>
 
@@ -175,7 +175,7 @@
           <!-- Success Message -->
           <div v-if="signupComplete" class="thank-you-message">
             <h3>Thank you for your interest!</h3>
-            <p>We'll be in touch with early access details as we approach the mid 2026 launch.</p>
+            <p>We'll be in touch as we approach the mid 2026 launch.</p>
           </div>
 
           <!-- Signup Form -->
@@ -1172,8 +1172,8 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
   .dark-theme .hero-section {
     background: linear-gradient(
       135deg,
-      #1f2937 40%,
-      var(--primary-900) 85%,
+      #1f2937 0%,
+      var(--primary-900) 60%,
       var(--purple-900) 100%
     );
   }

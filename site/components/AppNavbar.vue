@@ -16,7 +16,7 @@
 
     <div class="nav-actions">
       <DarkModeToggle />
-      <a href="/#signup" class="nav-cta-button">Get early access</a>
+      <a href="/#signup" class="nav-cta-button">Join the waitlist</a>
     </div>
 
     <button class="nav-hamburger" :aria-expanded="mobileMenuOpen" @click="toggleMobileMenu">
@@ -32,7 +32,7 @@
       <div class="nav-mobile-toggle">
         <DarkModeToggle />
       </div>
-      <a href="/#signup" class="nav-cta-button" @click="closeMobileMenu">Get early access</a>
+      <a href="/#signup" class="nav-cta-button" @click="closeMobileMenu">Join the waitlist</a>
     </div>
   </nav>
 </template>
