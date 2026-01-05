@@ -139,8 +139,8 @@
 
           <div class="screenshot-description">
             <p v-show="activeScreenshot === 'home'">
-              Find any manuscript instantly. Every draft auto-saved with full history. No more
-              files lost to ancient email threads.
+              Find any manuscript instantly. Every draft auto-saved with full history. No more files
+              lost to ancient email threads.
             </p>
             <p v-show="activeScreenshot === 'editor'">
               See the interactive document readers get. Build figures and tooltips, watch them work
@@ -1170,12 +1170,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
 
   /* Dark mode hero background */
   .dark-theme .hero-section {
-    background: linear-gradient(
-      135deg,
-      #1f2937 0%,
-      var(--primary-900) 60%,
-      var(--purple-900) 100%
-    );
+    background: linear-gradient(135deg, #1f2937 0%, var(--primary-900) 60%, var(--purple-900) 100%);
   }
 
   /* Dark mode hero text colors */
