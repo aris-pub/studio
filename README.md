@@ -1,4 +1,4 @@
-# Aris: Research publications. Web-native. Human-first.
+# RSM Studio: The collaborative editor for RSM (Readable Science Markup).
 
 <p align="center">
   <img src="design-assets/logos/logotype.svg" alt="Aris Logo" width="300">
@@ -10,11 +10,16 @@
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 23+](https://img.shields.io/badge/node.js-23+-green.svg)](https://nodejs.org/)
 
-**Aris** is a web-native scientific publishing platform that replaces static PDFs with
-interactive, accessible HTML documents. Built for researchers, academics, scientists,
-and students, Aris makes it easy to write, revise, collaborate, and publish work that’s
-readable on any device, bringing scientific publications to the web. See more at
-[](https://aris.pub).
+**RSM Studio** is the reference implementation and collaborative editor for RSM (Readable
+Science Markup). Write documents that preserve semantic meaning, render beautifully on
+any device, and enable true interactivity. Real-time collaboration, universal device
+support, planned Pandoc integration for import/export.
+
+**Governance**: Studio is community-maintained—open source, bug reports and maintenance
+contributions accepted. Part of the Aris Program, supported by community donations and
+academic grants.
+
+See more at [](https://aris.pub).
 
 
 ## Getting Started
