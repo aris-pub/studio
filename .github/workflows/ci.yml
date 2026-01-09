@@ -127,7 +127,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -168,7 +168,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -243,7 +243,7 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -500,7 +500,7 @@ jobs:
         echo "✅ [DEBUG] Database setup completed for ${{ matrix.test-type }} tests"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -646,7 +646,7 @@ jobs:
         ${{ matrix.test-type == 'auth' && 'uv run python scripts/reset_test_user.py' || '' }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -824,7 +824,7 @@ jobs:
         echo "✅ [DEBUG] Database setup completed for ${{ matrix.test-type }} tests"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -1004,7 +1004,7 @@ jobs:
         echo "✅ [DEBUG] Database setup completed for ${{ matrix.test-type }} tests"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -1165,7 +1165,7 @@ jobs:
         ${{ matrix.test-type == 'auth' && 'uv run python scripts/reset_test_user.py' || '' }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
@@ -1344,7 +1344,7 @@ jobs:
         echo "✅ [DEBUG] Database setup completed for ${{ matrix.test-type }} tests"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'npm'
