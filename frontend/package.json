@@ -37,6 +37,7 @@
     "@babel/core": "^7.27.4",
     "@babel/eslint-parser": "^7.27.5",
     "@babel/plugin-syntax-import-assertions": "^7.26.0",
+    "dotenv": "^16.4.7",
     "@babel/plugin-syntax-jsx": "^7.25.9",
     "@eslint/js": "^9.29.0",
     "@playwright/test": "^1.53.1",
