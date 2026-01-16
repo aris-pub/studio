@@ -4,7 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 COPY backend/ .
-COPY design-assets/ ./design-assets
+COPY styles/ ./styles
 
 RUN uv sync --frozen --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
