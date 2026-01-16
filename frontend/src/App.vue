@@ -130,12 +130,12 @@
   rsmLink.href = `${api.defaults.baseURL}/static/rsm.css`;
   document.head.appendChild(rsmLink);
 
-  // Load design assets CSS
-  const designAssets = ["typography.css", "components.css", "layout.css", "variables.css"];
-  designAssets.forEach((filename) => {
+  // Load styles CSS
+  const styles = ["typography.css", "components.css", "layout.css", "variables.css"];
+  styles.forEach((filename) => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${api.defaults.baseURL}/design-assets/css/${filename}`;
+    link.href = `${api.defaults.baseURL}/styles/css/${filename}`;
     document.head.appendChild(link);
   });
 

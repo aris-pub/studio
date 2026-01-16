@@ -15,12 +15,12 @@ rsmLink.rel = "stylesheet";
 rsmLink.href = `${API_BASE_URL}/static/rsm.css`;
 document.head.appendChild(rsmLink);
 
-// Load design assets CSS from backend (accessible from browser)
-const designAssets = ["variables.css", "typography.css", "layout.css", "components.css"];
-designAssets.forEach((filename) => {
+// Load styles CSS from backend (accessible from browser)
+const styles = ["variables.css", "typography.css", "layout.css", "components.css"];
+styles.forEach((filename) => {
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = `${API_BASE_URL}/design-assets/css/${filename}`;
+  link.href = `${API_BASE_URL}/styles/css/${filename}`;
   document.head.appendChild(link);
 });
 

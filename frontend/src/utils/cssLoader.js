@@ -1,11 +1,11 @@
 /**
- * Utility to dynamically load CSS files from the backend design assets
+ * Utility to dynamically load CSS files from the backend styles
  */
 
 const loadedStylesheets = new Set();
 
 export function loadCSS(api, filename) {
-  const url = `${api.defaults.baseURL}/design-assets/css/${filename}`;
+  const url = `${api.defaults.baseURL}/styles/css/${filename}`;
 
   // Avoid loading the same CSS file multiple times
   if (loadedStylesheets.has(url)) {

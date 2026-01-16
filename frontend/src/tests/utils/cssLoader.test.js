@@ -27,7 +27,7 @@ describe("cssLoader", () => {
 
       const link = document.querySelector('link[rel="stylesheet"]');
       expect(link).toBeTruthy();
-      expect(link.href).toBe(`${import.meta.env.VITE_API_BASE_URL}/design-assets/css/test.css`);
+      expect(link.href).toBe(`${import.meta.env.VITE_API_BASE_URL}/styles/css/test.css`);
       expect(link.rel).toBe("stylesheet");
 
       // Simulate successful load
@@ -40,7 +40,7 @@ describe("cssLoader", () => {
 
       const link = document.querySelector('link[rel="stylesheet"]');
       expect(link.href).toBe(
-        `${import.meta.env.VITE_API_BASE_URL}/design-assets/css/typography.css`
+        `${import.meta.env.VITE_API_BASE_URL}/styles/css/typography.css`
       );
     });
   });
@@ -57,7 +57,7 @@ describe("cssLoader", () => {
       const expectedFiles = ["typography.css", "components.css", "layout.css", "variables.css"];
       expectedFiles.forEach((filename, index) => {
         expect(links[index].href).toBe(
-          `${import.meta.env.VITE_API_BASE_URL}/design-assets/css/${filename}`
+          `${import.meta.env.VITE_API_BASE_URL}/styles/css/${filename}`
         );
       });
 
