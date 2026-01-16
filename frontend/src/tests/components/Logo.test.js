@@ -26,7 +26,7 @@ describe("Logo.vue", () => {
 
     expect(img.exists()).toBe(true);
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/design-assets/logos/logo-32px.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/logo-32px.svg`
     );
     expect(img.attributes("alt")).toBe("Aris logo");
     expect(img.classes()).toContain("logo");
@@ -38,7 +38,7 @@ describe("Logo.vue", () => {
     const img = wrapper.find("img");
 
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/design-assets/logos/logotype.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/logotype.svg`
     );
     expect(img.classes()).toContain("logo--full");
   });
@@ -48,7 +48,7 @@ describe("Logo.vue", () => {
     const img = wrapper.find("img");
 
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/design-assets/logos/logo-32px-gray.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/logo-32px-gray.svg`
     );
     expect(img.classes()).toContain("logo--gray");
   });
