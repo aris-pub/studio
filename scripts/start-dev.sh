@@ -14,9 +14,9 @@ FORCE_BUILD=false
 DETACHED=true
 
 for arg in "$@"; do
-    if [ "$arg" = "--build" ]; then
+    if [ "$arg" = "--build" ] || [ "$arg" = "build" ]; then
         FORCE_BUILD=true
-    elif [ "$arg" = "--attach" ]; then
+    elif [ "$arg" = "--attach" ] || [ "$arg" = "attach" ]; then
         DETACHED=false
     fi
 done
