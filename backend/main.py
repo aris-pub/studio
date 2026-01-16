@@ -302,7 +302,7 @@ logger.info("All routers registered successfully")
 @app.middleware("http")
 async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static") or request.url.path.startswith("/design-assets") or request.url.path.startswith("/brand"):
+    if request.url.path.startswith("/static") or request.url.path.startswith("/styles") or request.url.path.startswith("/brand"):
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -329,28 +329,28 @@ app.mount(
     name="static",
 )
 
-# Mount design assets (only if directory exists)
-design_assets_paths = [
-    "../design-assets",  # When running from backend/ directory
-    "design-assets",     # When running from project root
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "design-assets")  # Absolute path fallback
+# Mount styles (only if directory exists)
+styles_paths = [
+    "../styles",  # When running from backend/ directory
+    "styles",     # When running from project root
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "styles")  # Absolute path fallback
 ]
 
-design_assets_dir = None
-for path in design_assets_paths:
+styles_dir = None
+for path in styles_paths:
     if os.path.exists(path):
-        design_assets_dir = path
+        styles_dir = path
         break
 
-if design_assets_dir:
+if styles_dir:
     app.mount(
-        "/design-assets",
-        StaticFiles(directory=design_assets_dir),
-        name="design-assets"
+        "/styles",
+        StaticFiles(directory=styles_dir),
+        name="styles"
     )
-    logger.info(f"Design assets mounted successfully at /design-assets from {design_assets_dir}")
+    logger.info(f"Styles mounted successfully at /styles from {styles_dir}")
 else:
-    logger.info(f"Design assets directory not found. Tried paths: {design_assets_paths}")
+    logger.info(f"Styles directory not found. Tried paths: {styles_paths}")
 
 # Mount brand assets (only if directory exists)
 brand_paths = [
