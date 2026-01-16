@@ -186,14 +186,14 @@ class InMemoryFileService(FileServiceInterface):
             if cached_content is not None:
                 return cached_content
             
-            # Render using RSM make with structured output
+            # Render using RSM build with structured output
             try:
                 if db is not None:
                     from ..asset_resolver import FileAssetResolver
                     asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
-                    rendered_content = await asyncio.to_thread(rsm.make, file_data.source, handrails=True, asset_resolver=asset_resolver, structured=True)
+                    rendered_content = await asyncio.to_thread(rsm.build, file_data.source, handrails=True, asset_resolver=asset_resolver, structured=True)
                 else:
-                    rendered_content = await asyncio.to_thread(rsm.make, file_data.source, handrails=True, structured=True)
+                    rendered_content = await asyncio.to_thread(rsm.build, file_data.source, handrails=True, structured=True)
                 
                 # Ensure it's a dict
                 if not isinstance(rendered_content, dict):

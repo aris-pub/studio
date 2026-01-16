@@ -386,7 +386,7 @@ async def test_download_file_returns_complete_html_document(client: AsyncClient,
     """Test that downloaded file is a complete HTML document, not just body content.
 
     Regression test: Previously the download endpoint only returned the body content
-    from rsm.render() instead of the full HTML document from rsm.make().
+    from rsm.render() instead of the full HTML document from rsm.build().
     """
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 

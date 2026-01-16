@@ -626,7 +626,7 @@ async def download_file(
 
     Notes
     -----
-    Requires authentication. Uses rsm.make() to generate a complete HTML document
+    Requires authentication. Uses rsm.build() to generate a complete HTML document
     with all necessary CSS/JS includes for standalone viewing.
     File is downloaded with .html extension using the file's title as filename.
     """
@@ -659,9 +659,9 @@ async def download_file(
     from ..services.asset_resolver import FileAssetResolver
     asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
 
-    # Use rsm.make() with standalone=True to generate complete HTML document with CDN URLs
+    # Use rsm.build() with standalone=True to generate complete HTML document with CDN URLs
     html = await asyncio.to_thread(
-        rsm.make,
+        rsm.build,
         file_data.source,
         handrails=False,
         lint=False,
