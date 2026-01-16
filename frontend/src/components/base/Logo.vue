@@ -27,12 +27,12 @@
     const base = api.defaults.baseURL;
     switch (props.type) {
       case "full":
-        return `${base}/design-assets/logos/logotype.svg`;
+        return `${base}/brand/logos/studio/logotype.svg`;
       case "gray":
-        return `${base}/design-assets/logos/logo-32px-gray.svg`;
+        return `${base}/brand/logos/studio/logo-32px-gray.svg`;
       case "small":
       default:
-        return `${base}/design-assets/logos/logo-32px.svg`;
+        return `${base}/brand/logos/studio/logo-32px.svg`;
     }
   });
 

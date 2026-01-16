@@ -6,7 +6,7 @@
     <section class="hero-section">
       <div class="container">
         <div class="hero-brand">
-          <img src="/studio-logo-64.svg" alt="RSM Studio Logo" class="hero-logo" />
+          <img src="/studio-brand/studio-logo-64.svg" alt="RSM Studio Logo" class="hero-logo" />
           <div class="hero-text">
             <span class="brand-rsm">RSM</span>
             <span class="brand-studio">Studio</span>

@@ -1,0 +1,17 @@
+/* Layout and Base Styles - Aris Design System */
+
+/* Full viewport layout */
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+/* Reset and normalize */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}

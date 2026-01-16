@@ -30,7 +30,7 @@ export default defineNuxtConfig({
         // Canonical URL
         { rel: 'canonical', href: 'https://aris.pub' },
         // Favicon
-        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/studio-brand/favicon.svg' },
       ]
     },
   },

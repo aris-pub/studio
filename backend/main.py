@@ -302,7 +302,7 @@ logger.info("All routers registered successfully")
 @app.middleware("http")
 async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static") or request.url.path.startswith("/design-assets"):
+    if request.url.path.startswith("/static") or request.url.path.startswith("/design-assets") or request.url.path.startswith("/brand"):
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -351,3 +351,26 @@ if design_assets_dir:
     logger.info(f"Design assets mounted successfully at /design-assets from {design_assets_dir}")
 else:
     logger.info(f"Design assets directory not found. Tried paths: {design_assets_paths}")
+
+# Mount brand assets (only if directory exists)
+brand_paths = [
+    "../brand",  # When running from backend/ directory
+    "brand",     # When running from project root
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "brand")  # Absolute path fallback
+]
+
+brand_dir = None
+for path in brand_paths:
+    if os.path.exists(path):
+        brand_dir = path
+        break
+
+if brand_dir:
+    app.mount(
+        "/brand",
+        StaticFiles(directory=brand_dir),
+        name="brand"
+    )
+    logger.info(f"Brand assets mounted successfully at /brand from {brand_dir}")
+else:
+    logger.info(f"Brand directory not found. Tried paths: {brand_paths}")
