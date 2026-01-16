@@ -27,6 +27,11 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap', rel: 'stylesheet' },
+        // Styles from backend
+        { rel: 'stylesheet', href: `${process.env.NUXT_BACKEND_URL}/styles/css/variables.css` },
+        { rel: 'stylesheet', href: `${process.env.NUXT_BACKEND_URL}/styles/css/typography.css` },
+        { rel: 'stylesheet', href: `${process.env.NUXT_BACKEND_URL}/styles/css/layout.css` },
+        { rel: 'stylesheet', href: `${process.env.NUXT_BACKEND_URL}/styles/css/components.css` },
         // Canonical URL
         { rel: 'canonical', href: 'https://aris.pub' },
         // Favicon
@@ -38,10 +43,6 @@ export default defineNuxtConfig({
   css: [
     './assets/css/rsm-design-system.css',
     './assets/css/rsm.css',
-    './assets/css/variables.css',
-    './assets/css/typography.css', 
-    './assets/css/components.css',
-    './assets/css/layout.css',
     './assets/main.css',
     './assets/components.css'
   ],
