@@ -130,9 +130,9 @@ fly deploy --config backend/fly.toml --ignorefile backend/.dockerignore
 ```
 
 **Why deploy from root?**
-- The build needs access to both `backend/` and `design-assets/` directories
+- The build needs access to both `backend/` and `styles/` directories
 - This mirrors the development container setup in `docker-compose.dev.yml`
-- The Dockerfile copies: `COPY backend/ .` and `COPY design-assets/ ./design-assets`
+- The Dockerfile copies: `COPY backend/ .` and `COPY styles/ ./styles`
 - The `.dockerignore` file excludes large frontend/site directories (~1GB) for faster uploads
 
 ### Build Context Architecture
@@ -143,16 +143,16 @@ aris/                           # ← Deploy from here
 │   ├── fly.toml               # ← Configuration file
 │   ├── Dockerfile             # ← Build instructions  
 │   └── main.py                # ← FastAPI app
-├── design-assets/             # ← Static assets served at /design-assets
+├── styles/             # ← Static assets served at /styles
 │   ├── css/
 │   └── logos/
 └── frontend/
 ```
 
 The deployment uses:
-- **Build context**: Root directory (for access to design-assets)
+- **Build context**: Root directory (for access to styles)
 - **Dockerfile**: `backend/Dockerfile` (relative to root)  
-- **Working directory**: `/app` (contains backend code + design-assets)
+- **Working directory**: `/app` (contains backend code + styles)
 
 ### Monitoring
 

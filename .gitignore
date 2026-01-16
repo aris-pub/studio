@@ -95,7 +95,7 @@ tmp/
 temp/
 .tmp/
 
-# Design assets (served from backend but sourced from design-assets/)
+# Styles (served from backend but sourced from styles/)
 backend/static/design/
 
 # Docker

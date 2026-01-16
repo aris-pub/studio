@@ -1,7 +1,7 @@
 # RSM Studio: The collaborative editor for RSM (Readable Science Markup).
 
 <p align="center">
-  <img src="design-assets/logos/logotype.svg" alt="Aris Logo" width="300">
+  <img src="brand/logos/studio/logotype.svg" alt="Aris Logo" width="300">
 </p>
 
 [![CI](https://github.com/leotrs/aris/actions/workflows/ci.yml/badge.svg)](https://github.com/leotrs/aris/actions/workflows/ci.yml)
