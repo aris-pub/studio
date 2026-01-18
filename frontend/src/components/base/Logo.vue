@@ -1,7 +1,7 @@
 <template>
   <div :class="logoClass">
     <img :src="logomarkUrl" :alt="alt" class="logo__mark" />
-    <span v-if="props.type === 'full'" class="logo__text">Studio</span>
+    <span v-if="props.type === 'full'" class="logo__text">S</span>
   </div>
 </template>
 
@@ -41,8 +41,8 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-block: 20px;
+    gap: 0;
+    margin-block: 16px 6px;
   }
 
   .logo__mark {
@@ -53,10 +53,11 @@
   }
 
   .logo__text {
-    font-family: "Montserrat", sans-serif;
-    font-size: 32px;
+    font-family: "Georgia", serif;
+    font-size: 40px;
     font-weight: var(--weight-regular);
-    color: var(--text-default);
+    line-height: 1.2;
+    color: var(--gray-800);
     white-space: nowrap;
   }
 

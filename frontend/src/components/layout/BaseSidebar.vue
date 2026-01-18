@@ -329,7 +329,7 @@
   }
 
   .sb-wrapper:not(.mobile).collapsed {
-    padding-top: 16px;
+    padding-top: 8px;
     min-width: var(--collapsed-width);
     max-width: var(--collapsed-width);
     flex-basis: var(--collapsed-width);
@@ -340,7 +340,7 @@
     }
 
     & > #logo {
-      margin-bottom: 30px;
+      margin-bottom: 8px;
       padding-inline: 16px;
 
       img {
