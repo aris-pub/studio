@@ -37,44 +37,6 @@ async def test_create_file_valid_rsm_source(client: AsyncClient, authenticated_u
     assert "id" in data
 
 
-async def test_create_file_invalid_rsm_source_no_prefix(client: AsyncClient, authenticated_user):
-    """Test creating a file with invalid RSM source (missing :rsm: prefix)."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    response = await client.post(
-        "/files",
-        headers=headers,
-        json={
-            "title": "Test Document",
-            "abstract": "A test document",
-            "owner_id": authenticated_user["user_id"],
-            "source": "test content without proper prefix",
-        },
-    )
-
-    assert response.status_code == 422
-    assert "Malformed RSM source" in response.json()["detail"][0]["msg"]
-
-
-async def test_create_file_invalid_rsm_source_no_suffix(client: AsyncClient, authenticated_user):
-    """Test creating a file with invalid RSM source (missing :: suffix)."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    response = await client.post(
-        "/files",
-        headers=headers,
-        json={
-            "title": "Test Document",
-            "abstract": "A test document",
-            "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content without suffix",
-        },
-    )
-
-    assert response.status_code == 422
-    assert "Malformed RSM source" in response.json()["detail"][0]["msg"]
-
-
 async def test_get_file_by_id(client: AsyncClient, authenticated_user):
     """Test getting a specific file by ID."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
@@ -140,36 +102,6 @@ async def test_update_file(client: AsyncClient, authenticated_user):
     data = response.json()
     assert data["title"] == "Updated Title"
     assert data["abstract"] == "Updated abstract"
-
-
-async def test_update_file_invalid_rsm(client: AsyncClient, authenticated_user):
-    """Test updating a file with invalid RSM source."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # First create a file
-    create_response = await client.post(
-        "/files",
-        headers=headers,
-        json={
-            "title": "Test Document",
-            "abstract": "Test abstract",
-            "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
-        },
-    )
-    file_id = create_response.json()["id"]
-
-    # Try to update with invalid RSM
-    response = await client.put(
-        f"/files/{file_id}",
-        headers=headers,
-        json={
-            "source": "invalid rsm content",
-        },
-    )
-
-    assert response.status_code == 422
-    assert "Malformed RSM source" in response.json()["detail"][0]["msg"]
 
 
 async def test_delete_file(client: AsyncClient, authenticated_user):

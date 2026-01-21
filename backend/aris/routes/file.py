@@ -24,31 +24,18 @@ class FileCreate(BaseModel):
     @classmethod
     def validate_rsm_source(cls, v: str) -> str:
         """Validate RSM source format.
-        
-        RSM (Research Source Markup) requires specific formatting markers.
-        Empty or None source values are allowed and skip validation.
-        
+
         Parameters
         ----------
         v : str
             The source content to validate.
-            
+
         Returns
         -------
         str
             The validated source content.
-            
-        Raises
-        ------
-        ValueError
-            If source format is invalid (must start with ':rsm:' and end with '::').
         """
-        if not v:  # Allow empty sources
-            return v
-        if not v.strip().startswith(":rsm:"):
-            raise ValueError("Malformed RSM source.")
-        if not v.strip().endswith("::"):
-            raise ValueError("Malformed RSM source.")
+        # Currently no validation - placeholder for future checks
         return v
 
 
@@ -62,28 +49,18 @@ class FileUpdate(BaseModel):
     @classmethod
     def validate_rsm_source(cls, v: str) -> str:
         """Validate RSM source format for updates.
-        
+
         Parameters
         ----------
         v : str
             The source content to validate.
-            
+
         Returns
         -------
         str
             The validated source content.
-            
-        Raises
-        ------
-        ValueError
-            If source format is invalid (must start with ':rsm:' and end with '::').
         """
-        if not v:  # Allow empty sources
-            return v
-        if not v.strip().startswith(":rsm:"):
-            raise ValueError("Malformed RSM source.")
-        if not v.strip().endswith("::"):
-            raise ValueError("Malformed RSM source.")
+        # Currently no validation - placeholder for future checks
         return v
 
 
