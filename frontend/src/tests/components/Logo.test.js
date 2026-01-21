@@ -22,35 +22,44 @@ describe("Logo.vue", () => {
 
   it("renders small logo by default", () => {
     const wrapper = createWrapper();
+    const logoDiv = wrapper.find(".logo");
     const img = wrapper.find("img");
+
+    expect(logoDiv.exists()).toBe(true);
+    expect(logoDiv.classes()).toContain("logo");
+    expect(logoDiv.classes()).toContain("logo--small");
 
     expect(img.exists()).toBe(true);
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/logo-32px.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
     );
     expect(img.attributes("alt")).toBe("Aris logo");
-    expect(img.classes()).toContain("logo");
-    expect(img.classes()).toContain("logo--small");
+    expect(img.classes()).toContain("logo__mark");
   });
 
   it("renders full logo when type is full", () => {
     const wrapper = createWrapper({ type: "full" });
+    const logoDiv = wrapper.find(".logo");
     const img = wrapper.find("img");
+    const text = wrapper.find(".logo__text");
 
+    expect(logoDiv.classes()).toContain("logo--full");
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/logotype.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
     );
-    expect(img.classes()).toContain("logo--full");
+    expect(text.exists()).toBe(true);
+    expect(text.text()).toBe("S");
   });
 
   it("renders gray logo when type is gray", () => {
     const wrapper = createWrapper({ type: "gray" });
+    const logoDiv = wrapper.find(".logo");
     const img = wrapper.find("img");
 
+    expect(logoDiv.classes()).toContain("logo--gray");
     expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/logo-32px-gray.svg`
+      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
     );
-    expect(img.classes()).toContain("logo--gray");
   });
 
   it("accepts custom alt text", () => {
@@ -62,8 +71,8 @@ describe("Logo.vue", () => {
 
   it("accepts custom CSS classes", () => {
     const wrapper = createWrapper({ class: "custom-class" });
-    const img = wrapper.find("img");
+    const logoDiv = wrapper.find(".logo");
 
-    expect(img.classes()).toContain("custom-class");
+    expect(logoDiv.classes()).toContain("custom-class");
   });
 });
