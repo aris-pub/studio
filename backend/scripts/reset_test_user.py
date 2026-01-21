@@ -128,8 +128,7 @@ async def reset_test_user():
                 keywords="test, visual, regression",
                 status=FileStatus.DRAFT,
                 owner_id=user_id,
-                source=""":rsm:
-# Test Visual Regression File
+                source="""# Test Visual Regression File
 
 This file is used for visual regression testing.
 Content should remain stable.
@@ -139,8 +138,7 @@ Lorem ipsum test content.
 
 ## Section 2
 More stable test content here.
-
-::""",
+""",
             ),
             File(
                 title="Another Test File",
@@ -148,12 +146,10 @@ More stable test content here.
                 keywords="test, stable, visual",
                 status=FileStatus.DRAFT,
                 owner_id=user_id,
-                source=""":rsm:
-# Another Test File
+                source="""# Another Test File
 
 This is another stable test file for visual tests.
-
-::""",
+""",
             ),
         ]
 

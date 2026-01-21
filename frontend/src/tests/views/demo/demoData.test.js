@@ -69,7 +69,7 @@ describe("Demo Data Service", () => {
         expect(demoFile.source).toContain(":abstract:");
         expect(demoFile.source).toContain(":itemize:");
         expect(demoFile.source).toContain(":enumerate:");
-        expect(demoFile.source).toContain(":item:");
+        expect(demoFile.source).toContain(":-:");
       });
 
       it("has valid tags array", () => {
@@ -299,7 +299,7 @@ describe("Demo Data Service", () => {
       expect(demoFile.source).toContain(":abstract:");
       expect(demoFile.source).toContain(":itemize:");
       expect(demoFile.source).toContain(":enumerate:");
-      expect(demoFile.source).toContain(":item:");
+      expect(demoFile.source).toContain(":-:");
 
       // Test that the render API processes the complex content
       const result = await api.post("/render");

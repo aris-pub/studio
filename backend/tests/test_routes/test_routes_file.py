@@ -28,7 +28,7 @@ async def test_create_file_valid_rsm_source(client: AsyncClient, authenticated_u
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
+            "source": "test content",
         },
     )
 
@@ -87,7 +87,7 @@ async def test_get_file_by_id(client: AsyncClient, authenticated_user):
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
+            "source": "test content",
         },
     )
     file_id = create_response.json()["id"]
@@ -120,7 +120,7 @@ async def test_update_file(client: AsyncClient, authenticated_user):
             "title": "Original Title",
             "abstract": "Original abstract",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:original content::",
+            "source": "original content",
         },
     )
     file_id = create_response.json()["id"]
@@ -132,7 +132,7 @@ async def test_update_file(client: AsyncClient, authenticated_user):
         json={
             "title": "Updated Title",
             "abstract": "Updated abstract",
-            "source": ":rsm:updated content::",
+            "source": "updated content",
         },
     )
 
@@ -184,7 +184,7 @@ async def test_delete_file(client: AsyncClient, authenticated_user):
             "title": "To Be Deleted",
             "abstract": "This will be deleted",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:delete me::",
+            "source": "delete me",
         },
     )
     file_id = create_response.json()["id"]
@@ -210,7 +210,7 @@ async def test_duplicate_file(client: AsyncClient, authenticated_user):
             "title": "Original File",
             "abstract": "Original abstract",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:original content::",
+            "source": "original content",
         },
     )
     file_id = create_response.json()["id"]
@@ -218,7 +218,7 @@ async def test_duplicate_file(client: AsyncClient, authenticated_user):
     # Duplicate the file
     response = await client.post(f"/files/{file_id}/duplicate", headers=headers)
     assert response.status_code == 200
-    
+
     duplicate_data = response.json()
     assert "id" in duplicate_data
     assert duplicate_data["id"] != file_id
@@ -237,7 +237,7 @@ async def test_get_file_content(client: AsyncClient, authenticated_user):
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:# Heading\n\nSome content::",
+            "source": "# Heading\n\nSome content",
         },
     )
     file_id = create_response.json()["id"]
@@ -261,7 +261,7 @@ async def test_get_file_content_section(client: AsyncClient, authenticated_user)
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:# Main Title\n\n## Section One\n\nContent::",
+            "source": "# Main Title\n\n## Section One\n\nContent",
         },
     )
     file_id = create_response.json()["id"]
@@ -284,7 +284,7 @@ async def test_get_file_assets(client: AsyncClient, authenticated_user):
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
+            "source": "test content",
         },
     )
     file_id = create_response.json()["id"]
@@ -309,7 +309,7 @@ async def test_file_permissions(client: AsyncClient, authenticated_user, second_
             "title": "Private File",
             "abstract": "Should not be accessible by others",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:private content::",
+            "source": "private content",
         },
     )
     file_id = create_response.json()["id"]
@@ -367,7 +367,7 @@ async def test_download_file_success(client: AsyncClient, authenticated_user):
             "title": "Download Test",
             "abstract": "A file for download testing",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:# Download Test\n\nThis is downloadable content::",
+            "source": "# Download Test\n\nThis is downloadable content",
         },
     )
     file_id = create_response.json()["id"]
@@ -397,7 +397,7 @@ async def test_download_file_returns_complete_html_document(client: AsyncClient,
             "title": "Full HTML Test",
             "abstract": "Testing complete HTML output",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:# Full Document\n\nContent here::",
+            "source": "# Full Document\n\nContent here",
         },
     )
     file_id = create_response.json()["id"]
@@ -428,7 +428,7 @@ async def test_download_file_permission_denied(client: AsyncClient, authenticate
             "title": "Private Download",
             "abstract": "Should not be downloadable by others",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:private content::",
+            "source": "private content",
         },
     )
     file_id = create_response.json()["id"]
@@ -455,7 +455,7 @@ async def test_download_file_uses_cdn_urls(client: AsyncClient, authenticated_us
             "title": "Standalone Test",
             "abstract": "Testing standalone output",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:# Standalone Document\n\nContent here::",
+            "source": "# Standalone Document\n\nContent here",
         },
     )
     file_id = create_response.json()["id"]
@@ -483,7 +483,7 @@ async def test_download_file_uses_correct_jquery_version(client: AsyncClient, au
             "title": "jQuery Version Test",
             "abstract": "Testing jQuery CDN version",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:Test content::",
+            "source": "Test content",
         },
     )
     file_id = create_response.json()["id"]
@@ -506,7 +506,7 @@ async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authentic
             "title": "Tooltipster CDN Test",
             "abstract": "Testing Tooltipster CDN",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:Test content::",
+            "source": "Test content",
         },
     )
     file_id = create_response.json()["id"]
@@ -535,7 +535,7 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
             "title": "Chart Document",
             "abstract": "Document with interactive chart",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:Placeholder content::",
+            "source": "Placeholder content",
         },
     )
     file_id = create_response.json()["id"]
@@ -564,18 +564,16 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
     assert asset_response.status_code == 200
 
     # Update file source to reference the HTML asset
-    source_with_asset = """:rsm:
-
-# Document with Chart
+    source_with_asset = """# Document with Chart
 
 Here is the interactive chart:
 
-:html:
+:html:{
   :path: scatter-chart.html
+}
   :caption: Interactive scatter plot.
 ::
-
-::"""
+"""
 
     update_response = await client.put(
         f"/files/{file_id}",

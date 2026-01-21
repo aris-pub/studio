@@ -33,9 +33,8 @@ MOCK_FILES = [
         status=FileStatus.DRAFT,
         owner_id=1,
         source="""\
-        :rsm:
         # Just a title
-        ::""",
+        """,
     ),
     File(
         title="Title and a paragraph",
@@ -44,12 +43,9 @@ MOCK_FILES = [
         status=FileStatus.DRAFT,
         owner_id=2,
         source="""\
-        :rsm:
         # My Title
 
         Lorem ipsum.
-
-        ::
         """,
     ),
     File(
@@ -59,17 +55,11 @@ MOCK_FILES = [
         status=FileStatus.DRAFT,
         owner_id=3,
         source="""\
-        :rsm:
-
         Lorem ipsum.
 
         ## Section title
 
         Lorem ipsum.
-
-        ::
-
-        ::
         """,
     ),
     File(
@@ -79,7 +69,6 @@ MOCK_FILES = [
         status=FileStatus.DRAFT,
         owner_id=4,
         source="""\
-        :rsm:
         # Test Visual Regression File
 
         This file is used for visual regression testing.
@@ -90,8 +79,7 @@ MOCK_FILES = [
 
         ## Section 2
         More stable test content here.
-
-        ::""",
+        """,
     ),
     File(
         title="Another Test File",
@@ -100,12 +88,10 @@ MOCK_FILES = [
         status=FileStatus.DRAFT,
         owner_id=4,
         source="""\
-        :rsm:
         # Another Test File
 
         This is another stable test file for visual tests.
-
-        ::""",
+        """,
     ),
 ]
 

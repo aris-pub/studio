@@ -517,7 +517,7 @@ test.describe.skip("Demo Content Rendering @demo-disabled", () => {
       expect(manuscriptText).not.toContain(":rsm:");
       expect(manuscriptText).not.toContain(":itemize:");
       expect(manuscriptText).not.toContain(":enumerate:");
-      expect(manuscriptText).not.toContain(":item:");
+      expect(manuscriptText).not.toContain(":-:");
       expect(manuscriptText).not.toContain("::");
 
       // Should not contain escaped characters

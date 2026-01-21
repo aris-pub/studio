@@ -3,8 +3,7 @@
 export const demoFile = {
   id: 999,
   title: "Sample Research Paper: The Future of Web-Native Publishing",
-  source: `:rsm:
-# The Future of Web-Native Publishing
+  source: `# The Future of Web-Native Publishing
 
 :abstract:
 
@@ -20,13 +19,13 @@ The current landscape of scientific publishing relies heavily on static document
 
 :itemize:
 
-  :item: *Limited interactivity*\\: Static content cannot adapt to user preferences or provide dynamic visualizations
+  :-: *Limited interactivity*\\: Static content cannot adapt to user preferences or provide dynamic visualizations
 
-  :item: *Accessibility barriers*\\: Poor screen reader support and fixed layouts
+  :-: *Accessibility barriers*\\: Poor screen reader support and fixed layouts
 
-  :item: *Version control issues*\\: Difficulty tracking changes and updates
+  :-: *Version control issues*\\: Difficulty tracking changes and updates
 
-  :item: *Discovery challenges*\\: Content locked in non-searchable formats
+  :-: *Discovery challenges*\\: Content locked in non-searchable formats
 
 ::
 
@@ -36,11 +35,11 @@ This study addresses three primary research questions\\:
 
 :enumerate:
 
-  :item: How can web-native technologies improve research accessibility and engagement?
+  :-: How can web-native technologies improve research accessibility and engagement?
 
-  :item: What are the key technical requirements for a modern publishing platform?
+  :-: What are the key technical requirements for a modern publishing platform?
 
-  :item: How might interactive documents change the peer review process?
+  :-: How might interactive documents change the peer review process?
 
 ::
 
@@ -50,13 +49,13 @@ Our research employed a mixed-methods methodology approach combining\\:
 
 :itemize:
 
-  :item: Literature review of existing publishing platforms
+  :-: Literature review of existing publishing platforms
 
-  :item: Technical analysis of web standards and capabilities
+  :-: Technical analysis of web standards and capabilities
 
-  :item: User interviews with researchers and publishers
+  :-: User interviews with researchers and publishers
 
-  :item: Prototype development and testing
+  :-: Prototype development and testing
 
 ::
 
@@ -66,13 +65,13 @@ We developed a proof-of-concept platform using\\:
 
 :itemize:
 
-  :item: **Frontend**\\: Vue.js with reactive state management
+  :-: **Frontend**\\: Vue.js with reactive state management
 
-  :item: **Backend**\\: FastAPI with PostgreSQL database
+  :-: **Backend**\\: FastAPI with PostgreSQL database
 
-  :item: **Document Format**\\: RSM (Readable Research Markup)
+  :-: **Document Format**\\: RSM (Readable Research Markup)
 
-  :item: **Deployment**\\: Docker containers on cloud infrastructure
+  :-: **Deployment**\\: Docker containers on cloud infrastructure
 
 ::
 
@@ -95,13 +94,13 @@ The transition to web-native publishing represents more than a technological upg
 
 :enumerate:
 
-  :item: *Enhanced Accessibility*\\: Screen readers, keyboard navigation, and customizable display options
+  :-: *Enhanced Accessibility*\\: Screen readers, keyboard navigation, and customizable display options
 
-  :item: *Dynamic Content*\\: Interactive figures, embedded data, and real-time updates
+  :-: *Dynamic Content*\\: Interactive figures, embedded data, and real-time updates
 
-  :item: *Better Discovery*\\: Full-text search, semantic markup, and linked data
+  :-: *Better Discovery*\\: Full-text search, semantic markup, and linked data
 
-  :item: *Collaborative Features*\\: Inline comments, annotations, and version tracking
+  :-: *Collaborative Features*\\: Inline comments, annotations, and version tracking
 
 ::
 
@@ -124,9 +123,7 @@ The future of research dissemination lies not in replicating print formats digit
 
 We thank the research participants who provided valuable feedback and the open-source community whose tools made this work possible.
 
-*This is a demonstration document showcasing the capabilities of web-native research publishing. The content is fictional but representative of actual research papers.*
-
-::`,
+*This is a demonstration document showcasing the capabilities of web-native research publishing. The content is fictional but representative of actual research papers.*`,
   last_edited_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
   tags: [
     { id: 1, name: "publishing", color: "#3b82f6" },

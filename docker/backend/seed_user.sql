@@ -2,12 +2,12 @@
 -- This will be run after migrations to ensure consistent user data across all clones
 
 -- Insert user if not exists
-INSERT INTO users (id, name, email, password_hash, deleted_at, initials, created_at, last_login, avatar_color, profile_picture_id) 
+INSERT INTO users (id, name, email, password_hash, deleted_at, initials, created_at, last_login, avatar_color, profile_picture_id)
 VALUES (4, 'Leo Torres', 'foo@bar.com', '$2b$12$RayS.yAehYjR.Ah2A7tAte8tkeul.F/eu1uCSzM/Su3GDb0ZIaDQy', NULL, 'LT', '2025-06-03 21:02:32.135452+00', NULL, 'BLUE', NULL)
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert all tags
-INSERT INTO tags (id, user_id, name, color, created_at, deleted_at) VALUES 
+INSERT INTO tags (id, user_id, name, color, created_at, deleted_at) VALUES
 (10, 4, 'math', 'red', '2025-06-03 21:17:48.383896+00', '2025-06-06 17:28:25.913386+00'),
 (11, 4, 'new tag...', 'red', '2025-06-06 19:25:17.771144+00', '2025-06-06 17:28:01.494155+00'),
 (12, 4, 'hello', 'purple', '2025-06-06 19:27:54.822842+00', '2025-06-06 17:28:06.173732+00'),
@@ -169,14 +169,14 @@ INSERT INTO files (id, title, abstract, keywords, status, last_edited_at, create
 
   :enumerate:
 
-    :item: :claim:{:label:unit-iff-unit-nilp} $f$ is a unit in $A[x]$ $\\iff$ $a_0$ is a unit in $A$
+    :-: :claim:{:label:unit-iff-unit-nilp} $f$ is a unit in $A[x]$ $\\iff$ $a_0$ is a unit in $A$
     and $a_1, \\ldots , a_n$ are nilpotent. ::
 
-    :item: :claim:{:label:nilp-iff-nilp} $f$ is nilpotent $\\iff$ $a_0, a_1, \\ldots , a_n$ are nilpotent. ::
+    :-: :claim:{:label:nilp-iff-nilp} $f$ is nilpotent $\\iff$ $a_0, a_1, \\ldots , a_n$ are nilpotent. ::
 
-    :item: :claim:{:label:zerodiv-iff-zerodiv} $f$ is a zero-divisor $\\iff$ there exists $a \\neq 0$ in $A$ such that $af = 0$. ::
+    :-: :claim:{:label:zerodiv-iff-zerodiv} $f$ is a zero-divisor $\\iff$ there exists $a \\neq 0$ in $A$ such that $af = 0$. ::
 
-    % :item: :claim: if $f, g \\in A[x]$, then $fg$ is primitive $\\iff$ $f$ and $g$ are primitive. ::
+    % :-: :claim: if $f, g \\in A[x]$, then $fg$ is primitive $\\iff$ $f$ and $g$ are primitive. ::
 
   ::
 
@@ -383,7 +383,7 @@ INSERT INTO files (id, title, abstract, keywords, status, last_edited_at, create
 ::
 ', '2025-06-20 18:46:00.738623+00', 4) ON CONFLICT (id) DO NOTHING;
 INSERT INTO files (id, title, abstract, keywords, status, last_edited_at, created_at, doi, source, deleted_at, owner_id) VALUES (5, 'Exercise 1', '', NULL, 'DRAFT', '2025-06-11 16:32:58.89654+00', '2025-06-03 21:02:07.299552+00', NULL, E':rsm:
-  
+
 # Exercise 1
 
 ## Section one
@@ -595,14 +595,14 @@ INSERT INTO files (id, title, abstract, keywords, status, last_edited_at, create
 
   :enumerate:
 
-    :item: :claim:{:label:unit-iff-unit-nilp} $f$ is a unit in $A[x]$ $\\iff$ $a_0$ is a unit in $A$
+    :-: :claim:{:label:unit-iff-unit-nilp} $f$ is a unit in $A[x]$ $\\iff$ $a_0$ is a unit in $A$
     and $a_1, \\ldots , a_n$ are nilpotent. ::
 
-    :item: :claim:{:label:nilp-iff-nilp} $f$ is nilpotent $\\iff$ $a_0, a_1, \\ldots , a_n$ are nilpotent. ::
+    :-: :claim:{:label:nilp-iff-nilp} $f$ is nilpotent $\\iff$ $a_0, a_1, \\ldots , a_n$ are nilpotent. ::
 
-    :item: :claim:{:label:zerodiv-iff-zerodiv} $f$ is a zero-divisor $\\iff$ there exists $a \\neq 0$ in $A$ such that $af = 0$. ::
+    :-: :claim:{:label:zerodiv-iff-zerodiv} $f$ is a zero-divisor $\\iff$ there exists $a \\neq 0$ in $A$ such that $af = 0$. ::
 
-    % :item: :claim: if $f, g \\in A[x]$, then $fg$ is primitive $\\iff$ $f$ and $g$ are primitive. ::
+    % :-: :claim: if $f, g \\in A[x]$, then $fg$ is primitive $\\iff$ $f$ and $g$ are primitive. ::
 
   ::
 
@@ -1502,15 +1502,15 @@ book. ::
 
   :enumerate:
 
-    :item: :claim: $\\overline{\\mb{v}}$ is a right eigenvector of $\\overline{\\lambda}$. ::
+    :-: :claim: $\\overline{\\mb{v}}$ is a right eigenvector of $\\overline{\\lambda}$. ::
 
-    :item: :claim: $\\mb{u}^*$ is a left eigenvector of $\\lambda$. ::
+    :-: :claim: $\\mb{u}^*$ is a left eigenvector of $\\lambda$. ::
 
-    :item: :claim: $\\mb{u}^\\top$ is a left eigenvector of $\\overline{\\lambda}$. ::
+    :-: :claim: $\\mb{u}^\\top$ is a left eigenvector of $\\overline{\\lambda}$. ::
 
-    :item: :claim: $\\left[\\mb{v}, \\mb{v} \\right]_\\mb{P} = 0 = \\left[\\mb{u}, \\mb{u} \\right]_\\mb{P}$. ::
+    :-: :claim: $\\left[\\mb{v}, \\mb{v} \\right]_\\mb{P} = 0 = \\left[\\mb{u}, \\mb{u} \\right]_\\mb{P}$. ::
 
-    :item: :claim: $\\left[\\mb{v}, \\overline{\\mb{v}} \\right]_\\mb{P} = \\overline{\\left[\\mb{u}, \\overline{\\mb{u}} \\right]_\\mb{P}} = \\mb{u}^* \\mb{v} = \\mb{v}^\\top \\mb{P v}$. ::
+    :-: :claim: $\\left[\\mb{v}, \\overline{\\mb{v}} \\right]_\\mb{P} = \\overline{\\left[\\mb{u}, \\overline{\\mb{u}} \\right]_\\mb{P}} = \\mb{u}^* \\mb{v} = \\mb{v}^\\top \\mb{P v}$. ::
 
   ::
 

@@ -12,7 +12,7 @@ class TestRenderPrivate:
         """Test that private render endpoint requires authentication."""
         response = await client.post(
             "/render/private",
-            json={"source": ":rsm: test ::", "file_id": 1}
+            json={"source": " test ", "file_id": 1}
         )
         assert response.status_code == 401
 
@@ -22,7 +22,7 @@ class TestRenderPrivate:
 
         response = await client.post(
             "/render/private",
-            json={"source": ":rsm: test content ::", "file_id": 999},
+            json={"source": " test content ", "file_id": 999},
             headers=headers
         )
 
@@ -34,7 +34,7 @@ class TestRenderPrivate:
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
         # Create a file first
-        file = File(owner_id=authenticated_user['user_id'], source=":rsm: test ::")
+        file = File(owner_id=authenticated_user['user_id'], source="test ")
         db_session.add(file)
         await db_session.commit()
         await db_session.refresh(file)
@@ -50,14 +50,12 @@ class TestRenderPrivate:
         db_session.add(asset)
         await db_session.commit()
 
-        rsm_source = """:rsm:
-
-:figure:
-  :path: test_figure.html
-
+        rsm_source = """
+:figure:{
+   :path: test_figure.html
+}
 ::
-
-::"""
+"""
 
         response = await client.post(
             "/render/private",
@@ -75,7 +73,7 @@ class TestRenderPrivate:
 
         response = await client.post(
             "/render/private",
-            json={"source": ":rsm: test ::"},
+            json={"source": " test "},
             headers=headers
         )
 
@@ -86,7 +84,7 @@ class TestRenderPrivate:
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
         # Create a file first
-        file = File(owner_id=authenticated_user['user_id'], source=":rsm: test ::")
+        file = File(owner_id=authenticated_user['user_id'], source="test ")
         db_session.add(file)
         await db_session.commit()
         await db_session.refresh(file)
@@ -102,14 +100,12 @@ class TestRenderPrivate:
         db_session.add(asset)
         await db_session.commit()
 
-        rsm_source = """:rsm:
-
-:figure:
+        rsm_source = """
+:figure:{
   :path: private_asset.html
-
+}
 ::
-
-::"""
+"""
 
         # Public endpoint - should fail to find asset
         public_response = await client.post(
