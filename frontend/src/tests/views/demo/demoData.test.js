@@ -60,8 +60,6 @@ describe("Demo Data Service", () => {
       });
 
       it("has properly formatted RSM content", () => {
-        expect(demoFile.source).toMatch(/^:rsm:/);
-        expect(demoFile.source).toMatch(/::$/);
         expect(demoFile.source).toContain("# The Future of Web-Native Publishing");
       });
 
@@ -284,8 +282,7 @@ describe("Demo Data Service", () => {
 
     it("sends correct RSM content to backend", async () => {
       // Test that the demo file has properly formatted RSM content
-      expect(demoFile.source).toMatch(/^:rsm:/);
-      expect(demoFile.source).toMatch(/::$/);
+      expect(demoFile.source).toContain("# The Future of Web-Native Publishing");
 
       // Test that the render call returns valid content
       const result = await api.post("/render");

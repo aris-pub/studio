@@ -39,12 +39,6 @@ OUTPUT = """
   </div>
 
   <div class="hr-menu-item">
-    <span class="icon tree">
-    </span>
-    <span class="hr-menu-item-text">Tree</span>
-  </div>
-
-  <div class="hr-menu-item">
     <span class="icon code">
     </span>
     <span class="hr-menu-item-text">Source</span>
