@@ -94,28 +94,62 @@ async def test_render(client: AsyncClient):
 
 async def test_render_with_static_figure_asset(client: AsyncClient):
     """Test that public render endpoint resolves figures from static files."""
-    # Test RSM with figure directive pointing to existing static asset
-    rsm_source = """# Test Document with Interactive Chart
+    # Create a small test HTML file in the RSM static directory
+    import rsm
+    rsm_static_dir = Path(rsm.__file__).parent / "static"
+    test_file_path = rsm_static_dir / "test-chart.html"
+
+    # Create test content (small, not 4.4MB!)
+    test_chart_content = """<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+</head>
+<body>
+    <div id="test-chart">
+        <h2>Iris Species Classification by Petal Dimensions</h2>
+        <div class="chart-data">
+            <span class="species">Iris Setosa</span>
+        </div>
+    </div>
+    <script>
+        // plotly.js v3.0.1
+        Plotly.newPlot('test-chart', data, layout);
+    </script>
+</body>
+</html>"""
+
+    try:
+        # Write temporary test file
+        test_file_path.write_text(test_chart_content, encoding='utf-8')
+
+        # Test RSM with figure directive pointing to test static asset
+        rsm_source = """# Test Document with Interactive Chart
 
 :figure: {
-  :path: plotly-chart.html
+  :path: test-chart.html
 } ::
 
 This document demonstrates web-native publishing with interactive figures.
 """
 
-    response = await client.post("/render", json={"source": rsm_source})
-    assert response.status_code == 200
+        response = await client.post("/render", json={"source": rsm_source})
+        assert response.status_code == 200
 
-    rendered_html = response.json()
+        rendered_html = response.json()
 
-    # Verify the figure content is included in the response
-    assert "Test Document with Interactive Chart" in rendered_html
-    assert "Iris Species Classification by Petal Dimensions" in rendered_html
-    assert "Iris Setosa" in rendered_html
-    assert "plotly.js v3.0.1" in rendered_html  # Check for embedded Plotly library
-    assert "plotly-chart" in rendered_html
-    assert "This document demonstrates web-native publishing" in rendered_html
+        # Verify the figure content is included in the response
+        assert "Test Document with Interactive Chart" in rendered_html
+        assert "Iris Species Classification by Petal Dimensions" in rendered_html
+        assert "Iris Setosa" in rendered_html
+        assert "plotly.js v3.0.1" in rendered_html
+        assert "test-chart" in rendered_html
+        assert "This document demonstrates web-native publishing" in rendered_html
+
+    finally:
+        # Clean up test file
+        if test_file_path.exists():
+            test_file_path.unlink()
 
 
 async def test_render_with_missing_static_figure_asset(client: AsyncClient):
