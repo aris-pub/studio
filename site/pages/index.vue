@@ -373,6 +373,8 @@
   const openFaqs = ref(new Set());
 
   // RSM Demo Example (meta, self-documenting)
+
+  /* eslint-disable no-useless-escape */
   const rsmExample = reactive({
     source: `# Writing with RSM
 
@@ -389,12 +391,13 @@ Write equations using LaTeX syntax. Display equations get automatic numbering.
 
 \$\${:label: gaussian}
 \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
-$$
+\$\$
 
 References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable tooltips.
     `,
     rendered: "",
   });
+  /* eslint-enable no-useless-escape */
 
   // Syntax highlighted source
   const highlightedSource = computed(() => {
@@ -549,7 +552,6 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
     if (renderTimer.value) {
       clearTimeout(renderTimer.value);
     }
-
   };
 
   // RSM Initialization Function

@@ -115,8 +115,8 @@
 
             // Get child nodes recursively
             const children = Array.from(node.childNodes)
-                                  .map(createVNode)
-                                  .filter((vnode) => vnode !== null && vnode !== "");
+              .map(createVNode)
+              .filter((vnode) => vnode !== null && vnode !== "");
 
             // If this is hr-info, append FeedbackIcon to children
             if (isHrInfo) {
@@ -134,8 +134,8 @@
         const parser = new DOMParser();
         const dom = parser.parseFromString(htmlString, "text/html");
         const bodyContent = Array.from(dom.body.childNodes)
-                                 .map(createVNode)
-                                 .filter((vnode) => vnode !== null && vnode !== "");
+          .map(createVNode)
+          .filter((vnode) => vnode !== null && vnode !== "");
 
         // Attach a ref to the root node -- and remember to return a render function
         return () => h("div", { ref: "mountPointRef" }, bodyContent);
@@ -167,6 +167,5 @@
     & section.level-1 {
       margin-block: 0px !important;
     }
-
   }
 </style>

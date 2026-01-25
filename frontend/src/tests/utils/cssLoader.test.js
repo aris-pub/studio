@@ -39,9 +39,7 @@ describe("cssLoader", () => {
       loadCSS(mockApi, "typography.css");
 
       const link = document.querySelector('link[rel="stylesheet"]');
-      expect(link.href).toBe(
-        `${import.meta.env.VITE_API_BASE_URL}/styles/css/typography.css`
-      );
+      expect(link.href).toBe(`${import.meta.env.VITE_API_BASE_URL}/styles/css/typography.css`);
     });
   });
 
