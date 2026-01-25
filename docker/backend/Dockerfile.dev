@@ -40,9 +40,8 @@ ENV PYTHONPATH="/app"
 # Note: Design assets are mounted as volume in dev mode via docker-compose
 # For production builds, they would be copied here
 
-# Copy entrypoint script and seed data
+# Copy entrypoint script
 COPY docker/backend/docker-entrypoint.sh /usr/local/bin/
-COPY docker/backend/seed_user.sql /usr/local/share/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose port

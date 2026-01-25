@@ -40,12 +40,6 @@ fi
 echo "Running database migrations..."
 alembic upgrade head
 
-# Seed database with user data
-echo "Seeding database with user data..."
-if [ -f /usr/local/share/seed_user.sql ]; then
-    PGPASSWORD=postgres psql -h postgres -U postgres -d aris -f /usr/local/share/seed_user.sql -q || echo "Seed data already exists or failed - continuing..."
-fi
-
 # Start the application
 echo "Starting FastAPI application..."
 exec "$@"
