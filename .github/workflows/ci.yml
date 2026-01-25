@@ -75,13 +75,13 @@ jobs:
       run: uv python install 3.13
 
     - name: Cache uv
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/uv
         key: uv-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
 
     - name: Cache pytest
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: backend/.pytest_cache
         key: pytest-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
@@ -137,7 +137,7 @@ jobs:
       run: npm ci
 
     - name: Cache vitest
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: frontend/node_modules/.vitest
         key: vitest-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
@@ -178,7 +178,7 @@ jobs:
       run: npm ci
 
     - name: Cache vitest
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: site/node_modules/.vitest
         key: vitest-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
@@ -284,7 +284,7 @@ jobs:
       run: uv run alembic upgrade head
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -511,7 +511,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -657,7 +657,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -835,7 +835,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/Library/Caches/ms-playwright
@@ -1015,7 +1015,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -1176,7 +1176,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -1355,7 +1355,7 @@ jobs:
       run: npm ci
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/Library/Caches/ms-playwright
