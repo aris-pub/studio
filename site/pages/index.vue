@@ -120,7 +120,7 @@
               aria-labelledby="tab-editor"
             >
               <img
-                :src="isDarkMode ? '/studio-focus-view-dark.png' : '/studio-editor-view.png'"
+                :src="isDarkMode ? '/studio-home-view-dark.png' : '/studio-editor-view.png'"
                 alt="RSM Studio editor with source and preview panels"
               />
             </div>
@@ -131,7 +131,7 @@
               aria-labelledby="tab-focus"
             >
               <img
-                :src="isDarkMode ? '/studio-home-view-dark.png' : '/studio-focus-view.png'"
+                :src="isDarkMode ? '/studio-focus-view-dark.png' : '/studio-focus-view.png'"
                 alt="RSM Studio focus mode with interactive tooltip"
               />
             </div>
