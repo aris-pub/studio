@@ -949,12 +949,12 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
     line-height: var(--header-line-height);
     display: inline-flex;
     align-items: center;
-    gap: 0.1rem;
+    gap: 0.05em;
   }
 
   .hero-logo {
-    width: 56px;
-    height: 56px;
+    width: calc(3.5rem * 0.95);
+    height: calc(3.5rem * 0.95);
   }
 
   .hero-text {

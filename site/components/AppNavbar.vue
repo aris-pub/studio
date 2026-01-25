@@ -71,7 +71,7 @@
   .nav-brand {
     display: flex;
     align-items: center;
-    gap: 0.1rem;
+    gap: 0.05em;
     font-size: 1.25rem;
     font-weight: var(--weight-semi);
     color: var(--primary-900);
@@ -80,8 +80,8 @@
   }
 
   .nav-logo {
-    width: 32px;
-    height: 32px;
+    width: calc(1.25rem * 0.95);
+    height: calc(1.25rem * 0.95);
   }
 
   .nav-text {
