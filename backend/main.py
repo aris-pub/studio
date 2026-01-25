@@ -256,7 +256,9 @@ async def reload_rsm():
 
 
 origins = [
-    "https://aris-frontend.netlify.app",  # Netlify frontend
+    "https://app.rsm.studio",  # Production frontend
+    "https://rsm.studio",  # Production landing site
+    "https://aris-frontend.netlify.app",  # Legacy Netlify URL (remove after migration)
 ]
 
 # Add local development origins only if environment variables are set
