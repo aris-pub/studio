@@ -37,7 +37,7 @@ test.describe.skip("Demo Workspace Functionality @demo-disabled @desktop-only", 
           await expect(sourcePanel).toBeVisible();
 
           const sourceText = await sourcePanel.textContent();
-          expect(sourceText).toContain(":rsm:");
+          expect(sourceText).toContain("The Future of Web-Native Publishing");
         }
       }
     });
@@ -157,7 +157,6 @@ test.describe.skip("Demo Workspace Functionality @demo-disabled @desktop-only", 
 
           // Editor should contain RSM content
           const editorText = await editor.textContent();
-          expect(editorText).toContain(":rsm:");
           expect(editorText).toContain("The Future of Web-Native Publishing");
         }
       }

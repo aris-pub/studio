@@ -58,7 +58,7 @@ Content after unclosed enumerate.
             "missing_rsm_tags": """
 # Document Missing RSM Tags
 
-This document doesn't have proper :rsm: opening and closing tags.
+This document is a test for missing RSM structure tags.
 
 :itemize:
 :-: Item without proper document structure

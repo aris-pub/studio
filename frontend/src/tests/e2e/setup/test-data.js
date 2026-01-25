@@ -39,36 +39,27 @@ console.log("[TestData] Test credentials configuration:", {
 export const TEST_FILES = {
   SAMPLE_RSM: {
     title: "Sample Document",
-    source: `:rsm:
-# Sample Document
+    source: `# Sample Document
 
 This is a sample RSM document for testing.
 
 ## Introduction
 
-Welcome to *Aris*, the web-native scientific publishing platform.
-
-::`,
+Welcome to *Aris*, the web-native scientific publishing platform.`,
   },
 
   MINIMAL_RSM: {
     title: "Minimal Test File",
-    source: `:rsm:
-# Test File
+    source: `# Test File
 
-Simple content for testing.
-
-::`,
+Simple content for testing.`,
   },
 };
 
 // Generate unique test data helpers
 export const generateTestFile = (suffix = "") => ({
   title: `Test File ${Date.now()}${suffix}`,
-  source: `:rsm:
-# Test File ${Date.now()}${suffix}
+  source: `# Test File ${Date.now()}${suffix}
 
-This is a test file created at ${new Date().toISOString()}.
-
-::`,
+This is a test file created at ${new Date().toISOString()}.`,
 });

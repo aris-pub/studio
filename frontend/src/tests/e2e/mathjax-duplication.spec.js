@@ -19,8 +19,7 @@ import { TEST_CREDENTIALS } from "./setup/test-data.js";
 // increase is due to the duplication bug, not new math being added.
 // - Inline math: single $ delimiters -> renders as span.math
 // - Block math: double $$ delimiters -> renders as div.mathblock
-const RSM_SOURCE_WITH_MATH = `:rsm:
-# Test Document for MathJax Bug
+const RSM_SOURCE_WITH_MATH = `# Test Document for MathJax Bug
 
 This document contains inline math $a^2 + b^2 = c^2$ and also $E = mc^2$ here.
 
@@ -30,9 +29,7 @@ $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
 
 And another block equation\\:
 
-$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$
-
-::`;
+$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$`;
 
 test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   let authHelpers;
@@ -86,7 +83,7 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   }) => {
     // This test catches a bug where dynamic import() creates new module instances,
     // bypassing the initialization guard and causing infinite recursion / stack overflow.
-    const source = `:rsm:\n# Test\n\nInline math $x^2$ here.\n::`;
+    const source = `# Test\n\nInline math $x^2$ here.`;
     const fileId = await createTestFile(request, source);
 
     try {
@@ -152,7 +149,7 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   }) => {
     // This test ensures MathJax actually renders math on first load.
     // The bug caused MathJax to never load, leaving raw LaTeX visible.
-    const source = `:rsm:\n# Math Test\n\nEquation: $E = mc^2$\n\nBlock:\n\n$$\\sum_{i=1}^n i$$\n\n::`;
+    const source = `# Math Test\n\nEquation: $E = mc^2$\n\nBlock:\n\n$$\\sum_{i=1}^n i$$\n`;
     const fileId = await createTestFile(request, source);
 
     try {

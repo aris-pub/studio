@@ -112,7 +112,7 @@ async def check_rsm_rendering_health() -> Dict[str, Any]:
         import rsm
 
         # Test simple RSM rendering
-        test_rsm = ":rsm:\nTest content\n::"
+        test_rsm = "# Test content"
         result = rsm.render(test_rsm, handrails=True)
 
         response_time = round((time.time() - start_time) * 1000, 2)

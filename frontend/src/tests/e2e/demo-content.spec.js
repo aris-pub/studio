@@ -513,8 +513,7 @@ test.describe.skip("Demo Content Rendering @demo-disabled", () => {
 
       const manuscriptText = await page.locator('[data-testid="manuscript-viewer"]').textContent();
 
-      // Should not contain raw RSM syntax
-      expect(manuscriptText).not.toContain(":rsm:");
+      // Should not contain raw RSM directive syntax
       expect(manuscriptText).not.toContain(":itemize:");
       expect(manuscriptText).not.toContain(":enumerate:");
       expect(manuscriptText).not.toContain(":-:");

@@ -88,7 +88,7 @@ async def test_list_user_assets(db_session, test_user, test_file):
     """Test listing all user assets"""
     # Create a second file for the second asset
     from aris.models import File
-    file2 = File(owner_id=test_user.id, source=":rsm: Another test file. ::")
+    file2 = File(owner_id=test_user.id, source="Another test file.")
     db_session.add(file2)
     await db_session.commit()
     await db_session.refresh(file2)
@@ -122,7 +122,7 @@ async def test_list_user_assets_excludes_soft_deleted(db_session, test_user, tes
     """Test that listing assets excludes soft-deleted ones"""
     # Create a second file for the second asset
     from aris.models import File
-    file2 = File(owner_id=test_user.id, source=":rsm: Another test file. ::")
+    file2 = File(owner_id=test_user.id, source="Another test file.")
     db_session.add(file2)
     await db_session.commit()
     await db_session.refresh(file2)

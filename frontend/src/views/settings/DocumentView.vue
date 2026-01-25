@@ -19,8 +19,7 @@
         filtered: false,
         isMountedAt: null,
         html: "",
-        source: `:rsm:
-# File Settings Preview
+        source: `# File Settings Preview
 
 :author:
 :name: ${user.value.name}
@@ -38,8 +37,6 @@ Lorem ipsum.
 
 :remark:
 Insightful remark goes here, with a reference to the earlier :ref:sec::.
-::
-
 ::`,
       },
       null

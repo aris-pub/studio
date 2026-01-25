@@ -63,7 +63,10 @@ app = FastAPI(
     ## RSM Format
 
     Research Source Markup (RSM) is a specialized markup format for scientific documents.
-    Documents must start with `:rsm:` and end with `::`.
+
+    **Note**: The `:rsm:` wrapper tags are now deprecated and no longer required.
+    Documents can be written directly in RSM markup without wrapping them in
+    `:rsm:` at the start and `::` at the end.
 
     ## Getting Started
 

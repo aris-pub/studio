@@ -27,7 +27,7 @@ vi.mock("@/views/demo/demoData.js", () => ({
   demoFile: {
     id: 999,
     title: "Test Demo File",
-    source: ":rsm:# Test Content::",
+    source: "# Test Content",
   },
   demoUser: { id: 1, name: "Demo User" },
   demoFileStore: { files: [] },
@@ -356,7 +356,7 @@ describe("Demo View", () => {
 
       // The file should be provided to Canvas for content loading
       expect(provided.file).toBeDefined();
-      expect(provided.file.value.source).toBe(":rsm:# Test Content::");
+      expect(provided.file.value.source).toBe("# Test Content");
     });
   });
 

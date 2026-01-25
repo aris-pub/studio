@@ -416,7 +416,8 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
       );
     });
 
-    // Highlight :rsm: and its closing ::
+    // Highlight :rsm: wrapper (deprecated - no longer required in RSM 0.5+)
+    // This is kept for backward compatibility when displaying old examples
     text = text.replace(/:rsm:/g, '<span class="rsm-delimiter">:rsm:</span>');
     text = text.replace(/^::$/gm, '<span class="rsm-delimiter">::</span>');
 

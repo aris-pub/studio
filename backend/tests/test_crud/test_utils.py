@@ -38,27 +38,27 @@ async def test_extract_title_none_file():
 
 
 async def test_extract_title_existing_title():
-    file = File(title="Explicit Title", source=":rsm: content ::")
+    file = File(title="Explicit Title", source="content")
     title = await extract_title(file)
     assert title == "Explicit Title"
 
 
 async def test_extract_title_parsed(monkeypatch):
     monkeypatch.setattr(rsm.app, "ParserApp", lambda plain: fake_app("ParserApp", plain))
-    file = File(source=":rsm: content ::")
+    file = File(source="content")
     title = await extract_title(file)
     assert title == "Parsed Title"
 
 
 async def test_extract_section_found(monkeypatch):
     monkeypatch.setattr(rsm.app, "ProcessorApp", lambda **kw: fake_app("ProcessorApp", **kw))
-    file = File(source=":rsm: content ::")
+    file = File(source="content")
     section = await extract_section(file, "section-name")
     assert section == ""  # BeautifulSoup returns nothing with empty body
 
 
 async def test_extract_section_not_found(monkeypatch):
     monkeypatch.setattr(rsm.app, "ProcessorApp", lambda **kw: fake_app("ProcessorApp", **kw))
-    file = File(source=":rsm: content ::")
+    file = File(source="content")
     section = await extract_section(file, "nonexistent")
     assert section == ""

@@ -35,7 +35,7 @@ async def sample_file(client: AsyncClient, authenticated_user):
             "title": "Test Document",
             "abstract": "A test document",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
+            "source": "test content",
         },
     )
     return response.json()

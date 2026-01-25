@@ -66,7 +66,7 @@ async def test_annotation_creation(db_session):
     await db_session.commit()
     await db_session.refresh(user)
     
-    file = File(owner_id=user.id, source=":rsm: Test content ::")
+    file = File(owner_id=user.id, source="Test content")
     db_session.add(file)
     await db_session.commit()
     await db_session.refresh(file)
@@ -89,7 +89,7 @@ async def test_annotation_message_creation(db_session):
     await db_session.commit()
     await db_session.refresh(user)
 
-    file = File(owner_id=user.id, source=":rsm: Test content ::")
+    file = File(owner_id=user.id, source="Test content")
     db_session.add(file)
     await db_session.commit()
     await db_session.refresh(file)
@@ -160,13 +160,13 @@ def test_new_user_email_unverified():
 
 def test_file_version_field_defaults():
     """Test that File model has version field with correct default."""
-    file = File(owner_id=1, source=":rsm: Test content ::")
+    file = File(owner_id=1, source="Test content")
     assert file.version == 0
 
 
 def test_file_version_field_validation():
     """Test that File model version field accepts valid integer values."""
-    file = File(owner_id=1, source=":rsm: Test content ::", version=2)
+    file = File(owner_id=1, source="Test content", version=2)
     assert file.version == 2
     
     file.version = 3
@@ -176,27 +176,27 @@ def test_file_version_field_validation():
 def test_file_version_field_constraints():
     """Test that File model version field has proper constraints."""
     # Version should be non-negative integer
-    file = File(owner_id=1, source=":rsm: Test content ::", version=0)
+    file = File(owner_id=1, source="Test content", version=0)
     assert file.version == 0
     
     # Version should accept positive integers
-    file = File(owner_id=1, source=":rsm: Test content ::", version=1)
+    file = File(owner_id=1, source="Test content", version=1)
     assert file.version == 1
     
     # Version should not be negative (will be validated at DB level)
-    file = File(owner_id=1, source=":rsm: Test content ::", version=-1)
+    file = File(owner_id=1, source="Test content", version=-1)
     assert file.version == -1  # Model allows it, DB will reject
 
 
 def test_file_prev_version_id_field_defaults():
     """Test that File model has prev_version_id field with correct default."""
-    file = File(owner_id=1, source=":rsm: Test content ::")
+    file = File(owner_id=1, source="Test content")
     assert file.prev_version_id is None
 
 
 def test_file_prev_version_id_field_validation():
     """Test that File model prev_version_id field accepts valid integer values."""
-    file = File(owner_id=1, source=":rsm: Test content ::", prev_version_id=123)
+    file = File(owner_id=1, source="Test content", prev_version_id=123)
     assert file.prev_version_id == 123
     
     file.prev_version_id = 456
@@ -215,7 +215,7 @@ async def test_file_prev_version_id_foreign_key_relationship(db_session):
     await db_session.refresh(user)
     
     # Create the original file (version 1)
-    original_file = File(owner_id=user.id, source=":rsm: Original content ::", version=1)
+    original_file = File(owner_id=user.id, source="Original content", version=1)
     db_session.add(original_file)
     await db_session.commit()
     await db_session.refresh(original_file)
@@ -223,7 +223,7 @@ async def test_file_prev_version_id_foreign_key_relationship(db_session):
     # Create a new version that references the original
     new_version = File(
         owner_id=user.id, 
-        source=":rsm: Updated content ::", 
+        source="Updated content", 
         version=2,
         prev_version_id=original_file.id
     )
@@ -246,7 +246,7 @@ async def test_file_prev_version_id_relationship_navigation(db_session):
     await db_session.refresh(user)
     
     # Create version 1
-    v1 = File(owner_id=user.id, source=":rsm: V1 content ::", version=1)
+    v1 = File(owner_id=user.id, source="V1 content", version=1)
     db_session.add(v1)
     await db_session.commit()
     await db_session.refresh(v1)
@@ -254,7 +254,7 @@ async def test_file_prev_version_id_relationship_navigation(db_session):
     # Create version 2 that references version 1
     v2 = File(
         owner_id=user.id, 
-        source=":rsm: V2 content ::", 
+        source="V2 content", 
         version=2,
         prev_version_id=v1.id
     )
@@ -265,7 +265,7 @@ async def test_file_prev_version_id_relationship_navigation(db_session):
     # Create version 3 that references version 2
     v3 = File(
         owner_id=user.id, 
-        source=":rsm: V3 content ::", 
+        source="V3 content", 
         version=3,
         prev_version_id=v2.id
     )

@@ -28,7 +28,7 @@ vi.mock("@/views/demo/demoData.js", () => ({
   demoFile: {
     id: 999,
     title: "Test Demo File",
-    source: ":rsm:# Test Content::",
+    source: "# Test Content",
     html: null,
   },
   demoUser: { id: 1, name: "Demo User" },

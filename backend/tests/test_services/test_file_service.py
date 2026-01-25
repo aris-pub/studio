@@ -177,13 +177,13 @@ class TestFileUpdateData:
         update_data = FileUpdateData(
             title="Updated Title",
             abstract="Updated abstract",
-            source=":rsm:\nUpdated content\n",
+            source="\nUpdated content\n",
             status=FileStatus.DRAFT
         )
 
         assert update_data.title == "Updated Title"
         assert update_data.abstract == "Updated abstract"
-        assert update_data.source == ":rsm:\nUpdated content\n"
+        assert update_data.source == "\nUpdated content\n"
         assert update_data.status == FileStatus.DRAFT
 
     def test_file_update_data_has_updates(self):
@@ -196,7 +196,7 @@ class TestFileUpdateData:
         update_with_title = FileUpdateData(title="New Title")
         assert update_with_title.has_updates()
 
-        update_with_source = FileUpdateData(source=":rsm:\nNew content\n")
+        update_with_source = FileUpdateData(source="\nNew content\n")
         assert update_with_source.has_updates()
 
 
@@ -214,7 +214,7 @@ class TestInMemoryFileService:
         return FileCreateData(
             title="Sample File",
             abstract="Sample abstract",
-            source=":rsm:\nSample content\n",
+            source="\nSample content\n",
             owner_id=123,
             status=FileStatus.DRAFT
         )
@@ -229,7 +229,7 @@ class TestInMemoryFileService:
         assert created_file.id > 0
         assert created_file.title == "Sample File"
         assert created_file.abstract == "Sample abstract"
-        assert created_file.source == ":rsm:\nSample content\n"
+        assert created_file.source == "\nSample content\n"
         assert created_file.owner_id == 123
         assert created_file.status == FileStatus.DRAFT
         assert created_file.created_at is not None
@@ -266,12 +266,12 @@ class TestInMemoryFileService:
         # Create files for different users
         user1_file = await file_service.create_file(FileCreateData(
             title="User 1 File",
-            source=":rsm:\nUser 1 content\n",
+            source="\nUser 1 content\n",
             owner_id=123
         ))
         user2_file = await file_service.create_file(FileCreateData(
             title="User 2 File",
-            source=":rsm:\nUser 2 content\n",
+            source="\nUser 2 content\n",
             owner_id=456
         ))
 
@@ -291,12 +291,12 @@ class TestInMemoryFileService:
         # Create multiple files
         file1 = await file_service.create_file(FileCreateData(
             title="File 1",
-            source=":rsm:\nContent 1\n",
+            source="\nContent 1\n",
             owner_id=123
         ))
         file2 = await file_service.create_file(FileCreateData(
             title="File 2",
-            source=":rsm:\nContent 2\n",
+            source="\nContent 2\n",
             owner_id=456
         ))
 
@@ -316,7 +316,7 @@ class TestInMemoryFileService:
 
         update_data = FileUpdateData(
             title="Updated Title",
-            source=":rsm:\nUpdated content\n"
+            source="\nUpdated content\n"
         )
 
         updated_file = await file_service.update_file(created_file.id, update_data)
@@ -324,7 +324,7 @@ class TestInMemoryFileService:
         assert updated_file is not None
         assert updated_file.id == created_file.id
         assert updated_file.title == "Updated Title"
-        assert updated_file.source == ":rsm:\nUpdated content\n"
+        assert updated_file.source == "\nUpdated content\n"
         assert updated_file.abstract == sample_create_data.abstract  # unchanged
         assert updated_file.last_edited_at >= created_file.last_edited_at
 
@@ -394,7 +394,7 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         # Create a file with RSM content
-        rsm_content = ":rsm:\n# Test Title\nThis is test content.\n"
+        rsm_content = "\n# Test Title\nThis is test content.\n"
         create_data = FileCreateData(
             title="RSM Test File",
             abstract="Test abstract",
@@ -452,7 +452,7 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         # Create a file with RSM content
-        rsm_content = ":rsm:\n# Cached Title\nCached content.\n"
+        rsm_content = "\n# Cached Title\nCached content.\n"
         create_data = FileCreateData(
             title="Cache Test File",
             abstract="Test abstract",
@@ -481,7 +481,7 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         # Create a file with empty title but RSM content with title
-        rsm_content = ":rsm:\n# Extracted Title from RSM\nSome content here\n"
+        rsm_content = "\n# Extracted Title from RSM\nSome content here\n"
         create_data = FileCreateData(
             title="",  # Empty title to force extraction
             abstract="Test abstract",
@@ -505,7 +505,7 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         # Create a file with explicit title and different RSM title
-        rsm_content = ":rsm:\n# RSM Title\nSome content here\n"
+        rsm_content = "\n# RSM Title\nSome content here\n"
         create_data = FileCreateData(
             title="Explicit Title",  # Explicit title should take precedence
             abstract="Test abstract",
@@ -528,7 +528,7 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         # Create a file with empty title
-        rsm_content = ":rsm:\n# Cached Title\nSome content here\n"
+        rsm_content = "\n# Cached Title\nSome content here\n"
         create_data = FileCreateData(
             title="",
             abstract="Test abstract",
@@ -561,7 +561,7 @@ class TestInMemoryFileServiceDatabaseSync:
         return FileCreateData(
             title="Sample File",
             abstract="Sample abstract",
-            source=":rsm:\nSample content\n",
+            source="\nSample content\n",
             owner_id=123,
             status=FileStatus.DRAFT
         )
@@ -720,7 +720,7 @@ class TestInMemoryFileServiceAssetIntegration:
         await file_service.initialize()
 
         # Create a file with RSM content that references an asset
-        rsm_content = ":rsm:\n\n:figure:\n  :path: missing-image.png\n\n::\n\n"
+        rsm_content = "\n\n:figure:\n  :path: missing-image.png\n\n\n\n"
         create_data = FileCreateData(
             title="No Asset Test File",
             abstract="Test abstract",

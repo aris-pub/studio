@@ -2,12 +2,9 @@ import { test, expect } from "@playwright/test";
 import { AuthHelpers } from "./utils/auth-helpers.js";
 
 // Minimal RSM source with just one inline math expression
-const MINIMAL_SOURCE = `:rsm:
-# Title
+const MINIMAL_SOURCE = `# Title
 
-Math: $x^2$
-
-::`;
+Math: $x^2$`;
 
 test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }) => {
   const baseURL = process.env.VITE_API_BASE_URL;

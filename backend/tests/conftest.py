@@ -200,7 +200,7 @@ async def test_file(db_session, test_user):
     """Create a test file directly in the database."""
     file = File(
         owner_id=test_user.id,
-        source=":rsm: Test file. ::",
+        source="Test file.",
     )
     db_session.add(file)
     await db_session.commit()
@@ -227,7 +227,7 @@ class TestConstants:
 
     TEST_FILE_TITLE = "Test Document"
     TEST_FILE_ABSTRACT = "A test document"
-    TEST_FILE_SOURCE = ":rsm:test content::"
+    TEST_FILE_SOURCE = "test content"
 
     IMAGE_SIZE = (100, 100)
     IMAGE_COLOR = "red"

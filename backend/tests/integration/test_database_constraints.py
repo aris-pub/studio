@@ -42,7 +42,7 @@ class TestDatabaseConstraints:
         # Try to create file with non-existent owner
         file = File(
             owner_id=99999,  # Non-existent integer ID
-            source=":rsm:test::",
+            source="test",
             title="Test File"
         )
         db_session.add(file)
@@ -55,7 +55,7 @@ class TestDatabaseConstraints:
         # Create a file
         file = File(
             owner_id=test_user.id,
-            source=":rsm:test::",
+            source="test",
             title="Test File"
         )
         db_session.add(file)
@@ -181,7 +181,7 @@ class TestDatabaseConstraints:
         # Create file for this user
         file = File(
             owner_id=user.id,
-            source=":rsm:content::",
+            source="content",
             title="User File"
         )
         db_session.add(file)
@@ -325,12 +325,12 @@ class TestTransactionBehavior:
         # Create files for both users
         file1 = File(
             owner_id=user1.id,
-            source=":rsm:file1::",
+            source="file1",
             title="File 1"
         )
         file2 = File(
             owner_id=user2.id,
-            source=":rsm:file2::",
+            source="file2",
             title="File 2"
         )
         
@@ -358,7 +358,7 @@ class TestConcurrentOperations:
         async def create_test_file(title_suffix):
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:content {title_suffix}::",
+                source=f"content {title_suffix}",
                 title=f"Concurrent File {title_suffix}"
             )
             db_session.add(file)
@@ -467,7 +467,7 @@ class TestDatabasePerformance:
         for i in range(5):  # Small number for test
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:content {i}::",
+                source=f"content {i}",
                 title=f"Performance Test File {i}",
                 abstract=f"Abstract for file {i}"
             )
@@ -528,7 +528,7 @@ class TestVersioningConstraints:
         for i in range(1, 6):
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:Version {i} content::",
+                source=f"Version {i} content",
                 title=f"Versioned File V{i}",
                 version=i
             )
@@ -563,7 +563,7 @@ class TestVersioningConstraints:
         for i in range(1, 6):
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:Version {i} content::",
+                source=f"Version {i} content",
                 title=f"Chained File V{i}",
                 version=i,
                 prev_version_id=prev_id
@@ -598,7 +598,7 @@ class TestVersioningConstraints:
         # Test positive version numbers
         valid_file = File(
             owner_id=test_user.id,
-            source=":rsm:Valid version::",
+            source="Valid version",
             title="Valid Version File",
             version=0
         )
@@ -618,7 +618,7 @@ class TestVersioningConstraints:
         # Try to create file with non-existent prev_version_id
         invalid_file = File(
             owner_id=test_user.id,
-            source=":rsm:Invalid reference::",
+            source="Invalid reference",
             title="Invalid Reference File",
             version=2,
             prev_version_id=99999  # Non-existent ID
@@ -633,7 +633,7 @@ class TestVersioningConstraints:
         # Create original file
         original = File(
             owner_id=test_user.id,
-            source=":rsm:Original content::",
+            source="Original content",
             title="Original File",
             version=0
         )
@@ -644,7 +644,7 @@ class TestVersioningConstraints:
         # Create version 2 referencing original
         v2 = File(
             owner_id=test_user.id,
-            source=":rsm:Version 2 content::",
+            source="Version 2 content",
             title="Version 2 File",
             version=2,
             prev_version_id=original.id
@@ -656,7 +656,7 @@ class TestVersioningConstraints:
         # Create version 3 referencing v2
         v3 = File(
             owner_id=test_user.id,
-            source=":rsm:Version 3 content::",
+            source="Version 3 content",
             title="Version 3 File",
             version=3,
             prev_version_id=v2.id
@@ -678,7 +678,7 @@ class TestVersioningConstraints:
             for version in range(0, 3):
                 file = File(
                     owner_id=test_user.id,
-                    source=f":rsm:Chain {chain_id} Version {version}::",
+                    source=f"Chain {chain_id} Version {version}",
                     title=f"Chain {chain_id} V{version}",
                     version=version,
                     prev_version_id=prev_id
@@ -720,7 +720,7 @@ class TestVersioningConstraints:
         for version in versions:
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:Version {version} content::",
+                source=f"Version {version} content",
                 title=f"Ordered File V{version}",
                 version=version
             )
@@ -748,7 +748,7 @@ class TestVersioningConstraints:
         for i in range(1, 11):
             file = File(
                 owner_id=test_user.id,
-                source=f":rsm:Content {i}::",
+                source=f"Content {i}",
                 title=f"Coverage Test {i}",
                 version=i % 3  # Creates versions 1, 2, 0, 1, 2, 0, ...
             )

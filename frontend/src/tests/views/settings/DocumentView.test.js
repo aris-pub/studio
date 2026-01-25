@@ -19,8 +19,7 @@ vi.mock("@/models/File.js", () => {
     // Process template literals in source if user is available
     const processedSource =
       fileData.source ||
-      `:rsm:
-# File Settings Preview
+      `# File Settings Preview
 
 :author:
 :name: \${user.value.name}
@@ -39,8 +38,7 @@ You can **format** text and create [links](http://example.com).
 - Item 1
 - Item 2
 - Item 3
-
-::`;
+`;
 
     return {
       id: null,

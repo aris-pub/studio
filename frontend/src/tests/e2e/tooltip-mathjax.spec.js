@@ -14,8 +14,7 @@ import { AuthHelpers } from "./utils/auth-helpers.js";
  */
 
 // RSM source with a labeled math block and a reference to it
-const RSM_SOURCE_WITH_MATH_REFERENCE = `:rsm:
-# Tooltip Math Test
+const RSM_SOURCE_WITH_MATH_REFERENCE = `# Tooltip Math Test
 
 Here is an important equation:
 
@@ -25,9 +24,7 @@ Here is an important equation:
   x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
 ::
 
-The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.
-
-::`;
+The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.`;
 
 test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   let authHelpers;

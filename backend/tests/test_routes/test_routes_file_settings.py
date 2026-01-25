@@ -17,7 +17,7 @@ async def test_file(client: AsyncClient, authenticated_user):
             "title": "Test Document",
             "abstract": "A test document for settings",
             "owner_id": authenticated_user["user_id"],
-            "source": ":rsm:test content::",
+            "source": "test content",
         },
     )
     return response.json()
@@ -227,7 +227,7 @@ class TestFileSettings:
                 "title": "Other User's Document",
                 "abstract": "A document owned by another user",
                 "owner_id": other_user_id,
-                "source": ":rsm:other content::",
+                "source": "other content",
             },
         )
         file_id = file_response.json()["id"]
