@@ -58,6 +58,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -119,6 +121,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -160,6 +164,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -235,6 +241,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -427,6 +435,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -610,6 +620,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -735,6 +747,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -931,6 +945,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -1129,6 +1145,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
@@ -1255,6 +1273,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Clone RSM repository
       run: |
