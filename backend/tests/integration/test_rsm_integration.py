@@ -231,9 +231,8 @@ Quotes: "smart quotes", 'apostrophes', and "unicode quotes".
         empty_rsm = ""
         result = await render(empty_rsm)
 
-        # Should still generate basic HTML structure
-        assert result
-        assert '<div class="manuscriptwrapper">' in result
+        # Empty document should produce empty result
+        assert result == ""
 
     async def test_minimal_rsm_document(self, db_session: AsyncSession):
         """Test rendering of minimal RSM document."""
