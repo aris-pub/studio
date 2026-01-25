@@ -21,13 +21,13 @@ vi.mock("@/models/File.js", () => {
       fileData.source ||
       `# File Settings Preview
 
-:author:
+:author: {
 :name: \${user.value.name}
 :email: \${user.value.email}
-::
+} ::
 
 ## Sample Section Heading
-:label: sec
+{:label: sec}
 
 This is a sample document to preview your settings.
 

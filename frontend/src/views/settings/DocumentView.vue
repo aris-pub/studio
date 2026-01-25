@@ -21,13 +21,13 @@
         html: "",
         source: `# File Settings Preview
 
-:author:
+:author: {
 :name: ${user.value.name}
 :email: ${user.value.email}
-::
+}::
 
 ## Sample Section Heading
-:label: sec
+{:label: sec}
 
 Aris\\: the web-native, human-first ResOps platform.
 

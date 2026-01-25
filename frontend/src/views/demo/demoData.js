@@ -6,14 +6,11 @@ export const demoFile = {
   source: `# The Future of Web-Native Publishing
 
 :abstract:
-
-  This paper explores the revolutionary potential of web-native scientific publishing platforms in transforming how research is disseminated, consumed, and validated. We examine the limitations of traditional PDF-based publishing and propose a new paradigm that leverages modern web technologies to create interactive, accessible, and dynamic research documents.
-
+This paper explores the revolutionary potential of web-native scientific publishing platforms in transforming how research is disseminated, consumed, and validated. We examine the limitations of traditional PDF-based publishing and propose a new paradigm that leverages modern web technologies to create interactive, accessible, and dynamic research documents.
 ::
 
 ## Introduction
-
-:label: intro-section
+{:label: intro-section}
 
 The current landscape of scientific publishing relies heavily on static document formats that were designed for print media. While PDFs have served the academic community for decades, they present significant limitations in our increasingly digital world\\:
 
@@ -30,7 +27,6 @@ The current landscape of scientific publishing relies heavily on static document
 ::
 
 ### Research Questions
-
 This study addresses three primary research questions\\:
 
 :enumerate:
@@ -44,7 +40,6 @@ This study addresses three primary research questions\\:
 ::
 
 ## Methodology
-
 Our research employed a mixed-methods methodology approach combining\\:
 
 :itemize:
@@ -60,7 +55,6 @@ Our research employed a mixed-methods methodology approach combining\\:
 ::
 
 ### Technical Implementation
-
 We developed a proof-of-concept platform using\\:
 
 :itemize:
@@ -76,14 +70,12 @@ We developed a proof-of-concept platform using\\:
 ::
 
 ## Results
-
 Our findings demonstrate significant advantages of web-native publishing across multiple dimensions. The methodology validation confirmed our hypothesis that web-native platforms provide superior accessibility and engagement compared to traditional PDF-based systems.
 
-:figure:
+:figure: {
   :path: plotly-chart.html
-
-  :caption: This interactive plot shows the famous Iris dataset with species clustering by petal dimensions.
-
+}
+:caption: This interactive plot shows the famous Iris dataset with species clustering by petal dimensions.
 ::
 
 ## Discussion
