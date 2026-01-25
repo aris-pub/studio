@@ -264,15 +264,24 @@ origins = [
 if os.getenv('FRONTEND_PORT'):
     origins.extend([
         f"http://localhost:{os.getenv('FRONTEND_PORT')}",  # local Vue app (Vite dev server)
+        f"http://127.0.0.1:{os.getenv('FRONTEND_PORT')}",  # 127.0.0.1 variant
         f"http://localhost:{int(os.getenv('FRONTEND_PORT', '5173')) + 1}",  # alternate port
+        f"http://127.0.0.1:{int(os.getenv('FRONTEND_PORT', '5173')) + 1}",  # 127.0.0.1 variant
         f"http://localhost:{int(os.getenv('FRONTEND_PORT', '5173')) + 2}",  # third instance
+        f"http://127.0.0.1:{int(os.getenv('FRONTEND_PORT', '5173')) + 2}",  # 127.0.0.1 variant
     ])
 
 if os.getenv('SITE_PORT'):
-    origins.append(f"http://localhost:{os.getenv('SITE_PORT')}")  # local Nuxt app
+    origins.extend([
+        f"http://localhost:{os.getenv('SITE_PORT')}",  # local Nuxt app
+        f"http://127.0.0.1:{os.getenv('SITE_PORT')}",  # 127.0.0.1 variant
+    ])
 
 if os.getenv('STORYBOOK_PORT'):
-    origins.append(f"http://localhost:{os.getenv('STORYBOOK_PORT')}")  # local Storybook
+    origins.extend([
+        f"http://localhost:{os.getenv('STORYBOOK_PORT')}",  # local Storybook
+        f"http://127.0.0.1:{os.getenv('STORYBOOK_PORT')}",  # 127.0.0.1 variant
+    ])
 
 
 app.add_middleware(

@@ -537,171 +537,6 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
   // Cache for rendered content to avoid duplicate API calls
   const renderCache = new Map();
 
-  const examples = {
-    academic: {
-      markup: `:rsm:
-
-# Climate Change Impacts on Marine Ecosystems
-
-:author:
-  :name: Sarah Chen
-  :affiliation: Marine Biology Institute, University of California
-::
-
-:author:
-  :name: Maria Rodriguez
-  :affiliation: Marine Biology Institute, University of California
-::
-
-:abstract:
-Recent climate change has significantly altered marine ecosystems worldwide. We analyzed temperature data from 50+ monitoring stations over 20 years and found accelerating warming trends in surface waters. These changes correlate strongly with species migration patterns and biodiversity shifts.
-::
-
-## Introduction
-
-Ocean warming represents one of the most pressing environmental challenges of our time :cite:ipcc2021::. Our research quantifies regional impacts through comprehensive temperature monitoring.
-
-### Methods
-
-Temperature measurements were collected using automated sensors deployed across major oceanic regions. Statistical analysis employed regression models to identify trends.
-
-## Results
-
-Surface temperatures increased by 0.8°C ± 0.2°C over the study period. Migration patterns show clear northward shifts in 15 key species.
-
-:bibliography: ::
-
-::
-
-:bibtex:
-
-@book{ipcc2021,
-  title={Climate Change 2021: The Physical Science Basis},
-  author={IPCC},
-  year={2023},
-  publisher={Cambridge University Press},
-  doi={10.1017/9781009157896}
-}
-
-::
-`,
-      output: ref(`<div class="manuscript-header">
-<h1 class="manuscript-title">Climate Change Impacts on Marine Ecosystems</h1>
-<div class="manuscript-authors">Sarah Chen, David Williams, Maria Rodriguez</div>
-<div class="manuscript-affiliation">Marine Biology Institute, University of California</div>
-</div>
-<div class="abstract">
-<h2>Abstract</h2>
-<p>Recent climate change has significantly altered marine ecosystems worldwide. We analyzed temperature data from 50+ monitoring stations over 20 years and found accelerating warming trends in surface waters. These changes correlate strongly with species migration patterns and biodiversity shifts.</p>
-</div>
-<h1>Introduction</h1>
-<p>Ocean warming represents one of the most pressing environmental challenges of our time <a href="#ipcc2021" class="citation">[1]</a>. Our research builds on previous studies <a href="#chen2020" class="citation">[2]</a> to quantify regional impacts.</p>
-<h2>Methods</h2>
-<p>Temperature measurements were collected using automated sensors deployed across major oceanic regions. Statistical analysis employed regression models to identify trends.</p>
-<h1>Results</h1>
-<p>Surface temperatures increased by 0.8°C ± 0.2°C over the study period. Migration patterns show clear northward shifts in 15 key species.</p>
-<div class="bibliography">
-<h2>References</h2>
-<div class="reference" id="ipcc2021">[1] IPCC. Climate Change 2021: The Physical Science Basis. Cambridge University Press, 2021.</div>
-<div class="reference" id="chen2020">[2] Chen, S. and Lopez, M. Marine Temperature Trends in Pacific Waters. Ocean Science, 16:234-267, 2020.</div>
-</div>`),
-      context: "Write once, read anywhere",
-    },
-    interactive: {
-      markup: `:rsm:
-
-# Interactive Marine Data
-
-## Temperature Trends
-:label: temp-trends
-
-Global sea surface temperatures have risen dramatically. Click the chart below to explore regional variations.
-
-:figure:
-  :path: temperature-data.json
-  :caption: foobar
-::
-
-## Species Migration
-:label: migration
-
-As waters warm, species migrate toward cooler regions. The :ref:temp-trends, temperature data:: shows clear correlations with migration patterns.
-
-### Key Finding
-
-Our analysis of 15 species shows northward migration averaging 2.3 km/year. This rate has :span:{:label:acceleration}accelerated since 2015:: to 3.8 km/year.
-
-## Discussion
-
-The :ref:acceleration, accelerated migration rate:: suggests climate impacts are intensifying. Interactive exploration of our dataset reveals regional hotspots where adaptation strategies are most urgent.
-
-::
-`,
-      output: ref(`<h1>Interactive Marine Data</h1>
-<h2>Temperature Trends</h2>
-<p>Global sea surface temperatures have risen dramatically. Click the chart below to explore regional variations.</p>
-<div class="interactive-chart" data-src="temperature-data.json">
-<svg viewBox="0 0 400 200" class="chart-placeholder">
-<rect x="20" y="20" width="360" height="160" fill="none" stroke="#ccc"/>
-<line x1="40" y1="160" x2="380" y2="40" stroke="#e74c3c" stroke-width="2"/>
-<text x="200" y="195" text-anchor="middle" font-size="12">Years (2000-2020)</text>
-<text x="10" y="100" text-anchor="middle" font-size="12" transform="rotate(-90, 10, 100)">Temperature (°C)</text>
-</svg>
-</div>
-<h2>Species Migration</h2>
-<p>As waters warm, species migrate toward cooler regions. The <a href="#temp-trends">temperature data</a> shows clear correlations with migration patterns.</p>
-<h3>Key Finding</h3>
-<details class="collapsible">
-<summary>Click for details</summary>
-<p>Our analysis of 15 species shows northward migration averaging 2.3 km/year. This rate has <span class="tooltip-trigger">accelerated since 2015</span> to 3.8 km/year.</p>
-</details>
-<h2>Discussion</h2>
-<p>The <a href="#acceleration">accelerated migration rate</a> suggests climate impacts are intensifying. Interactive exploration of our dataset reveals regional hotspots where adaptation strategies are most urgent.</p>`),
-      context: "Write once, read anywhere",
-    },
-  };
-
-  const currentExample = computed(() => {
-    const example = examples[activeTab.value];
-    return {
-      markup: editableMarkup.value || example.markup,
-      output: example.output.value,
-      context: example.context,
-    };
-  });
-
-  // RSM Rendering Functions
-  const renderRsm = async (source) => {
-    // Check cache first
-    if (renderCache.has(source)) {
-      return renderCache.get(source);
-    }
-
-    try {
-      // Get runtime config for backend URL
-      const config = useRuntimeConfig();
-      const backendUrl = config.public.backendUrl || "http://localhost:8000";
-
-      const result = await $fetch(`${backendUrl}/render`, {
-        method: "POST",
-        body: { source },
-        timeout: 8000, // 8 second timeout
-      });
-
-      // Strip body tags from RSM response to get clean HTML
-      // Extract content between body tags
-      const bodyMatch = result.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      const cleanedResult = bodyMatch ? bodyMatch[1].trim() : result.trim();
-
-      // Cache the cleaned result
-      renderCache.set(source, cleanedResult);
-      return cleanedResult;
-    } catch (error) {
-      console.error("Failed to render RSM:", error);
-      throw error;
-    }
-  };
-
   // Real-time markup input handler
   const handleMarkupInput = (event) => {
     // Auto-resize textarea
@@ -715,40 +550,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       clearTimeout(renderTimer.value);
     }
 
-    // Set new timer for blazing fast debounced rendering
-    renderTimer.value = setTimeout(async () => {
-      if (editableMarkup.value.trim()) {
-        try {
-          demoLoading.value = true;
-          demoError.value = false;
-
-          const result = await renderRsm(editableMarkup.value);
-          const example = examples[activeTab.value];
-          example.output.value = result;
-
-          // Re-initialize RSM features after new content is rendered
-          await nextTick();
-          const outputElement = document.querySelector(".output-content");
-          if (outputElement) {
-            await initializeRsmContent(outputElement);
-          }
-        } catch (error) {
-          console.error("Failed to render user markup:", error);
-          demoError.value = true;
-        } finally {
-          demoLoading.value = false;
-        }
-      }
-    }, 150); // Ultra-fast debounce for real-time feel
-  };
-
-  // Reset to original example
-  const resetToExample = () => {
-    const example = examples[activeTab.value];
-    editableMarkup.value = example.markup;
-
-    // Trigger re-render with original content
-    handleMarkupInput();
   };
 
   // RSM Initialization Function
@@ -771,38 +572,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     } catch (error) {
       console.error("Failed to initialize RSM content:", error);
       // Gracefully continue without RSM features
-    }
-  };
-
-  const initializeDemo = async () => {
-    if (demoInitialized.value) return;
-
-    demoLoading.value = true;
-    demoError.value = false;
-
-    try {
-      // Render both examples in parallel
-      const [academicResult, interactiveResult] = await Promise.all([
-        renderRsm(examples.academic.markup),
-        renderRsm(examples.interactive.markup),
-      ]);
-
-      examples.academic.output.value = academicResult;
-      examples.interactive.output.value = interactiveResult;
-      demoInitialized.value = true;
-
-      // Initialize RSM features after content is rendered
-      await nextTick(); // Wait for DOM update
-      const outputElement = document.querySelector(".output-content");
-      if (outputElement) {
-        await initializeRsmContent(outputElement);
-      }
-    } catch (error) {
-      console.error("Failed to initialize demo content:", error);
-      demoError.value = true;
-      // Keep static fallback content that's already in the refs
-    } finally {
-      demoLoading.value = false;
     }
   };
 
@@ -1000,9 +769,6 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
     // Set initial mobile state
     isMobile.value = window.innerWidth < 768;
 
-    // Initialize editable markup with current example
-    editableMarkup.value = examples[activeTab.value].markup;
-
     // Set initial textarea height after next tick
     nextTick(() => {
       const textarea = document.querySelector('[data-testid="markup-editor"]');
@@ -1035,46 +801,7 @@ The :ref:acceleration, accelerated migration rate:: suggests climate impacts are
       window.removeEventListener("resize", handleResize);
     };
 
-    initializeDemo();
-
     return cleanup;
-  });
-
-  // Watch for tab changes and update editable content
-  watch(activeTab, async (newTab) => {
-    const example = examples[newTab];
-
-    // Update editable markup to show the new tab's example
-    editableMarkup.value = example.markup;
-
-    // Resize textarea to fit new content
-    await nextTick();
-    const textarea = document.querySelector('[data-testid="markup-editor"]');
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = textarea.scrollHeight + "px";
-    }
-
-    // Ensure the output is rendered if not cached
-    if (!renderCache.has(example.markup) && !demoError.value) {
-      demoLoading.value = true;
-      try {
-        const result = await renderRsm(example.markup);
-        example.output.value = result;
-      } catch (error) {
-        console.error("Failed to render tab content:", error);
-        demoError.value = true;
-      } finally {
-        demoLoading.value = false;
-      }
-    }
-
-    // Always re-initialize RSM features when switching tabs
-    await nextTick(); // Wait for DOM update
-    const outputElement = document.querySelector(".output-content");
-    if (outputElement && !demoError.value) {
-      await initializeRsmContent(outputElement);
-    }
   });
 
   // Methods
