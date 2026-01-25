@@ -1,3 +1,7 @@
+# Frontend app (Vue SPA)
+# Deploy to: app.rsm.studio
+# Configure custom domain in Netlify dashboard: Site settings > Domain management
+
 [build]
   base    = "frontend"
   publish = "dist"

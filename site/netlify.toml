@@ -1,0 +1,16 @@
+[build]
+  base    = "site"
+  publish = ".output/public"
+  command = "npm run build"
+
+[dev]
+  command = "npm run dev"
+  port = "${SITE_PORT}"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Custom domain configuration
+# Add rsm.studio in Netlify dashboard: Site settings > Domain management
