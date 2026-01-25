@@ -64,10 +64,6 @@ app = FastAPI(
 
     Research Source Markup (RSM) is a specialized markup format for scientific documents.
 
-    **Note**: The `:rsm:` wrapper tags are now deprecated and no longer required.
-    Documents can be written directly in RSM markup without wrapping them in
-    `:rsm:` at the start and `::` at the end.
-
     ## Getting Started
 
     1. Register a new account at `/register`
@@ -141,25 +137,25 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 @app.get("/debug/user-state", tags=["health"], summary="Debug User State")
 async def debug_user_state(db: AsyncSession = Depends(get_db)):
     """Debug endpoint to check test user state for auth-enabled E2E diagnostic.
-    
+
     Returns detailed information about the test user setup including:
     - User existence and credentials
     - File count and basic file information
     - Tag count and basic tag information
     - Database connectivity status
-    
+
     This endpoint is for debugging auth-enabled E2E test failures.
     """
     try:
         # Check if test user exists
         test_user_email = os.getenv("TEST_USER_EMAIL", "testuser@aris.pub")
-        
+
         user_result = await db.execute(
             text("SELECT id, email, name, created_at FROM users WHERE email = :email"),
             {"email": test_user_email}
         )
         user_row = user_result.first()
-        
+
         if not user_row:
             return {
                 "status": "error",
@@ -168,25 +164,25 @@ async def debug_user_state(db: AsyncSession = Depends(get_db)):
                 "files": [],
                 "tags": []
             }
-        
+
         user_id = user_row.id
-        
+
         # Get user files
         files_result = await db.execute(
             text("SELECT id, title, status, created_at FROM files WHERE owner_id = :user_id ORDER BY created_at DESC"),
             {"user_id": user_id}
         )
-        files = [{"id": row.id, "title": row.title, "status": row.status, "created_at": str(row.created_at)} 
+        files = [{"id": row.id, "title": row.title, "status": row.status, "created_at": str(row.created_at)}
                 for row in files_result.fetchall()]
-        
+
         # Get user tags
         tags_result = await db.execute(
             text("SELECT id, name, color, created_at FROM tags WHERE user_id = :user_id ORDER BY created_at DESC"),
             {"user_id": user_id}
         )
-        tags = [{"id": row.id, "name": row.name, "color": row.color, "created_at": str(row.created_at)} 
+        tags = [{"id": row.id, "name": row.name, "color": row.color, "created_at": str(row.created_at)}
                for row in tags_result.fetchall()]
-        
+
         return {
             "status": "success",
             "user": {
@@ -206,7 +202,7 @@ async def debug_user_state(db: AsyncSession = Depends(get_db)):
                 "tags_match": len(tags) == 2
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Debug user state failed: {e}")
         return {
@@ -221,36 +217,36 @@ async def debug_user_state(db: AsyncSession = Depends(get_db)):
 @app.get("/debug/reload", tags=["health"], summary="Reload RSM Module")
 async def reload_rsm():
     """Force reload of RSM module to pick up changes from local editable installation.
-    
+
     This endpoint is useful during development when you've made changes to the local
     RSM package and want to reload it without restarting the entire backend service.
-    
+
     Returns status of the reload operation. Only available in development environment.
     """
     # Only allow in development environment
     if os.getenv("ENV") in ("PROD", "STAGING"):
         raise HTTPException(status_code=404, detail="Not found")
-    
+
     try:
         # Get all RSM-related modules that are currently imported
         rsm_modules = [name for name in sys.modules.keys() if name.startswith('rsm')]
-        
+
         # Reload each RSM module
         reloaded_modules = []
         for module_name in rsm_modules:
             if module_name in sys.modules:
                 importlib.reload(sys.modules[module_name])
                 reloaded_modules.append(module_name)
-        
+
         logger.info(f"Reloaded RSM modules: {reloaded_modules}")
-        
+
         return {
             "status": "success",
             "message": "RSM modules reloaded successfully",
             "reloaded_modules": reloaded_modules,
             "module_count": len(reloaded_modules)
         }
-        
+
     except Exception as e:
         logger.error(f"RSM module reload failed: {e}")
         return {
@@ -327,12 +323,12 @@ def find_rsm_static_dir():
     static_dir = rsm_module_path / "static"
     if static_dir.exists():
         return str(static_dir)
-    
+
     # Fallback to site-packages if static dir not found
     fallback_dir = Path(".venv/lib/python3.13/site-packages/rsm/static")
     if fallback_dir.exists():
         return str(fallback_dir)
-    
+
     raise RuntimeError(f"RSM static directory not found. Tried: {static_dir}, {fallback_dir}")
 
 app.mount(
