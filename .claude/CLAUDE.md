@@ -58,11 +58,15 @@ npm run storybook                     # Run Storybook
 
 # Site (inside container)
 npm install                           # Install dependencies
-npm run dev                           # Run dev server
+npm run dev                           # Run dev server (auto-copies brand assets)
+npm run build                         # Build for production (auto-copies brand assets)
+npm run copy-assets                   # Manually copy brand assets to public/brand/
 npm run test:all                      # Run all tests
 npm test                              # Run tests
 npm run lint                          # Lint code
 ```
+
+**Note on Brand Assets**: The site automatically copies brand assets from `brand/logos/studio/` to `site/public/brand/` during `npm run dev` and `npm run build` via pre-hooks. This avoids symlink issues in Docker containers. The copied files are gitignored.
 
 ## AI Copilot Setup
 ```bash

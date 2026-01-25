@@ -64,6 +64,9 @@ yarn-error.log*
 /frontend/dist/
 /frontend/build/
 
+# Site generated assets (copied from brand/)
+/site/public/brand/
+
 # IDE and editor files
 .idea/
 .fleet

@@ -1,6 +1,6 @@
 <template>
   <button
-    class="dark-mode-toggle"
+    class="theme-toggle"
     data-testid="dark-mode-toggle"
     :aria-label="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
     :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -60,7 +60,7 @@
 </script>
 
 <style scoped>
-  .dark-mode-toggle {
+  .theme-toggle {
     position: relative;
     display: flex;
     align-items: center;
@@ -79,22 +79,22 @@
     outline: none;
   }
 
-  .dark-mode-toggle:hover {
+  .theme-toggle:hover {
     background: var(--surface-hover);
     border-color: var(--border-action);
     transform: translateY(-1px);
   }
 
-  .dark-mode-toggle:focus-visible {
+  .theme-toggle:focus-visible {
     outline: var(--border-med) solid var(--border-action);
     outline-offset: var(--border-extrathin);
   }
 
-  .dark-mode-toggle:active {
+  .theme-toggle:active {
     transform: translateY(0);
   }
 
-  .dark-mode-toggle:disabled {
+  .theme-toggle:disabled {
     cursor: not-allowed;
     opacity: 0.6;
   }
@@ -159,7 +159,7 @@
 
   /* Mobile adjustments */
   @media (max-width: 768px) {
-    .dark-mode-toggle {
+    .theme-toggle {
       width: 44px;
       height: 44px;
     }
@@ -176,7 +176,7 @@
   }
 
   /* Animation for theme switching */
-  .dark-mode-toggle:not(:disabled):active .toggle-icon {
+  .theme-toggle:not(:disabled):active .toggle-icon {
     transform: translate(-50%, -50%) scale(0.9);
   }
 
@@ -186,7 +186,7 @@
       transition: opacity 0.1s ease;
     }
 
-    .dark-mode-toggle {
+    .theme-toggle {
       transition:
         background-color 0.1s ease,
         border-color 0.1s ease;

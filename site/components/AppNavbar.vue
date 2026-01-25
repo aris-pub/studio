@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar">
     <a href="/" class="nav-brand">
-      <img src="/studio-logo-64.svg" alt="RSM Studio Logo" class="nav-logo" />
+      <img src="/brand/studio-logo-64.svg" alt="RSM Studio Logo" class="nav-logo" />
       <div class="nav-text">
         <span class="nav-rsm">RSM</span>
         <span class="nav-studio">Studio</span>

@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "copy-assets": "mkdir -p public/brand && cp -r ../brand/logos/studio/* public/brand/",
+    "prebuild": "npm run copy-assets",
+    "predev": "npm run copy-assets",
     "build": "node ../docker/env-check.js && nuxt build",
     "dev": "node ../docker/env-check.js && nuxt dev",
     "generate": "node ../docker/env-check.js && nuxt generate",

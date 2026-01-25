@@ -70,6 +70,7 @@ services:
       - "${SITE_PORT}:3000"
     volumes:
       - ../site:/app
+      - ../brand:/brand
       - site_node_modules:/app/node_modules
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}

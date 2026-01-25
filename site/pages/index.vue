@@ -6,7 +6,7 @@
     <section class="hero-section">
       <div class="container">
         <div class="hero-brand">
-          <img src="/studio-brand/studio-logo-64.svg" alt="RSM Studio Logo" class="hero-logo" />
+          <img src="/brand/studio-logo-64.svg" alt="RSM Studio Logo" class="hero-logo" />
           <div class="hero-text">
             <span class="brand-rsm">RSM</span>
             <span class="brand-studio">Studio</span>
@@ -374,26 +374,25 @@
 
   // RSM Demo Example (meta, self-documenting)
   const rsmExample = reactive({
-    source: `:rsm:
-# Writing with RSM
+    source: `# Writing with RSM
 
 Readable Science Markup is built with the full power of the modern web in mind. % Try resizing your browser or switching to dark mode.
 
-:figure:
+:figure: {
   :label: fig1
   :path: fig1.html
-  :caption: You can embed interactive figures.
+}
+:caption: You can embed interactive figures.
 ::
 
 Write equations using LaTeX syntax. Display equations get automatic numbering.
 
-$$ :label: gaussian
+\$\${:label: gaussian}
 \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
 $$
 
 References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable tooltips.
-
-::`,
+    `,
     rendered: "",
   });
 
