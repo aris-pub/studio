@@ -18,13 +18,14 @@ const RSM_SOURCE_WITH_MATH_REFERENCE = `# Tooltip Math Test
 
 Here is an important equation:
 
-:mathblock:
+:mathblock:{
   :label: eqn-quadratic
-
-  x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+}
+x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
 ::
 
-The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.`;
+The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.
+`;
 
 test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   let authHelpers;
