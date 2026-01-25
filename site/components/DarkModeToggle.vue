@@ -67,6 +67,7 @@
     justify-content: center;
     width: 40px;
     height: 40px;
+    padding: 0;
     border: var(--border-thin) solid var(--border-primary);
     border-radius: 8px;
     background: var(--surface-page);

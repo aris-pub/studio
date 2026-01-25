@@ -22,8 +22,8 @@
 .tabler-icon.collapse { stroke: var(--dark); }
 .tabler-icon.error { fill: var(--error-500); }
 
-/* Button reset (scoped to manuscript content only) */
-.manuscriptwrapper button {
+/* Button reset */
+button {
   background: transparent;
   border: none;
   font: inherit;
