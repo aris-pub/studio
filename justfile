@@ -63,6 +63,41 @@ init:
     cd site && npm install
     @echo "Setup complete! Edit .env files if needed, then run 'just dev' to start"
 
+# Deployment Commands
+# ===================
+
+# Deploy all services (backend to Fly.io, frontend/site via git push)
+deploy:
+    @echo "🚀 Deploying all services..."
+    @echo ""
+    @echo "1️⃣  Deploying backend to Fly.io..."
+    fly deploy --config backend/fly.toml
+    @echo ""
+    @echo "2️⃣  Pushing to GitHub to trigger Netlify deployments..."
+    git push origin main
+    @echo ""
+    @echo "✅ Deployment complete!"
+    @echo "   - Backend: https://aris-backend.fly.dev"
+    @echo "   - Frontend: https://app.rsm.studio (deploys from main branch)"
+    @echo "   - Site: https://rsm.studio (deploys from main branch)"
+    @echo ""
+    @echo "⏳ Netlify builds typically take 2-3 minutes"
+
+# Deploy only backend to Fly.io
+deploy-backend:
+    @echo "🚀 Deploying backend to Fly.io..."
+    fly deploy --config backend/fly.toml
+    @echo "✅ Backend deployed: https://aris-backend.fly.dev"
+
+# Push to GitHub to trigger Netlify deployments
+deploy-netlify:
+    @echo "🚀 Pushing to GitHub to trigger Netlify deployments..."
+    git push origin main
+    @echo "✅ Pushed to GitHub"
+    @echo "   - Frontend: https://app.rsm.studio"
+    @echo "   - Site: https://rsm.studio"
+    @echo "⏳ Netlify builds typically take 2-3 minutes"
+
 # Utility Commands
 # ================
 
