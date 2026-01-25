@@ -101,11 +101,10 @@ describe("Workspace Sidebar", () => {
       const items = wrapper.vm.items;
 
       const toggleItems = items.filter((item) => item.type === "toggle");
-      expect(toggleItems).toHaveLength(3);
+      expect(toggleItems).toHaveLength(2);
 
       const toggleNames = toggleItems.map((item) => item.name);
       expect(toggleNames).toContain("DockableEditor");
-      expect(toggleNames).toContain("AICopilot");
       expect(toggleNames).toContain("DockableSearch");
     });
 
