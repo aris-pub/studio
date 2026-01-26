@@ -203,8 +203,8 @@ test.describe("Signup Form", () => {
     await expect(page.locator("text=Something went wrong. Please try again later.")).toBeVisible();
   });
 
-  test("should show duplicate email error", async ({ page }) => {
-    // Mock duplicate email error
+  test("should show duplicate email info message", async ({ page }) => {
+    // Mock duplicate email response
     await page.route("**/signup/", async (route) => {
       await route.fulfill({
         status: 409,
@@ -226,8 +226,8 @@ test.describe("Signup Form", () => {
     // Submit form
     await page.click('button[type="submit"]');
 
-    // Should show duplicate email error
-    await expect(page.locator(".error-message")).toBeVisible();
+    // Should show duplicate email info message (not error)
+    await expect(page.locator(".info-message")).toBeVisible();
     await expect(page.locator("text=This email address is already registered")).toBeVisible();
   });
 

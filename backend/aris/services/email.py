@@ -24,7 +24,6 @@ class EmailService:
     async def send_waitlist_confirmation(
         self,
         to_email: str,
-        name: str,
         unsubscribe_token: str
     ) -> bool:
         """Send RSM Studio early access confirmation email."""
@@ -45,21 +44,21 @@ class EmailService:
                 </div>
                 
                 <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 30px; border-left: 4px solid #027AC7;">
-                    <h2 style="margin-top: 0; color: #1f2937;">Hi {name} 👋</h2>
+                    <h2 style="margin-top: 0; color: #1f2937;">Hi 👋</h2>
                     <p style="font-size: 18px; color: #027AC7; margin: 0 0 20px 0;"><strong>Welcome to the RSM Studio early access list.</strong></p>
-                    
+
                     <p>We're thrilled you're interested in the future of scholarly writing. RSM Studio is designed specifically for <strong>Readable Science Markup (RSM)</strong> - a markup language built for pixels, not paper.</p>
-                    
+
                     <div style="background: #ffffff; border-radius: 8px; padding: 20px; margin: 25px 0; border: 1px solid #e5e7eb;">
                         <h3 style="margin-top: 0; color: #1f2937; font-size: 16px;">What to expect:</h3>
                         <ul style="margin: 15px 0; padding-left: 20px;">
-                            <li style="margin-bottom: 8px;"><strong>Launch timeline:</strong> Late 2025</li>
+                            <li style="margin-bottom: 8px;"><strong>Launch timeline:</strong> mid 2026</li>
                             <li style="margin-bottom: 8px;"><strong>Early access:</strong> You'll be among the first to try RSM Studio</li>
                             <li style="margin-bottom: 8px;"><strong>Updates:</strong> We'll email you when we're ready (not before)</li>
                             <li style="margin-bottom: 8px;"><strong>Your input:</strong> Help shape the tool with your feedback</li>
                         </ul>
                     </div>
-                    
+
                     <p>No spam, no endless updates - just one email when RSM Studio is ready for you to explore.</p>
                 </div>
                 
@@ -73,26 +72,26 @@ class EmailService:
             </html>
             """
             
-            text_content = f"""
+            text_content = """
             You're in 🎉
             RSM Studio Early Access
-            
-            Hi {name} 👋
-            
+
+            Hi 👋
+
             Welcome to the RSM Studio early access list.
-            
+
             We're thrilled you're interested in the future of scholarly writing. RSM Studio is designed specifically for Readable Science Markup (RSM) - a markup language built for pixels, not paper.
-            
+
             What to expect:
-            • Launch timeline: Late 2025
-            • Early access: You'll be among the first to try RSM Studio  
+            • Launch timeline: mid 2026
+            • Early access: You'll be among the first to try RSM Studio
             • Updates: We'll email you when we're ready (not before)
             • Your input: Help shape the tool with your feedback
-            
+
             No spam, no endless updates - just one email when RSM Studio is ready for you to explore.
-            
+
             Questions about RSM Studio? Just reply to this email!
-            
+
             RSM Studio is part of The Aris Program (https://aris.pub) - Academic publishing for the post‑PDF era.
             """
             

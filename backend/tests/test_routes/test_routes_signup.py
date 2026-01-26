@@ -373,7 +373,6 @@ class TestSignupEndpointEmailIntegration:
         mock_get_email_service.assert_called_once()
         mock_email_service.send_waitlist_confirmation.assert_called_once_with(
             to_email="emailtest@example.com",
-            name="emailtest",  # Uses email prefix as name
             unsubscribe_token=data["unsubscribe_token"]
         )
 
@@ -440,9 +439,8 @@ class TestSignupEndpointEmailIntegration:
         # Verify email called with correct parameters
         mock_email_service.send_waitlist_confirmation.assert_called_once()
         call_args = mock_email_service.send_waitlist_confirmation.call_args
-        
+
         assert call_args.kwargs["to_email"] == "parameterstest@example.com"
-        assert call_args.kwargs["name"] == "parameterstest"  # Uses email prefix as name
         assert call_args.kwargs["unsubscribe_token"] == data["unsubscribe_token"]
         
         # Verify XSS was sanitized in improvements field

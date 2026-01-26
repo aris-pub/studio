@@ -230,7 +230,7 @@
               </div>
             </div>
 
-            <div v-if="signupError" class="error-message">
+            <div v-if="signupError" :class="isDuplicateEmail ? 'info-message' : 'error-message'">
               {{ signupError }}
             </div>
 
@@ -370,6 +370,7 @@
   const signupComplete = ref(false);
   const submitting = ref(false);
   const signupError = ref("");
+  const isDuplicateEmail = ref(false);
   const openFaqs = ref(new Set());
 
   // RSM Demo Example (meta, self-documenting)
@@ -806,6 +807,7 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
   const handleSignup = async () => {
     submitting.value = true;
     signupError.value = "";
+    isDuplicateEmail.value = false;
 
     try {
       // Prepare authoring tools data
@@ -831,6 +833,9 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 409) {
+          isDuplicateEmail.value = true;
+        }
         throw new Error(errorData.detail?.message || "Signup failed");
       }
 
@@ -1881,6 +1886,16 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
     border: var(--border-thin) solid var(--red-300);
     border-radius: 12px;
     color: var(--red-700);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-message {
+    padding: 1rem;
+    background: var(--surface-information);
+    border: var(--border-thin) solid var(--border-information);
+    border-radius: 12px;
+    color: var(--text-body);
     font-size: 0.95rem;
     margin-bottom: 1rem;
   }

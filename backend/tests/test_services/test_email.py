@@ -57,19 +57,18 @@ class TestEmailService:
         service = EmailService(config)
         result = await service.send_waitlist_confirmation(
             to_email="user@example.com",
-            name="Test User",
             unsubscribe_token="test_token"
         )
         
         assert result is True
         mock_resend.Emails.send.assert_called_once()
-        
+
         # Verify email parameters
         call_args = mock_resend.Emails.send.call_args[0][0]
         assert call_args["from"] == "RSM Studio <test@example.com>"
         assert call_args["to"] == ["user@example.com"]
         assert "You're on the RSM Studio early access list!" in call_args["subject"]
-        assert "Test User" in call_args["html"]
+        assert "Hi 👋" in call_args["html"]
         # Note: unsubscribe token is passed but not used in thank you email
 
     @pytest.mark.asyncio
@@ -89,7 +88,6 @@ class TestEmailService:
         with caplog.at_level(logging.ERROR):
             result = await service.send_waitlist_confirmation(
                 to_email="user@example.com",
-                name="Test User",
                 unsubscribe_token="test_token"
             )
         
@@ -111,30 +109,29 @@ class TestEmailService:
         service = EmailService(config)
         await service.send_waitlist_confirmation(
             to_email="user@example.com",
-            name="Dr. Jane Smith",
             unsubscribe_token="abc123"
         )
         
         call_args = mock_resend.Emails.send.call_args[0][0]
         html_content = call_args["html"]
         text_content = call_args["text"]
-        
+
         # Check HTML content
-        assert "Hi Dr. Jane Smith 👋" in html_content
+        assert "Hi 👋" in html_content
         assert "You're in 🎉" in html_content
         assert "Welcome to the RSM Studio early access list." in html_content
         assert "Readable Science Markup (RSM)" in html_content
-        assert "Late 2025" in html_content
+        assert "mid 2026" in html_content
         assert "No spam, no endless updates" in html_content
         # Verify NO unsubscribe link in thank you email
         assert "unsubscribe" not in html_content.lower()
-        
+
         # Check text content
-        assert "Hi Dr. Jane Smith 👋" in text_content
+        assert "Hi 👋" in text_content
         assert "You're in 🎉" in text_content
         assert "Welcome to the RSM Studio early access list." in text_content
         assert "Readable Science Markup (RSM)" in text_content
-        assert "Late 2025" in text_content
+        assert "mid 2026" in text_content
         assert "No spam, no endless updates" in text_content
         # Verify NO unsubscribe link in thank you email
         assert "unsubscribe" not in text_content.lower()
@@ -148,10 +145,11 @@ class TestGetEmailService:
         """Test get_email_service returns service with valid API key."""
         mock_settings.RESEND_API_KEY = "valid_key"
         mock_settings.FROM_EMAIL = "test@example.com"
-        
+        mock_settings.ADMIN_EMAIL = "admin@example.com"
+
         with caplog.at_level(logging.INFO):
             service = get_email_service()
-        
+
         assert service is not None
         assert isinstance(service, EmailService)
         assert service.config.resend_api_key == "valid_key"
@@ -163,6 +161,7 @@ class TestGetEmailService:
         """Test get_email_service returns None with empty API key."""
         mock_settings.RESEND_API_KEY = ""
         mock_settings.FROM_EMAIL = "test@example.com"
+        mock_settings.ADMIN_EMAIL = "admin@example.com"
         
         with caplog.at_level(logging.WARNING):
             service = get_email_service()
@@ -175,6 +174,7 @@ class TestGetEmailService:
         """Test get_email_service returns None with placeholder API key."""
         mock_settings.RESEND_API_KEY = "your_resend_api_key_here"
         mock_settings.FROM_EMAIL = "test@example.com"
+        mock_settings.ADMIN_EMAIL = "admin@example.com"
         
         with caplog.at_level(logging.WARNING):
             service = get_email_service()

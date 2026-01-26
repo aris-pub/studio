@@ -171,7 +171,6 @@ async def create_signup_endpoint(
             try:
                 await email_service.send_waitlist_confirmation(
                     to_email=signup.email,
-                    name=signup.email.split('@')[0],  # Use email prefix as name
                     unsubscribe_token=signup.unsubscribe_token
                 )
             except Exception as e:
