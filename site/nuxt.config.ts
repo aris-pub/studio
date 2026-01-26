@@ -82,6 +82,7 @@ export default defineNuxtConfig({
 
   // Compression configuration
   nitro: {
+    preset: 'static', // Force static preset for full static generation
     compressPublicAssets: false, // Disable compression for now
     routeRules: {
       '/**': {
