@@ -29,7 +29,7 @@ class EmailService:
         """Send RSM Studio early access confirmation email."""
         logger.info(f"Attempting to send RSM Studio confirmation email to {to_email}")
         try:
-            html_content = f"""
+            html_content = """
             <!DOCTYPE html>
             <html>
             <head>
