@@ -178,6 +178,17 @@ async def create_signup_endpoint(
                 # Log email failure but don't fail the signup
                 logger.error(f"Failed to send confirmation email to {signup.email}: {str(e)}")
 
+            # Send admin notification
+            try:
+                await email_service.send_signup_notification(
+                    signup_email=signup.email,
+                    authoring_tools=signup_data.authoring_tools,
+                    improvements=signup_data.improvements
+                )
+            except Exception as e:
+                # Log failure but don't fail the signup
+                logger.error(f"Failed to send admin notification for {signup.email}: {str(e)}")
+
         # Convert datetime to ISO format string for response
         # Parse authoring_tools JSON string back to list for response
         authoring_tools_list = None

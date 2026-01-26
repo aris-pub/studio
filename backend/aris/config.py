@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = Field("noreply@aris.pub", json_schema_extra={"env": "FROM_EMAIL"})
     """Default from email address."""
 
+    ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
+    """Admin email for notifications (signups, etc.)."""
+
     ANTHROPIC_API_KEY: str = Field("", json_schema_extra={"env": "ANTHROPIC_API_KEY"})
     """Anthropic API key for AI copilot functionality."""
 

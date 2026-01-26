@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 class EmailConfig(BaseModel):
     resend_api_key: str
     from_email: str = "noreply@aris.pub"
+    admin_email: Optional[str] = None
 
 
 class EmailService:
@@ -112,17 +113,83 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
 
+    async def send_signup_notification(
+        self,
+        signup_email: str,
+        authoring_tools: Optional[list[str]],
+        improvements: Optional[str]
+    ) -> bool:
+        """Send admin notification about new signup."""
+        if not self.config.admin_email:
+            logger.debug("Admin notifications disabled: ADMIN_EMAIL not configured")
+            return False
+
+        logger.info(f"Sending admin notification about signup: {signup_email}")
+        try:
+            tools_list = ", ".join(authoring_tools) if authoring_tools else "Not specified"
+            improvements_text = improvements if improvements else "Not specified"
+
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>New RSM Studio Signup</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #027AC7;">New RSM Studio Signup</h2>
+
+                <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <p><strong>Email:</strong> {signup_email}</p>
+                    <p><strong>Current Tools:</strong> {tools_list}</p>
+                    <p><strong>Requested Improvements:</strong><br>{improvements_text}</p>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                    View all signups: <a href="https://aris-backend.fly.dev/docs#/signup" style="color: #027AC7;">Backend API</a>
+                </p>
+            </body>
+            </html>
+            """
+
+            text_content = f"""
+            New RSM Studio Signup
+
+            Email: {signup_email}
+            Current Tools: {tools_list}
+            Requested Improvements: {improvements_text}
+
+            View all signups: https://aris-backend.fly.dev/docs#/signup
+            """
+
+            params = {
+                "from": f"RSM Studio Notifications <{self.config.from_email}>",
+                "to": [self.config.admin_email],
+                "subject": f"New signup: {signup_email}",
+                "html": html_content,
+                "text": text_content,
+            }
+
+            resend.Emails.send(params)  # type: ignore
+            logger.info(f"Successfully sent admin notification about {signup_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send admin notification: {str(e)}")
+            return False
+
 
 def get_email_service() -> Optional[EmailService]:
     """Get configured email service instance."""
     if not settings.RESEND_API_KEY or settings.RESEND_API_KEY == "your_resend_api_key_here":
         logger.warning("Email service disabled: RESEND_API_KEY not configured")
         return None
-        
+
     logger.info("Initializing email service with Resend")
     config = EmailConfig(
         resend_api_key=settings.RESEND_API_KEY,
-        from_email=settings.FROM_EMAIL
+        from_email=settings.FROM_EMAIL,
+        admin_email=settings.ADMIN_EMAIL if settings.ADMIN_EMAIL else None
     )
-    
+
     return EmailService(config)
