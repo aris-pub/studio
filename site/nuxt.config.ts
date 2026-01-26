@@ -1,7 +1,5 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
-  ssr: false, // Enable static generation for landing page
-
   app: {
     head: {
       title: 'RSM Studio – Author scholarly work designed for pixels, not paper',

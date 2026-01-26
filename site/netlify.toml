@@ -1,5 +1,5 @@
 [build]
-  publish = "dist"
+  publish = ".output/public"
   command = "npm run generate"
 
 [dev]
