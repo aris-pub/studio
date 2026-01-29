@@ -44,7 +44,25 @@ services:
     environment:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
     command: npm run dev -- --host 0.0.0.0
-    
+
+  multiplayer:
+    <<: *common-env
+    build:
+      context: ..
+      dockerfile: docker/multi-player/Dockerfile.dev
+      target: dev
+    ports:
+      - "${MULTIPLAYER_PORT}:1234"
+    volumes:
+      - ../multi-player:/app
+      - multiplayer_node_modules:/app/node_modules
+    environment:
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - BACKEND_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   storybook:
     <<: *common-env
     build:
@@ -99,5 +117,6 @@ services:
 volumes:
   backend_venv:
   frontend_node_modules:
+  multiplayer_node_modules:
   site_node_modules:
   postgres_data:
