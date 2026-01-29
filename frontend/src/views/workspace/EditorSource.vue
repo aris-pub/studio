@@ -3,11 +3,10 @@
   import Toolbar from "./EditorToolbar.vue";
   import StatusBar from "./EditorStatusBar.vue";
 
-  const props = defineProps({ saveStatus: { type: String, required: true } });
-  const emit = defineEmits(["input"]);
-  const file = defineModel({ type: Object, required: true });
+  const props = defineProps({});
   const textareaRef = useTemplateRef("editor-ref");
   const fileSettings = inject("fileSettings");
+  const editSession = inject("editSession");
 
   // Toolbar functions
   const onInsert = (text) => {
@@ -20,6 +19,7 @@
     const before = textarea.value.substring(0, start);
     const after = textarea.value.substring(end);
     textarea.value = before + text + after;
+    editSession.content.value = textarea.value;
 
     const cursor = start + text.length;
     textarea.selectionStart = textarea.selectionEnd = cursor;
@@ -39,14 +39,14 @@
     <textarea
       ref="editor-ref"
       class="editor"
-      :value="file.source"
+      :value="editSession.content.value"
       spellcheck="false"
       autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
-      @input="(e) => emit('input', e)"
+      @input="(e) => (editSession.content.value = e.target.value)"
     />
-    <StatusBar :save-status="saveStatus" />
+    <StatusBar :save-status="editSession.status.value" />
   </div>
 </template>
 

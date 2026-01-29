@@ -16,6 +16,13 @@ vi.mock("@/composables/useKeyboardShortcuts.js", () => ({
   useKeyboardShortcuts: vi.fn(),
 }));
 
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
+}));
+
 describe("WorkspaceView Error Handling", () => {
   let getSettingsSpy;
 

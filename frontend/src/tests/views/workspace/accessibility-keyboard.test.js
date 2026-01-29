@@ -20,6 +20,14 @@ vi.mock("@/models/File.js", () => ({
   },
 }));
 
+// Mock EditorCodeMirror
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
+}));
+
 describe("Workspace Accessibility and Keyboard Navigation", () => {
   let useKSSpy;
   let keyboardShortcuts;

@@ -25,6 +25,13 @@ vi.mock("@/models/File.js", () => ({
   },
 }));
 
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
+}));
+
 describe("WorkspaceView File ID Matching Regression Tests", () => {
   let useRouteMock;
   const api = { post: vi.fn() };

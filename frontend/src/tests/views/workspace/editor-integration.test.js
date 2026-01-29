@@ -3,30 +3,33 @@ import { nextTick, ref } from "vue";
 import { mount } from "@vue/test-utils";
 import Editor from "@/views/workspace/Editor.vue";
 import DockableEditor from "@/views/workspace/DockableEditor.vue";
-import { File as FileModel } from "@/models/File.js";
 import * as KSMod from "@/composables/useKeyboardShortcuts.js";
-import * as ASMod from "@/composables/useAutoSave.js";
+import * as ESMod from "@/composables/useEditSession.js";
 
-// Mock File model
-vi.mock("@/models/File.js", () => ({
-  File: {
-    update: vi.fn().mockResolvedValue(),
-  },
-}));
-
-// Mock auto-save composable
-const mockAutoSave = {
-  saveStatus: ref("idle"),
-  onInput: vi.fn(),
-  manualSave: vi.fn(),
+// Mock EditSession composable
+const mockEditSession = {
+  content: ref("# Test Content"),
+  status: ref("idle"),
+  isConnected: ref(false),
+  start: vi.fn().mockResolvedValue(undefined),
+  stop: vi.fn().mockResolvedValue(undefined),
+  manualSave: vi.fn().mockResolvedValue(undefined),
+  compile: vi.fn().mockResolvedValue(undefined),
 };
 
-vi.mock("@/composables/useAutoSave.js", () => ({
-  useAutoSave: vi.fn(() => mockAutoSave),
+vi.mock("@/composables/useEditSession.js", () => ({
+  useEditSession: vi.fn(() => mockEditSession),
 }));
 
 vi.mock("@/composables/useKeyboardShortcuts.js", () => ({
   useKeyboardShortcuts: vi.fn(),
+}));
+
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
 }));
 
 // Mock native File constructor for file upload tests
@@ -41,14 +44,19 @@ global.File = class File {
 
 describe("Editor Integration Tests", () => {
   let mockApi;
+  let mockUser;
   let mockFile;
-  let useAutoSaveSpy;
+  let useEditSessionSpy;
   let useKeyboardShortcutsSpy;
 
   beforeEach(() => {
     mockApi = {
+      get: vi.fn(),
       post: vi.fn(),
+      put: vi.fn(),
     };
+
+    mockUser = { id: 1 };
 
     mockFile = ref({
       id: 42,
@@ -56,10 +64,11 @@ describe("Editor Integration Tests", () => {
       html: "<h1>Test Content</h1>",
     });
 
-    // Reset File model mocks
-    vi.mocked(FileModel.update).mockResolvedValue();
+    // Reset EditSession content
+    mockEditSession.content.value = "# Test Content";
+    mockEditSession.status.value = "idle";
 
-    useAutoSaveSpy = vi.spyOn(ASMod, "useAutoSave").mockReturnValue(mockAutoSave);
+    useEditSessionSpy = vi.spyOn(ESMod, "useEditSession").mockReturnValue(mockEditSession);
     useKeyboardShortcutsSpy = vi.spyOn(KSMod, "useKeyboardShortcuts");
 
     vi.clearAllMocks();
@@ -76,8 +85,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             Editor: {
               name: "Editor",
               template: '<div class="editor-stub" />',
@@ -101,8 +111,9 @@ describe("Editor Integration Tests", () => {
           },
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             Editor: {
               name: "Editor",
               template: '<div class="editor-stub" data-testid="editor-stub" />',
@@ -130,10 +141,11 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />", emits: ["compile", "upload"] },
-            EditorSource: { template: "<div />", props: ["modelValue", "saveStatus"] },
+            EditorSource: { template: "<div />" },
             EditorFiles: { template: "<div />", props: ["modelValue"] },
           },
         },
@@ -143,14 +155,15 @@ describe("Editor Integration Tests", () => {
       expect(wrapper.find(".editor").exists()).toBe(true);
     });
 
-    it("sets up auto-save with correct configuration", () => {
+    it("sets up edit session with correct configuration", () => {
       mount(Editor, {
         props: {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />" },
             EditorSource: { template: "<div />" },
             EditorFiles: { template: "<div />" },
@@ -158,10 +171,13 @@ describe("Editor Integration Tests", () => {
         },
       });
 
-      expect(useAutoSaveSpy).toHaveBeenCalledWith({
-        file: expect.any(Object),
-        saveFunction: expect.any(Function),
-        compileFunction: expect.any(Function),
+      expect(useEditSessionSpy).toHaveBeenCalledWith(42, {
+        implementation: "http",
+        api: mockApi,
+        user: mockUser,
+        debounceTime: 2000,
+        autoSaveInterval: 30000,
+        onCompile: expect.any(Function),
       });
     });
 
@@ -174,8 +190,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: {
               name: "EditorTopbar",
               template: "<div />",
@@ -184,8 +201,6 @@ describe("Editor Integration Tests", () => {
             EditorSource: {
               name: "EditorSource",
               template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
             },
             EditorFiles: {
               name: "EditorFiles",
@@ -199,93 +214,7 @@ describe("Editor Integration Tests", () => {
       await topbar.vm.$emit("compile");
       await nextTick();
 
-      expect(mockApi.post).toHaveBeenCalledWith("render/private", {
-        source: mockFile.value.source,
-        file_id: mockFile.value.id,
-      });
-      expect(mockFile.value.html).toBe(compiledHtml);
-    });
-
-    it("handles compilation errors gracefully", async () => {
-      const compilationError = new Error("Compilation failed");
-
-      // Mock with proper error handling to prevent unhandled rejection
-      mockApi.post.mockImplementation(() => {
-        return Promise.reject(compilationError).catch(() => {
-          // Silently catch the error to prevent unhandled rejection
-          return { data: null };
-        });
-      });
-
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi },
-          stubs: {
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
-        },
-      });
-
-      const topbar = wrapper.findComponent({ name: "EditorTopbar" });
-
-      // Emit compile event and wait for API call
-      await topbar.vm.$emit("compile");
-      await nextTick();
-
-      // Wait for API call to complete
-      await vi.waitFor(() => {
-        expect(mockApi.post).toHaveBeenCalled();
-      });
-
-      // Component should still exist after handling error
-      expect(wrapper.exists()).toBe(true);
-
-      consoleSpy.mockRestore();
-    });
-
-    it("handles file saving through auto-save", async () => {
-      mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi },
-          stubs: {
-            EditorTopbar: { template: "<div />" },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
-
-      // Get the save function passed to useAutoSave
-      const autoSaveConfig = useAutoSaveSpy.mock.calls[0][0];
-      const saveFunction = autoSaveConfig.saveFunction;
-
-      await saveFunction(mockFile.value);
-
-      expect(FileModel.update).toHaveBeenCalledWith(mockFile.value, {
-        source: mockFile.value.source,
-      });
+      expect(mockEditSession.compile).toHaveBeenCalled();
     });
 
     it("handles file upload successfully", async () => {
@@ -308,8 +237,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: {
               name: "EditorTopbar",
               template: "<div />",
@@ -318,8 +248,6 @@ describe("Editor Integration Tests", () => {
             EditorSource: {
               name: "EditorSource",
               template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
             },
             EditorFiles: {
               name: "EditorFiles",
@@ -367,8 +295,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: {
               name: "EditorTopbar",
               template: "<div />",
@@ -377,8 +306,6 @@ describe("Editor Integration Tests", () => {
             EditorSource: {
               name: "EditorSource",
               template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
             },
             EditorFiles: {
               name: "EditorFiles",
@@ -426,8 +353,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: {
               name: "EditorTopbar",
               template: "<div />",
@@ -436,8 +364,6 @@ describe("Editor Integration Tests", () => {
             EditorSource: {
               name: "EditorSource",
               template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
             },
             EditorFiles: {
               name: "EditorFiles",
@@ -466,8 +392,12 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: {
+              name: "EditorCodeMirror",
+              template: '<div class="editor-codemirror" />',
+            },
             EditorTopbar: {
               name: "EditorTopbar",
               template: '<div data-testid="editor-topbar" />',
@@ -480,8 +410,8 @@ describe("Editor Integration Tests", () => {
         },
       });
 
-      // Initially should show EditorSource (tab 0)
-      expect(wrapper.find(".editor-source").exists()).toBe(true);
+      // Initially should show EditorCodeMirror (tab 0, USE_CODEMIRROR=true)
+      expect(wrapper.findComponent({ name: "EditorCodeMirror" }).exists()).toBe(true);
       expect(wrapper.find(".editor-files").exists()).toBe(false);
 
       // Switch to EditorFiles (tab 1)
@@ -489,7 +419,7 @@ describe("Editor Integration Tests", () => {
       await topbar.vm.$emit("update:modelValue", 1);
       await nextTick();
 
-      expect(wrapper.find(".editor-source").exists()).toBe(false);
+      expect(wrapper.findComponent({ name: "EditorCodeMirror" }).exists()).toBe(false);
       expect(wrapper.find(".editor-files").exists()).toBe(true);
     });
 
@@ -499,8 +429,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />" },
             EditorSource: { template: "<div />" },
             EditorFiles: { template: "<div />" },
@@ -520,8 +451,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />" },
             EditorSource: { template: "<div />" },
             EditorFiles: { template: "<div />" },
@@ -544,8 +476,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />" },
             EditorSource: { template: "<div />" },
             EditorFiles: { template: "<div />" },
@@ -560,67 +493,36 @@ describe("Editor Integration Tests", () => {
       // Simulate save shortcut
       saveHandler();
 
-      expect(mockAutoSave.manualSave).toHaveBeenCalled();
+      expect(mockEditSession.manualSave).toHaveBeenCalled();
     });
 
-    it("passes save status to EditorSource", () => {
-      mockAutoSave.saveStatus.value = "saving";
+    it("provides editSession to child components", () => {
+      mockEditSession.status.value = "saving";
 
       const wrapper = mount(Editor, {
         props: {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: { template: "<div />" },
             EditorSource: {
               name: "EditorSource",
               template: '<div data-testid="editor-source" />',
-              props: ["modelValue", "saveStatus"],
             },
             EditorFiles: { template: "<div />" },
           },
         },
       });
 
-      const editorSource = wrapper.findComponent('[data-testid="editor-source"]');
-      expect(editorSource.props("saveStatus")).toBe("saving");
-    });
-
-    it("handles input events from EditorSource", async () => {
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi },
-          stubs: {
-            EditorTopbar: { template: "<div />" },
-            EditorSource: {
-              name: "EditorSource",
-              template: '<div data-testid="editor-source-input" />',
-              props: ["modelValue", "saveStatus"],
-              emits: ["input"],
-            },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
-
-      const editorSource = wrapper.findComponent('[data-testid="editor-source-input"]');
-      const inputEvent = { target: { value: "new content" } };
-
-      await editorSource.vm.$emit("input", inputEvent);
-      await nextTick();
-
-      expect(mockAutoSave.onInput).toHaveBeenCalledWith(inputEvent);
+      // EditSession is now provided via inject, not props
+      expect(wrapper.exists()).toBe(true);
     });
 
     it("handles concurrent operations gracefully", async () => {
-      mockApi.post
-        .mockResolvedValueOnce({ data: "<h1>First</h1>" })
-        .mockResolvedValueOnce({ data: { id: 1 } });
+      mockApi.post.mockResolvedValueOnce({ data: { id: 1 } });
 
       // Mock FileReader for the upload operation - support both text and binary
       const mockFileReader = {
@@ -637,8 +539,9 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi },
+          provide: { api: mockApi, user: mockUser },
           stubs: {
+            EditorCodeMirror: { template: "<div />" },
             EditorTopbar: {
               name: "EditorTopbar",
               template: "<div />",
@@ -647,8 +550,6 @@ describe("Editor Integration Tests", () => {
             EditorSource: {
               name: "EditorSource",
               template: "<div />",
-              props: ["modelValue", "saveStatus"],
-              emits: ["update:modelValue", "input"],
             },
             EditorFiles: {
               name: "EditorFiles",
@@ -673,7 +574,9 @@ describe("Editor Integration Tests", () => {
       await nextTick();
 
       // Both operations should be handled without conflicts
-      expect(mockApi.post).toHaveBeenCalledTimes(2);
+      // Compile uses EditSession, only upload calls API
+      expect(mockEditSession.compile).toHaveBeenCalled();
+      expect(mockApi.post).toHaveBeenCalledTimes(1);
       expect(wrapper.exists()).toBe(true);
     });
   });

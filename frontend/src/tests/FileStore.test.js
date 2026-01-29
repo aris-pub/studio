@@ -89,9 +89,7 @@ describe("FileStore", () => {
     it("creates a store with initial state", () => {
       expect(store.files.value).toEqual([]);
       expect(store.tags.value).toEqual([]);
-      expect(store.syncInProgress.value).toBe(false);
       expect(store.numFiles.value).toBe(0);
-      expect(store.syncQueue).toBeInstanceOf(Set);
     });
 
     it("provides all required methods", () => {
@@ -104,7 +102,6 @@ describe("FileStore", () => {
         "clearFilters",
         "selectFile",
         "clearSelection",
-        "queueSync",
         "getRecentFiles",
         "loadTags",
         "createTag",
@@ -241,18 +238,6 @@ describe("FileStore", () => {
       expect(store.files.value).toHaveLength(2);
     });
 
-    it("removes file from sync queue when deleted", async () => {
-      mockFileDelete.mockResolvedValue(true);
-
-      // Add file to sync queue first
-      store.syncQueue.add(1);
-      expect(store.syncQueue.has(1)).toBe(true);
-
-      await store.deleteFile(1);
-
-      expect(store.syncQueue.has(1)).toBe(false);
-    });
-
     it("does not remove file when deletion fails", async () => {
       mockFileDelete.mockResolvedValue(false);
 
@@ -333,78 +318,6 @@ describe("FileStore", () => {
       store.files.value.forEach((file) => {
         expect(file.selected).toBe(false);
       });
-    });
-  });
-
-  describe("Sync Queue", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-      store.files.value = [
-        { id: 1, title: "File 1" },
-        { id: 2, title: "File 2" },
-      ];
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("queues file for sync by object", async () => {
-      const file = store.files.value[0];
-      mockFileSave.mockResolvedValue(true);
-
-      await store.queueSync(file);
-
-      expect(store.syncQueue.has(1)).toBe(true);
-    });
-
-    it("queues file for sync by ID", async () => {
-      mockFileSave.mockResolvedValue(true);
-
-      await store.queueSync(1);
-
-      expect(store.syncQueue.has(1)).toBe(true);
-    });
-
-    it("processes sync queue after timeout", async () => {
-      mockFileSave.mockResolvedValue(true);
-
-      await store.queueSync(1);
-      expect(store.syncInProgress.value).toBe(false);
-
-      vi.advanceTimersByTime(800);
-      // Wait a tick for async operations to complete
-      await new Promise((resolve) => process.nextTick(resolve));
-
-      expect(mockFileSave).toHaveBeenCalled();
-      expect(store.syncQueue.size).toBe(0);
-    });
-
-    it("handles sync errors gracefully", async () => {
-      const error = new Error("Sync error");
-      mockFileSave.mockRejectedValue(error);
-
-      // Add a file to sync
-      await store.queueSync(1);
-      expect(store.syncQueue.has(1)).toBe(true);
-
-      // Advance timer to trigger sync process
-      vi.advanceTimersByTime(800);
-      // Wait a tick for async operations to complete
-      await new Promise((resolve) => process.nextTick(resolve));
-
-      expect(console.error).toHaveBeenCalledWith("Error during file sync:", error);
-      expect(store.syncInProgress.value).toBe(false);
-    });
-
-    it("does not sync if already in progress", async () => {
-      store.syncInProgress.value = true;
-
-      await store.queueSync(1);
-      vi.advanceTimersByTime(800);
-      await vi.runAllTimersAsync();
-
-      expect(mockFileSave).not.toHaveBeenCalled();
     });
   });
 

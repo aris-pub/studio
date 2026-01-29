@@ -1,36 +1,50 @@
 <script setup>
-  import { ref, inject, useTemplateRef } from "vue";
+  import { ref, inject, useTemplateRef, provide, onMounted, onBeforeUnmount } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-  import { useAutoSave } from "@/composables/useAutoSave.js";
-  import { File } from "@/models/File.js";
+  import { useEditSession } from "@/composables/useEditSession.js";
   import EditorTopbar from "./EditorTopbar.vue";
   import EditorSource from "./EditorSource.vue";
+  import EditorCodeMirror from "./EditorCodeMirror.vue";
   import EditorFiles from "./EditorFiles.vue";
 
   const props = defineProps({});
   const file = defineModel({ type: Object, required: true });
 
+  // Feature flag for real-time collaboration (CodeMirror + Y.js)
+  const USE_CODEMIRROR = ref(true);
+
   // Editor topbar state
   const tabIndex = ref(0);
 
-  // Compilation and saving
+  // EditSession for content management and syncing
   const api = inject("api");
-  const onCompile = async () => {
-    // Use private render endpoint with file_id for asset resolution
-    const response = await api.post("render/private", {
-      source: file.value.source,
-      file_id: file.value.id,
-    });
-    file.value.html = response.data;
-  };
-  const saveFile = async (fileToSave) => {
-    await File.update(fileToSave, { source: file.value.source });
-  };
-  const { saveStatus, onInput, manualSave } = useAutoSave({
-    file,
-    saveFunction: saveFile,
-    compileFunction: onCompile,
+  const user = inject("user");
+
+  const editSession = useEditSession(file.value.id, {
+    implementation: "http",
+    api,
+    user,
+    debounceTime: 2000,
+    autoSaveInterval: 30000,
+    onCompile: async () => {
+      const response = await api.post("render/private", {
+        source: editSession.content.value,
+        file_id: file.value.id,
+      });
+      file.value.html = response.data;
+    },
   });
+
+  // Provide editSession to child components
+  provide("editSession", editSession);
+
+  // Start session on mount, stop on unmount
+  onMounted(() => editSession.start());
+  onBeforeUnmount(() => editSession.stop());
+
+  // Expose status and manualSave for UI
+  const saveStatus = editSession.status;
+  const manualSave = editSession.manualSave;
 
   // File asset upload
   const isTextMimeType = (mimeType) => {
@@ -101,6 +115,9 @@
     }
   };
 
+  // Compilation trigger
+  const onCompile = () => editSession.compile();
+
   // Keys
   const editorSourceRef = useTemplateRef("editor-source-ref");
   const onEscape = () =>
@@ -116,13 +133,10 @@
   <div class="editor">
     <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" />
     <div class="content">
-      <EditorSource
-        v-if="tabIndex === 0"
-        ref="editor-source-ref"
-        v-model="file"
-        :save-status="saveStatus"
-        @input="onInput"
-      />
+      <!-- CodeMirror editor with Y.js real-time collaboration -->
+      <EditorCodeMirror v-if="USE_CODEMIRROR && tabIndex === 0" v-model="file" />
+      <!-- Original textarea editor (fallback) -->
+      <EditorSource v-else-if="tabIndex === 0" ref="editor-source-ref" />
       <EditorFiles v-if="tabIndex === 1" v-model="file" />
     </div>
   </div>

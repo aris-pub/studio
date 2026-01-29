@@ -11,6 +11,13 @@ vi.mock("vue-router", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
+}));
+
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("WorkspaceView", () => {
