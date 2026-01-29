@@ -1,6 +1,5 @@
 # Spike: Real-Time Collaborative Editing for RSM Studio
 
-**Duration**: 2-3 weeks (20-26 hours total)
 **Timeline**: During Press beta (February-March 2026)
 **Outcome**: GO/NO-GO decision for V1 collaborative editing feature
 
@@ -8,11 +7,16 @@
 
 ## Overview
 
-Validate that Y.js (CRDT library) + CodeMirror 6 can support real-time collaborative editing of RSM documents with acceptable semantic preservation and performance.
+Validate that Y.js (CRDT library) + CodeMirror 6 can support real-time collaborative
+editing of RSM documents with acceptable semantic preservation and performance.
 
-**Critical validation**: Can concurrent edits to RSM maintain semantic validity (citations, math, cross-references, metadata)? CRDTs guarantee character-level convergence but NOT semantic correctness.
+**Critical validation**: Can concurrent edits to RSM maintain semantic validity
+(citations, math, cross-references, metadata)? CRDTs guarantee character-level
+convergence but NOT semantic correctness.
 
-**Why this matters**: Single-user Studio doesn't compete with Overleaf or Google Docs. Real-time collaboration is table stakes for V1 launch. This spike determines if the technical approach is viable.
+**Why this matters**: Single-user Studio doesn't compete with Overleaf or Google Docs.
+Real-time collaboration is table stakes for V1 launch. This spike determines if the
+technical approach is viable.
 
 ---
 
@@ -41,15 +45,15 @@ Validate that Y.js (CRDT library) + CodeMirror 6 can support real-time collabora
 ### Out of Scope
 
 **NOT in this spike:**
-- LSP integration (validated separately in Phase 3)
-- Authentication/authorization (Phase 2)
-- Production WebSocket server (Phase 2)
-- Persistence strategy (Phase 2)
-- Mobile browser support (Phase 2)
+- LSP integration
+- Authentication/authorization
+- Production WebSocket server
+- Persistence strategy
+- Mobile browser support
 
 ---
 
-## Week 1: Basic Integration (6-8 hours)
+## Phase 1: Basic Integration
 
 ### Goal
 Prove that CodeMirror 6 + Y.js can sync edits between two clients in real-time.
@@ -87,18 +91,19 @@ Prove that CodeMirror 6 + Y.js can sync edits between two clients in real-time.
 
 ---
 
-## Week 2: RSM Semantic Testing (8-10 hours)
+## Phase 2: RSM Semantic Testing
 
 ### Goal
 Validate that Y.js CRDT merges preserve RSM semantic validity during concurrent edits.
 
-**This is the CRITICAL validation.** CRDTs guarantee character convergence, NOT semantic correctness. We must test if concurrent edits produce valid RSM syntax.
+**This is the CRITICAL validation.** CRDTs guarantee character convergence, NOT semantic
+correctness. We must test if concurrent edits produce valid RSM syntax.
 
 ### Test Scenarios
 
 **Test 2.1: Citation Editing**
-- Scenario: User A edits `[@smith2023]` → `[@smith2023; @jones2024]`
-- Simultaneously: User B edits `[@smith2023]` → `[@smith2023, see discussion]`
+- Scenario: User A edits `:cite:smith2023:` → `:cite:smith2023, @jones2024:`
+- Simultaneously: User B edits `:cite:smith2023:` → `:cite:smith2023, see discussion:`
 - Expected: Merged result is valid RSM citation syntax
 - Measure: Does merge produce syntactically valid citation?
 
@@ -109,22 +114,22 @@ Validate that Y.js CRDT merges preserve RSM semantic validity during concurrent 
 - Measure: Does merge produce valid math block?
 
 **Test 2.3: Cross-Reference Editing**
-- Scenario: User A renames figure label `{#fig:old}` → `{#fig:new}`
-- Simultaneously: User B adds citation `[@fig:old]`
-- Expected: Either citation updates or remains `[@fig:old]` (invalid but detectable)
+- Scenario: User A renames figure label `:label:old` → `:label:new:`
+- Simultaneously: User B adds reference `:ref:old`
+- Expected: Either reference updates or remains `:ref:old:` (invalid but detectable)
 - Measure: Does merge break cross-reference resolution?
 
 **Test 2.4: Metadata Editing**
-- Scenario: User A edits title in YAML frontmatter
+- Scenario: User A edits title
 - Simultaneously: User B edits author list
-- Expected: YAML remains valid (indentation preserved, no duplicate keys)
-- Measure: Does merge produce parseable YAML?
+- Expected: Entire document remains valid
+- Measure: Does merge produce parseable RSM?
 
 **Test 2.5: Deletion Conflicts**
 - Scenario: User A deletes paragraph
 - Simultaneously: User B edits that paragraph
 - Expected: Either edit wins or deletion wins (CRDT determines), no corrupted half-paragraph
-- Measure: Result is valid RSM (no orphaned text fragments)
+- Measure: Result is valid RSM
 
 **Test 2.6: Large Paste During Concurrent Edit**
 - Scenario: User A pastes 5000+ characters
@@ -138,8 +143,8 @@ Validate that Y.js CRDT merges preserve RSM semantic validity during concurrent 
 - Measure: Final document contains all typed characters
 
 **Test 2.8: Nested Structure Editing**
-- Scenario: User A edits figure caption inside blockquote
-- Simultaneously: User B deletes blockquote wrapper
+- Scenario: User A edits :span: inside :caption: inside :figure:
+- Simultaneously: User B deletes figure wrapper
 - Expected: Figure caption preserved (orphaned) or deleted entirely (no half-structure)
 - Measure: No malformed nesting (dangling delimiters)
 
@@ -182,7 +187,7 @@ Validate that Y.js CRDT merges preserve RSM semantic validity during concurrent 
 
 ---
 
-## Week 3: Performance & Rollback (6-8 hours)
+## Phase 3: Performance & Rollback
 
 ### Goal
 Validate performance is acceptable and rollback system can recover from corruption.
@@ -273,17 +278,17 @@ Validate performance is acceptable and rollback system can recover from corrupti
 
 ### Technical Artifacts
 
-**Week 1 Deliverables:**
+**Phase 1 Deliverables:**
 - Working demo: Two browser tabs editing RSM document simultaneously
 - CodeMirror 6 + Y.js integration code
 - Basic cursor awareness implementation
 
-**Week 2 Deliverables:**
+**Phase 2 Deliverables:**
 - Test harness: Automated concurrent edit testing
 - Test report: 80 test results (valid/invalid, failure analysis)
 - Edge case documentation (surprising behaviors, UX considerations)
 
-**Week 3 Deliverables:**
+**Phase 3 Deliverables:**
 - Performance report: Latency/memory/CPU benchmarks
 - Snapshot system prototype (PostgreSQL schema + snapshot/restore functions)
 - Rollback UI mockup (functional prototype)
@@ -314,9 +319,8 @@ Write a concise report (2-3 pages) addressing:
 - Examples: Y.js fundamentally incompatible with RSM structure, performance unacceptable, rollback doesn't work
 
 **5. Recommendation**
-- **GO**: Proceed to Phase 2 (production integration)
+- **GO**: Proceed to production integration
   - Justification: Semantic preservation >95%, performance acceptable, rollback works
-  - Estimated Phase 2 timeline: 8-10 weeks
   - Risks to monitor: [list known edge cases]
 
 - **NO-GO**: Do not proceed with Y.js approach
@@ -332,11 +336,11 @@ Write a concise report (2-3 pages) addressing:
 
 | Criterion | Threshold | Measured By |
 |-----------|-----------|-------------|
-| **Semantic preservation** | ≥95% valid RSM | Week 2 test suite (76/80 tests pass) |
-| **Latency (internet)** | P50 <200ms, P99 <500ms | Week 3 benchmark (100 keystrokes) |
-| **Memory (10K lines)** | <100MB, no leaks | Week 3 profiler (30-min session) |
-| **Rollback reliability** | 100% restoration | Week 3 snapshot test (10/10 restores) |
-| **No blocking issues** | 0-2 edge cases with mitigation | Week 2 edge case analysis |
+| **Semantic preservation** | ≥95% valid RSM | Phase 2 test suite (76/80 tests pass) |
+| **Latency (internet)** | P50 <200ms, P99 <500ms | Phase 3 benchmark (100 keystrokes) |
+| **Memory (10K lines)** | <100MB, no leaks | Phase 3 profiler (30-min session) |
+| **Rollback reliability** | 100% restoration | Phase 3 snapshot test (10/10 restores) |
+| **No blocking issues** | 0-2 edge cases with mitigation | Phase 2 edge case analysis |
 
 ### NO-GO Triggered By ANY of:
 
@@ -352,30 +356,38 @@ Write a concise report (2-3 pages) addressing:
 
 ### Why This Spike Matters
 
-Studio was always intended to have real-time collaboration for V1. Computational research is team-based (2-10 co-authors typical). Single-user editors don't compete with Overleaf or Google Docs in 2026.
+Studio was always intended to have real-time collaboration for V1. Computational
+research is team-based (2-10 co-authors typical). Single-user editors don't compete with
+Overleaf or Google Docs in 2026.
 
-This spike determines if the chosen technical approach (Y.js CRDTs) can handle RSM's semantic structure. If it can't, we need a different approach (lock-based editing, OT, or defer collaboration to V2).
+This spike determines if the chosen technical approach (Y.js CRDTs) can handle RSM's
+semantic structure. If it can't, we need a different approach (lock-based editing, OT,
+or defer collaboration to V2).
 
 ### Risk Philosophy
 
-**Pragmatic tolerance**: 95%+ semantic preservation + fast rollback is good enough. We don't need 99.9% perfection.
+**Pragmatic tolerance**: 95%+ semantic preservation + fast rollback is good enough. We
+don't need 99.9% perfection.
 
-**Evidence**: Overleaf (15M users) and Typst both have real-time collab with occasional merge issues. Academics tolerate this because rollback/undo exists.
+**Evidence**: Overleaf (15M users) and Typst both have real-time collab with occasional
+merge issues. Academics tolerate this because rollback/undo exists.
 
-**For Studio**: If Y.js garbles a sentence, user restores from 5-15 minutes ago. Annoying but not career-ending. Computational research = code/data elsewhere, paper is writeup (not the research artifact itself).
+**For Studio**: If Y.js garbles a sentence, user restores from 5-15 minutes ago.
+Annoying but not career-ending. Computational research = code/data elsewhere, paper is
+writeup (not the research artifact itself).
 
 ### What Happens After Spike
 
 **If GO**:
-- Phase 2: Production integration (8-10 weeks) - WebSocket server, persistence, auth
-- Phase 3: Backend LSP (3-4 weeks, parallel) - Server-side RSM diagnostics
-- Phase 4: Beta testing (2-4 weeks) - 10-20 research teams
+- Production integration - WebSocket server, persistence, auth
+- Backend LSP - Server-side RSM diagnostics
+- Beta testing - 10-20 research teams
 - Launch: Q3 2026
 
 **If NO-GO**:
 - Evaluate fallback options:
-  - Fallback A: Single-user Studio V1 (6-8 weeks) - defer collaboration to V2
-  - Fallback B: Lock-based editing (8-10 weeks) - Google Docs-style paragraph locking
+  - Fallback A: Single-user Studio V1 - defer collaboration to V2
+  - Fallback B: Lock-based editing - Google Docs-style paragraph locking
   - Fallback C: Cancel Studio - focus on Press standalone
 
 ---
@@ -384,12 +396,14 @@ This spike determines if the chosen technical approach (Y.js CRDTs) can handle R
 
 **Technical questions**: Ask Leo (founder/technical lead)
 
-**Scope questions**: Refer to this document. If something isn't listed, it's out of scope for the spike.
+**Scope questions**: Refer to this document. If something isn't listed, it's out of
+scope for the spike.
 
-**Blocked on decisions**: Document the decision needed and continue with other tasks. Decisions can be made at end-of-week sync.
+**Blocked on decisions**: Document the decision needed and continue with other tasks.
+Decisions can be made at end-of-phase sync.
 
 ---
 
 **Spike approved**: January 29, 2026
 **Start date**: During Press beta (February-March 2026)
-**Decision meeting**: End of Week 3 (GO/NO-GO)
+**Decision meeting**: End of Phase 3 (GO/NO-GO)
