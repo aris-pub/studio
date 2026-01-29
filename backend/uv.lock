@@ -1229,7 +1229,11 @@ wheels = [
 [[package]]
 name = "rsm-lang"
 version = "0.5.3"
+<<<<<<< HEAD
 source = { editable = "../../rsm" }
+=======
+source = { registry = "https://pypi.org/simple" }
+>>>>>>> 6b1fc4f8 (update rsm-lang)
 dependencies = [
     { name = "fs" },
     { name = "icecream" },
@@ -1239,7 +1243,6 @@ dependencies = [
     { name = "tree-sitter-rsm" },
     { name = "ujson" },
 ]
-
 [package.metadata]
 requires-dist = [
     { name = "fs", specifier = ">=2.4.15" },
