@@ -116,3 +116,4 @@ fly.toml.local
 dist
 test-results/
 playwright-report/
+.claude/skills
