@@ -203,29 +203,11 @@ For CI, STAGING, and PROD environments, set these environment variables directly
 - `DB_PORT`, `DB_NAME`, `TEST_DB_NAME`
 - Set `ENV=CI`, `ENV=STAGING`, or `ENV=PROD` to enable system environment variable mode
 
-### Standard Development
+### Development Setup
 ```bash
 just init                             # Sets up all .env files and installs all dependencies
 just dev                              # Start development containers
 ```
-
-### Containerized Development (Multi-Clone Setup)
-```bash
-# Quick setup for any clone
-just init                             # Sets up all .env files and installs dependencies
-just dev                              # Start containers (uses directory name as project name)
-
-# For additional clones, use the setup script
-./docker/scripts/setup-clone.sh
-
-# Access services (using your configured ports):
-# Frontend: http://localhost:{FRONTEND_PORT}
-# Storybook: http://localhost:{STORYBOOK_PORT}
-# Backend API: http://localhost:{BACKEND_PORT}/docs
-# Database: localhost:{DB_PORT}
-```
-
-See [docker/README.md](docker/README.md) for detailed multi-clone setup instructions.
 
 ## Frontend Commands
 ```bash
