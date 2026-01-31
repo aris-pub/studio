@@ -63,9 +63,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -92,7 +92,7 @@ jobs:
       run: |
         uv venv
         uv sync --group test --group dev
-        uv pip install -e ../rsm
+        uv pip install -e ../../rsm
 
     - name: Run linting (ruff)
       run: uv run ruff check
@@ -126,9 +126,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Setup Node.js
       uses: actions/setup-node@v6
@@ -169,9 +169,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Setup Node.js
       uses: actions/setup-node@v6
