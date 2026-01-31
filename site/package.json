@@ -11,7 +11,7 @@
     "dev": "node ../docker/env-check.js && nuxt dev",
     "generate": "node ../docker/env-check.js && nuxt generate",
     "preview": "node ../docker/env-check.js && nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "nuxt prepare && npx playwright install chromium --with-deps",
     "lint": "eslint . --fix",
     "test": "node ../docker/env-check.js && node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs",
     "test:run": "node ../docker/env-check.js && node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs run",

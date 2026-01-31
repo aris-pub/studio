@@ -20,7 +20,8 @@
     "test:visual": "node ../docker/env-check.js && playwright test --grep @visual",
     "test:all": "npm run test:run && npm run test:e2e",
     "storybook": "node ../docker/env-check.js && storybook dev -p ${STORYBOOK_PORT}",
-    "build-storybook": "node ../docker/env-check.js && storybook build"
+    "build-storybook": "node ../docker/env-check.js && storybook build",
+    "postinstall": "npx playwright install chromium firefox webkit --with-deps"
   },
   "dependencies": {
     "@floating-ui/vue": "^1.1.6",
