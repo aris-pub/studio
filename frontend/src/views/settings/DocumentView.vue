@@ -43,7 +43,7 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
     )
   );
 
-  const defaultSettings = reactive({});
+  let defaultSettings = reactive({});
   const fileSettingsRef = useTemplateRef("file-settings-ref");
 
   onMounted(async () => {
