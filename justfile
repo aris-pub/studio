@@ -34,6 +34,7 @@ test:
     cd backend && uv run pytest -n8
     cd frontend && npm run test:all
     cd site && npm run test:all
+    cd cli && uv run pytest -v
 
 # Run all linters
 lint:
@@ -41,6 +42,8 @@ lint:
     cd backend && uv run mypy aris/
     cd frontend && npm run lint
     cd site && npm run lint
+    cd cli && uv run ruff check --fix
+    cd cli && uv run mypy .
 
 # Run lint then test
 check:
@@ -61,6 +64,7 @@ init:
     cd backend && if [ -d "../../rsm" ]; then uv pip install -e ../../rsm; echo "Installed local RSM package"; else echo "No local RSM found, using PyPI version"; fi
     cd frontend && npm install
     cd site && npm install
+    cd cli && uv sync
     @echo "Setup complete! Edit .env files if needed, then run 'just dev' to start"
 
 # Deployment Commands
