@@ -387,6 +387,7 @@ And other tags: <div>content</div>, <img src="x" onerror="alert('xss')">
             # Just ensure we get a string result without crashing
             pass
 
+    @pytest.mark.slow
     async def test_rsm_memory_usage_with_malformed_content(self, db_session: AsyncSession):
         """Test that malformed content doesn't cause memory issues."""
         # Create content designed to potentially cause memory issues

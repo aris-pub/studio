@@ -29,21 +29,21 @@ logs:
 # Testing Commands
 # ================
 
-# Run all tests
+# Run all tests (skip slow tests in dev)
 test:
-    cd backend && uv run pytest -n8
-    cd frontend && npm run test:all
-    cd site && npm run test:all
+    cd backend && uv run pytest -n8 -m "not slow"
     cd cli && uv run pytest -v
+    cd site && npm run test:all
+    cd frontend && npm run test:all
 
 # Run all linters
 lint:
     cd backend && uv run ruff check --fix
     cd backend && uv run mypy aris/
-    cd frontend && npm run lint
-    cd site && npm run lint
     cd cli && uv run ruff check --fix
     cd cli && uv run mypy .
+    cd site && npm run lint
+    cd frontend && npm run lint
 
 # Run lint then test
 check:
@@ -74,18 +74,11 @@ init:
 deploy:
     @echo "🚀 Deploying all services..."
     @echo ""
-    @echo "1️⃣  Deploying backend to Fly.io..."
-    fly deploy --config backend/fly.toml
+    just deploy-backend
     @echo ""
-    @echo "2️⃣  Pushing to GitHub to trigger Netlify deployments..."
-    git push origin main
+    just deploy-netlify
     @echo ""
     @echo "✅ Deployment complete!"
-    @echo "   - Backend: https://aris-backend.fly.dev"
-    @echo "   - Frontend: https://app.rsm.studio (deploys from main branch)"
-    @echo "   - Site: https://rsm.studio (deploys from main branch)"
-    @echo ""
-    @echo "⏳ Netlify builds typically take 2-3 minutes"
 
 # Deploy only backend to Fly.io
 deploy-backend:
@@ -113,7 +106,3 @@ status:
 env:
     @echo "Current environment configuration:"
     @if [ -f .env ]; then cat .env; else echo "No .env file found"; fi
-
-# Send macOS notification
-notify message:
-    osascript -e "display notification \"{{message}}\" with title \"Claude Code\""

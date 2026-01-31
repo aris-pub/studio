@@ -139,6 +139,9 @@ filterwarnings = [
     "ignore::DeprecationWarning:fs",
     "ignore::UserWarning:fs",  # Suppress fs pkg_resources deprecation warnings
 ]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
