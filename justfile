@@ -29,12 +29,12 @@ logs:
 # Testing Commands
 # ================
 
-# Run all tests (skip slow tests in dev)
+# Run all tests (skip slow tests and E2E in dev, CI runs all)
 test:
     cd backend && uv run pytest -n8 -m "not slow"
     cd cli && uv run pytest -v
     cd site && npm run test:all
-    cd frontend && npm run test:all
+    cd frontend && npm run test:run
 
 # Run all linters
 lint:
