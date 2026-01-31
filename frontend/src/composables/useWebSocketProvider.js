@@ -29,11 +29,16 @@ export function useWebSocketProvider({ ydoc, roomName, serverUrl, user }) {
     const url =
       typeof serverUrl === "object" && serverUrl.value
         ? serverUrl.value
-        : serverUrl || "ws://localhost:1234";
+        : serverUrl;
 
     if (!room) {
-      console.warn("useWebSocketProvider: roomName is required");
-      return;
+      console.error("useWebSocketProvider: roomName is required");
+      throw new Error("useWebSocketProvider: roomName is required");
+    }
+
+    if (!url) {
+      console.error("useWebSocketProvider: serverUrl is required");
+      throw new Error("useWebSocketProvider: serverUrl is required");
     }
 
     // Create awareness for cursor/selection sharing

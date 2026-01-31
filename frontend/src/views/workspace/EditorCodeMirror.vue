@@ -1,10 +1,10 @@
 <script setup>
-  import { ref, computed, inject, onMounted, watch } from "vue";
-  import { StateEffect } from "@codemirror/state";
+  import { ref, computed, inject, watch, onBeforeUnmount } from "vue";
+  import { EditorView, basicSetup } from "codemirror";
+  import { EditorState } from "@codemirror/state";
   import { yCollab } from "y-codemirror.next";
-  import { useCodeMirror } from "@/composables/useCodeMirror.js";
-  import { useYjsDocument } from "@/composables/useYjsDocument.js";
-  import { useWebSocketProvider } from "@/composables/useWebSocketProvider.js";
+  import * as Y from "yjs";
+  import { WebsocketProvider } from "y-websocket";
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -12,76 +12,149 @@
 
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
+  const view = ref(null);
+  const ydoc = ref(null);
+  const ytext = ref(null);
+  const provider = ref(null);
+  const awareness = ref(null);
+  const isConnected = ref(false);
+  const isSynced = ref(false);
+  const isInitialized = ref(false);
+  const roomName = ref("");
 
-  // Y.js setup - use file ID as room name
-  const documentId = computed(() => `file-${file.value?.id || "unknown"}`);
-  const { ydoc, ytext, isReady: yjsReady } = useYjsDocument(documentId.value);
-
-  // WebSocket provider - connect to multiplayer server
+  // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL);
-  const userInfo = computed(() => ({
-    name: user?.value?.name || user?.value?.email || "Anonymous",
-    color: `#${Math.floor(Math.random() * 16777215)
-      .toString(16)
-      .padStart(6, "0")}`,
-  }));
 
-  const { awareness, isConnected, isSynced } = useWebSocketProvider({
-    ydoc,
-    roomName: documentId,
-    serverUrl,
-    user: userInfo,
-  });
-
-  // CodeMirror setup
-  const { view, isReady: editorReady } = useCodeMirror({
-    container: editorContainer,
-    initialContent: computed(() => file.value?.source || ""),
-    onUpdate: (newContent) => {
-      // Content updates are handled by Y.js, no manual sync needed
-      // But we can update local file ref for UI consistency
-      if (file.value) {
-        file.value.source = newContent;
-      }
-    },
-  });
-
-  // Integrate Y.js collaboration extension with CodeMirror
-  // This binds ytext to the editor and enables cursor awareness
-  watch(
-    [view, ytext, awareness, yjsReady],
-    ([viewInstance, ytextInstance, awarenessInstance, ready]) => {
-      if (viewInstance && ytextInstance && awarenessInstance && ready) {
-        console.log("[EditorCodeMirror] Integrating Y.js with CodeMirror");
-
-        // Add yCollab extension to CodeMirror
-        viewInstance.dispatch({
-          effects: StateEffect.appendConfig.of(
-            yCollab(ytextInstance, awarenessInstance, { undoManager: true })
-          ),
-        });
-
-        // Expose view globally for testing
-        if (import.meta.env.DEV) {
-          window.__cmView = viewInstance;
-        }
-      }
+  // User info for awareness
+  const userInfo = computed(() => {
+    if (!user?.value?.name && !user?.value?.email) {
+      throw new Error("User information is required for collaboration");
     }
+    return {
+      name: user.value.name || user.value.email,
+      color: `#${Math.floor(Math.random() * 16777215)
+        .toString(16)
+        .padStart(6, "0")}`,
+    };
+  });
+
+  // Cleanup function
+  const cleanup = () => {
+    console.log("[EditorCodeMirror] Cleaning up");
+
+    if (view.value) {
+      view.value.destroy();
+      view.value = null;
+    }
+
+    if (provider.value) {
+      provider.value.destroy();
+      provider.value = null;
+    }
+
+    if (ydoc.value) {
+      ydoc.value.destroy();
+      ydoc.value = null;
+    }
+
+    ytext.value = null;
+    awareness.value = null;
+    isConnected.value = false;
+    isSynced.value = false;
+    isInitialized.value = false;
+  };
+
+  // Setup Y.js and WebSocket when file changes
+  watch(
+    [() => file.value?.id, editorContainer],
+    ([fileId, container]) => {
+      if (!fileId || !container) return;
+
+      // Cleanup previous instance
+      cleanup();
+
+      roomName.value = `file-${fileId}`;
+      console.log(`[EditorCodeMirror] Setting up collaboration for ${roomName.value}`);
+
+      // Create Y.Doc and Y.Text
+      ydoc.value = new Y.Doc();
+      ytext.value = ydoc.value.getText("source");
+
+      // CRITICAL: Initialize Y.Text BEFORE connecting provider
+      // This prevents Y.Text observer from firing during editor creation
+      if (file.value?.source && ytext.value.toString() === "") {
+        ytext.value.insert(0, file.value.source);
+        console.log("[EditorCodeMirror] Initialized Y.text with file content (BEFORE provider)");
+      }
+
+      // Create WebSocket provider - connect: false to delay connection
+      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value, {
+        connect: false
+      });
+      awareness.value = provider.value.awareness;
+
+      // Set user awareness
+      awareness.value.setLocalStateField("user", userInfo.value);
+
+      // Monitor connection
+      provider.value.on("status", (event) => {
+        isConnected.value = event.status === "connected";
+        console.log(`[Y.js] WebSocket status: ${event.status}`);
+      });
+
+      provider.value.on("sync", (synced) => {
+        isSynced.value = synced;
+        console.log(`[Y.js] Document synced: ${synced}`);
+      });
+
+      // Create editor BEFORE connecting
+      console.log("[EditorCodeMirror] Creating CodeMirror with Y.js integration");
+
+      const undoManager = new Y.UndoManager(ytext.value);
+
+      const state = EditorState.create({
+        doc: ytext.value.toString(),
+        extensions: [
+          basicSetup,
+          yCollab(ytext.value, awareness.value, { undoManager }),
+          EditorView.theme({
+            "&": {
+              height: "100%",
+              fontSize: "14px",
+            },
+            ".cm-scroller": {
+              fontFamily: '"Source Code Pro", monospace',
+              overflow: "auto",
+            },
+            ".cm-content": {
+              padding: "16px",
+              minHeight: "100%",
+            },
+          }),
+        ],
+      });
+
+      view.value = new EditorView({
+        state,
+        parent: container,
+      });
+
+      console.log(`[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`);
+
+      // Expose view globally for testing
+      if (import.meta.env.DEV) {
+        window.__cmView = view.value;
+      }
+
+      // NOW connect the provider after everything is set up
+      provider.value.connect();
+      console.log(`[Y.js] Connecting to ${serverUrl.value} (room: ${roomName.value})`);
+    },
+    { immediate: true }
   );
 
-  // Initialize Y.text with file content on mount
-  onMounted(() => {
-    watch(
-      [ytext, () => file.value?.source],
-      ([ytextInstance, source]) => {
-        if (ytextInstance && source && ytextInstance.toString() === "") {
-          // Only initialize if Y.text is empty (first load)
-          ytextInstance.insert(0, source);
-          console.log("[EditorCodeMirror] Initialized Y.text with file content");
-        }
-      },
-      { immediate: true }
-    );
+  onBeforeUnmount(() => {
+    cleanup();
   });
 
   // Connection status indicator
@@ -105,7 +178,7 @@
         <span class="status-dot"></span>
         {{ statusText }}
       </span>
-      <span class="room-info">Room: {{ documentId }}</span>
+      <span class="room-info">Room: {{ roomName }}</span>
     </div>
     <div ref="editorContainer" class="cm-container"></div>
   </div>

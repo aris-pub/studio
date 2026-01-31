@@ -1,14 +1,15 @@
 {
   "name": "aris-multiplayer-server",
   "version": "1.0.0",
-  "description": "Multi-player real-time editing server for Aris Studio using Y.js CRDT",
+  "description": "Y.js WebSocket server for Aris Studio collaborative editing",
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "dev": "HOST=0.0.0.0 PORT=${MULTIPLAYER_PORT} node node_modules/y-websocket/bin/server.cjs",
-    "start": "HOST=0.0.0.0 PORT=${MULTIPLAYER_PORT} node node_modules/y-websocket/bin/server.cjs"
+    "dev": "node server.js",
+    "start": "node server.js"
   },
   "dependencies": {
+    "ws": "^8.18.0",
     "y-websocket": "^2.0.4"
   }
 }

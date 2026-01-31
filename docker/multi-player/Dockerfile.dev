@@ -25,8 +25,15 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY docker/env-check.js ../docker/env-check.js
 COPY .env ../.env
 
+# Copy entrypoint script
+COPY docker/multi-player/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose WebSocket port
 EXPOSE 1234
+
+# Use entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default development server command
 CMD ["npm", "run", "dev"]

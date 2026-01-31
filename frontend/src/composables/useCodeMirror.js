@@ -65,26 +65,6 @@ export function useCodeMirror({ container, initialContent, onUpdate, readOnly = 
     }
   };
 
-  // Watch for external content changes (e.g., from Y.js sync)
-  // Only update if content differs to avoid cursor jumping
-  watch(
-    () => initialContent?.value,
-    (newContent) => {
-      if (!view.value || !isReady.value) return;
-
-      const currentDoc = view.value.state.doc.toString();
-      if (currentDoc !== newContent && newContent !== undefined) {
-        view.value.dispatch({
-          changes: {
-            from: 0,
-            to: view.value.state.doc.length,
-            insert: newContent,
-          },
-        });
-      }
-    }
-  );
-
   onMounted(() => {
     createEditor();
   });

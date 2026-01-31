@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Y.js Minimal Test</title>
+  <script type="module">
+    import { EditorView, basicSetup } from 'https://esm.sh/codemirror@6.0.2';
+    import { EditorState } from 'https://esm.sh/@codemirror/state@6.5.4';
+    import { yCollab } from 'https://esm.sh/y-codemirror.next@0.3.5';
+    import * as Y from 'https://esm.sh/yjs@13.6.23';
+    import { WebsocketProvider } from 'https://esm.sh/y-websocket@2.0.4';
+
+    // Create two editors
+    function createEditor(containerId, color) {
+      const ydoc = new Y.Doc();
+      const ytext = ydoc.getText('codemirror');
+
+      const provider = new WebsocketProvider('ws://localhost:1234', 'test-room', ydoc);
+
+      provider.awareness.setLocalStateField('user', {
+        name: `User-${color}`,
+        color: color
+      });
+
+      provider.on('sync', (isSynced) => {
+        console.log(`[${color}] Synced: ${isSynced}`);
+
+        if (isSynced) {
+          // Initialize content only for first user
+          if (color === '#ff0000' && ytext.toString() === '') {
+            ytext.insert(0, 'Hello from Y.js!\n');
+          }
+
+          // Create editor AFTER sync
+          const state = EditorState.create({
+            doc: ytext.toString(),
+            extensions: [
+              basicSetup,
+              yCollab(ytext, provider.awareness)
+            ]
+          });
+
+          new EditorView({
+            state,
+            parent: document.getElementById(containerId)
+          });
+
+          console.log(`[${color}] Editor created with ${ytext.toString().length} chars`);
+        }
+      });
+
+      provider.on('status', ({ status }) => {
+        console.log(`[${color}] Status: ${status}`);
+      });
+    }
+
+    // Create two editors when page loads
+    window.addEventListener('load', () => {
+      createEditor('editor1', '#ff0000');
+      setTimeout(() => createEditor('editor2', '#0000ff'), 1000);
+    });
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .editor-container {
+      border: 2px solid #ccc;
+      margin: 20px 0;
+      padding: 10px;
+    }
+    h2 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Y.js Minimal Test - Two Editors</h1>
+  <p>Open browser console to see logs. Type in either editor - changes should sync.</p>
+
+  <div class="editor-container">
+    <h2>Editor 1 (Red User)</h2>
+    <div id="editor1"></div>
+  </div>
+
+  <div class="editor-container">
+    <h2>Editor 2 (Blue User)</h2>
+    <div id="editor2"></div>
+  </div>
+</body>
+</html>
