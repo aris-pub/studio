@@ -6,6 +6,10 @@ WORKDIR /app
 COPY backend/ .
 COPY styles/ ./styles
 
+# Remove local sources section from pyproject.toml for production build
+# This allows PROD to use PyPI while dev/CI use local rsm
+RUN sed -i '/^\[tool\.uv\.sources\]/,/^$/d' pyproject.toml
+
 RUN uv sync --frozen --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
