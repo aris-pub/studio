@@ -9,8 +9,73 @@ for RSM (Readable Research Markup) manuscripts.
 aris/
 ├── backend/    # FastAPI backend
 ├── frontend/   # Vue.js frontend
+├── cli/        # CLI tool for local development
 └── CLAUDE.md
 ```
+
+## CLI Tool (Studio CLI)
+
+**Purpose**: Accelerate UI testing by eliminating authentication boilerplate and generating Playwright test templates.
+
+**Use case**: When implementing UI-heavy features (e.g., real-time collaboration), agents can use the CLI to skip writing repetitive login/navigation code and jump straight to testing the actual feature.
+
+### Commands
+
+```bash
+# Login once (session stored in ~/.studio/session.json)
+uv run python -m cli login -u user@example.com -p password
+
+# List files for logged-in user
+uv run python -m cli files
+
+# For humans: Open browser to file (exits immediately, browser stays open)
+uv run python -m cli ui 200
+
+# For agents: Output ready-to-use Playwright script with session injection
+uv run python -m cli ui 200 --playwright
+
+# Show current session data (tokens, user info)
+uv run python -m cli session
+
+# Logout
+uv run python -m cli logout
+```
+
+### Agent Workflow
+
+**Old way (avoid this boilerplate)**:
+```python
+# Agent had to write all this every time
+browser = await puppeteer.launch()
+page = await browser.newPage()
+await page.goto('http://localhost:5173/login')
+await page.type('#email', 'test@example.com')
+await page.type('#password', 'password')
+await page.click('#login-button')
+await page.waitForNavigation()
+# Navigate to file...
+# FINALLY test the actual feature
+```
+
+**New way with CLI**:
+```bash
+# Step 1: Login once
+uv run python -m cli login -u test@example.com -p password
+
+# Step 2: Get Playwright script template
+uv run python -m cli ui 123 --playwright > test_collab.py
+
+# Step 3: Add test code to generated script
+# The script already includes session injection and navigation boilerplate
+```
+
+### Security & Environment
+
+- **Local-only**: Refuses to run in PROD/CI/STAGING environments
+- **Secure storage**: Session stored with 600 permissions in `~/.studio/session.json`
+- **JWT validation**: Checks token expiration before operations
+
+See [cli/README.md](cli/README.md) for architecture details and full documentation.
 
 ## Just Commands (Task Runner)
 
@@ -64,6 +129,14 @@ npm run copy-assets                   # Manually copy brand assets to public/bra
 npm run test:all                      # Run all tests
 npm test                              # Run tests
 npm run lint                          # Lint code
+
+# CLI (local machine - NOT containerized)
+cd cli
+uv sync                               # Install dependencies
+uv run python -m cli <command>        # Run CLI commands
+uv run pytest -v                      # Run tests
+uv run ruff check --fix               # Lint
+uv run mypy cli/                      # Type check
 ```
 
 **Note on Brand Assets**: The site automatically copies brand assets from `brand/logos/studio/` to `site/public/brand/` during `npm run dev` and `npm run build` via pre-hooks. This avoids symlink issues in Docker containers. The copied files are gitignored.

@@ -267,6 +267,101 @@ class TestCLI:
             assert result.exit_code != 0
             assert "Not logged in" in result.output
 
+    def test_ui_command_default_opens_browser(self, tmp_path: Path) -> None:
+        """UI command opens browser and exits immediately (no blocking)."""
+        valid_token = jwt.encode({"sub": "1", "exp": 9999999999}, "secret", algorithm="HS256")
+        session_file = tmp_path / "session.json"
+        session_file.parent.mkdir(parents=True, exist_ok=True)
+        session_file.write_text(
+            json.dumps(
+                {
+                    "access_token": valid_token,
+                    "refresh_token": "refresh",
+                    "user": {"id": 1, "email": "test@example.com"},
+                }
+            )
+        )
+
+        with patch("cli.SESSION_FILE", session_file):
+            with patch("cli.sync_playwright") as mock_playwright:
+                mock_browser = mock_playwright.return_value.__enter__.return_value.chromium.launch.return_value
+                mock_page = mock_browser.new_page.return_value
+
+                runner = CliRunner()
+                result = runner.invoke(cli, ["ui", "200"])
+
+                assert result.exit_code == 0
+                mock_playwright.return_value.__enter__.return_value.chromium.launch.assert_called_once_with(
+                    headless=False
+                )
+                mock_page.goto.assert_any_call("http://localhost:5173")
+                mock_page.goto.assert_any_call("http://localhost:5173/file/200")
+                mock_page.evaluate.assert_called_once()
+                mock_page.wait_for_timeout.assert_not_called()
+
+    def test_ui_command_playwright_flag_outputs_script(self, tmp_path: Path) -> None:
+        """UI command with --playwright flag outputs Python script."""
+        valid_token = jwt.encode({"sub": "1", "exp": 9999999999}, "secret", algorithm="HS256")
+        session_file = tmp_path / "session.json"
+        session_file.parent.mkdir(parents=True, exist_ok=True)
+        session_file.write_text(
+            json.dumps(
+                {
+                    "access_token": valid_token,
+                    "refresh_token": "refresh",
+                    "user": {"id": 1, "email": "test@example.com", "name": "Test User"},
+                }
+            )
+        )
+
+        with patch("cli.SESSION_FILE", session_file):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["ui", "200", "--playwright"])
+
+            assert result.exit_code == 0
+            assert "from playwright.sync_api import sync_playwright" in result.output
+            assert "page.goto('http://localhost:5173')" in result.output
+            assert "page.goto('http://localhost:5173/file/200')" in result.output
+            assert "localStorage.setItem('accessToken'" in result.output
+            assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" in result.output
+            assert "# ADD YOUR TEST CODE BELOW" in result.output
+
+    def test_session_command(self, tmp_path: Path) -> None:
+        """Session command outputs current session data."""
+        valid_token = jwt.encode({"sub": "1", "exp": 9999999999}, "secret", algorithm="HS256")
+        session_file = tmp_path / "session.json"
+        session_file.parent.mkdir(parents=True, exist_ok=True)
+        session_file.write_text(
+            json.dumps(
+                {
+                    "access_token": valid_token,
+                    "refresh_token": "refresh_token_value",
+                    "user": {"id": 1, "email": "test@example.com", "name": "Test User"},
+                }
+            )
+        )
+
+        with patch("cli.SESSION_FILE", session_file):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["session"])
+
+            assert result.exit_code == 0
+            assert "Access Token:" in result.output
+            assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" in result.output
+            assert "Refresh Token:" in result.output
+            assert "refresh_token_value" in result.output
+            assert "User:" in result.output
+            assert "test@example.com" in result.output
+
+    def test_session_command_without_login(self, tmp_path: Path) -> None:
+        """Session command fails without login."""
+        with patch("cli.SESSION_FILE", tmp_path / "nonexistent.json"):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["session"])
+
+            assert result.exit_code != 0
+            assert "Not logged in" in result.output
+
 
 class TestConfig:
     """Test configuration loading."""

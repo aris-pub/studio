@@ -57,6 +57,45 @@ See more at [](https://aris.pub).
    just dev      # Starts all services in Docker containers
    ```
 
+## CLI Tool
+
+The `studio` CLI tool accelerates UI testing and development by managing authentication sessions and generating Playwright scripts.
+
+**Installation:**
+```bash
+cd cli
+uv sync
+```
+
+**Usage:**
+```bash
+# Login once
+uv run python -m cli login -u your@email.com -p password
+
+# List your files
+uv run python -m cli files
+
+# For humans: open browser to file (exits immediately, browser stays open)
+uv run python -m cli ui 200
+
+# For agents: output ready-to-use Playwright script
+uv run python -m cli ui 200 --playwright
+
+# Show session data (tokens, user info)
+uv run python -m cli session
+
+# Logout
+uv run python -m cli logout
+```
+
+**Why use it:**
+- Eliminates boilerplate login code in UI tests
+- Agent-friendly: generates complete Playwright test templates
+- Secure: session stored with 600 permissions in `~/.studio/session.json`
+- Local-only: refuses to run in PROD/CI/STAGING environments
+
+See [cli/README.md](cli/README.md) for detailed documentation.
+
 ## Testing
 
 Tests use SQLite locally for fast iteration and PostgreSQL in CI for production-like testing. Backend tests run with 8 parallel workers for maximum speed.

@@ -30,13 +30,34 @@ uv run python -m cli files
 
 Shows a table with file ID, title, and last edited timestamp for the logged-in user.
 
+### Show Session Info
+
+```bash
+uv run python -m cli session
+```
+
+Displays current session data (access token, refresh token, and user info). Useful for debugging or manual token extraction.
+
 ### Open File in Browser
 
 ```bash
+# For humans: opens browser and exits immediately
 uv run python -m cli ui 200
+
+# For agents: outputs ready-to-use Playwright script
+uv run python -m cli ui 200 --playwright
 ```
 
-Opens your browser to the specified file with the current session automatically injected. Browser stays open until manually closed.
+**Default behavior (humans):**
+- Opens browser with file already loaded and session injected
+- Exits immediately (no blocking)
+- Browser stays open for manual interaction
+
+**With `--playwright` flag (agents/automation):**
+- Outputs a complete Playwright script to stdout
+- Agent can save it to a file or pipe it directly
+- Script includes session injection and navigation boilerplate
+- Reduces test script boilerplate significantly
 
 ### Logout
 
@@ -53,13 +74,15 @@ Clears the stored session.
 - `check_environment()` - Validates ENV, exits if not LOCAL
 - `Session` - Manages `~/.studio/session.json` (save/load/clear/validate)
 - `StudioAPI` - Thin wrapper around API endpoints (POST /login, GET /me, GET /users/{id}/files)
-- `cli` - Click command group with 4 commands: login, logout, files, ui
+- `cli` - Click command group with 5 commands: login, logout, session, files, ui
 
 **Browser automation:**
 - Uses Playwright to launch browser
 - Injects tokens into `localStorage`
 - Navigates to file URL
-- Keeps browser open for manual interaction
+- Two modes:
+  - Default: Opens browser for human use (no blocking, exits immediately)
+  - `--playwright`: Outputs script template for agent/automation use
 
 ## Testing
 
