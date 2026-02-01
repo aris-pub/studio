@@ -13,7 +13,7 @@ uv sync
 
 ## Usage
 
-All commands must be run from the `cli/` directory:
+**All commands must be run from `cli/` directory**: `cd cli && uv run python -m cli <command>`
 
 ```bash
 cd cli
