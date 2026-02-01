@@ -1,10 +1,15 @@
 <script setup>
   import { ref, computed, inject, watch, onBeforeUnmount } from "vue";
-  import { EditorView, basicSetup } from "codemirror";
+  import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
+  import { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap } from "@codemirror/language";
+  import { defaultKeymap } from "@codemirror/commands";
+  import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+  import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+  import { lintKeymap } from "@codemirror/lint";
   import { yCollab } from "y-codemirror.next";
-  import * as Y from "yjs";
-  import { WebsocketProvider } from "y-websocket";
+  import * as Y from "@y/y";
+  import { WebsocketProvider } from "@y/websocket";
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -37,6 +42,18 @@
         .padStart(6, "0")}`,
     };
   });
+
+  // Minimal extension bundle to debug Y.js update conflict
+  // Start with absolute minimum, add features back once collaboration works
+  const customSetup = [
+    lineNumbers(),
+    highlightSpecialChars(),
+    drawSelection(),
+    EditorState.allowMultipleSelections.of(true),
+    keymap.of([
+      ...defaultKeymap,
+    ]),
+  ];
 
   // Cleanup function
   const cleanup = () => {
@@ -78,19 +95,11 @@
 
       // Create Y.Doc and Y.Text
       ydoc.value = new Y.Doc();
-      ytext.value = ydoc.value.getText("source");
+      ytext.value = ydoc.value.get("text");
 
-      // CRITICAL: Initialize Y.Text BEFORE connecting provider
-      // This prevents Y.Text observer from firing during editor creation
-      if (file.value?.source && ytext.value.toString() === "") {
-        ytext.value.insert(0, file.value.source);
-        console.log("[EditorCodeMirror] Initialized Y.text with file content (BEFORE provider)");
-      }
-
-      // Create WebSocket provider - connect: false to delay connection
-      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value, {
-        connect: false
-      });
+      // Create WebSocket provider
+      console.log(`[Y.js] Connecting to ${serverUrl.value} (room: ${roomName.value})`);
+      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value);
       awareness.value = provider.value.awareness;
 
       // Set user awareness
@@ -102,53 +111,69 @@
         console.log(`[Y.js] WebSocket status: ${event.status}`);
       });
 
+      // Wait for initial sync before creating editor
+      provider.value.once("synced", () => {
+        const ytextLength = ytext.value.toString().length;
+        console.log(`[Y.js] Document synced, ytext has ${ytextLength} chars`);
+
+        // Initialize ONLY if completely empty
+        if (ytextLength === 0 && file.value?.source) {
+          console.log(`[EditorCodeMirror] First client - initializing Y.text with ${file.value.source.length} chars`);
+          // Use transaction to ensure atomic initialization
+          ydoc.value.transact(() => {
+            ytext.value.insert(0, file.value.source);
+          });
+        } else if (ytextLength > 0) {
+          console.log(`[EditorCodeMirror] Not first client - using existing content (${ytextLength} chars)`);
+        } else {
+          console.log("[EditorCodeMirror] No initial content to load");
+        }
+
+        // Create editor with yCollab (patch fixes setTimeout issue)
+        console.log("[EditorCodeMirror] Creating CodeMirror with Y.js integration");
+        const undoManager = new Y.UndoManager(ytext.value);
+
+        const state = EditorState.create({
+          doc: ytext.value.toString(),
+          extensions: [
+            customSetup,
+            yCollab(ytext.value, awareness.value, { undoManager }),
+            EditorView.theme({
+              "&": {
+                height: "100%",
+                fontSize: "14px",
+              },
+              ".cm-scroller": {
+                fontFamily: '"Source Code Pro", monospace',
+                overflow: "auto",
+              },
+              ".cm-content": {
+                padding: "16px",
+                minHeight: "100%",
+              },
+            }),
+          ],
+        });
+
+        view.value = new EditorView({
+          state,
+          parent: container,
+        });
+
+        console.log(`[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`);
+
+        // Expose view globally for testing
+        if (import.meta.env.DEV) {
+          window.__cmView = view.value;
+        }
+
+        isSynced.value = true;
+      });
+
+      // Monitor sync status
       provider.value.on("sync", (synced) => {
-        isSynced.value = synced;
         console.log(`[Y.js] Document synced: ${synced}`);
       });
-
-      // Create editor BEFORE connecting
-      console.log("[EditorCodeMirror] Creating CodeMirror with Y.js integration");
-
-      const undoManager = new Y.UndoManager(ytext.value);
-
-      const state = EditorState.create({
-        doc: ytext.value.toString(),
-        extensions: [
-          basicSetup,
-          yCollab(ytext.value, awareness.value, { undoManager }),
-          EditorView.theme({
-            "&": {
-              height: "100%",
-              fontSize: "14px",
-            },
-            ".cm-scroller": {
-              fontFamily: '"Source Code Pro", monospace',
-              overflow: "auto",
-            },
-            ".cm-content": {
-              padding: "16px",
-              minHeight: "100%",
-            },
-          }),
-        ],
-      });
-
-      view.value = new EditorView({
-        state,
-        parent: container,
-      });
-
-      console.log(`[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`);
-
-      // Expose view globally for testing
-      if (import.meta.env.DEV) {
-        window.__cmView = view.value;
-      }
-
-      // NOW connect the provider after everything is set up
-      provider.value.connect();
-      console.log(`[Y.js] Connecting to ${serverUrl.value} (room: ${roomName.value})`);
     },
     { immediate: true }
   );

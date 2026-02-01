@@ -1,5 +1,5 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import * as Y from "yjs";
+import * as Y from "@y/y";
 
 /**
  * Y.js document composable for CRDT-based collaborative editing
@@ -22,8 +22,8 @@ export function useYjsDocument(documentId) {
     ydoc.value = new Y.Doc();
 
     // Create Y.Text for document source
-    // 'source' is the shared text type that will be synced across clients
-    ytext.value = ydoc.value.getText("source");
+    // 'text' is the shared text type that will be synced across clients
+    ytext.value = ydoc.value.get("text");
 
     isReady.value = true;
   };
