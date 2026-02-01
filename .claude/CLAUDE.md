@@ -113,11 +113,11 @@ print("✓ User authenticated")
 page.wait_for_selector('[data-testid="manuscript-container"]', timeout=5000)
 print("✓ Manuscript container loaded")
 
-# Test your feature here
-# Example: Test real-time collaboration
-# page.click('[data-testid="collab-button"]')
-# page.wait_for_selector('[data-testid="collab-indicator"]')
-# print("✓ Collaboration mode enabled")
+# Example: Open source editor (CodeMirror) for testing Y.js collaboration
+# IMPORTANT: Click the button element, not the label text
+page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button')
+page.wait_for_selector('.cm-container', timeout=5000)
+print("✓ Source editor opened")
 
 browser.close()
 ```
@@ -401,6 +401,12 @@ The `/ci-report` command provides comprehensive CI failure analysis:
 - **Text-based selectors**: Use `.filter({ hasText: "..." })` for text-based element selection
 - **Avoid CSS class selectors**: Only use CSS classes when no `data-testid` attribute exists
 - **Component developers**: Add `data-testid` attributes to all interactive elements
+- **CRITICAL: Click interactive elements, not labels**:
+  - Vue components often have separate label and button elements
+  - Example: SidebarItem has `.sb-item-label` (display text) and `ButtonToggle` (interactive)
+  - **WRONG**: `page.click('.sb-item-label:has-text("source")')` - clicks non-interactive label
+  - **CORRECT**: `page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button')` - clicks the actual button
+  - Always target the interactive element (`button`, `input`, `a`) within the component structure
 ```
 
 ## Language Guidelines
