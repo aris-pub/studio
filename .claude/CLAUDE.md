@@ -95,6 +95,35 @@ uv run python -m cli ui 123 --playwright > test_collab.py
 # The script already includes session injection and navigation boilerplate
 ```
 
+**Complete Example**:
+```python
+# Generated script includes this boilerplate automatically:
+# - Browser launch with headless mode
+# - Session injection (tokens + user data)
+# - Navigation to file URL
+
+# Agent only needs to add test code at the end:
+page.goto('http://localhost:5173/file/264', wait_until='domcontentloaded')
+
+# Verify authentication
+page.wait_for_selector('[data-testid="user-avatar"]', timeout=5000)
+print("✓ User authenticated")
+
+# Verify manuscript loaded
+page.wait_for_selector('[data-testid="manuscript-container"]', timeout=5000)
+print("✓ Manuscript container loaded")
+
+# Test your feature here
+# Example: Test real-time collaboration
+# page.click('[data-testid="collab-button"]')
+# page.wait_for_selector('[data-testid="collab-indicator"]')
+# print("✓ Collaboration mode enabled")
+
+browser.close()
+```
+
+Run with: `cd cli && uv run python test_collab.py`
+
 ### Security & Environment
 
 - **Local-only**: Refuses to run in PROD/CI/STAGING environments
