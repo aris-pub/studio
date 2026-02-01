@@ -10,30 +10,25 @@ done
 
 echo "Database is ready!"
 
-# Install local RSM package if workspace exists (dev environment)
+# Build RSM from local source for Linux (dev server only, not tests)
 #
 # IMPORTANT: The /workspace/rsm mount includes tree-sitter-rsm compiled binaries
-# from the host machine (macOS .dylib/.so files). These binaries are architecture-
-# specific and will fail when loaded in the Linux container with:
-#   ImportError: invalid ELF header
+# from the host machine (macOS). Python C extensions now use platform-specific
+# filenames (py_limited_api=False), allowing macOS and Linux binaries to coexist:
+#   - macOS: _binding.cpython-313-darwin.so
+#   - Linux: _binding.cpython-313-aarch64-linux-gnu.so (or x86_64)
 #
 # Solution:
-#   1. Clean all host-compiled binaries from the mount (.so, .dylib, build/)
-#   2. Install RSM in editable mode (which won't rebuild tree-sitter-rsm yet)
-#   3. Force reinstall tree-sitter-rsm from PyPI to get Linux pre-built wheels
+#   1. Build tree-sitter-rsm for Linux from local source (no cleaning needed)
+#   2. Sync backend dependencies (which includes rsm-lang)
 #
-# This allows local RSM development while using Linux-compatible tree-sitter binaries.
+# Tests run locally on macOS (not in Docker), so no binary conflicts.
 if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
-    echo "Cleaning macOS-compiled binaries from mounted RSM package..."
-    find /workspace/rsm -name "*.so" -delete
-    find /workspace/rsm -name "*.dylib" -delete
-    rm -rf /workspace/rsm/tree-sitter-rsm/build/
+    echo "Building tree-sitter-rsm for Linux from local source..."
+    cd /workspace/rsm && uv sync --quiet
 
-    echo "Installing local RSM package in editable mode..."
-    uv pip install -e /workspace/rsm
-
-    echo "Installing tree-sitter-rsm with Linux pre-built wheels..."
-    uv pip install --force-reinstall tree-sitter-rsm
+    echo "Syncing backend dependencies (includes local RSM)..."
+    cd /workspace/studio/backend && uv sync --all-groups --quiet
 fi
 
 # Run migrations

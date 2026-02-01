@@ -12,11 +12,10 @@ services:
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
-      - ../backend:/app
-      - ../styles:/app/styles
-      - ../brand:/app/brand
+      - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
-      - backend_venv:/app/.venv
+      - backend_venv:/workspace/studio/backend/.venv
+    working_dir: /workspace/studio/backend
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - TEST_DB_URL=postgresql://postgres:postgres@postgres:5432/${TEST_DB_NAME}

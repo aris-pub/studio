@@ -13,6 +13,30 @@ aris/
 └── CLAUDE.md
 ```
 
+## Docker vs Local: Dev Server vs Tests
+
+**Critical Architecture Decision:**
+- **Docker**: Dev server only (backend, frontend, site, storybook)
+- **Local**: Tests only (pytest runs on macOS with macOS binaries)
+- **CI**: Tests on Linux separately
+
+**Why:**
+- `rsm/` and `rsm/tree-sitter-rsm` must be installed from local source (never PyPI/GitHub)
+- tree-sitter-rsm compiles platform-specific binaries (macOS .dylib vs Linux .so)
+- Solution: Platform-specific binary filenames allow macOS and Linux binaries to coexist
+  - setup.py uses `py_limited_api=False` to generate platform-specific names
+  - macOS: `_binding.cpython-313-darwin.so`
+  - Linux: `_binding.cpython-313-aarch64-linux-gnu.so` (or x86_64)
+  - Python's import system automatically loads the correct binary for each platform
+- Docker builds Linux binaries once on startup, local tests use macOS binaries
+- No rebuilding, no switching, no conflicts - both binaries coexist in the same directory
+
+**Commands:**
+```bash
+just dev    # Start Docker dev server (builds Linux binaries once)
+just test   # Run tests locally on macOS (uses macOS binaries)
+```
+
 ## CLI Tool (Studio CLI)
 
 **Purpose**: Accelerate UI testing by eliminating authentication boilerplate and generating Playwright test templates.
@@ -20,6 +44,8 @@ aris/
 **Use case**: When implementing UI-heavy features (e.g., real-time collaboration), agents can use the CLI to skip writing repetitive login/navigation code and jump straight to testing the actual feature.
 
 ### Commands
+
+**All commands run from `cli/` directory**: `cd cli && uv run python -m cli <command>`
 
 ```bash
 # Login once (session stored in ~/.studio/session.json)

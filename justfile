@@ -29,7 +29,9 @@ logs:
 # Testing Commands
 # ================
 
-# Run all tests (skip slow tests and E2E in dev, CI runs all)
+# Run all tests locally (Docker is for dev server only, not tests)
+# Backend tests run on macOS with macOS binaries (no binary conflicts)
+# CI runs tests on Linux separately
 test:
     cd backend && uv run pytest -n8 -m "not slow"
     cd cli && uv run pytest -v
