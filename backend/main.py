@@ -1,5 +1,6 @@
 """Aris backend: FastApi app."""
 
+import asyncio
 import importlib
 import os
 import sys
@@ -11,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aris.collaboration import YDocClient
 from aris.deps import get_db
 from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
@@ -32,6 +34,7 @@ from aris.routes import (
 # Initialize logging before anything else
 setup_logging()
 logger = get_logger(__name__)
+collab_logger = get_logger("aris.collaboration")
 
 
 # API metadata for documentation
@@ -307,6 +310,69 @@ app.include_router(render_router, tags=["render"])
 app.include_router(signup_router, tags=["signup"])
 app.include_router(copilot_router, tags=["copilot"])
 logger.info("All routers registered successfully")
+
+
+# Y.js backend client state
+yjs_client: YDocClient | None = None
+yjs_task: asyncio.Task | None = None
+
+
+@app.on_event("startup")
+async def startup_yjs_client():
+    """Start Y.js backend client for real-time collaboration."""
+    global yjs_client, yjs_task
+
+    # Only run in development/local environment for POC
+    if os.getenv("ENV") in ("PROD", "STAGING"):
+        logger.info("Y.js client disabled in PROD/STAGING")
+        return
+
+    try:
+        # POC: Single file (file_id=264)
+        # WebSocket URL uses Docker service name 'collab' instead of 'localhost'
+        websocket_url = "ws://collab:1234/file-264"
+
+        logger.info(f"Starting Y.js backend client for file 264 at {websocket_url}")
+
+        yjs_client = YDocClient(
+            file_id=264,
+            websocket_url=websocket_url,
+            debounce_ms=500,
+        )
+
+        # Launch as background task
+        yjs_task = asyncio.create_task(yjs_client.run())
+
+        logger.info("Y.js backend client started successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to start Y.js backend client: {e}", exc_info=True)
+
+
+@app.on_event("shutdown")
+async def shutdown_yjs_client():
+    """Gracefully shutdown Y.js backend client."""
+    global yjs_client, yjs_task
+
+    if yjs_client:
+        logger.info("Shutting down Y.js backend client")
+
+        try:
+            # Signal shutdown
+            await yjs_client.shutdown()
+
+            # Wait for task to complete (with timeout)
+            if yjs_task:
+                await asyncio.wait_for(yjs_task, timeout=5.0)
+
+            logger.info("Y.js backend client shut down successfully")
+
+        except asyncio.TimeoutError:
+            logger.warning("Y.js client shutdown timed out, cancelling task")
+            if yjs_task:
+                yjs_task.cancel()
+        except Exception as e:
+            logger.error(f"Error shutting down Y.js client: {e}", exc_info=True)
 
 
 @app.middleware("http")
