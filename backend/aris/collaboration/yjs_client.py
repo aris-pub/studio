@@ -14,7 +14,7 @@ from sqlalchemy import text as sql_text
 from websockets import connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
-from aris.database import async_session_maker
+from aris.deps import ArisSession
 
 
 # Collaboration-specific logger
@@ -140,7 +140,7 @@ class YDocClient:
 
     async def _load_from_db(self):
         """Load file content from database and initialize Y.Text."""
-        async with async_session_maker() as session:
+        async with ArisSession() as session:
             try:
                 result = await session.execute(
                     sql_text("SELECT source FROM files WHERE id = :file_id"),
@@ -186,7 +186,7 @@ class YDocClient:
         try:
             content = str(self.text)
 
-            async with async_session_maker() as session:
+            async with ArisSession() as session:
                 await session.execute(
                     sql_text("UPDATE files SET source = :content WHERE id = :file_id"),
                     {"content": content, "file_id": self.file_id},
