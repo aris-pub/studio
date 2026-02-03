@@ -23,10 +23,6 @@ FROM base AS dev
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts
 
-# Copy and run y-codemirror.next patch script
-COPY frontend/scripts/patch-y-codemirror.sh ./scripts/patch-y-codemirror.sh
-RUN chmod +x ./scripts/patch-y-codemirror.sh && ./scripts/patch-y-codemirror.sh
-
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
 COPY .env ../.env
