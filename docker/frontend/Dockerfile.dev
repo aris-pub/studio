@@ -11,17 +11,18 @@ RUN npm config set fund false && \
 COPY frontend/package*.json ./
 
 # Install dependencies with cache mount for faster builds
+# Skip postinstall in base stage (Playwright browsers not needed for prod dependencies)
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production
+    npm ci --only=production --ignore-scripts
 
 # Development stage with dev dependencies
 FROM base AS dev
 
 # Install all dependencies including dev dependencies
-# Postinstall will run (including Playwright browser download), but that's fine
-# Tests run on host with local browsers, container browsers are unused
+# We need optional dependencies (like @rollup/rollup-linux-arm64-musl) but not Playwright browsers
+# Set PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD to skip browser installation in Alpine
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
 
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
