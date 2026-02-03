@@ -10,7 +10,7 @@ import logging
 from typing import Optional
 
 from pycrdt import Doc, Text, TextEvent
-from pycrdt_websocket import WebsocketProvider
+from pycrdt.websocket import WebsocketProvider
 from sqlalchemy import text as sql_text
 from websockets import connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
