@@ -11,17 +11,17 @@ RUN npm config set fund false && \
 COPY frontend/package*.json ./
 
 # Install dependencies with cache mount for faster builds
-# Skip postinstall scripts in base stage (dev stage will run them)
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production --ignore-scripts
+    npm ci --only=production
 
 # Development stage with dev dependencies
 FROM base AS dev
 
 # Install all dependencies including dev dependencies
-# Skip postinstall (Playwright) since tests run on host, not in container
+# Postinstall will run (including Playwright browser download), but that's fine
+# Tests run on host with local browsers, container browsers are unused
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --ignore-scripts
+    npm ci
 
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
