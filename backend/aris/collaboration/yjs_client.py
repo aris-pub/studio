@@ -9,7 +9,7 @@ import logging
 import struct
 from typing import Optional
 
-from pycrdt import Doc, Text, TextEvent, YSyncMessageType, create_sync_message, handle_sync_message
+from pycrdt import Doc, Text, TextEvent, create_sync_message, handle_sync_message
 from sqlalchemy import text as sql_text
 from websockets import connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
@@ -97,8 +97,7 @@ class YDocClient:
 
     async def _send_sync_step1(self, websocket):
         """Send SyncStep1 message to initiate sync."""
-        state_vector = self.doc.get_state()
-        sync_message = create_sync_message(YSyncMessageType.SYNC_STEP1, state_vector)
+        sync_message = create_sync_message(self.doc)
         # y-websocket protocol: message type (0 = sync) + sync message
         message = struct.pack('!B', 0) + sync_message
         await websocket.send(message)
