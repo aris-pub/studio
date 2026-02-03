@@ -8,8 +8,8 @@
   import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
   import { lintKeymap } from "@codemirror/lint";
   import { yCollab } from "y-codemirror.next";
-  import * as Y from "@y/y";
-  import { WebsocketProvider } from "@y/websocket";
+  import * as Y from "yjs";
+  import { WebsocketProvider } from "y-websocket";
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -95,7 +95,7 @@
 
       // Create Y.Doc and Y.Text
       ydoc.value = new Y.Doc();
-      ytext.value = ydoc.value.get("text");
+      ytext.value = ydoc.value.getText("text");
 
       // Create WebSocket provider
       console.log(`[Y.js] Connecting to ${serverUrl.value} (room: ${roomName.value})`);
