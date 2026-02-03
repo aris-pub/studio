@@ -19,10 +19,13 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM base AS dev
 
 # Install all dependencies including dev dependencies
-# We need optional dependencies (like @rollup/rollup-linux-arm64-musl) but not Playwright browsers
-# Set PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD to skip browser installation in Alpine
+# Skip postinstall (Playwright) since tests run on host, not in container
 RUN --mount=type=cache,target=/root/.npm \
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
+    npm ci --ignore-scripts
+
+# Manually install optional dependency for Alpine Linux ARM64
+# This is needed for Vite/Rollup to work but isn't installed with --ignore-scripts
+RUN npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl || true
 
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
