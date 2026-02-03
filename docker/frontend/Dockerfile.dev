@@ -23,16 +23,20 @@ FROM base AS dev
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts
 
-# Manually install optional dependency for Alpine Linux ARM64
-# This is needed for Vite/Rollup to work but isn't installed with --ignore-scripts
-RUN npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl || true
-
-# Copy env-check script and .env file
+# Copy env-check script, patch script, and .env file
 COPY docker/env-check.js ../docker/env-check.js
+COPY frontend/scripts/patch-y-codemirror.sh /app/scripts/patch-y-codemirror.sh
 COPY .env ../.env
+
+# Copy and setup entrypoint script
+COPY docker/frontend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose ports for Vite dev server and Storybook
 EXPOSE 5173 6006
+
+# Use entrypoint to install optional deps after volume mount
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default development server command (can be overridden in docker-compose)
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
