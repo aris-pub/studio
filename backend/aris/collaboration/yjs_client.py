@@ -97,6 +97,7 @@ class YDocClient:
 
     async def _send_sync_step1(self, websocket):
         """Send SyncStep1 message to initiate sync."""
+        assert self.doc is not None, "doc must be initialized before sending sync"
         sync_message = create_sync_message(self.doc)
         # y-websocket protocol: message type (0 = sync) + sync message
         message = struct.pack('!B', 0) + sync_message
@@ -125,6 +126,8 @@ class YDocClient:
         if not message:
             return
 
+        assert self.doc is not None, "doc must be initialized before handling messages"
+
         # y-websocket protocol: first byte is message type
         msg_type = message[0]
         payload = message[1:]
@@ -139,6 +142,9 @@ class YDocClient:
 
     async def _load_from_db(self):
         """Load file content from database and initialize Y.Text."""
+        assert self.doc is not None, "doc must be initialized before loading from DB"
+        assert self.text is not None, "text must be initialized before loading from DB"
+
         async with ArisSession() as session:
             try:
                 result = await session.execute(

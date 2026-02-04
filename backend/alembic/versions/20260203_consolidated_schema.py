@@ -53,10 +53,24 @@ def upgrade() -> None:
         # Database already has schema, skip creation
         print("Tables already exist, skipping schema creation")
         return
-    
-    # Create enums
-    op.execute("CREATE TYPE avatarcolor AS ENUM ('BLUE', 'RED', 'GREEN', 'PURPLE', 'ORANGE', 'PINK', 'YELLOW')")
-    op.execute("CREATE TYPE filestatus AS ENUM ('DRAFT')")
+
+    # Create enums (if not exists)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'avatarcolor') THEN
+                CREATE TYPE avatarcolor AS ENUM ('BLUE', 'RED', 'GREEN', 'PURPLE', 'ORANGE', 'PINK', 'YELLOW');
+            END IF;
+        END$$;
+    """)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'filestatus') THEN
+                CREATE TYPE filestatus AS ENUM ('DRAFT');
+            END IF;
+        END$$;
+    """)
     
     # Create all tables (full consolidated schema)
     # Profile pictures
