@@ -329,8 +329,12 @@ async def startup_yjs_client():
 
     try:
         # POC: Single file (file_id=264)
-        # WebSocket URL uses Docker service name 'collab' instead of 'localhost'
-        websocket_url = "ws://collab:1234/file-264"
+        # Get multiplayer URL from environment
+        # - Docker dev: uses service name 'collab' (ws://collab:1234)
+        # - CI/local: uses localhost (ws://localhost:1234)
+        multiplayer_host = os.getenv("MULTIPLAYER_HOST", "localhost")
+        multiplayer_port = os.getenv("MULTIPLAYER_PORT", "1234")
+        websocket_url = f"ws://{multiplayer_host}:{multiplayer_port}/file-264"
 
         logger.info(f"Starting Y.js backend client for file 264 at {websocket_url}")
 

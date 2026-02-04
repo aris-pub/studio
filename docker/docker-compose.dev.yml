@@ -24,6 +24,8 @@ services:
       - ENV=LOCAL
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
+      - MULTIPLAYER_HOST=collab
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
     depends_on:
       postgres:
         condition: service_healthy

@@ -27,6 +27,9 @@ env:
   DB_URL_CONTAINER: postgresql+asyncpg://postgres:postgres@postgres:5432/test_aris
   ALEMBIC_DB_URL_CONTAINER: postgresql+psycopg2://postgres:postgres@postgres:5432/test_aris
   JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
+  # Y.js multiplayer server configuration
+  MULTIPLAYER_HOST: localhost
+  MULTIPLAYER_PORT: 1234
 
 jobs:
   # Unit Tests and Linting (Parallel)
@@ -924,7 +927,6 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
       VITE_MULTIPLAYER_URL: ws://localhost:1234
-      MULTIPLAYER_PORT: 1234
       COPILOT_PROVIDER: mock
 
     services:
