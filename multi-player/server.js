@@ -1,7 +1,7 @@
 /**
- * Aris Y.js WebSocket Server - Minimal Wrapper
+ * Aris Y.js WebSocket Server
  *
- * This is a thin wrapper around y-websocket's official server.
+ * Simple wrapper around y-websocket's official server.
  * Y.js handles all synchronization with in-memory persistence.
  * Documents are automatically cleaned up when all clients disconnect.
  */
@@ -21,14 +21,12 @@ const PORT = process.env.MULTIPLAYER_PORT;
 const HOST = process.env.HOST;
 
 // In-memory persistence with automatic cleanup
-// This ensures documents are destroyed when all clients disconnect
 const persistence = {
   bindState: (docName, doc) => {
     console.log(`[Y.js Server] Document '${docName}' initialized`);
   },
   writeState: async (docName, doc) => {
-    console.log(`[Y.js Server] Document '${docName}' cleaned up (no active connections)`);
-    // No actual persistence - just cleanup
+    console.log(`[Y.js Server] Document '${docName}' cleaned up`);
     return Promise.resolve();
   },
   provider: null
