@@ -8,4 +8,5 @@ and handles persistence to PostgreSQL.
 
 from .yjs_client import YDocClient
 
+
 __all__ = ["YDocClient"]

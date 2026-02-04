@@ -1,11 +1,34 @@
 <script setup>
   import { ref, computed, inject, watch, onBeforeUnmount } from "vue";
-  import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from "@codemirror/view";
+  import {
+    EditorView,
+    keymap,
+    lineNumbers,
+    highlightActiveLineGutter,
+    highlightSpecialChars,
+    drawSelection,
+    dropCursor,
+    rectangularSelection,
+    crosshairCursor,
+    highlightActiveLine,
+  } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
-  import { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap } from "@codemirror/language";
+  import {
+    defaultHighlightStyle,
+    syntaxHighlighting,
+    indentOnInput,
+    bracketMatching,
+    foldGutter,
+    foldKeymap,
+  } from "@codemirror/language";
   import { defaultKeymap } from "@codemirror/commands";
   import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
-  import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+  import {
+    autocompletion,
+    completionKeymap,
+    closeBrackets,
+    closeBracketsKeymap,
+  } from "@codemirror/autocomplete";
   import { lintKeymap } from "@codemirror/lint";
   import { yCollab } from "y-codemirror.next";
   import * as Y from "yjs";
@@ -50,9 +73,7 @@
     highlightSpecialChars(),
     drawSelection(),
     EditorState.allowMultipleSelections.of(true),
-    keymap.of([
-      ...defaultKeymap,
-    ]),
+    keymap.of([...defaultKeymap]),
   ];
 
   // Cleanup function
@@ -127,13 +148,17 @@
 
         // Initialize ONLY if completely empty
         if (ytextLength === 0 && file.value?.source) {
-          console.log(`[EditorCodeMirror] First client - initializing Y.text with ${file.value.source.length} chars`);
+          console.log(
+            `[EditorCodeMirror] First client - initializing Y.text with ${file.value.source.length} chars`
+          );
           // Use transaction to ensure atomic initialization
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
         } else if (ytextLength > 0) {
-          console.log(`[EditorCodeMirror] Not first client - using existing content (${ytextLength} chars)`);
+          console.log(
+            `[EditorCodeMirror] Not first client - using existing content (${ytextLength} chars)`
+          );
         } else {
           console.log("[EditorCodeMirror] No initial content to load");
         }
@@ -169,7 +194,9 @@
           parent: container,
         });
 
-        console.log(`[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`);
+        console.log(
+          `[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`
+        );
 
         // Expose view and Y.js instances globally for testing
         if (import.meta.env.DEV) {

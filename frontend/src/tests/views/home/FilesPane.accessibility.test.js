@@ -214,9 +214,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
 
   describe("Focus Management and Navigation", () => {
     it("manages focus correctly with keyboard navigation", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(null);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -242,9 +241,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
     });
 
     it("clears focus when activeIndex is null", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(0);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -266,9 +264,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
     });
 
     it("handles focus restoration after list changes", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(null);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -307,9 +304,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
     });
 
     it("handles focus during filtering operations", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(0);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -379,9 +375,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
 
   describe("Keyboard Navigation Integration", () => {
     it("integrates with keyboard navigation composable correctly", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
 
       // Create wrapper to trigger the useListKeyboardNavigation call
       createWrapper();
@@ -513,9 +508,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
     });
 
     it("handles keyboard navigation with invalid indices", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(999); // Out of bounds
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -554,9 +548,8 @@ describe("FilesPane.vue - Accessibility Features", () => {
     });
 
     it("handles focus management during component destruction", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(0);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,

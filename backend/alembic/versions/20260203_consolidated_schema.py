@@ -27,6 +27,7 @@ Archived migrations (removed the dangerous DELETE statement):
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 

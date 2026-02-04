@@ -26,10 +26,7 @@ export function useWebSocketProvider({ ydoc, roomName, serverUrl, user }) {
 
     const room = typeof roomName === "object" && roomName.value ? roomName.value : roomName;
 
-    const url =
-      typeof serverUrl === "object" && serverUrl.value
-        ? serverUrl.value
-        : serverUrl;
+    const url = typeof serverUrl === "object" && serverUrl.value ? serverUrl.value : serverUrl;
 
     if (!room) {
       console.error("useWebSocketProvider: roomName is required");
