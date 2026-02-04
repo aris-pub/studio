@@ -326,6 +326,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -418,6 +419,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     services:
@@ -523,6 +525,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -537,9 +543,17 @@ jobs:
 
     - name: Start backend and frontend, run E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on Ubuntu (Chrome)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -555,6 +569,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -584,6 +599,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # Desktop E2E Tests (Firefox)
@@ -604,6 +620,8 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
       VITE_API_BASE_URL: http://localhost:8000
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      COPILOT_PROVIDER: mock
 
     services:
       postgres:
@@ -671,6 +689,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -685,9 +707,17 @@ jobs:
 
     - name: Start backend and frontend, run E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on Ubuntu (Firefox)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -703,6 +733,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -732,6 +763,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # Desktop E2E Tests (Safari)
@@ -746,6 +778,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     steps:
@@ -851,6 +884,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -865,9 +902,17 @@ jobs:
 
     - name: Start backend and frontend, run E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on macOS (Safari)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -883,6 +928,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -912,6 +958,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # Collaboration E2E Tests (Y.js multi-user)
@@ -1091,6 +1138,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     services:
@@ -1196,6 +1244,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -1224,9 +1276,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Chrome E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Chrome E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1242,6 +1302,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1271,6 +1332,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
@@ -1292,6 +1354,8 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
       VITE_API_BASE_URL: http://localhost:8000
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      COPILOT_PROVIDER: mock
 
     services:
       postgres:
@@ -1359,6 +1423,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -1373,9 +1441,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Firefox E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Firefox E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1391,6 +1467,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1420,6 +1497,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
@@ -1540,6 +1618,10 @@ jobs:
       working-directory: frontend
       run: npm ci
 
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
@@ -1569,9 +1651,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Safari E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Safari E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1587,6 +1677,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1616,6 +1707,7 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
 
