@@ -163,7 +163,7 @@
           console.log("[EditorCodeMirror] No initial content to load");
         }
 
-        // Create editor with yCollab (patch fixes setTimeout issue)
+        // Create editor with yCollab binding
         console.log("[EditorCodeMirror] Creating CodeMirror with Y.js integration");
         const undoManager = new Y.UndoManager(ytext.value);
 

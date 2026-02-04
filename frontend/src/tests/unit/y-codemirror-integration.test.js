@@ -1,11 +1,11 @@
 /**
  * Unit tests for Y.js + CodeMirror integration
  *
- * Tests the patched y-codemirror.next Symbol-based origin tracking
+ * Tests y-codemirror.next's object-based origin tracking (YSyncConfig)
  * to prevent keystroke duplication in single-user scenarios.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import * as Y from "yjs";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
@@ -22,8 +22,8 @@ describe("Y.js + CodeMirror Integration", () => {
     ytext = ydoc.getText("codemirror");
   });
 
-  describe("Symbol-based Origin Tracking", () => {
-    it("should use Symbol for origin to avoid Proxy wrapping issues", () => {
+  describe("Origin Tracking", () => {
+    it("should use config object for origin to track local changes", () => {
       // Create editor with Y.js integration
       const state = EditorState.create({
         doc: "",
@@ -50,14 +50,15 @@ describe("Y.js + CodeMirror Integration", () => {
         changes: { from: 0, insert: "test" },
       });
 
-      // Observer should be called once with Symbol origin
+      // Observer should be called once with object origin (YSyncConfig)
       expect(observerCalls.length).toBe(1);
-      expect(observerCalls[0].originType).toBe("symbol");
+      expect(observerCalls[0].originType).toBe("object");
+      expect(observerCalls[0].origin).toBeTruthy();
 
       view.destroy();
     });
 
-    it("should filter local changes correctly using Symbol comparison", () => {
+    it("should filter local changes correctly using object identity comparison", () => {
       const state = EditorState.create({
         doc: "",
         extensions: [yCollab(ytext, null)],
@@ -154,7 +155,7 @@ describe("Y.js + CodeMirror Integration", () => {
   });
 
   describe("Y.Text Transaction Origins", () => {
-    it("should mark local transactions with Symbol origin", () => {
+    it("should mark local transactions with config object origin", () => {
       const state = EditorState.create({
         doc: "",
         extensions: [yCollab(ytext, null)],
@@ -175,8 +176,9 @@ describe("Y.js + CodeMirror Integration", () => {
         changes: { from: 0, insert: "test" },
       });
 
-      expect(typeof capturedOrigin).toBe("symbol");
-      expect(capturedOrigin.toString()).toBe("Symbol(ySyncOrigin)");
+      expect(typeof capturedOrigin).toBe("object");
+      expect(capturedOrigin).toBeTruthy();
+      expect(capturedOrigin.ytext).toBe(ytext);
 
       view.destroy();
     });
@@ -205,15 +207,16 @@ describe("Y.js + CodeMirror Integration", () => {
         changes: { from: 0, insert: "local" },
       });
 
-      // Remote edit (no origin or different origin)
+      // Remote edit (no origin)
       ydoc.transact(() => {
         ytext.insert(5, " remote");
       });
 
       setTimeout(() => {
         expect(origins.length).toBe(2);
-        expect(origins[0].type).toBe("symbol"); // local
-        expect(origins[1].type).not.toBe("symbol"); // remote
+        expect(origins[0].type).toBe("object"); // local (YSyncConfig)
+        expect(origins[0].value).toBeTruthy();
+        expect(origins[1].type).toBe("undefined"); // remote (no origin)
 
         view.destroy();
         done();
