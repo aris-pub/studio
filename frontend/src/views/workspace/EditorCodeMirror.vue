@@ -79,6 +79,15 @@
     isConnected.value = false;
     isSynced.value = false;
     isInitialized.value = false;
+
+    // Clean up window globals for testing
+    if (import.meta.env.DEV) {
+      delete window.__cmView;
+      delete window.__ydoc;
+      delete window.__ytext;
+      delete window.__provider;
+      delete window.__awareness;
+    }
   };
 
   // Setup Y.js and WebSocket when file changes
@@ -162,9 +171,13 @@
 
         console.log(`[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`);
 
-        // Expose view globally for testing
+        // Expose view and Y.js instances globally for testing
         if (import.meta.env.DEV) {
           window.__cmView = view.value;
+          window.__ydoc = ydoc.value;
+          window.__ytext = ytext.value;
+          window.__provider = provider.value;
+          window.__awareness = awareness.value;
         }
 
         isSynced.value = true;
