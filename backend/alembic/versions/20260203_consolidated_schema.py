@@ -111,11 +111,14 @@ def upgrade() -> None:
     op.create_table(
         'tags',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
-        sa.Column('owner_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['owner_id'], ['users.id']),
+        sa.Column('color', sa.String(), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('name', 'owner_id', name='uq_tag_name_owner')
+        sa.UniqueConstraint('name', 'user_id', name='uq_tag_name_user')
     )
     
     # Files
