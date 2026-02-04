@@ -100,6 +100,8 @@ def upgrade() -> None:
         sa.Column('avatar_color', postgresql.ENUM('BLUE', 'RED', 'GREEN', 'PURPLE', 'ORANGE', 'PINK', 'YELLOW', name='avatarcolor', create_type=False), nullable=True),
         sa.Column('profile_picture_id', sa.Integer(), nullable=True),
         sa.Column('email_verified', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('email_verification_token', sa.String(), nullable=True),
+        sa.Column('email_verification_sent_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['profile_picture_id'], ['profile_pictures.id']),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('email')
