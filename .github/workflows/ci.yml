@@ -911,6 +911,170 @@ jobs:
         kill $BACKEND_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
+  # Collaboration E2E Tests (Y.js multi-user)
+  e2e-collab:
+    # needs: [unit-backend, unit-frontend]  # TEMPORARILY DISABLED
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-latest
+    env:
+      TEST_USER_EMAIL: testuser@aris.pub
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      MULTIPLAYER_PORT: 1234
+      COPILOT_PROVIDER: mock
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_aris
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 3
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install 3.13
+
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+        echo "PostgreSQL is ready!"
+
+    - name: Create virtual environment and sync dependencies
+      working-directory: backend
+      run: |
+        uv venv
+        uv sync --group test --group dev
+        uv pip install -e ../../rsm
+
+    - name: Run database migrations and setup test user
+      working-directory: backend
+      run: |
+        echo "🔍 Setting up database for collaboration tests..."
+        uv run alembic upgrade head
+        echo "🔑 Creating test user..."
+        uv run python scripts/reset_test_user.py
+        echo "✅ Database setup completed"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
+      run: npm ci
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v5
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-${{ runner.os }}-${{ matrix.browser }}
+
+    - name: Install Playwright browsers
+      working-directory: frontend
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      run: npx playwright install ${{ matrix.browser }} --with-deps
+
+    - name: Start multiplayer, backend, frontend, and run collaboration E2E tests
+      run: |
+        # Start Y.js WebSocket server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+
+        # Wait for multiplayer server (no health endpoint, just wait)
+        sleep 3
+        echo "Multiplayer server ready"
+
+        # Start backend
+        echo "Starting backend for collaboration E2E tests..."
+        cd ../backend
+        uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
+        BACKEND_PID=$!
+        echo "Backend started with PID: $BACKEND_PID"
+
+        # Wait for backend
+        sleep 8
+        for i in {1..5}; do
+          if curl -f http://localhost:8000/health; then
+            echo "Backend ready for E2E tests"
+            break
+          else
+            echo "Waiting for backend... ($i/5)"
+            if [ $i -eq 5 ]; then
+              echo "Backend failed to start"
+              kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
+              exit 1
+            fi
+            sleep 2
+          fi
+        done
+
+        # Start frontend
+        cd ../frontend
+        npm run dev &
+        FRONTEND_PID=$!
+        echo "Frontend started with PID: $FRONTEND_PID"
+
+        # Wait for frontend
+        sleep 15
+
+        # Install just task runner
+        echo "Installing just task runner..."
+        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+        # Run collaboration tests (sequential with --workers=1)
+        echo "Running collaboration E2E tests on ${{ matrix.browser }}..."
+        cd ../
+        just test-collab ${{ matrix.browser }} github
+        TEST_EXIT_CODE=$?
+
+        # Cleanup
+        echo "Cleaning up processes..."
+        kill $FRONTEND_PID 2>/dev/null || true
+        kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
+        exit $TEST_EXIT_CODE
+
   # Mobile E2E Tests (Optional - can fail without breaking CI)
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-chrome:

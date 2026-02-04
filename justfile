@@ -38,6 +38,18 @@ test:
     cd site && npm run test:all
     cd frontend && npm run test:run
 
+# Run Y.js collaboration E2E tests (requires 'just dev' running)
+# Tests spawn multiple browsers and must run sequentially (--workers=1)
+# Usage: just test-collab [browser] [reporter] (defaults: all browsers, line reporter)
+test-collab browser="" reporter="line":
+    #!/usr/bin/env bash
+    cd frontend
+    if [ -n "{{browser}}" ]; then
+        npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
+    else
+        npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
+    fi
+
 # Run all linters
 lint:
     cd backend && uv run ruff check --fix
