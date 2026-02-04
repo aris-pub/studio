@@ -1,12 +1,11 @@
 """
 YDocClient: Backend Y.js WebSocket client with PostgreSQL persistence.
 
-Implements y-websocket protocol manually using pycrdt sync utilities.
+Uses pycrdt's native sync protocol which is compatible with JavaScript y-websocket.
 """
 
 import asyncio
 import logging
-import struct
 from typing import Optional
 
 from pycrdt import Doc, Text, TextEvent, create_sync_message, handle_sync_message
@@ -99,9 +98,9 @@ class YDocClient:
         """Send SyncStep1 message to initiate sync."""
         assert self.doc is not None, "doc must be initialized before sending sync"
         sync_message = create_sync_message(self.doc)
-        # y-websocket protocol: message type (0 = sync) + sync message
-        message = struct.pack('!B', 0) + sync_message
-        await websocket.send(message)
+        # pycrdt's create_sync_message() already includes the message type bytes
+        # No need to prepend anything - send directly
+        await websocket.send(sync_message)
         logger.debug(f"Sent SyncStep1 for file {self.file_id}")
 
     async def _message_loop(self, websocket):
@@ -135,9 +134,9 @@ class YDocClient:
         if msg_type == 0:  # Sync message
             reply = handle_sync_message(payload, self.doc)
             if reply:
-                # Send reply (SyncStep2 or Update)
-                reply_message = struct.pack('!B', 0) + reply
-                await websocket.send(reply_message)
+                # pycrdt's handle_sync_message() already returns properly formatted message
+                # No need to prepend message type - send directly
+                await websocket.send(reply)
                 logger.debug(f"Sent sync reply for file {self.file_id}")
 
     async def _load_from_db(self):
