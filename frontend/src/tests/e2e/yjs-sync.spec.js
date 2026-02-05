@@ -6,8 +6,8 @@ dotenv.config({ path: path.resolve("../../../.env") });
 const BACKEND_PORT = process.env.BACKEND_PORT || "8000";
 
 const TEST_USER = {
-  email: "foo@bar.com",
-  password: "admin",
+  email: process.env.TEST_USER_EMAIL || "testuser@aris.pub",
+  password: process.env.TEST_USER_PASSWORD || "testpassword123",
 };
 
 test.describe("Y.js Real-time Collaboration @auth", () => {
