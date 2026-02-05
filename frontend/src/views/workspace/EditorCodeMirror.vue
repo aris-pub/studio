@@ -128,49 +128,66 @@
       ytext.value = ydoc.value.getText("text");
 
       // Create WebSocket provider
-      console.log(`[Y.js] Connecting to ${serverUrl.value} (room: ${roomName.value})`);
+      console.log(`[Y.js] 🔌 CREATING WEBSOCKET PROVIDER`);
+      console.log(`[Y.js] 🔌 URL: ${serverUrl.value}`);
+      console.log(`[Y.js] 🔌 Room: ${roomName.value}`);
+      console.log(`[Y.js] 🔌 Y.Doc state before connect: ${ydoc.value.getText('text').toString().length} chars`);
+
       provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value);
       awareness.value = provider.value.awareness;
 
-      // Set user awareness
+      console.log(`[Y.js] 👤 Setting user awareness: ${JSON.stringify(userInfo.value)}`);
       awareness.value.setLocalStateField("user", userInfo.value);
 
       // Monitor connection
       provider.value.on("status", (event) => {
         isConnected.value = event.status === "connected";
-        console.log(`[Y.js] WebSocket status: ${event.status}`);
+        console.log(`[Y.js] 🔔 STATUS EVENT: ${event.status}`);
+        console.log(`[Y.js] 📊 wsconnected: ${provider.value.wsconnected}`);
+        console.log(`[Y.js] 📊 synced: ${provider.value.synced}`);
       });
 
       // Wait for initial sync before creating editor
       provider.value.once("synced", () => {
         const ytextLength = ytext.value.toString().length;
-        console.log(`[Y.js] Document synced, ytext has ${ytextLength} chars`);
+        const ytextContent = ytext.value.toString();
+        console.log(`[Y.js] 🔔 SYNCED EVENT FIRED`);
+        console.log(`[Y.js] 📊 Provider state: connected=${provider.value.wsconnected}, synced=${provider.value.synced}`);
+        console.log(`[Y.js] 📄 Y.text length: ${ytextLength}`);
+        console.log(`[Y.js] 📄 Y.text content preview: "${ytextContent.substring(0, 80)}${ytextLength > 80 ? '...' : ''}"`);
+        console.log(`[Y.js] 📄 file.value.source length: ${file.value?.source?.length || 0}`);
 
         // Initialize ONLY if completely empty
         if (ytextLength === 0 && file.value?.source) {
           console.log(
-            `[EditorCodeMirror] First client - initializing Y.text with ${file.value.source.length} chars`
+            `[EditorCodeMirror] 🆕 FIRST CLIENT - Initializing Y.text with ${file.value.source.length} chars from database`
           );
+          console.log(`[EditorCodeMirror] 📝 Content to insert: "${file.value.source.substring(0, 80)}..."`);
           // Use transaction to ensure atomic initialization
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
+          console.log(`[EditorCodeMirror] ✅ Y.text initialized, new length: ${ytext.value.toString().length}`);
         } else if (ytextLength > 0) {
           console.log(
-            `[EditorCodeMirror] Not first client - using existing content (${ytextLength} chars)`
+            `[EditorCodeMirror] 🔄 NOT FIRST CLIENT - Using existing content (${ytextLength} chars from server)`
           );
         } else {
-          console.log("[EditorCodeMirror] No initial content to load");
+          console.log("[EditorCodeMirror] ⚠️  NO CONTENT - Y.text empty, no file.value.source");
         }
 
         // Create editor with yCollab binding
-        console.log("[EditorCodeMirror] Creating CodeMirror with Y.js integration");
+        console.log("[EditorCodeMirror] 🏗️  CREATING CODEMIRROR with Y.js integration");
         const undoManager = new Y.UndoManager(ytext.value);
+
+        const docContent = ytext.value.toString();
+        console.log(`[EditorCodeMirror] 📄 Initializing editor with doc content length: ${docContent.length}`);
+        console.log(`[EditorCodeMirror] 📄 Doc content preview: "${docContent.substring(0, 80)}${docContent.length > 80 ? '...' : ''}"`);
 
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
           // This ensures editor shows content when reconnecting (yCollab doesn't apply initial state)
-          doc: ytext.value.toString(),
+          doc: docContent,
           extensions: [
             customSetup,
             yCollab(ytext.value, awareness.value, { undoManager }),
@@ -196,12 +213,42 @@
           parent: container,
         });
 
-        console.log(
-          `[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`
-        );
+        const editorContent = view.value.state.doc.toString();
+        console.log(`[EditorCodeMirror] ✅ EDITOR CREATED`);
+        console.log(`[EditorCodeMirror] 📊 Editor length: ${editorContent.length}`);
+        console.log(`[EditorCodeMirror] 📊 Editor content preview: "${editorContent.substring(0, 80)}${editorContent.length > 80 ? '...' : ''}"`);
+        console.log(`[EditorCodeMirror] 📊 Y.text length: ${ytext.value.toString().length}`);
+
+        // Add Y.text observer to log all changes
+        ytext.value.observe((event, transaction) => {
+          const newContent = ytext.value.toString();
+          const origin = transaction.origin;
+          const isRemote = origin === provider.value;
+          console.log(`[Y.js Observer] 🔔 Y.text CHANGED`);
+          console.log(`[Y.js Observer] 📊 Origin: ${origin?.constructor?.name || 'unknown'} (remote: ${isRemote})`);
+          console.log(`[Y.js Observer] 📊 New length: ${newContent.length}`);
+          console.log(`[Y.js Observer] 📊 New content: "${newContent.substring(0, 80)}${newContent.length > 80 ? '...' : ''}"`);
+          console.log(`[Y.js Observer] 📊 Editor length after change: ${view.value.state.doc.length}`);
+          console.log(`[Y.js Observer] 📊 Editor content after change: "${view.value.state.doc.toString().substring(0, 80)}"`);
+        });
+
+        // Log editor state changes
+        let lastEditorContent = editorContent;
+        const checkEditorChanges = () => {
+          const currentContent = view.value.state.doc.toString();
+          if (currentContent !== lastEditorContent) {
+            console.log(`[Editor Observer] 🔔 EDITOR CONTENT CHANGED`);
+            console.log(`[Editor Observer] 📊 Old length: ${lastEditorContent.length}`);
+            console.log(`[Editor Observer] 📊 New length: ${currentContent.length}`);
+            console.log(`[Editor Observer] 📊 New content: "${currentContent.substring(0, 80)}${currentContent.length > 80 ? '...' : ''}"`);
+            lastEditorContent = currentContent;
+          }
+        };
+        setInterval(checkEditorChanges, 500);
 
         // Wait for editor to fully mount before marking as synced
         setTimeout(() => {
+          console.log(`[EditorCodeMirror] ⏱️  100ms timeout complete, exposing globals`);
           // Expose view and Y.js instances globally for testing
           if (import.meta.env.DEV) {
             window.__cmView = view.value;
@@ -212,12 +259,16 @@
           }
 
           isSynced.value = true;
+          console.log(`[EditorCodeMirror] ✅ COMPONENT FULLY SYNCED AND READY`);
         }, 100);
       });
 
       // Monitor sync status
       provider.value.on("sync", (synced) => {
-        console.log(`[Y.js] Document synced: ${synced}`);
+        const ytextLen = ytext.value.toString().length;
+        console.log(`[Y.js] 🔔 SYNC EVENT: ${synced}`);
+        console.log(`[Y.js] 📊 Y.text length at sync: ${ytextLen}`);
+        console.log(`[Y.js] 📊 Y.text content: "${ytext.value.toString().substring(0, 80)}"`);
       });
     },
     { immediate: true }
