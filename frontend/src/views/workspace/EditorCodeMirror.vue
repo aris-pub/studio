@@ -168,6 +168,9 @@
         const undoManager = new Y.UndoManager(ytext.value);
 
         const state = EditorState.create({
+          // CRITICAL: Initialize with Y.text content explicitly
+          // This ensures editor shows content when reconnecting (yCollab doesn't apply initial state)
+          doc: ytext.value.toString(),
           extensions: [
             customSetup,
             yCollab(ytext.value, awareness.value, { undoManager }),
