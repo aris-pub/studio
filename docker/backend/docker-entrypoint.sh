@@ -35,6 +35,10 @@ fi
 echo "Running database migrations..."
 alembic upgrade head
 
+# Reset test user to known state (matches CI setup)
+echo "Setting up test user..."
+uv run python scripts/reset_test_user.py || echo "Warning: Could not reset test user (may not be an issue in production)"
+
 # Start the application
 echo "Starting FastAPI application..."
 exec "$@"

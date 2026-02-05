@@ -69,11 +69,20 @@ import dotenv from "dotenv";
 import path from "path";
 
 dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT || "8000";
+const BACKEND_PORT = process.env.BACKEND_PORT;
+const FRONTEND_PORT = process.env.FRONTEND_PORT;
+
+if (!BACKEND_PORT || !FRONTEND_PORT) {
+  throw new Error("BACKEND_PORT and FRONTEND_PORT must be set in .env");
+}
 
 // Test user credentials from environment
-const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || "testuser@aris.pub";
-const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD || "testpassword123";
+const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
+
+if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
+  throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env");
+}
 
 // Helper to create authenticated session
 async function createAuthenticatedPage(browser, request) {
@@ -106,7 +115,7 @@ async function createAuthenticatedPage(browser, request) {
   const page = await context.newPage();
 
   // Navigate and inject fresh tokens and user data
-  await page.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((data) => {
     localStorage.setItem('accessToken', data.access_token);
     localStorage.setItem('refreshToken', data.refresh_token);
@@ -118,7 +127,7 @@ async function createAuthenticatedPage(browser, request) {
 
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
-  await page.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
@@ -592,7 +601,7 @@ test.describe("Y.js Collaboration @collab", () => {
         await userB.page.waitForTimeout(500);
 
         // User B navigates away (simulates disconnect)
-        await userB.page.goto("http://localhost:5173/");
+        await userB.page.goto(`http://localhost:${FRONTEND_PORT}/`);
         await userB.page.waitForTimeout(500);
 
         // User A types more

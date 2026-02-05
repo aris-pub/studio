@@ -3,11 +3,23 @@ import dotenv from "dotenv";
 import path from "path";
 
 dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT || "8000";
+const BACKEND_PORT = process.env.BACKEND_PORT;
+const FRONTEND_PORT = process.env.FRONTEND_PORT;
+
+if (!BACKEND_PORT || !FRONTEND_PORT) {
+  throw new Error("BACKEND_PORT and FRONTEND_PORT must be set in .env");
+}
+
+const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
+
+if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
+  throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env");
+}
 
 const TEST_USER = {
-  email: process.env.TEST_USER_EMAIL || "testuser@aris.pub",
-  password: process.env.TEST_USER_PASSWORD || "testpassword123",
+  email: TEST_USER_EMAIL,
+  password: TEST_USER_PASSWORD,
 };
 
 test.describe("Y.js Real-time Collaboration @auth", () => {
@@ -65,7 +77,7 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
 
       // Open file in both tabs with auth
       console.log(`[Test] Setting up authentication for Tab 1...`);
-      await page1.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
+      await page1.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
       await page1.evaluate((data) => {
         localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("refreshToken", data.refresh_token);
@@ -73,10 +85,10 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       }, { ...loginData1, user: userData1 });
 
       console.log(`[Test] Opening file ${fileId} in Tab 1...`);
-      await page1.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
+      await page1.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
 
       console.log(`[Test] Setting up authentication for Tab 2...`);
-      await page2.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
+      await page2.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
       await page2.evaluate((data) => {
         localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("refreshToken", data.refresh_token);
@@ -84,7 +96,7 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       }, { ...loginData2, user: userData2 });
 
       console.log(`[Test] Opening file ${fileId} in Tab 2...`);
-      await page2.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
+      await page2.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
 
       // Open source editor in both tabs (same sequence as yjs-collaboration.spec.js)
       console.log("[Test] Opening source editor in Tab 1...");
