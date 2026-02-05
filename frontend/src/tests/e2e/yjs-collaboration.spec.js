@@ -65,23 +65,42 @@
  */
 
 import { test, expect } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
 
-// Test user credentials
-const TEST_USER_EMAIL = "testuser@aris.pub";
-const TEST_USER_PASSWORD = "testpassword";
+dotenv.config({ path: path.resolve("../../../.env") });
+const BACKEND_PORT = process.env.BACKEND_PORT || "8000";
+
+// Test user credentials from environment
+const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || "testuser@aris.pub";
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD || "testpassword123";
 
 // Helper to create authenticated session
-async function createAuthenticatedPage(browser) {
+async function createAuthenticatedPage(browser, request) {
+  // Login to get fresh tokens
+  const loginResponse = await request.post(`http://localhost:${BACKEND_PORT}/login`, {
+    data: {
+      email: TEST_USER_EMAIL,
+      password: TEST_USER_PASSWORD,
+    },
+  });
+
+  if (!loginResponse.ok()) {
+    throw new Error(`Login failed: ${loginResponse.status()} ${await loginResponse.text()}`);
+  }
+
+  const loginData = await loginResponse.json();
+
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // Navigate and inject tokens
+  // Navigate and inject fresh tokens
   await page.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
-  await page.evaluate(`
-    localStorage.setItem('accessToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzcwMjIxNzM3fQ.mpcn96aimju7TOH-dSfZV34euEH1UQmTlnNcUWOMJ4c');
-    localStorage.setItem('refreshToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzcwMjIxNzM3LCJ0eXBlIjoicmVmcmVzaCJ9.qourOZ_dTRY0Ou7K5wWSpM_8kLR6m52r-o7_2hqe6H4');
-    localStorage.setItem('user', '{"email": "testuser@aris.pub", "id": 1, "name": "Test User", "initials": null, "created_at": "2026-02-03T16:15:02.946491+00:00", "avatar_color": null, "email_verified": false}');
-  `);
+  await page.evaluate((data) => {
+    localStorage.setItem('accessToken', data.access_token);
+    localStorage.setItem('refreshToken', data.refresh_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+  }, loginData);
 
   return { context, page };
 }
@@ -178,8 +197,8 @@ async function cleanupYjs(page) {
 
 test.describe("Y.js Collaboration @collab", () => {
   test.describe("Single User - No Duplication", () => {
-    test("should not duplicate keystrokes when typing", async ({ browser }) => {
-      const { context, page } = await createAuthenticatedPage(browser);
+    test("should not duplicate keystrokes when typing", async ({ browser, request }) => {
+      const { context, page } = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(page, 1);
@@ -207,8 +226,8 @@ test.describe("Y.js Collaboration @collab", () => {
       }
     });
 
-    test("should handle rapid typing without duplication", async ({ browser }) => {
-      const { context, page } = await createAuthenticatedPage(browser);
+    test("should handle rapid typing without duplication", async ({ browser, request }) => {
+      const { context, page } = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(page, 1);
@@ -226,8 +245,8 @@ test.describe("Y.js Collaboration @collab", () => {
       }
     });
 
-    test("should handle delete operations correctly", async ({ browser }) => {
-      const { context, page } = await createAuthenticatedPage(browser);
+    test("should handle delete operations correctly", async ({ browser, request }) => {
+      const { context, page } = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(page, 1);
@@ -255,10 +274,10 @@ test.describe("Y.js Collaboration @collab", () => {
   });
 
   test.describe("Two Users - Bidirectional Sync", () => {
-    test("should sync text from User A to User B", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should sync text from User A to User B", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -283,10 +302,10 @@ test.describe("Y.js Collaboration @collab", () => {
       }
     });
 
-    test("should sync text from User B to User A @flaky", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should sync text from User B to User A @flaky", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -311,10 +330,10 @@ test.describe("Y.js Collaboration @collab", () => {
       }
     });
 
-    test("should handle bidirectional edits correctly @flaky", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should handle bidirectional edits correctly @flaky", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -350,12 +369,12 @@ test.describe("Y.js Collaboration @collab", () => {
   });
 
   test.describe("Three Users - Multi-Party Sync", () => {
-    test("should sync between three users simultaneously", async ({ browser }) => {
+    test("should sync between three users simultaneously", async ({ browser, request }) => {
       test.setTimeout(30000); // 30s timeout for complex 3-user scenario
-      const userA = await createAuthenticatedPage(browser);
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
-      const userC = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
+      const userC = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -437,10 +456,10 @@ test.describe("Y.js Collaboration @collab", () => {
   });
 
   test.describe("Concurrent Edits", () => {
-    test("should handle simultaneous edits at different positions @flaky", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should handle simultaneous edits at different positions @flaky", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -488,10 +507,10 @@ test.describe("Y.js Collaboration @collab", () => {
       }
     });
 
-    test("should handle conflicting edits at same position", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should handle conflicting edits at same position", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -545,10 +564,10 @@ test.describe("Y.js Collaboration @collab", () => {
   });
 
   test.describe("Reconnection Handling", () => {
-    test("should sync after disconnect and reconnect", async ({ browser }) => {
-      const userA = await createAuthenticatedPage(browser);
+    test("should sync after disconnect and reconnect", async ({ browser, request }) => {
+      const userA = await createAuthenticatedPage(browser, request);
 
-      const userB = await createAuthenticatedPage(browser);
+      const userB = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(userA.page, 1);
@@ -587,8 +606,8 @@ test.describe("Y.js Collaboration @collab", () => {
   });
 
   test.describe("Performance", () => {
-    test("should handle large document without lag", async ({ browser }) => {
-      const { context, page } = await createAuthenticatedPage(browser);
+    test("should handle large document without lag", async ({ browser, request }) => {
+      const { context, page } = await createAuthenticatedPage(browser, request);
 
       try {
         await openFileInEditor(page, 1);
