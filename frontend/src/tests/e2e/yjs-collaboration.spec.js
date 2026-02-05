@@ -91,16 +91,27 @@ async function createAuthenticatedPage(browser, request) {
 
   const loginData = await loginResponse.json();
 
+  // Fetch user data
+  const userResponse = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+    headers: { Authorization: `Bearer ${loginData.access_token}` },
+  });
+
+  if (!userResponse.ok()) {
+    throw new Error(`Failed to fetch user data: ${userResponse.status()}`);
+  }
+
+  const userData = await userResponse.json();
+
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // Navigate and inject fresh tokens
+  // Navigate and inject fresh tokens and user data
   await page.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
   await page.evaluate((data) => {
     localStorage.setItem('accessToken', data.access_token);
     localStorage.setItem('refreshToken', data.refresh_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-  }, loginData);
+  }, { ...loginData, user: userData });
 
   return { context, page };
 }

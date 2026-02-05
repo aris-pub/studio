@@ -542,6 +542,9 @@ jobs:
       run: npx playwright install chromium --with-deps
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
         # Start Y.js multiplayer server
         echo "Starting Y.js multiplayer server..."
@@ -706,6 +709,9 @@ jobs:
       run: npx playwright install firefox --with-deps
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
         # Start Y.js multiplayer server
         echo "Starting Y.js multiplayer server..."
@@ -901,6 +907,9 @@ jobs:
       run: npx playwright install webkit
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
         # Start Y.js multiplayer server
         echo "Starting Y.js multiplayer server..."
@@ -1061,6 +1070,9 @@ jobs:
       run: npx playwright install ${{ matrix.browser }} --with-deps
 
     - name: Start multiplayer, backend, frontend, and run collaboration E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
         # Start Y.js WebSocket server
         echo "Starting Y.js multiplayer server..."

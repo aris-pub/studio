@@ -37,6 +37,13 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       expect(loginResponse1.ok()).toBeTruthy();
       const loginData1 = await loginResponse1.json();
 
+      // Fetch user data for Tab 1
+      const userResponse1 = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+        headers: { Authorization: `Bearer ${loginData1.access_token}` },
+      });
+      expect(userResponse1.ok()).toBeTruthy();
+      const userData1 = await userResponse1.json();
+
       // Login Tab 2
       console.log("[Test] Logging in Tab 2...");
       const loginResponse2 = await request.post(`http://localhost:${BACKEND_PORT}/login`, {
@@ -44,6 +51,13 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       });
       expect(loginResponse2.ok()).toBeTruthy();
       const loginData2 = await loginResponse2.json();
+
+      // Fetch user data for Tab 2
+      const userResponse2 = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+        headers: { Authorization: `Bearer ${loginData2.access_token}` },
+      });
+      expect(userResponse2.ok()).toBeTruthy();
+      const userData2 = await userResponse2.json();
 
       // Use a known file ID for testing
       const fileId = 1;
@@ -56,7 +70,7 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
         localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("refreshToken", data.refresh_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-      }, loginData1);
+      }, { ...loginData1, user: userData1 });
 
       console.log(`[Test] Opening file ${fileId} in Tab 1...`);
       await page1.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
@@ -67,7 +81,7 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
         localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("refreshToken", data.refresh_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-      }, loginData2);
+      }, { ...loginData2, user: userData2 });
 
       console.log(`[Test] Opening file ${fileId} in Tab 2...`);
       await page2.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
