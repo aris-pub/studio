@@ -168,7 +168,6 @@
         const undoManager = new Y.UndoManager(ytext.value);
 
         const state = EditorState.create({
-          doc: ytext.value.toString(),
           extensions: [
             customSetup,
             yCollab(ytext.value, awareness.value, { undoManager }),
@@ -198,16 +197,19 @@
           `[EditorCodeMirror] Created editor with ${ytext.value.toString().length} chars`
         );
 
-        // Expose view and Y.js instances globally for testing
-        if (import.meta.env.DEV) {
-          window.__cmView = view.value;
-          window.__ydoc = ydoc.value;
-          window.__ytext = ytext.value;
-          window.__provider = provider.value;
-          window.__awareness = awareness.value;
-        }
+        // Wait for editor to fully mount before marking as synced
+        setTimeout(() => {
+          // Expose view and Y.js instances globally for testing
+          if (import.meta.env.DEV) {
+            window.__cmView = view.value;
+            window.__ydoc = ydoc.value;
+            window.__ytext = ytext.value;
+            window.__provider = provider.value;
+            window.__awareness = awareness.value;
+          }
 
-        isSynced.value = true;
+          isSynced.value = true;
+        }, 100);
       });
 
       // Monitor sync status
