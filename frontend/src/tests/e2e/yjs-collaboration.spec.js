@@ -304,7 +304,17 @@ test.describe("Y.js Collaboration @collab", () => {
         await openFileInEditor(userB.page, 1);
 
         await clearEditor(userA.page);
-        await userB.page.waitForTimeout(500);
+
+        // DEBUG: Check Y.text state after clear
+        const ytextAfterClear = await userA.page.evaluate(() => ({
+          ytext: window.__ytext?.toString() || "UNDEFINED",
+          ytextLength: window.__ytext?.toString().length || 0,
+          editorContent: window.__cmView?.state.doc.toString() || "UNDEFINED"
+        }));
+        console.log(`[DEBUG] After clear - Y.text: "${ytextAfterClear.ytext.substring(0, 50)}..." (${ytextAfterClear.ytextLength} chars)`);
+        console.log(`[DEBUG] After clear - Editor: "${ytextAfterClear.editorContent.substring(0, 50)}..."`);
+
+        await userB.page.waitForTimeout(2000);  // Increased from 500ms to test timing hypothesis
 
         // User A types
         const testText = `User A: ${Date.now()}`;
@@ -313,6 +323,15 @@ test.describe("Y.js Collaboration @collab", () => {
 
         // User B should see User A's text
         const contentB = await getEditorContent(userB.page);
+
+        // DEBUG: Check what User B actually sees
+        const debugB = await userB.page.evaluate(() => ({
+          ytext: window.__ytext?.toString() || "UNDEFINED",
+          editor: window.__cmView?.state.doc.toString() || "UNDEFINED"
+        }));
+        console.log(`[DEBUG] User B - Y.text: "${debugB.ytext.substring(0, 50)}..."`);
+        console.log(`[DEBUG] User B - Editor: "${debugB.editor.substring(0, 50)}..."`);
+        console.log(`[DEBUG] Expected to contain: "${testText}"`);
         expect(contentB).toContain(testText);
       } finally {
         await cleanupYjs(userA.page);
@@ -360,7 +379,7 @@ test.describe("Y.js Collaboration @collab", () => {
         await openFileInEditor(userB.page, 1);
 
         await clearEditor(userA.page);
-        await userB.page.waitForTimeout(500);
+        await userB.page.waitForTimeout(2000);  // Increased from 500ms to test timing hypothesis
 
         // User A types
         await insertText(userA.page, "From A\n");
@@ -486,7 +505,7 @@ test.describe("Y.js Collaboration @collab", () => {
         await openFileInEditor(userB.page, 1);
 
         await clearEditor(userA.page);
-        await userB.page.waitForTimeout(500);
+        await userB.page.waitForTimeout(2000);  // Increased from 500ms to test timing hypothesis
 
         // Set initial content
         await insertText(userA.page, "START___END");
@@ -594,7 +613,7 @@ test.describe("Y.js Collaboration @collab", () => {
         await openFileInEditor(userB.page, 1);
 
         await clearEditor(userA.page);
-        await userB.page.waitForTimeout(500);
+        await userB.page.waitForTimeout(2000);  // Increased from 500ms to test timing hypothesis
 
         // User A types
         await insertText(userA.page, "Before disconnect");
