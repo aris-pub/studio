@@ -50,19 +50,27 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       console.log(`[Test] Using file ID: ${fileId}`);
 
       // Open file in both tabs with auth
+      console.log(`[Test] Setting up authentication for Tab 1...`);
+      await page1.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
+      await page1.evaluate((data) => {
+        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("refreshToken", data.refresh_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }, loginData1);
+
       console.log(`[Test] Opening file ${fileId} in Tab 1...`);
-      await page1.goto(`/file/${fileId}`);
-      await page1.evaluate((token) => {
-        localStorage.setItem("access_token", token);
-      }, loginData1.access_token);
-      await page1.reload();
+      await page1.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
+
+      console.log(`[Test] Setting up authentication for Tab 2...`);
+      await page2.goto("http://localhost:5173", { waitUntil: "domcontentloaded" });
+      await page2.evaluate((data) => {
+        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("refreshToken", data.refresh_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }, loginData2);
 
       console.log(`[Test] Opening file ${fileId} in Tab 2...`);
-      await page2.goto(`/file/${fileId}`);
-      await page2.evaluate((token) => {
-        localStorage.setItem("access_token", token);
-      }, loginData2.access_token);
-      await page2.reload();
+      await page2.goto(`http://localhost:5173/file/${fileId}`, { waitUntil: "domcontentloaded" });
 
       // Open source editor in both tabs (same sequence as yjs-collaboration.spec.js)
       console.log("[Test] Opening source editor in Tab 1...");
