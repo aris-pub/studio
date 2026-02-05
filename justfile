@@ -45,9 +45,9 @@ test-collab browser="" reporter="line":
     #!/usr/bin/env bash
     cd frontend
     if [ -n "{{browser}}" ]; then
-        npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
+        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
     else
-        npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
+        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
     fi
 
 # Run all linters
