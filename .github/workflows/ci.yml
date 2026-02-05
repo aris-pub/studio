@@ -581,7 +581,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -748,7 +748,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -946,7 +946,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1112,7 +1112,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1323,7 +1323,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1488,7 +1488,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1698,7 +1698,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
