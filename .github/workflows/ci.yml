@@ -1784,6 +1784,9 @@ jobs:
     - name: Create .env file
       run: cp .env.example .env
 
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
+
     - name: Start Docker Compose services
       run: |
         echo "🧹 Cleaning up any previous Docker resources..."
