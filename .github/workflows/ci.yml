@@ -1789,16 +1789,8 @@ jobs:
 
     - name: Start Docker Compose services
       run: |
-        echo "🧹 Cleaning up any previous Docker resources..."
-        docker compose -f docker/docker-compose.dev.yml down -v 2>/dev/null || true
-
-        echo "🗑️  Removing ALL Docker volumes..."
-        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
-
-        docker system prune -af --volumes
-
-        echo "🐳 Starting all services via Docker Compose..."
-        docker compose -f docker/docker-compose.dev.yml up -d --force-recreate
+        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
+        ./scripts/start-dev.sh
 
         echo "⏳ Waiting for services to be ready (30s)..."
         sleep 30
