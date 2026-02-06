@@ -1724,3 +1724,114 @@ jobs:
 
 
 # Trigger CI
+
+  # EXPERIMENTAL: Run collab tests with Docker Compose (test environment hypothesis)
+  e2e-collab-docker:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium]  # Start with chromium only
+    runs-on: ubuntu-latest
+    env:
+      TEST_USER_EMAIL: testuser@aris.pub
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      COPILOT_PROVIDER: mock
+      ENV: CI
+      BACKEND_PORT: 8000
+      FRONTEND_PORT: 5173
+      SITE_PORT: 3000
+      STORYBOOK_PORT: 6006
+      DB_PORT: 5439
+      DB_NAME: aris
+      TEST_DB_NAME: test_aris
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v5
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-${{ runner.os }}-${{ matrix.browser }}
+
+    - name: Install Playwright browsers
+      working-directory: frontend
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      run: npx playwright install ${{ matrix.browser }} --with-deps
+
+    - name: Create .env file
+      run: cp .env.example .env
+
+    - name: Start Docker Compose services
+      run: |
+        echo "🐳 Starting all services via Docker Compose..."
+        docker compose -f docker/docker-compose.dev.yml up -d
+        
+        echo "⏳ Waiting for services to be ready (30s)..."
+        sleep 30
+        
+        echo "📊 Service status:"
+        docker compose -f docker/docker-compose.dev.yml ps
+        
+        echo "🔍 Checking service health..."
+        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
+        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+        
+        echo "✅ Docker services ready"
+
+    - name: Run collaboration E2E tests
+      working-directory: frontend
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      run: |
+        echo "🧪 Running collaboration tests on ${{ matrix.browser }} (Docker environment)..."
+        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-results-docker-${{ matrix.browser }}
+        path: frontend/test-results/
+        retention-days: 7
+
+    - name: Show Docker logs on failure
+      if: failure()
+      run: |
+        echo "📋 Backend logs:"
+        docker compose -f docker/docker-compose.dev.yml logs backend
+        echo "📋 Frontend logs:"
+        docker compose -f docker/docker-compose.dev.yml logs frontend
+        echo "📋 Multiplayer logs:"
+        docker compose -f docker/docker-compose.dev.yml logs collab
+
+    - name: Cleanup Docker services
+      if: always()
+      run: |
+        echo "🧹 Cleaning up Docker services..."
+        docker compose -f docker/docker-compose.dev.yml down -v
+        echo "✅ Cleanup complete"
+
