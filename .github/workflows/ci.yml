@@ -1786,19 +1786,23 @@ jobs:
 
     - name: Start Docker Compose services
       run: |
+        echo "🧹 Cleaning up any previous Docker resources..."
+        docker compose -f docker/docker-compose.dev.yml down -v 2>/dev/null || true
+        docker system prune -f
+
         echo "🐳 Starting all services via Docker Compose..."
-        docker compose -f docker/docker-compose.dev.yml up -d
-        
+        docker compose -f docker/docker-compose.dev.yml up -d --force-recreate
+
         echo "⏳ Waiting for services to be ready (30s)..."
         sleep 30
-        
+
         echo "📊 Service status:"
         docker compose -f docker/docker-compose.dev.yml ps
-        
+
         echo "🔍 Checking service health..."
         curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
         curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
-        
+
         echo "✅ Docker services ready"
 
     - name: Run collaboration E2E tests
