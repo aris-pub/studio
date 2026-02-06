@@ -1808,6 +1808,19 @@ jobs:
 
         echo "✅ Docker services ready"
 
+    - name: Setup database and test user in Docker
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      run: |
+        echo "🔄 Running database migrations in Docker..."
+        docker compose -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
+
+        echo "👤 Creating test user in Docker..."
+        docker compose -f docker/docker-compose.dev.yml exec -T backend uv run python scripts/reset_test_user.py
+
+        echo "✅ Database setup complete"
+
     - name: Run collaboration E2E tests
       working-directory: frontend
       env:
