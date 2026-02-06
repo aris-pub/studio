@@ -1734,7 +1734,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEST_USER_EMAIL: testuser@aris.pub
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      TEST_USER_PASSWORD: testpassword123
       VITE_LOG_LEVEL: WARN
       VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
@@ -1810,18 +1810,12 @@ jobs:
         echo "✅ Docker services ready"
 
     - name: Setup database and test user in Docker
-      env:
-        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
-        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
         echo "🔄 Running database migrations in Docker..."
         docker compose -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
 
         echo "👤 Creating test user in Docker..."
-        docker compose -f docker/docker-compose.dev.yml exec -T \
-          -e TEST_USER_EMAIL="${TEST_USER_EMAIL}" \
-          -e TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" \
-          backend uv run python scripts/reset_test_user.py
+        docker compose -f docker/docker-compose.dev.yml exec -T backend uv run python scripts/reset_test_user.py
 
         echo "✅ Database setup complete"
 
@@ -1829,7 +1823,7 @@ jobs:
       working-directory: frontend
       env:
         TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
-        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        TEST_USER_PASSWORD: ${{ env.TEST_USER_PASSWORD }}
       run: |
         echo "🧪 Running collaboration tests on ${{ matrix.browser }} (Docker environment)..."
         npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
