@@ -1806,7 +1806,7 @@ jobs:
         sleep 30
 
         echo "📊 Service status:"
-        docker compose -f docker/docker-compose.dev.yml ps
+        docker compose -p studio -f docker/docker-compose.dev.yml ps
 
         echo "🔍 Checking service health..."
         curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
@@ -1817,10 +1817,10 @@ jobs:
     - name: Setup database and test user in Docker
       run: |
         echo "🔄 Running database migrations in Docker..."
-        docker compose -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
 
         echo "👤 Creating test user in Docker..."
-        docker compose -f docker/docker-compose.dev.yml exec -T backend uv run python scripts/reset_test_user.py
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run python scripts/reset_test_user.py
 
         echo "✅ Database setup complete"
 
@@ -1845,16 +1845,16 @@ jobs:
       if: failure()
       run: |
         echo "📋 Backend logs:"
-        docker compose -f docker/docker-compose.dev.yml logs backend
+        docker compose -p studio -f docker/docker-compose.dev.yml logs backend
         echo "📋 Frontend logs:"
-        docker compose -f docker/docker-compose.dev.yml logs frontend
+        docker compose -p studio -f docker/docker-compose.dev.yml logs frontend
         echo "📋 Multiplayer logs:"
-        docker compose -f docker/docker-compose.dev.yml logs collab
+        docker compose -p studio -f docker/docker-compose.dev.yml logs collab
 
     - name: Cleanup Docker services
       if: always()
       run: |
         echo "🧹 Cleaning up Docker services..."
-        docker compose -f docker/docker-compose.dev.yml down -v
+        docker compose -p studio -f docker/docker-compose.dev.yml down -v
         echo "✅ Cleanup complete"
 
