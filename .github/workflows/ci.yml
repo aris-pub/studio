@@ -33,6 +33,28 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
+    - name: Debug - Gather evidence about .env file
+      run: |
+        echo "📍 Current directory: $(pwd)"
+        echo ""
+        echo "📄 .env file exists?"
+        ls -la .env
+        echo ""
+        echo "📄 .env file contents:"
+        cat .env
+        echo ""
+        echo "📄 backend/.env file exists?"
+        ls -la backend/.env
+        echo ""
+        echo "📄 Docker Compose version:"
+        docker compose version
+        echo ""
+        echo "📄 start-dev.sh location:"
+        ls -la scripts/start-dev.sh
+        echo ""
+        echo "📄 docker-compose.dev.yml env_file directive:"
+        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
+
     - name: Start Docker services
       run: |
         echo "🐳 Starting backend and postgres services..."
@@ -80,6 +102,28 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
+
+    - name: Debug - Gather evidence about .env file
+      run: |
+        echo "📍 Current directory: $(pwd)"
+        echo ""
+        echo "📄 .env file exists?"
+        ls -la .env
+        echo ""
+        echo "📄 .env file contents:"
+        cat .env
+        echo ""
+        echo "📄 backend/.env file exists?"
+        ls -la backend/.env
+        echo ""
+        echo "📄 Docker Compose version:"
+        docker compose version
+        echo ""
+        echo "📄 start-dev.sh location:"
+        ls -la scripts/start-dev.sh
+        echo ""
+        echo "📄 docker-compose.dev.yml env_file directive:"
+        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
 
     - name: Start Docker services
       run: |
@@ -1728,6 +1772,28 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
+
+    - name: Debug - Gather evidence about .env file
+      run: |
+        echo "📍 Current directory: $(pwd)"
+        echo ""
+        echo "📄 .env file exists?"
+        ls -la .env
+        echo ""
+        echo "📄 .env file contents:"
+        cat .env
+        echo ""
+        echo "📄 backend/.env file exists?"
+        ls -la backend/.env
+        echo ""
+        echo "📄 Docker Compose version:"
+        docker compose version
+        echo ""
+        echo "📄 start-dev.sh location:"
+        ls -la scripts/start-dev.sh
+        echo ""
+        echo "📄 docker-compose.dev.yml env_file directive:"
+        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
 
     - name: Start Docker Compose services
       run: |
