@@ -64,13 +64,20 @@ function loadEnvFile() {
 function loadEnvironment() {
   const isProductionLike = detectEnvironment();
   const envName = process.env.ENV || process.env.NODE_ENV || 'development';
-  
-  if (isProductionLike) {
-    console.log(`🔄 ${envName.toUpperCase()} environment detected - using system environment variables`);
+  const envPath = path.resolve(__dirname, '../.env');
+  const envFileExists = fs.existsSync(envPath);
+
+  // Always load .env if it exists (Docker-based CI uses .env like local dev)
+  // Only use system-env-only mode if .env doesn't exist AND we're in production-like env
+  if (envFileExists) {
+    console.log(`🔄 ${envName.toUpperCase()} environment detected - loading .env file`);
+    loadEnvFile();
+  } else if (isProductionLike) {
+    console.log(`🔄 ${envName.toUpperCase()} environment detected - using system environment variables (.env not found)`);
     // Use existing process.env, no .env file loading
   } else {
-    console.log('🔄 Development environment detected - loading .env file');
-    loadEnvFile();
+    // Development without .env file - will fail validation
+    console.log('🔄 Development environment detected - .env file not found');
   }
 }
 

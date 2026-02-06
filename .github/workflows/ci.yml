@@ -7,42 +7,14 @@ on:
     branches: [ main ]
 
 env:
-  # CI-specific overrides (everything else comes from .env.example)
+  # CI identifier (all jobs load .env, but ENV=CI enables CI-specific behavior)
   ENV: CI
-  # Database URLs for unit-backend job (uses GitHub Actions postgres on localhost, not Docker)
-  DB_URL_LOCAL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-  DB_URL_PROD: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-  ALEMBIC_DB_URL_LOCAL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
-  ALEMBIC_DB_URL_PROD: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
-  JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
 
 jobs:
   # Unit Tests and Linting (Parallel)
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   unit-backend:
     runs-on: ubuntu-latest
-    env:
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || 'testpassword123' }}
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_aris
-          POSTGRES_HOST_AUTH_METHOD: trust
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 3
-        ports:
-          - 5432:5432
-
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
     - uses: actions/checkout@v6
@@ -55,58 +27,43 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "latest"
-        enable-cache: true
+    - name: Create .env file
+      run: cp .env.example .env
 
-    - name: Set up Python
-      run: uv python install 3.13
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
 
-    - name: Cache uv
-      uses: actions/cache@v5
-      with:
-        path: ~/.cache/uv
-        key: uv-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
-
-    - name: Cache pytest
-      uses: actions/cache@v5
-      with:
-        path: backend/.pytest_cache
-        key: pytest-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
-
-    - name: Create virtual environment and sync dependencies
+    - name: Start Docker services
       run: |
-        uv venv
-        uv sync --group test --group dev
-        uv pip install -e ../rsm
+        echo "🐳 Starting backend and postgres services..."
+        ./scripts/start-dev.sh
+        sleep 20
+        docker compose -p studio -f docker/docker-compose.dev.yml ps
 
-    - name: Run linting (ruff)
-      run: uv run ruff check
-
-    - name: Run type checking (mypy)
-      run: uv run mypy aris/
-
-    - name: Wait for PostgreSQL to be ready
+    - name: Run migrations
       run: |
-        timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
-        echo "PostgreSQL is ready!"
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
 
+    - name: Run linting
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run ruff check
+
+    - name: Run type checking
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run mypy aris/
 
     - name: Run tests
-      env:
-        TEST_USER_EMAIL: testuser@aris.pub
-        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
-      run: uv run pytest -n4 --dist=loadscope --tb=short
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run pytest -n4 --dist=loadscope --tb=short
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml down -v
 
   unit-frontend:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: frontend
-
     steps:
     - uses: actions/checkout@v6
       with:
@@ -118,30 +75,31 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+    - name: Create .env file
+      run: cp .env.example .env
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
 
-    - name: Cache vitest
-      uses: actions/cache@v5
-      with:
-        path: frontend/node_modules/.vitest
-        key: vitest-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-    - name: Check for missing packages
-      run: npm ls --depth=0
+    - name: Start Docker services
+      run: |
+        echo "🐳 Starting frontend service..."
+        ./scripts/start-dev.sh
+        sleep 20
+        docker compose -p studio -f docker/docker-compose.dev.yml ps
 
     - name: Run linting
-      run: npm run lint
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T frontend npm run lint
 
     - name: Run tests
-      run: npm run test:run
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml exec -T frontend npm run test:run
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -p studio -f docker/docker-compose.dev.yml down -v
 
   unit-site:
     if: false  # Temporarily disabled to speed up CI testing
