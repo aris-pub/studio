@@ -23,9 +23,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Create .env file
       run: cp .env.example .env
@@ -71,9 +71,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Create .env file
       run: cp .env.example .env
@@ -116,9 +116,9 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ..
+        cd ../..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+        echo "Cloned RSM repository to ../../rsm"
 
     - name: Setup Node.js
       uses: actions/setup-node@v6
