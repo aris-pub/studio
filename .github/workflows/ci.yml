@@ -15,6 +15,9 @@ jobs:
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   unit-backend:
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio
 
     steps:
     - uses: actions/checkout@v6
@@ -60,31 +63,34 @@ jobs:
         echo "🐳 Starting backend and postgres services..."
         ./scripts/start-dev.sh
         sleep 20
-        docker compose -p studio -f docker/docker-compose.dev.yml ps
+        docker compose --env-file .env ps
 
     - name: Run migrations
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
+        docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
     - name: Run linting
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run ruff check
+        docker compose --env-file .env exec -T backend uv run ruff check
 
     - name: Run type checking
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run mypy aris/
+        docker compose --env-file .env exec -T backend uv run mypy aris/
 
     - name: Run tests
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run pytest -n4 --dist=loadscope --tb=short
+        docker compose --env-file .env exec -T backend uv run pytest -n4 --dist=loadscope --tb=short
 
     - name: Cleanup
       if: always()
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml down -v
+        docker compose --env-file .env down -v
 
   unit-frontend:
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio
 
     steps:
     - uses: actions/checkout@v6
@@ -130,20 +136,20 @@ jobs:
         echo "🐳 Starting frontend service..."
         ./scripts/start-dev.sh
         sleep 20
-        docker compose -p studio -f docker/docker-compose.dev.yml ps
+        docker compose --env-file .env ps
 
     - name: Run linting
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T frontend npm run lint
+        docker compose --env-file .env exec -T frontend npm run lint
 
     - name: Run tests
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T frontend npm run test:run
+        docker compose --env-file .env exec -T frontend npm run test:run
 
     - name: Cleanup
       if: always()
       run: |
-        docker compose -p studio -f docker/docker-compose.dev.yml down -v
+        docker compose --env-file .env down -v
 
   unit-site:
     if: false  # Temporarily disabled to speed up CI testing
@@ -1732,6 +1738,8 @@ jobs:
       # CI-specific overrides (everything else comes from .env.example)
       ENV: CI
       VITE_LOG_LEVEL: WARN
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio
 
     steps:
     - uses: actions/checkout@v6
@@ -1804,7 +1812,7 @@ jobs:
         sleep 30
 
         echo "📊 Service status:"
-        docker compose -p studio -f docker/docker-compose.dev.yml ps
+        docker compose --env-file .env ps
 
         echo "🔍 Checking service health..."
         curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
@@ -1815,10 +1823,10 @@ jobs:
     - name: Setup database and test user in Docker
       run: |
         echo "🔄 Running database migrations in Docker..."
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run alembic upgrade head
+        docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
         echo "👤 Creating test user in Docker..."
-        docker compose -p studio -f docker/docker-compose.dev.yml exec -T backend uv run python scripts/reset_test_user.py
+        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
 
         echo "✅ Database setup complete"
 
@@ -1843,16 +1851,16 @@ jobs:
       if: failure()
       run: |
         echo "📋 Backend logs:"
-        docker compose -p studio -f docker/docker-compose.dev.yml logs backend
+        docker compose --env-file .env logs backend
         echo "📋 Frontend logs:"
-        docker compose -p studio -f docker/docker-compose.dev.yml logs frontend
+        docker compose --env-file .env logs frontend
         echo "📋 Multiplayer logs:"
-        docker compose -p studio -f docker/docker-compose.dev.yml logs collab
+        docker compose --env-file .env logs collab
 
     - name: Cleanup Docker services
       if: always()
       run: |
         echo "🧹 Cleaning up Docker services..."
-        docker compose -p studio -f docker/docker-compose.dev.yml down -v
+        docker compose --env-file .env down -v
         echo "✅ Cleanup complete"
 
