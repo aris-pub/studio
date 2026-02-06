@@ -1,3 +1,12 @@
+/**
+ * E2E tests for Y.js - SINGLE USER, MULTIPLE TABS (Basic Sync Test)
+ *
+ * Simple integration test verifying basic tab-to-tab synchronization.
+ * Tag: @auth
+ *
+ * Scope: studio-elz (Y.js: Same user, multiple tabs - self-collaboration)
+ */
+
 import { test, expect } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
