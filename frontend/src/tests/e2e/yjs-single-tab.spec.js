@@ -13,7 +13,7 @@ import { test, expect } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
 
-dotenv.config({ path: path.resolve("../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 const BACKEND_PORT = process.env.BACKEND_PORT;
 const FRONTEND_PORT = process.env.FRONTEND_PORT;
 
