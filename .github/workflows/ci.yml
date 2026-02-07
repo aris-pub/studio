@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio
+      COMPOSE_PROJECT_NAME: studio-unit-frontend
 
     steps:
     - uses: actions/checkout@v6
@@ -1739,7 +1739,7 @@ jobs:
       ENV: CI
       VITE_LOG_LEVEL: WARN
       COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio
+      COMPOSE_PROJECT_NAME: studio-e2e-collab
 
     steps:
     - uses: actions/checkout@v6
