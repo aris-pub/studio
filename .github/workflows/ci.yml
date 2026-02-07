@@ -74,6 +74,7 @@ jobs:
         import asyncpg
 
         async def test():
+            # Test connection to test_aris
             try:
                 conn = await asyncpg.connect(
                     host='localhost',
@@ -82,12 +83,27 @@ jobs:
                     password='postgres',
                     database='test_aris'
                 )
-                print('✅ Connection successful!')
+                print('✅ Connection to test_aris successful!')
                 version = await conn.fetchval('SELECT version()')
                 print(f'PostgreSQL version: {version}')
                 await conn.close()
             except Exception as e:
-                print(f'❌ Connection failed: {e}')
+                print(f'❌ Connection to test_aris failed: {e}')
+                raise
+
+            # Test connection to postgres admin database
+            try:
+                conn = await asyncpg.connect(
+                    host='localhost',
+                    port=5432,
+                    user='postgres',
+                    password='postgres',
+                    database='postgres'
+                )
+                print('✅ Connection to postgres admin db successful!')
+                await conn.close()
+            except Exception as e:
+                print(f'❌ Connection to postgres admin db failed: {e}')
                 raise
 
         asyncio.run(test())
