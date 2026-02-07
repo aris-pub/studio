@@ -53,6 +53,13 @@ async function createAuthenticatedPage(browser, request) {
   const context = await browser.newContext();
   const page = await context.newPage();
 
+  // Forward ALL browser console messages to test output
+  page.on('console', msg => {
+    const type = msg.type();
+    const text = msg.text();
+    console.log(`[BROWSER ${type.toUpperCase()}] ${text}`);
+  });
+
   await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((data) => {
     localStorage.setItem('accessToken', data.access_token);
