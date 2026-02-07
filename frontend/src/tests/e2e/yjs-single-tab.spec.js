@@ -105,11 +105,11 @@ async function getEditorContent(page) {
   return await page.evaluate("window.__cmView.state.doc.toString()");
 }
 
-// Helper to type in editor
+// Helper to type in editor (using keyboard.type for proper text input)
 async function typeInEditor(page, text) {
   await page.click(".cm-content");
   await page.waitForTimeout(200);
-  await page.keyboard.press(text);
+  await page.keyboard.type(text, { delay: 50 });  // Use type() instead of press()
   await page.waitForTimeout(100);
 }
 
