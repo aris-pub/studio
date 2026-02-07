@@ -95,8 +95,6 @@ class Settings(BaseSettings):
             # Use different credentials for GitHub Actions vs local CI simulation
             if os.environ.get("GITHUB_ACTIONS"):
                 # Real GitHub Actions CI environment - use per-worker databases for parallel test isolation
-                # NOTE: Don't log this URL - GitHub Actions will mask "postgres" as a secret,
-                # then use the masked "***" string as the actual password, causing auth failures
                 return f"postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris_{worker_id}_{unique_id}"
             else:
                 # Local CI simulation (using local PostgreSQL user with worker isolation)
