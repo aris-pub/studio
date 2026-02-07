@@ -322,9 +322,10 @@ async def startup_yjs_client():
     """Start Y.js backend client for real-time collaboration."""
     global yjs_client, yjs_task
 
-    # Only run in development/local environment for POC
-    if os.getenv("ENV") in ("PROD", "STAGING"):
-        logger.info("Y.js client disabled in PROD/STAGING")
+    # Disable in PROD, STAGING, CI, and test environments
+    env = os.getenv("ENV", "").upper()
+    if env in ("PROD", "STAGING", "CI") or os.getenv("PYTEST_CURRENT_TEST"):
+        logger.info(f"Y.js backend client disabled in {env or 'test'} environment")
         return
 
     try:
