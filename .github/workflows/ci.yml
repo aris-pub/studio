@@ -68,12 +68,9 @@ jobs:
       run: |
         echo "🐳 Starting backend and postgres services..."
         ./scripts/start-dev.sh
-        sleep 20
+        echo "⏳ Waiting for services to be ready (migrations run via entrypoint)..."
+        sleep 30
         docker compose --env-file .env ps
-
-    - name: Run migrations
-      run: |
-        docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
     - name: Run linting
       run: |
