@@ -116,15 +116,42 @@ async def create_database_if_not_exists(database_url: str):
     
     for admin_db in admin_dbs:
         admin_url = database_url.replace(f"/{db_name}", f"/{admin_db}")
-        print(f"[conftest] Trying admin database: {admin_db}, URL: {admin_url}")
+        print(f"[conftest] Trying admin database: {admin_db}")
+        print(f"[conftest] Raw URL string: {admin_url}")
+
+        # Test direct asyncpg connection first
+        import asyncpg
+        try:
+            print(f"[conftest] Testing direct asyncpg connection...")
+            conn = await asyncpg.connect(
+                user='postgres',
+                password='postgres',
+                host='localhost',
+                port=5432,
+                database=admin_db
+            )
+            await conn.close()
+            print(f"[conftest] ✅ Direct asyncpg connection successful!")
+        except Exception as e:
+            print(f"[conftest] ❌ Direct asyncpg connection failed: {e}")
 
         # Retry logic with exponential backoff
         max_retries = 3
         for attempt in range(max_retries):
-            admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+            admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT", echo=True)
+            print(f"[conftest] Engine created, checking URL components:")
+            print(f"[conftest]   - drivername: {admin_engine.url.drivername}")
+            print(f"[conftest]   - username: {admin_engine.url.username}")
+            print(f"[conftest]   - password: {'***' if admin_engine.url.password else 'NONE'}")
+            print(f"[conftest]   - password length: {len(admin_engine.url.password) if admin_engine.url.password else 0}")
+            print(f"[conftest]   - host: {admin_engine.url.host}")
+            print(f"[conftest]   - port: {admin_engine.url.port}")
+            print(f"[conftest]   - database: {admin_engine.url.database}")
 
             try:
+                print(f"[conftest] Attempting connection attempt {attempt + 1}/{max_retries}...")
                 async with admin_engine.connect() as conn:
+                    print(f"[conftest] ✅ Connection successful via SQLAlchemy!")
                     # Check if database exists
                     result = await conn.execute(
                         text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
