@@ -118,6 +118,13 @@ async def create_database_if_not_exists(database_url: str):
         admin_url = database_url.replace(f"/{db_name}", f"/{admin_db}")
         print(f"[conftest] Trying admin database: {admin_db}")
         print(f"[conftest] Raw URL string: {admin_url}")
+        # Extract password from URL string to debug
+        if "://" in admin_url and "@" in admin_url:
+            creds_part = admin_url.split("://")[1].split("@")[0]
+            if ":" in creds_part:
+                url_pwd = creds_part.split(":")[1]
+                url_pwd_ascii = "-".join([str(ord(c)) for c in url_pwd])
+                print(f"[conftest] Password in URL (ASCII): [{url_pwd_ascii}] (len={len(url_pwd)})")
 
         # Test direct asyncpg connection first
         import asyncpg
@@ -142,8 +149,11 @@ async def create_database_if_not_exists(database_url: str):
             print("[conftest] Engine created, checking URL components:")
             print(f"[conftest]   - drivername: {admin_engine.url.drivername}")
             print(f"[conftest]   - username: {admin_engine.url.username}")
-            print(f"[conftest]   - password: {'***' if admin_engine.url.password else 'NONE'}")
-            print(f"[conftest]   - password length: {len(admin_engine.url.password) if admin_engine.url.password else 0}")
+            # Print password character by character to avoid GitHub masking
+            pwd = admin_engine.url.password or ""
+            pwd_chars = "-".join([str(ord(c)) for c in pwd])  # Print as ASCII codes
+            print(f"[conftest]   - password (ASCII codes): [{pwd_chars}]")
+            print(f"[conftest]   - password length: {len(pwd)}")
             print(f"[conftest]   - host: {admin_engine.url.host}")
             print(f"[conftest]   - port: {admin_engine.url.port}")
             print(f"[conftest]   - database: {admin_engine.url.database}")

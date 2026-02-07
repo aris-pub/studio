@@ -158,7 +158,6 @@ jobs:
         npm run test:run
 
   unit-site:
-    if: false  # Temporarily disabled to speed up CI testing
     runs-on: ubuntu-latest
 
     defaults:
@@ -202,9 +201,7 @@ jobs:
       run: npm run test:run
 
   # Site E2E Tests (All Browsers)
-  # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-site:
-    if: false  # Temporarily disabled to speed up CI testing
     needs: [unit-backend, unit-frontend, unit-site]
     strategy:
       fail-fast: false
