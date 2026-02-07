@@ -1817,7 +1817,8 @@ jobs:
     - name: Clean up Docker volumes
       run: |
         echo "🧹 Cleaning up any existing Docker volumes..."
-        docker compose --env-file .env --project-name studio-e2e-collab down -v 2>/dev/null || true
+        # Use same project name as start-dev.sh (basename of pwd = "studio")
+        docker compose --env-file .env --project-name studio down -v 2>/dev/null || true
         docker volume prune -f || true
         echo "✅ Docker cleanup complete"
 
