@@ -122,7 +122,7 @@ async def create_database_if_not_exists(database_url: str):
         # Test direct asyncpg connection first
         import asyncpg
         try:
-            print(f"[conftest] Testing direct asyncpg connection...")
+            print("[conftest] Testing direct asyncpg connection...")
             conn = await asyncpg.connect(
                 user='postgres',
                 password='postgres',
@@ -131,7 +131,7 @@ async def create_database_if_not_exists(database_url: str):
                 database=admin_db
             )
             await conn.close()
-            print(f"[conftest] ✅ Direct asyncpg connection successful!")
+            print("[conftest] ✅ Direct asyncpg connection successful!")
         except Exception as e:
             print(f"[conftest] ❌ Direct asyncpg connection failed: {e}")
 
@@ -139,7 +139,7 @@ async def create_database_if_not_exists(database_url: str):
         max_retries = 3
         for attempt in range(max_retries):
             admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT", echo=True)
-            print(f"[conftest] Engine created, checking URL components:")
+            print("[conftest] Engine created, checking URL components:")
             print(f"[conftest]   - drivername: {admin_engine.url.drivername}")
             print(f"[conftest]   - username: {admin_engine.url.username}")
             print(f"[conftest]   - password: {'***' if admin_engine.url.password else 'NONE'}")
@@ -151,7 +151,7 @@ async def create_database_if_not_exists(database_url: str):
             try:
                 print(f"[conftest] Attempting connection attempt {attempt + 1}/{max_retries}...")
                 async with admin_engine.connect() as conn:
-                    print(f"[conftest] ✅ Connection successful via SQLAlchemy!")
+                    print("[conftest] ✅ Connection successful via SQLAlchemy!")
                     # Check if database exists
                     result = await conn.execute(
                         text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
