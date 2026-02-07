@@ -5,7 +5,8 @@
 
 set -e
 
-PROJECT_NAME=$(basename $(pwd))
+# Use COMPOSE_PROJECT_NAME if set, otherwise default to directory name
+PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename $(pwd))}"
 echo "Starting development containers for $PROJECT_NAME..."
 
 # Parse arguments
