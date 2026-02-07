@@ -33,7 +33,7 @@ fi
 
 # Run migrations
 echo "Running database migrations..."
-alembic upgrade head
+uv run alembic upgrade head
 
 # Reset test user to known state (matches CI setup)
 echo "Setting up test user..."
