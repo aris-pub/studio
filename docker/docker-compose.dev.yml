@@ -21,7 +21,7 @@ services:
       - TEST_DB_URL=postgresql://postgres:postgres@postgres:5432/${TEST_DB_NAME}
       - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - DB_URL_LOCAL=postgresql+asyncpg://postgres:postgres@postgres:5432/${DB_NAME}
-      - ENV=LOCAL
+      - ENV=${ENV:-LOCAL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=collab
