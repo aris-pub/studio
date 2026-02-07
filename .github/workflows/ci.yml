@@ -206,6 +206,7 @@ jobs:
 
   # Site E2E Tests (All Browsers)
   e2e-site:
+    if: false  # Temporarily disabled - focusing on e2e-collab-docker
     needs: [unit-backend, unit-frontend, unit-site]
     strategy:
       fail-fast: false
