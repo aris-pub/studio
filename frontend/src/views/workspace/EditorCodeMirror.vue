@@ -139,12 +139,35 @@
       console.log(`[Y.js] 👤 Setting user awareness: ${JSON.stringify(userInfo.value)}`);
       awareness.value.setLocalStateField("user", userInfo.value);
 
+      // EXTENSIVE WebSocket event logging
+      provider.value.ws?.addEventListener('open', () => {
+        console.log('[Y.js WS] ✅ WebSocket OPEN');
+      });
+      provider.value.ws?.addEventListener('close', (event) => {
+        console.log(`[Y.js WS] ❌ WebSocket CLOSE - code: ${event.code}, reason: ${event.reason}`);
+      });
+      provider.value.ws?.addEventListener('error', (error) => {
+        console.error('[Y.js WS] ⚠️  WebSocket ERROR:', error);
+      });
+      provider.value.ws?.addEventListener('message', (event) => {
+        console.log(`[Y.js WS] 📩 Message received - size: ${event.data?.length || 0} bytes`);
+      });
+
       // Monitor connection
       provider.value.on("status", (event) => {
         isConnected.value = event.status === "connected";
         console.log(`[Y.js] 🔔 STATUS EVENT: ${event.status}`);
         console.log(`[Y.js] 📊 wsconnected: ${provider.value.wsconnected}`);
         console.log(`[Y.js] 📊 synced: ${provider.value.synced}`);
+        console.log(`[Y.js] 📊 ws.readyState: ${provider.value.ws?.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+      });
+
+      // Log connection attempts
+      provider.value.on("connection-close", (event) => {
+        console.log(`[Y.js] 🔔 CONNECTION CLOSE - code: ${event.code}`);
+      });
+      provider.value.on("connection-error", (event) => {
+        console.error(`[Y.js] 🔔 CONNECTION ERROR:`, event);
       });
 
       // Wait for initial sync before creating editor
@@ -219,17 +242,37 @@
         console.log(`[EditorCodeMirror] 📊 Editor content preview: "${editorContent.substring(0, 80)}${editorContent.length > 80 ? '...' : ''}"`);
         console.log(`[EditorCodeMirror] 📊 Y.text length: ${ytext.value.toString().length}`);
 
-        // Add Y.text observer to log all changes
+        // Add Y.text observer to log all changes with EXTENSIVE detail
         ytext.value.observe((event, transaction) => {
           const newContent = ytext.value.toString();
           const origin = transaction.origin;
           const isRemote = origin === provider.value;
+          const isLocal = origin === null || origin === undefined;
+
           console.log(`[Y.js Observer] 🔔 Y.text CHANGED`);
-          console.log(`[Y.js Observer] 📊 Origin: ${origin?.constructor?.name || 'unknown'} (remote: ${isRemote})`);
-          console.log(`[Y.js Observer] 📊 New length: ${newContent.length}`);
-          console.log(`[Y.js Observer] 📊 New content: "${newContent.substring(0, 80)}${newContent.length > 80 ? '...' : ''}"`);
-          console.log(`[Y.js Observer] 📊 Editor length after change: ${view.value.state.doc.length}`);
-          console.log(`[Y.js Observer] 📊 Editor content after change: "${view.value.state.doc.toString().substring(0, 80)}"`);
+          console.log(`[Y.js Observer] 📊 Transaction origin: ${origin?.constructor?.name || 'null/undefined'}`);
+          console.log(`[Y.js Observer] 📊 Is remote: ${isRemote}, Is local: ${isLocal}`);
+          console.log(`[Y.js Observer] 📊 Transaction local: ${transaction.local}`);
+          console.log(`[Y.js Observer] 📊 Change delta length: ${event.delta?.length || 0}`);
+
+          // Log each delta change
+          if (event.delta) {
+            event.delta.forEach((delta, i) => {
+              if (delta.insert) {
+                console.log(`[Y.js Observer] 📊 Delta[${i}]: INSERT "${delta.insert}" (${delta.insert.length} chars)`);
+              } else if (delta.delete) {
+                console.log(`[Y.js Observer] 📊 Delta[${i}]: DELETE ${delta.delete} chars`);
+              } else if (delta.retain) {
+                console.log(`[Y.js Observer] 📊 Delta[${i}]: RETAIN ${delta.retain} chars`);
+              }
+            });
+          }
+
+          console.log(`[Y.js Observer] 📊 New Y.text length: ${newContent.length}`);
+          console.log(`[Y.js Observer] 📊 New Y.text content: "${newContent.substring(0, 100)}${newContent.length > 100 ? '...' : ''}"`);
+          console.log(`[Y.js Observer] 📊 Current editor length: ${view.value.state.doc.length}`);
+          console.log(`[Y.js Observer] 📊 Current editor content: "${view.value.state.doc.toString().substring(0, 100)}"`);
+          console.log(`[Y.js Observer] 📊 Lengths match: ${newContent.length === view.value.state.doc.length}`);
         });
 
         // Log editor state changes
@@ -269,6 +312,22 @@
         console.log(`[Y.js] 🔔 SYNC EVENT: ${synced}`);
         console.log(`[Y.js] 📊 Y.text length at sync: ${ytextLen}`);
         console.log(`[Y.js] 📊 Y.text content: "${ytext.value.toString().substring(0, 80)}"`);
+        console.log(`[Y.js] 📊 Provider state: wsconnected=${provider.value.wsconnected}, synced=${provider.value.synced}`);
+      });
+
+      // Monitor Y.Doc updates (catches all changes to the document)
+      ydoc.value.on("update", (update, origin, doc, transaction) => {
+        console.log(`[Y.Doc] 🔔 DOC UPDATE`);
+        console.log(`[Y.Doc] 📊 Update size: ${update.length} bytes`);
+        console.log(`[Y.Doc] 📊 Origin: ${origin?.constructor?.name || 'unknown'}`);
+        console.log(`[Y.Doc] 📊 Transaction local: ${transaction?.local}`);
+        console.log(`[Y.Doc] 📊 Current Y.text length: ${ytext.value.toString().length}`);
+      });
+
+      // Monitor awareness updates
+      awareness.value.on("change", (changes) => {
+        console.log(`[Y.js Awareness] 🔔 AWARENESS CHANGED`);
+        console.log(`[Y.js Awareness] 📊 Added: ${changes.added?.length || 0}, Updated: ${changes.updated?.length || 0}, Removed: ${changes.removed?.length || 0}`);
       });
     },
     { immediate: true }

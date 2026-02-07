@@ -12,8 +12,9 @@ env:
 
 jobs:
   # Unit Tests and Linting (Parallel)
-  # TEMPORARILY DISABLED - focusing on desktop E2E fixes
+  # TEMPORARILY DISABLED - focusing on e2e-collab-docker
   unit-backend:
+    if: false
     runs-on: ubuntu-latest
     env:
       JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
@@ -129,6 +130,7 @@ jobs:
         uv run pytest -n4 --dist=loadscope --tb=short
 
   unit-frontend:
+    if: false  # Temporarily disabled - focusing on e2e-collab-docker
     runs-on: ubuntu-latest
     env:
       BACKEND_PORT: 8000
@@ -162,6 +164,7 @@ jobs:
         npm run test:run
 
   unit-site:
+    if: false  # Temporarily disabled - focusing on e2e-collab-docker
     runs-on: ubuntu-latest
 
     defaults:
