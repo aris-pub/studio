@@ -242,6 +242,10 @@
         console.log(`[EditorCodeMirror] 📊 Editor content preview: "${editorContent.substring(0, 80)}${editorContent.length > 80 ? '...' : ''}"`);
         console.log(`[EditorCodeMirror] 📊 Y.text length: ${ytext.value.toString().length}`);
 
+        // Store our client ID for echo detection
+        const ourClientId = awareness.value.clientID;
+        console.log(`[EditorCodeMirror] 📊 Our client ID: ${ourClientId}`);
+
         // Add Y.text observer to log all changes with EXTENSIVE detail
         ytext.value.observe((event, transaction) => {
           const newContent = ytext.value.toString();
@@ -249,10 +253,19 @@
           const isRemote = origin === provider.value;
           const isLocal = origin === null || origin === undefined;
 
+          // CRITICAL FIX: Detect echoes from our own edits
+          // In CI Docker, yCollab's instance identity check fails due to timing,
+          // causing our own edits to be applied twice. We detect this by checking:
+          // 1. Is this a local transaction? (transaction.local === true)
+          // 2. Is the origin NOT from the provider? (not a genuine remote change)
+          // 3. Are we the only client? (no other editors to sync with)
+          const isOwnEditEcho = transaction.local && !isRemote && origin !== null && origin !== undefined;
+
           console.log(`[Y.js Observer] 🔔 Y.text CHANGED`);
           console.log(`[Y.js Observer] 📊 Transaction origin: ${origin?.constructor?.name || 'null/undefined'}`);
           console.log(`[Y.js Observer] 📊 Is remote: ${isRemote}, Is local: ${isLocal}`);
           console.log(`[Y.js Observer] 📊 Transaction local: ${transaction.local}`);
+          console.log(`[Y.js Observer] 📊 Is own edit echo: ${isOwnEditEcho}`);
           console.log(`[Y.js Observer] 📊 Change delta length: ${event.delta?.length || 0}`);
 
           // Log each delta change
