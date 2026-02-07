@@ -1811,6 +1811,13 @@ jobs:
         echo "📄 docker-compose.dev.yml env_file directive:"
         grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
 
+    - name: Clean up Docker volumes
+      run: |
+        echo "🧹 Cleaning up any existing Docker volumes..."
+        docker compose --env-file .env down -v 2>/dev/null || true
+        docker volume prune -f || true
+        echo "✅ Docker cleanup complete"
+
     - name: Start Docker Compose services
       run: |
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
