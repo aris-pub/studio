@@ -249,8 +249,8 @@
         // Wait for editor to fully mount before marking as synced
         setTimeout(() => {
           console.log(`[EditorCodeMirror] ⏱️  100ms timeout complete, exposing globals`);
-          // Expose view and Y.js instances globally for testing
-          if (import.meta.env.DEV) {
+          // Expose view and Y.js instances globally for testing (dev, CI, test - not prod)
+          if (!import.meta.env.PROD) {
             window.__cmView = view.value;
             window.__ydoc = ydoc.value;
             window.__ytext = ytext.value;
