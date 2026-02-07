@@ -65,6 +65,34 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
+    - name: Debug - Test PostgreSQL connection
+      run: |
+        echo "Testing PostgreSQL connection..."
+        cd backend
+        uv run python -c "
+        import asyncio
+        import asyncpg
+
+        async def test():
+            try:
+                conn = await asyncpg.connect(
+                    host='localhost',
+                    port=5432,
+                    user='postgres',
+                    password='postgres',
+                    database='test_aris'
+                )
+                print('✅ Connection successful!')
+                version = await conn.fetchval('SELECT version()')
+                print(f'PostgreSQL version: {version}')
+                await conn.close()
+            except Exception as e:
+                print(f'❌ Connection failed: {e}')
+                raise
+
+        asyncio.run(test())
+        "
+
     - name: Run linting
       run: |
         cd backend
