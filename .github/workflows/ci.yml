@@ -15,9 +15,21 @@ jobs:
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   unit-backend:
     runs-on: ubuntu-latest
-    env:
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-unit-backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_aris
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
     - uses: actions/checkout@v6
@@ -30,67 +42,43 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
-    - name: Create .env file
-      run: cp .env.example .env
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install RSM dependencies
+      run: |
+        cd ../rsm
+        uv sync
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        uv sync --all-groups
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Cleanup any existing Docker resources
-      run: |
-        echo "🧹 Cleaning up any existing Docker resources..."
-        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
-        docker system prune -af --volumes 2>/dev/null || true
-
-    - name: Debug - Gather evidence about .env file
-      run: |
-        echo "📍 Current directory: $(pwd)"
-        echo ""
-        echo "📄 .env file exists?"
-        ls -la .env
-        echo ""
-        echo "📄 .env file contents:"
-        cat .env
-        echo ""
-        echo "📄 backend/.env file exists?"
-        ls -la backend/.env
-        echo ""
-        echo "📄 Docker Compose version:"
-        docker compose version
-        echo ""
-        echo "📄 start-dev.sh location:"
-        ls -la scripts/start-dev.sh
-        echo ""
-        echo "📄 docker-compose.dev.yml env_file directive:"
-        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
-
-    - name: Start Docker services
-      run: |
-        echo "🐳 Starting backend and postgres services..."
-        ./scripts/start-dev.sh
-        echo "⏳ Waiting for services to be ready (migrations run via entrypoint)..."
-        sleep 30
-        docker compose --env-file .env ps
-        echo ""
-        echo "📋 Backend container logs:"
-        docker compose --env-file .env logs backend
-
     - name: Run linting
       run: |
-        docker compose --env-file .env exec -T backend uv run ruff check
+        cd backend
+        uv run ruff check
 
     - name: Run type checking
       run: |
-        docker compose --env-file .env exec -T backend uv run mypy aris/
+        cd backend
+        uv run mypy aris/
 
     - name: Run tests
       run: |
-        docker compose --env-file .env exec -T backend uv run pytest -n4 --dist=loadscope --tb=short
-
-    - name: Cleanup
-      if: always()
-      run: |
-        docker compose --env-file .env down -v
+        cd backend
+        uv run pytest -n4 --dist=loadscope --tb=short
 
   unit-frontend:
     runs-on: ubuntu-latest
