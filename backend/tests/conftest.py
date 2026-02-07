@@ -99,12 +99,13 @@ async def create_database_if_not_exists(database_url: str):
     """Create database if it doesn't exist (PostgreSQL only)."""
     if not database_url.startswith("postgresql"):
         return
-    
+
     import asyncio
     import os
-    
+
     # Extract database name from URL
     db_name = database_url.split("/")[-1]
+    print(f"[conftest] Creating database if not exists: {db_name}")
     
     # In GitHub Actions, we can create databases by connecting to the default 'postgres' database
     # which always exists in the PostgreSQL service container
@@ -115,12 +116,13 @@ async def create_database_if_not_exists(database_url: str):
     
     for admin_db in admin_dbs:
         admin_url = database_url.replace(f"/{db_name}", f"/{admin_db}")
-        
+        print(f"[conftest] Trying admin database: {admin_db}, URL: {admin_url}")
+
         # Retry logic with exponential backoff
         max_retries = 3
         for attempt in range(max_retries):
             admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
-            
+
             try:
                 async with admin_engine.connect() as conn:
                     # Check if database exists
