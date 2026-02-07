@@ -12,10 +12,9 @@
 import { test, expect } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
+// Working directory is frontend/, so go up one level to project root
+dotenv.config({ path: path.resolve("../.env") });
 const BACKEND_PORT = process.env.BACKEND_PORT;
 const FRONTEND_PORT = process.env.FRONTEND_PORT;
 
