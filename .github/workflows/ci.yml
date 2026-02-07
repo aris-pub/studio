@@ -126,74 +126,33 @@ jobs:
 
   unit-frontend:
     runs-on: ubuntu-latest
-    env:
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-unit-frontend
 
     steps:
     - uses: actions/checkout@v6
       with:
         submodules: recursive
 
-    - name: Clone RSM repository
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
       run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
-
-    - name: Create .env file
-      run: cp .env.example .env
-
-    - name: Create backend .env file
-      run: cp backend/.env.example backend/.env
-
-    - name: Cleanup any existing Docker resources
-      run: |
-        echo "🧹 Cleaning up any existing Docker resources..."
-        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
-        docker system prune -af --volumes 2>/dev/null || true
-
-    - name: Debug - Gather evidence about .env file
-      run: |
-        echo "📍 Current directory: $(pwd)"
-        echo ""
-        echo "📄 .env file exists?"
-        ls -la .env
-        echo ""
-        echo "📄 .env file contents:"
-        cat .env
-        echo ""
-        echo "📄 backend/.env file exists?"
-        ls -la backend/.env
-        echo ""
-        echo "📄 Docker Compose version:"
-        docker compose version
-        echo ""
-        echo "📄 start-dev.sh location:"
-        ls -la scripts/start-dev.sh
-        echo ""
-        echo "📄 docker-compose.dev.yml env_file directive:"
-        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
-
-    - name: Start Docker services
-      run: |
-        echo "🐳 Starting frontend service..."
-        ./scripts/start-dev.sh
-        sleep 20
-        docker compose --env-file .env ps
+        cd frontend
+        npm ci
 
     - name: Run linting
       run: |
-        docker compose --env-file .env exec -T frontend npm run lint
+        cd frontend
+        npm run lint
 
     - name: Run tests
       run: |
-        docker compose --env-file .env exec -T frontend npm run test:run
-
-    - name: Cleanup
-      if: always()
-      run: |
-        docker compose --env-file .env down -v
+        cd frontend
+        npm run test:run
 
   unit-site:
     if: false  # Temporarily disabled to speed up CI testing
