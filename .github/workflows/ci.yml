@@ -71,6 +71,9 @@ jobs:
         echo "⏳ Waiting for services to be ready (migrations run via entrypoint)..."
         sleep 30
         docker compose --env-file .env ps
+        echo ""
+        echo "📋 Backend container logs:"
+        docker compose --env-file .env logs backend
 
     - name: Run linting
       run: |
