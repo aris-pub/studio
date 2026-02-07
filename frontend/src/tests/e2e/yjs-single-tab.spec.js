@@ -163,6 +163,14 @@ async function clearEditor(page) {
 
   await page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 5000 });
 
+  // CRITICAL: Wait for Y.text to sync (not just editor)
+  console.log("[TEST clearEditor] ⏳ Waiting for Y.text to sync...");
+  await page.waitForFunction(
+    () => window.__ytext.toString().length === 0 && window.__cmView.state.doc.length === 0,
+    {},
+    { timeout: 5000 }
+  );
+
   const afterClear = await page.evaluate(() => ({
     editorLength: window.__cmView.state.doc.length,
     ytextLength: window.__ytext.toString().length,

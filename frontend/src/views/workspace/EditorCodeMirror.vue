@@ -186,7 +186,7 @@
 
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
-          // This ensures editor shows content when reconnecting (yCollab doesn't apply initial state)
+          // yCollab only handles incremental changes, not initial state
           doc: docContent,
           extensions: [
             customSetup,
