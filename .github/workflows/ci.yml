@@ -36,6 +36,12 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
+    - name: Cleanup any existing Docker resources
+      run: |
+        echo "🧹 Cleaning up any existing Docker resources..."
+        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
+        docker system prune -af --volumes 2>/dev/null || true
+
     - name: Debug - Gather evidence about .env file
       run: |
         echo "📍 Current directory: $(pwd)"
@@ -108,6 +114,12 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
+
+    - name: Cleanup any existing Docker resources
+      run: |
+        echo "🧹 Cleaning up any existing Docker resources..."
+        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
+        docker system prune -af --volumes 2>/dev/null || true
 
     - name: Debug - Gather evidence about .env file
       run: |
