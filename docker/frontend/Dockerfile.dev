@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Copy env-check script, patch script, and .env file
 COPY docker/env-check.js ../docker/env-check.js
-COPY frontend/scripts/patch-y-codemirror.sh /app/scripts/patch-y-codemirror.sh
+COPY frontend/scripts/patch-y-codemirror.cjs /app/scripts/patch-y-codemirror.cjs
 COPY .env ../.env
 
 # Copy and setup entrypoint script

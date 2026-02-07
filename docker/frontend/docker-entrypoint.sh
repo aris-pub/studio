@@ -7,12 +7,10 @@ set -e
 echo "Installing platform-specific dependencies..."
 npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl @esbuild/linux-arm64 || true
 
-# Patch y-codemirror.next to fix "update in progress" bug
-echo "Patching y-codemirror.next..."
+# Patch y-codemirror.next to fix echo prevention in Docker
+echo "Patching y-codemirror.next for Docker echo prevention..."
 if [ -d "node_modules/y-codemirror.next" ]; then
-  echo "Found y-codemirror.next, checking structure..."
-  ls -la node_modules/y-codemirror.next/ || true
-  sh /app/scripts/patch-y-codemirror.sh || echo "Patch failed, continuing..."
+  node /app/scripts/patch-y-codemirror.cjs || echo "Patch failed, continuing..."
 else
   echo "Warning: y-codemirror.next not found, skipping patch"
 fi
