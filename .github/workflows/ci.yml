@@ -1832,9 +1832,6 @@ jobs:
 
     - name: Run single-tab Y.js E2E tests
       working-directory: frontend
-      env:
-        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
-        TEST_USER_PASSWORD: ${{ env.TEST_USER_PASSWORD }}
       run: |
         echo "🧪 Running single-tab Y.js tests on ${{ matrix.browser }} (Docker environment)..."
         npx playwright test yjs-single-tab.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
