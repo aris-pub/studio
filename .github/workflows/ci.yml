@@ -16,10 +16,6 @@ jobs:
   unit-backend:
     runs-on: ubuntu-latest
     env:
-      DB_URL_LOCAL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-      DB_URL_PROD: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-      ALEMBIC_DB_URL_LOCAL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
-      ALEMBIC_DB_URL_PROD: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
       JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
       COPILOT_PROVIDER: mock
 
