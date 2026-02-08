@@ -2,11 +2,12 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import case, desc, select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import File, FileSettings, User
+from ..models.models import FilePermission, FileRole
 from .file import get_file, get_file_section
 from .tag import get_user_file_tags
 from .utils import extract_title
@@ -151,7 +152,7 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
 
 
 async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
-    """Retrieve all files owned by a user with optional tag information.
+    """Retrieve all files accessible by a user (owned or shared) with optional tag information.
 
     Parameters
     ----------
@@ -166,7 +167,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
     -------
     list of dict
         List of file dictionaries containing id, title, source, last_edited_at,
-        and tags (if with_tags=True).
+        role, and tags (if with_tags=True).
 
     Raises
     ------
@@ -175,20 +176,37 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
 
     Notes
     -----
-    Files are ordered by last edited date (descending) then by source content.
+    Files are ordered by role (OWNER > EDITOR > COMMENTER), then by last edited date (descending).
     Titles are extracted asynchronously from RSM content using extract_title.
     Tags are fetched concurrently if requested to optimize performance.
+    Includes all files where user has any permission level.
     """
     user = await get_user(user_id, db)
     if not user:
         raise ValueError(f"User {user_id} not found")
 
-    result: Result[Any] = await db.execute(
-        select(File)
-        .where(File.owner_id == user_id, File.deleted_at.is_(None))
-        .order_by(desc(File.last_edited_at), asc(File.source))
+    role_order = case(
+        (FilePermission.role == FileRole.OWNER, 1),
+        (FilePermission.role == FileRole.EDITOR, 2),
+        (FilePermission.role == FileRole.COMMENTER, 3),
+        else_=4
     )
-    docs = result.scalars().all()
+
+    result: Result[Any] = await db.execute(
+        select(File, FilePermission.role)
+        .join(FilePermission, File.id == FilePermission.file_id)
+        .where(
+            FilePermission.user_id == user_id,
+            File.deleted_at.is_(None),
+            FilePermission.deleted_at.is_(None),
+        )
+        .order_by(role_order, desc(File.last_edited_at))
+    )
+    rows = result.all()
+    docs_with_roles = [(row[0], row[1]) for row in rows]
+
+    docs = [doc for doc, _ in docs_with_roles]
+    roles = {doc: role for doc, role in docs_with_roles}
 
     titles_list = await asyncio.gather(*(extract_title(d) for d in docs))
     titles = dict(zip(docs, titles_list))
@@ -204,6 +222,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
             "title": titles[doc],
             "source": doc.source,
             "last_edited_at": doc.last_edited_at,
+            "role": roles[doc].value,
             "tags": tags.get(doc, []),
         }
         for doc in docs

@@ -17,6 +17,9 @@ services:
       - backend_venv:/workspace/studio/backend/.venv
     working_dir: /workspace/studio/backend
     environment:
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - TEST_DB_URL=postgresql://postgres:postgres@postgres:5432/${TEST_DB_NAME}
       - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}

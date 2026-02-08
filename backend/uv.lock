@@ -1845,6 +1845,7 @@ dev = [
     { name = "pytest-playwright-visual", specifier = ">=2.1.0" },
     { name = "pytest-rerunfailures", specifier = ">=15.0" },
     { name = "pytest-sugar", specifier = ">=0.9.6" },
+    { name = "pytest-timeout", specifier = ">=2.3.0" },
     { name = "pytest-xdist", specifier = ">=3.0.0" },
     { name = "ruff", specifier = ">=0.1.0" },
     { name = "sphinx", specifier = ">=6.2.0" },

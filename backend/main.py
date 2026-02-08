@@ -22,6 +22,7 @@ from aris.routes import (
     file_assets_router,
     file_router,
     file_settings_router,
+    permissions_router,
     render_router,
     signup_router,
     tag_router,
@@ -302,6 +303,7 @@ app.include_router(auth_router, tags=["authentication"])
 app.include_router(user_router, tags=["users"])
 app.include_router(user_public_router, tags=["users"])
 app.include_router(file_router, tags=["files"])
+app.include_router(permissions_router, prefix="/files", tags=["permissions"])
 app.include_router(tag_router, tags=["tags"])
 app.include_router(file_assets_router, tags=["file-assets"])
 app.include_router(file_settings_router, tags=["file-settings"])

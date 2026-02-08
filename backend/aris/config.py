@@ -8,7 +8,7 @@ import os
 import uuid
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,13 +24,19 @@ class Settings(BaseSettings):
     :param JWT_ACCESS_TOKEN_EXPIRE_MINUTES: Expiration time in minutes for JWT access tokens (default: 30).
     """
 
-    DB_URL_LOCAL: str = Field(..., json_schema_extra={"env": "DB_URL_LOCAL"})
+    DB_PORT: int = Field(5432, json_schema_extra={"env": "DB_PORT"})
+    """Database port (default: 5432)."""
+
+    DB_NAME: str = Field("aris", json_schema_extra={"env": "DB_NAME"})
+    """Database name (default: aris)."""
+
+    DB_URL_LOCAL: str = Field(default="", json_schema_extra={"env": "DB_URL_LOCAL"})
     """Database URL for local development."""
 
     DB_URL_PROD: str = Field(..., json_schema_extra={"env": "DB_URL_PROD"})
     """Database URL for production environment."""
 
-    ALEMBIC_DB_URL_LOCAL: str = Field(..., json_schema_extra={"env": "ALEMBIC_DB_URL_LOCAL"})
+    ALEMBIC_DB_URL_LOCAL: str = Field(default="", json_schema_extra={"env": "ALEMBIC_DB_URL_LOCAL"})
     """Database URL for Alembic local development."""
 
     ALEMBIC_DB_URL_PROD: str = Field(..., json_schema_extra={"env": "ALEMBIC_DB_URL_PROD"})
@@ -74,7 +80,20 @@ class Settings(BaseSettings):
     COPILOT_PROVIDER: str = Field("anthropic", json_schema_extra={"env": "COPILOT_PROVIDER"})
     """AI provider for copilot functionality (anthropic, openai, etc.)."""
 
-    model_config = SettingsConfigDict(extra="forbid", env_file=".env")
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8"
+    )
+
+    @model_validator(mode="after")
+    def build_database_urls(self):
+        """Build database URLs from DB_PORT and DB_NAME if not explicitly set."""
+        if not self.DB_URL_LOCAL:
+            self.DB_URL_LOCAL = f"postgresql+asyncpg://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
+        if not self.ALEMBIC_DB_URL_LOCAL:
+            self.ALEMBIC_DB_URL_LOCAL = f"postgresql+psycopg2://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
+        return self
 
     def get_test_database_url(self) -> str:
         """Get test database URL based on environment and configuration.
