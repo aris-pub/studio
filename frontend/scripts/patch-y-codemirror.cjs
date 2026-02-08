@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-env node */
 /**
  * Patch y-codemirror.next to fix echo prevention in Docker environments
  *
