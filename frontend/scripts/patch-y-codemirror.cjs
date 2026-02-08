@@ -1,76 +1,97 @@
 #!/usr/bin/env node
 /* global require, __dirname, console, process */
 /**
- * Patch y-codemirror.next to fix echo prevention in Docker environments
- *
- * Root cause: Object identity checks fail in containerized environments
- * Fix: Use transaction.local flag as primary echo detection
+ * Patch y-codemirror.next to fix echo prevention
+ * Patches BOTH dist (CommonJS) and src (ES modules) because Vite uses src/
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(__dirname, '../node_modules/y-codemirror.next/dist/y-codemirror.cjs');
+const distPath = path.join(__dirname, '../node_modules/y-codemirror.next/dist/y-codemirror.cjs');
+const srcPath = path.join(__dirname, '../node_modules/y-codemirror.next/src/y-sync.js');
 
 console.log(`📍 Patch script location: ${__dirname}`);
-console.log(`📍 Target file path: ${filePath}`);
 
-if (!fs.existsSync(filePath)) {
+// Check files exist
+if (!fs.existsSync(distPath) || !fs.existsSync(srcPath)) {
   console.error('❌ y-codemirror.next not found. Run npm install first.');
-  console.error(`❌ Checked path: ${filePath}`);
-  console.error(`❌ Directory contents:`);
-  const dir = path.dirname(filePath);
-  if (fs.existsSync(dir)) {
-    console.error(fs.readdirSync(dir).join(', '));
-  }
+  console.error(`❌ Dist exists: ${fs.existsSync(distPath)}`);
+  console.error(`❌ Src exists: ${fs.existsSync(srcPath)}`);
   process.exit(1);
 }
 
-let content = fs.readFileSync(filePath, 'utf8');
-console.log(`📊 File size: ${content.length} bytes`);
+function patchFile(filePath, fileType) {
+  console.log(`\n📝 Patching ${fileType}: ${filePath}`);
+  let content = fs.readFileSync(filePath, 'utf8');
 
-// Check if already patched
-const isPatched = content.includes('&& !tr.local');
-const isDebugPatched = content.includes('[ySync DEBUG]');
+  // Check if already patched
+  const isEchoPatched = content.includes('&& !tr.local') || content.includes('&& !tr.local');
+  const isDebugPatched = content.includes('[ySync DEBUG]');
 
-if (isPatched && isDebugPatched) {
-  console.log('✅ Already patched (echo prevention + debugging) - skipping');
-  process.exit(0);
-}
-
-let patched = content;
-
-// Patch 1: Use transaction.local flag for echo prevention
-if (!isPatched) {
-  const pattern = /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g;
-  patched = patched.replace(pattern, 'if (tr.origin !== this.conf && !tr.local)');
-
-  if (patched === content) {
-    console.error('❌ Echo prevention pattern not found - library may have changed');
-    console.error(`❌ Looking for: if (tr.origin !== this.conf)`);
-    process.exit(1);
+  if (isEchoPatched && isDebugPatched) {
+    console.log(`✅ ${fileType} already patched - skipping`);
+    return;
   }
-  console.log('✅ Applied echo prevention patch');
-}
 
-// Patch 2: Add debugging to ViewPlugin.update() method
-if (!isDebugPatched) {
-  // Find the update method in the ViewPlugin and add logging at the start
-  const updatePattern = /(update\s*\([^)]*\)\s*{\s*)/;
-  const debugCode = `$1console.log('[ySync DEBUG] update() called', { docChanged: arguments[0]?.docChanged, newLength: arguments[0]?.state?.doc?.length }); `;
-  patched = patched.replace(updatePattern, debugCode);
+  let patched = content;
 
-  // Add logging to the observer function when it fires
-  const observerPattern = /(this\._observer\s*=\s*\([^)]*\)\s*=>\s*{\s*)/;
-  const observerDebugCode = `$1console.log('[ySync DEBUG] Observer fired', { origin: arguments[1]?.origin, deltaLength: arguments[0]?.delta?.length }); `;
-  patched = patched.replace(observerPattern, observerDebugCode);
+  // Patch 1: Echo prevention
+  if (!isEchoPatched) {
+    // CommonJS: if (tr.origin !== this.conf)
+    // ES Module: if (tr.origin !== ySyncOrigin)
+    const patterns = [
+      /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g,
+      /if\s*\(\s*tr\.origin\s*!==\s*ySyncOrigin\s*\)/g
+    ];
 
-  if (patched === content && !isPatched) {
-    console.error('❌ Could not add debugging - update/observer patterns not found');
-    process.exit(1);
+    let applied = false;
+    for (const pattern of patterns) {
+      const result = patched.replace(pattern, (match) => match.replace(')', ' && !tr.local)'));
+      if (result !== patched) {
+        patched = result;
+        applied = true;
+        break;
+      }
+    }
+
+    if (applied) {
+      console.log(`✅ ${fileType}: Applied echo prevention patch`);
+    }
   }
-  console.log('✅ Applied debugging patches');
+
+  // Patch 2: Add debugging
+  if (!isDebugPatched) {
+    // Add debugging to update() methods
+    const lines = patched.split('\n');
+    let patchCount = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(/^\s*update\s*\(update\)\s*{\s*$/)) {
+        const lineNum = i + 1;
+        lines[i] = lines[i].replace('{', `{\n    console.log('[ySync DEBUG line ${lineNum}] update() called', update);`);
+        patchCount++;
+      }
+    }
+
+    patched = lines.join('\n');
+
+    // Add observer logging
+    patched = patched.replace(
+      /(this\._observer\s*=\s*\(event,\s*tr\)\s*=>\s*{\s*)/,
+      `$1\n      console.log('[ySync DEBUG] Observer fired', { origin: tr?.origin, eventDelta: event?.delta?.length });\n      `
+    );
+
+    console.log(`✅ ${fileType}: Applied debugging (${patchCount} update methods + observer)`);
+  }
+
+  // Write patched content
+  fs.writeFileSync(filePath, patched, 'utf8');
+  console.log(`✅ ${fileType}: Patch complete`);
 }
 
-fs.writeFileSync(filePath, patched, 'utf8');
-console.log('✅ Patched y-codemirror.next (echo prevention + debugging)');
+// Patch both files
+patchFile(distPath, 'Dist (CommonJS)');
+patchFile(srcPath, 'Source (ES Module)');
+
+console.log('\n✅ All patches applied successfully');
