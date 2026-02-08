@@ -96,7 +96,8 @@ async function openFileInEditor(page, fileId) {
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
   console.log(`[TEST openFileInEditor] ✅ __cmView available`);
 
-  await page.waitForTimeout(1000);
+  // Wait for Y.js provider to be synced (not just connected)
+  await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
   const state = await page.evaluate(() => ({
     editorLength: window.__cmView.state.doc.length,
@@ -185,24 +186,49 @@ async function clearEditor(page) {
   console.log("[TEST clearEditor] ✅ Clear complete");
 }
 
+// Helper to wait for content to sync between tabs
+async function waitForSync(page, expectedContent) {
+  await page.waitForFunction(
+    (content) => {
+      const editorContent = window.__cmView?.state.doc.toString() || '';
+      return editorContent.includes(content);
+    },
+    expectedContent,
+    { timeout: 3000 }
+  );
+}
+
 // Helper to cleanup Y.js state
 async function cleanupYjs(page) {
   try {
     await page.evaluate(() => {
-      if (window.__provider) {
-        window.__provider.disconnect();
-        window.__provider.destroy();
-        delete window.__provider;
-      }
+      return new Promise((resolve) => {
+        if (window.__provider) {
+          // Wait for WebSocket to actually close
+          const ws = window.__provider.ws;
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.addEventListener('close', () => resolve(), { once: true });
+            window.__provider.disconnect();
+            window.__provider.destroy();
+          } else {
+            window.__provider.disconnect();
+            window.__provider.destroy();
+            resolve();
+          }
+          delete window.__provider;
+        } else {
+          resolve();
+        }
 
-      if (window.__ydoc) {
-        window.__ydoc.destroy();
-        delete window.__ydoc;
-      }
+        if (window.__ydoc) {
+          window.__ydoc.destroy();
+          delete window.__ydoc;
+        }
 
-      delete window.__ytext;
-      delete window.__awareness;
-      delete window.__cmView;
+        delete window.__ytext;
+        delete window.__awareness;
+        delete window.__cmView;
+      });
     });
   } catch (error) {
     console.log("[Test] Y.js cleanup error (expected if page closed):", error.message);
@@ -221,19 +247,14 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
 
         await clearEditor(tabA.page);
 
-        const ytextAfterClear = await tabA.page.evaluate(() => ({
-          ytext: window.__ytext?.toString() || "UNDEFINED",
-          ytextLength: window.__ytext?.toString().length || 0,
-          editorContent: window.__cmView?.state.doc.toString() || "UNDEFINED"
-        }));
-        console.log(`[DEBUG] After clear - Y.text: "${ytextAfterClear.ytext.substring(0, 50)}..." (${ytextAfterClear.ytextLength} chars)`);
-        console.log(`[DEBUG] After clear - Editor: "${ytextAfterClear.editorContent.substring(0, 50)}..."`);
-
-        await tabB.page.waitForTimeout(2000);
+        // Wait for Tab B to see the clear
+        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
 
         const testText = `Tab A: ${Date.now()}`;
         await insertText(tabA.page, testText);
-        await tabB.page.waitForTimeout(1000);
+
+        // Wait for Tab B to receive the text
+        await waitForSync(tabB.page, testText);
 
         const contentB = await getEditorContent(tabB.page);
 
@@ -262,11 +283,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabB.page);
-        await tabA.page.waitForTimeout(500);
+        await tabA.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
 
         const testText = `Tab B: ${Date.now()}`;
         await insertText(tabB.page, testText);
-        await tabA.page.waitForTimeout(1000);
+        await waitForSync(tabA.page, testText);
 
         const contentA = await getEditorContent(tabA.page);
         expect(contentA).toContain(testText);
@@ -287,13 +308,13 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForTimeout(2000);
+        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
 
         await insertText(tabA.page, "From A\n");
-        await tabB.page.waitForTimeout(500);
+        await waitForSync(tabB.page, "From A");
 
         await insertText(tabB.page, "From B\n");
-        await tabA.page.waitForTimeout(500);
+        await waitForSync(tabA.page, "From B");
 
         const contentA = await getEditorContent(tabA.page);
         const contentB = await getEditorContent(tabB.page);
@@ -402,10 +423,10 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForTimeout(2000);
+        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
 
         await insertText(tabA.page, "START___END");
-        await tabB.page.waitForTimeout(500);
+        await waitForSync(tabB.page, "START___END");
 
         await Promise.all([
           tabA.page.evaluate(() => {
@@ -422,8 +443,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
           }),
         ]);
 
-        await tabA.page.waitForTimeout(1000);
-        await tabB.page.waitForTimeout(1000);
+        // Wait for both edits to sync
+        await Promise.all([
+          waitForSync(tabA.page, "BEGIN"),
+          waitForSync(tabB.page, "BEGIN"),
+        ]);
 
         const contentA = await getEditorContent(tabA.page);
         const contentB = await getEditorContent(tabB.page);
@@ -502,19 +526,16 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForTimeout(2000);
+        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
 
         await insertText(tabA.page, "Before disconnect");
-        await tabB.page.waitForTimeout(500);
+        await waitForSync(tabB.page, "Before disconnect");
 
         await tabB.page.goto(`http://localhost:${FRONTEND_PORT}/`);
-        await tabB.page.waitForTimeout(500);
 
         await insertText(tabA.page, "\nDuring disconnect");
-        await tabA.page.waitForTimeout(500);
 
         await openFileInEditor(tabB.page, 1);
-        await tabB.page.waitForTimeout(1000);
 
         const contentB = await getEditorContent(tabB.page);
         expect(contentB).toContain("Before disconnect");
