@@ -13,14 +13,20 @@ aris/
 └── CLAUDE.md
 ```
 
-## Docker vs Local: Dev Server vs Tests
+## Architecture: Services in Docker, Tests from Outside
 
 **Critical Architecture Decision:**
-- **Docker**: Dev server only (backend, frontend, site, storybook)
-- **Local**: Tests only (pytest runs on macOS with macOS binaries)
-- **CI**: Tests on Linux separately
+- **DEV**: Docker Compose runs services (backend, frontend, site, storybook, collab), tests run from OUTSIDE containers
+- **CI**: Same Docker Compose setup as DEV, tests run from OUTSIDE containers
+- **Production**: Services containerized, requests/interactions come from outside (mirrors DEV/CI pattern)
 
-**Why:**
+**Why tests run from outside containers:**
+- Mirrors production: containerized services receive requests from external clients/browsers
+- E2E tests (Playwright): Browser runs on host, loads frontend from Docker, tests real client behavior
+- Backend tests (pytest): Can run on host (macOS locally, Linux in CI) or inside container as needed
+- Eliminates Docker-in-Docker complexity for test execution
+
+**Platform-specific binaries (tree-sitter-rsm):**
 - `rsm/` and `rsm/tree-sitter-rsm` must be installed from local source (never PyPI/GitHub)
 - tree-sitter-rsm compiles platform-specific binaries (macOS .dylib vs Linux .so)
 - Solution: Platform-specific binary filenames allow macOS and Linux binaries to coexist
@@ -33,8 +39,8 @@ aris/
 
 **Commands:**
 ```bash
-just dev    # Start Docker dev server (builds Linux binaries once)
-just test   # Run tests locally on macOS (uses macOS binaries)
+just dev     # Start Docker Compose services (same as CI)
+just test    # Run tests from host (connects to Docker services)
 ```
 
 ## CLI Tool (Studio CLI)

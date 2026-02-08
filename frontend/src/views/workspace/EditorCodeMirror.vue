@@ -165,13 +165,34 @@
         const undoManager = new Y.UndoManager(ytext.value);
         const docContent = ytext.value.toString();
 
+        console.log("[EditorCodeMirror] 🔧 Creating yCollab binding", {
+          ytextLength: ytext.value.toString().length,
+          docContentLength: docContent.length,
+        });
+
+        const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
+        console.log("[EditorCodeMirror] ✅ yCollab extension created");
+
+        // Debug: Log all transactions to track CodeMirror changes
+        const transactionLogger = EditorState.transactionExtender.of((tr) => {
+          if (tr.docChanged) {
+            console.log("[EditorCodeMirror] 📝 Transaction detected", {
+              docChanged: tr.docChanged,
+              newLength: tr.newDoc.length,
+              origin: tr.annotation ? String(tr.annotation) : "no-annotation",
+            });
+          }
+          return null;
+        });
+
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
           // yCollab only handles incremental changes, not initial state
           doc: docContent,
           extensions: [
             customSetup,
-            yCollab(ytext.value, awareness.value, { undoManager }),
+            yCollabExtension,
+            transactionLogger,
             EditorView.theme({
               "&": {
                 height: "100%",

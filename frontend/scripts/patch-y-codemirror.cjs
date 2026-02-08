@@ -30,25 +30,47 @@ let content = fs.readFileSync(filePath, 'utf8');
 console.log(`📊 File size: ${content.length} bytes`);
 
 // Check if already patched
-if (content.includes('&& !tr.local')) {
-  console.log('✅ Already patched - skipping');
+const isPatched = content.includes('&& !tr.local');
+const isDebugPatched = content.includes('[ySync DEBUG]');
+
+if (isPatched && isDebugPatched) {
+  console.log('✅ Already patched (echo prevention + debugging) - skipping');
   process.exit(0);
 }
 
-// Patch: Use transaction.local flag for echo prevention
-// OLD: if (tr.origin !== this.conf)
-// NEW: if (tr.origin !== this.conf && !tr.local)
-const pattern = /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g;
-const patched = content.replace(pattern, 'if (tr.origin !== this.conf && !tr.local)');
+let patched = content;
 
-if (patched === content) {
-  console.error('❌ Pattern not found - library may have changed');
-  console.error(`❌ Looking for: if (tr.origin !== this.conf)`);
-  console.error(`❌ File excerpt around line 172:`);
-  const lines = content.split('\n');
-  console.error(lines.slice(170, 175).join('\n'));
-  process.exit(1);
+// Patch 1: Use transaction.local flag for echo prevention
+if (!isPatched) {
+  const pattern = /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g;
+  patched = patched.replace(pattern, 'if (tr.origin !== this.conf && !tr.local)');
+
+  if (patched === content) {
+    console.error('❌ Echo prevention pattern not found - library may have changed');
+    console.error(`❌ Looking for: if (tr.origin !== this.conf)`);
+    process.exit(1);
+  }
+  console.log('✅ Applied echo prevention patch');
+}
+
+// Patch 2: Add debugging to ViewPlugin.update() method
+if (!isDebugPatched) {
+  // Find the update method in the ViewPlugin and add logging at the start
+  const updatePattern = /(update\s*\([^)]*\)\s*{\s*)/;
+  const debugCode = `$1console.log('[ySync DEBUG] update() called', { docChanged: arguments[0]?.docChanged, newLength: arguments[0]?.state?.doc?.length }); `;
+  patched = patched.replace(updatePattern, debugCode);
+
+  // Add logging to the observer function when it fires
+  const observerPattern = /(this\._observer\s*=\s*\([^)]*\)\s*=>\s*{\s*)/;
+  const observerDebugCode = `$1console.log('[ySync DEBUG] Observer fired', { origin: arguments[1]?.origin, deltaLength: arguments[0]?.delta?.length }); `;
+  patched = patched.replace(observerPattern, observerDebugCode);
+
+  if (patched === content && !isPatched) {
+    console.error('❌ Could not add debugging - update/observer patterns not found');
+    process.exit(1);
+  }
+  console.log('✅ Applied debugging patches');
 }
 
 fs.writeFileSync(filePath, patched, 'utf8');
-console.log('✅ Patched y-codemirror.next echo prevention for Docker compatibility');
+console.log('✅ Patched y-codemirror.next (echo prevention + debugging)');
