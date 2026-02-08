@@ -10,9 +10,14 @@ npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl @esbu
 # Patch y-codemirror.next to fix echo prevention in Docker
 echo "Patching y-codemirror.next for Docker echo prevention..."
 if [ -d "node_modules/y-codemirror.next" ]; then
-  node /app/scripts/patch-y-codemirror.cjs || echo "Patch failed, continuing..."
+  node /app/scripts/patch-y-codemirror.cjs
+  if [ $? -ne 0 ]; then
+    echo "❌ CRITICAL: Patch failed! Cannot continue without patched y-codemirror.next"
+    exit 1
+  fi
 else
-  echo "Warning: y-codemirror.next not found, skipping patch"
+  echo "❌ CRITICAL: y-codemirror.next not found in node_modules"
+  exit 1
 fi
 
 # Execute the command passed to docker run

@@ -11,23 +11,41 @@ const path = require('path');
 
 const filePath = path.join(__dirname, '../node_modules/y-codemirror.next/dist/y-codemirror.cjs');
 
+console.log(`📍 Patch script location: ${__dirname}`);
+console.log(`📍 Target file path: ${filePath}`);
+
 if (!fs.existsSync(filePath)) {
   console.error('❌ y-codemirror.next not found. Run npm install first.');
+  console.error(`❌ Checked path: ${filePath}`);
+  console.error(`❌ Directory contents:`);
+  const dir = path.dirname(filePath);
+  if (fs.existsSync(dir)) {
+    console.error(fs.readdirSync(dir).join(', '));
+  }
   process.exit(1);
 }
 
 let content = fs.readFileSync(filePath, 'utf8');
+console.log(`📊 File size: ${content.length} bytes`);
+
+// Check if already patched
+if (content.includes('&& !tr.local')) {
+  console.log('✅ Already patched - skipping');
+  process.exit(0);
+}
 
 // Patch: Use transaction.local flag for echo prevention
 // OLD: if (tr.origin !== this.conf)
 // NEW: if (tr.origin !== this.conf && !tr.local)
-const patched = content.replace(
-  /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g,
-  'if (tr.origin !== this.conf && !tr.local)'
-);
+const pattern = /if\s*\(\s*tr\.origin\s*!==\s*this\.conf\s*\)/g;
+const patched = content.replace(pattern, 'if (tr.origin !== this.conf && !tr.local)');
 
 if (patched === content) {
-  console.log('⚠️  Pattern not found - library may have changed. Patch failed.');
+  console.error('❌ Pattern not found - library may have changed');
+  console.error(`❌ Looking for: if (tr.origin !== this.conf)`);
+  console.error(`❌ File excerpt around line 172:`);
+  const lines = content.split('\n');
+  console.error(lines.slice(170, 175).join('\n'));
   process.exit(1);
 }
 
