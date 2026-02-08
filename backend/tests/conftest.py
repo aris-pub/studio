@@ -239,6 +239,20 @@ async def test_user(db_session):
 
 
 @pytest_asyncio.fixture
+async def test_user2(db_session):
+    """Create a second test user for permission testing."""
+    user = User(
+        name="baz qux",
+        email="test2@example.com",
+        password_hash="example_hash_pwd_for_testing",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
 async def test_file(db_session, test_user):
     """Create a test file directly in the database."""
     file = File(
@@ -337,6 +351,21 @@ async def authenticated_client(client: AsyncClient, authenticated_user):
 def second_auth_headers(second_authenticated_user):
     """Return authorization headers for the second user."""
     return {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+
+@pytest_asyncio.fixture
+async def authenticated_client2(db_session, second_authenticated_user):
+    """Return a separate client with authentication headers for the second user."""
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as test_client:
+        test_client.headers.update({"Authorization": f"Bearer {second_authenticated_user['token']}"})
+        yield test_client
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture

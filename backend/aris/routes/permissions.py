@@ -53,15 +53,14 @@ async def list_collaborators(
 
     Returns
     -------
-    dict
+    list[dict]
         List of collaborators with their details and roles.
 
     """
-    collaborators = await get_file_collaborators(file_id, db)
-    return {"collaborators": collaborators}
+    return await get_file_collaborators(file_id, db)
 
 
-@router.post("/{file_id}/permissions")
+@router.post("/{file_id}/permissions", status_code=201)
 async def add_collaborator(
     file_id: int,
     request: AddCollaboratorRequest,
@@ -97,6 +96,12 @@ async def add_collaborator(
         400 if user already has permission for this file.
 
     """
+    if request.role == FileRole.OWNER:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot add OWNER permission. Files can only have one owner."
+        )
+
     existing = await get_permission_by_file_and_user(file_id, request.user_id, db)
     if existing:
         raise HTTPException(
@@ -113,7 +118,8 @@ async def add_collaborator(
     )
 
     return {
-        "permission_id": permission.id,
+        "id": permission.id,
+        "file_id": permission.file_id,
         "user_id": permission.user_id,
         "role": permission.role.value,
         "granted_at": permission.granted_at.isoformat() if permission.granted_at else None,
@@ -161,14 +167,15 @@ async def update_collaborator(
         raise HTTPException(status_code=404, detail="Permission not found")
 
     return {
-        "permission_id": permission.id,
+        "id": permission.id,
+        "file_id": permission.file_id,
         "user_id": permission.user_id,
         "role": permission.role.value,
         "granted_at": permission.granted_at.isoformat() if permission.granted_at else None,
     }
 
 
-@router.delete("/{file_id}/permissions/{permission_id}")
+@router.delete("/{file_id}/permissions/{permission_id}", status_code=204)
 async def remove_collaborator(
     file_id: int,
     permission_id: int,
@@ -192,8 +199,8 @@ async def remove_collaborator(
 
     Returns
     -------
-    dict
-        Success message.
+    None
+        No content returned (204 status).
 
     Raises
     ------
@@ -204,5 +211,3 @@ async def remove_collaborator(
     permission = await revoke_permission(permission_id, db)
     if not permission:
         raise HTTPException(status_code=404, detail="Permission not found")
-
-    return {"detail": "Collaborator removed successfully"}
