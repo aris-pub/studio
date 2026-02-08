@@ -93,8 +93,10 @@ test.describe("Signup Form", () => {
     // Fill only email
     await page.fill('input[type="email"]', "test@example.com");
 
-    // Submit form
+    // Wait for the API request to complete before checking UI
+    const responsePromise = page.waitForResponse(/signup/);
     await page.click('button[type="submit"]');
+    await responsePromise;
 
     // Should show success message
     await expect(page.locator(".thank-you-message")).toBeVisible();
@@ -152,8 +154,10 @@ test.describe("Signup Form", () => {
       .click();
     await page.fill('input[placeholder="Please specify"]', "Custom Tool");
 
-    // Submit form
+    // Wait for the API request to complete before checking UI
+    const responsePromise = page.waitForResponse(/signup/);
     await page.click('button[type="submit"]');
+    await responsePromise;
 
     // Should show success message
     await expect(page.locator(".thank-you-message")).toBeVisible();
@@ -255,7 +259,8 @@ test.describe("Signup Form", () => {
     // Fill email
     await page.fill('input[type="email"]', "slow@example.com");
 
-    // Submit form
+    // Submit form and wait for response
+    const responsePromise = page.waitForResponse(/signup/);
     await page.click('button[type="submit"]');
 
     // Should show loading state
@@ -263,6 +268,7 @@ test.describe("Signup Form", () => {
     await expect(page.locator("text=Submitting...")).toBeVisible();
 
     // Wait for completion
+    await responsePromise;
     await expect(page.locator(".thank-you-message")).toBeVisible();
   });
 
