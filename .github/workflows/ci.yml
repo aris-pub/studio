@@ -187,7 +187,15 @@ jobs:
         cache: 'npm'
         cache-dependency-path: site/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules-site
+      with:
+        path: site/node_modules
+        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+
     - name: Install dependencies
+      if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Cache vitest
@@ -526,8 +534,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -694,8 +710,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -893,8 +917,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -1093,8 +1125,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -1273,8 +1313,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -1469,8 +1517,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Install multiplayer server dependencies
@@ -1600,8 +1656,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm ci
 
     - name: Cache Playwright browsers
