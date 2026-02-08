@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db, get_file_service
 from ..authorization import require_edit, require_manage, require_view
+from ..collaboration import get_collaboration_manager
 from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..models import FileAsset
@@ -212,15 +213,25 @@ async def get_file(
     """
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
-    
+
     # Get file from memory
     doc = await file_service.get_file(file_id)
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
-    
+
+    # Start Y.js collaboration client for this file (if not already running)
+    try:
+        manager = get_collaboration_manager()
+        await manager.start_client(file_id)
+    except Exception as e:
+        # Log error but don't fail the request - collaboration is optional
+        import logging
+        logger = logging.getLogger("aris.routes.file")
+        logger.warning(f"Failed to start collaboration client for file {file_id}: {e}")
+
     # Get extracted title
     title = await file_service.get_file_title(file_id)
-    
+
     return {
         "id": file_id,
         "title": title or doc.title,  # Use extracted title or fallback to original

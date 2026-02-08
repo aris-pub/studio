@@ -6,7 +6,8 @@ backend maintains Y.Doc instances, connects to the y-websocket server,
 and handles persistence to PostgreSQL.
 """
 
+from .manager import CollaborationManager, get_collaboration_manager
 from .yjs_client import YDocClient
 
 
-__all__ = ["YDocClient"]
+__all__ = ["YDocClient", "CollaborationManager", "get_collaboration_manager"]

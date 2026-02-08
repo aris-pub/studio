@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aris.collaboration import YDocClient
+from aris.collaboration import get_collaboration_manager
 from aris.deps import get_db
 from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
@@ -314,72 +314,32 @@ app.include_router(copilot_router, tags=["copilot"])
 logger.info("All routers registered successfully")
 
 
-# Y.js backend client state
-yjs_client: YDocClient | None = None
-yjs_task: asyncio.Task | None = None
-
-
 @app.on_event("startup")
-async def startup_yjs_client():
-    """Start Y.js backend client for real-time collaboration."""
-    global yjs_client, yjs_task
-
+async def startup_collaboration_manager():
+    """Initialize CollaborationManager for real-time collaboration."""
     # Disable in PROD, STAGING, CI, and test environments
     env = os.getenv("ENV", "").upper()
     if env in ("PROD", "STAGING", "CI") or os.getenv("PYTEST_CURRENT_TEST"):
-        logger.info(f"Y.js backend client disabled in {env or 'test'} environment")
+        logger.info(f"CollaborationManager disabled in {env or 'test'} environment")
         return
 
     try:
-        # POC: Single file (file_id=264)
-        # Get multiplayer URL from environment
-        # - Docker dev: uses service name 'collab' (ws://collab:1234)
-        # - CI/local: uses localhost (ws://localhost:1234)
-        multiplayer_host = os.getenv("MULTIPLAYER_HOST", "localhost")
-        multiplayer_port = os.getenv("MULTIPLAYER_PORT", "1234")
-        websocket_url = f"ws://{multiplayer_host}:{multiplayer_port}/file-264"
-
-        logger.info(f"Starting Y.js backend client for file 264 at {websocket_url}")
-
-        yjs_client = YDocClient(
-            file_id=264,
-            websocket_url=websocket_url,
-            debounce_ms=500,
-        )
-
-        # Launch as background task
-        yjs_task = asyncio.create_task(yjs_client.run())
-
-        logger.info("Y.js backend client started successfully")
-
+        manager = get_collaboration_manager()
+        logger.info("CollaborationManager initialized and ready")
     except Exception as e:
-        logger.error(f"Failed to start Y.js backend client: {e}", exc_info=True)
+        logger.error(f"Failed to initialize CollaborationManager: {e}", exc_info=True)
 
 
 @app.on_event("shutdown")
-async def shutdown_yjs_client():
-    """Gracefully shutdown Y.js backend client."""
-    global yjs_client, yjs_task
-
-    if yjs_client:
-        logger.info("Shutting down Y.js backend client")
-
-        try:
-            # Signal shutdown
-            await yjs_client.shutdown()
-
-            # Wait for task to complete (with timeout)
-            if yjs_task:
-                await asyncio.wait_for(yjs_task, timeout=5.0)
-
-            logger.info("Y.js backend client shut down successfully")
-
-        except asyncio.TimeoutError:
-            logger.warning("Y.js client shutdown timed out, cancelling task")
-            if yjs_task:
-                yjs_task.cancel()
-        except Exception as e:
-            logger.error(f"Error shutting down Y.js client: {e}", exc_info=True)
+async def shutdown_collaboration_manager():
+    """Gracefully shutdown CollaborationManager."""
+    try:
+        manager = get_collaboration_manager()
+        logger.info("Shutting down CollaborationManager")
+        await manager.shutdown_all()
+        logger.info("CollaborationManager shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during CollaborationManager shutdown: {e}", exc_info=True)
 
 
 @app.middleware("http")
