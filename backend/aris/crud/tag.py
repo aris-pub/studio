@@ -8,7 +8,7 @@ from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import File, Tag, User, file_tags
+from ..models import File, FilePermission, Tag, User, file_tags
 
 
 COLORS = itertools.cycle(["red", "purple", "green", "orange"])
@@ -79,18 +79,21 @@ async def soft_delete_tag(_id: int, user_id: int, db: AsyncSession):
 
 
 async def get_user_file_tags(user_id: int, doc_id: int, db: AsyncSession):
-    # First check if the file exists and belongs to the user
+    # First check if the file exists and user has permission to access it
     file_result: Result[Any] = await db.execute(
-        select(File).where(
+        select(File)
+        .join(FilePermission, File.id == FilePermission.file_id)
+        .where(
             File.id == doc_id,
-            File.owner_id == user_id,
-            File.deleted_at.is_(None),  # Assuming you have soft delete for files too
+            FilePermission.user_id == user_id,
+            File.deleted_at.is_(None),
+            FilePermission.deleted_at.is_(None),
         )
     )
     file = file_result.scalar_one_or_none()
 
     if file is None:
-        raise ValueError(f"File with id {doc_id} not found or does not belong to user {user_id}")
+        raise ValueError(f"File with id {doc_id} not found or user {user_id} has no permission")
 
     # If file exists, get the tags
     result: Result[Any] = await db.execute(

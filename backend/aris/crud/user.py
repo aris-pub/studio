@@ -28,8 +28,28 @@ async def get_user(user_id: int, db: AsyncSession):
     User or None
         The user object if found and not deleted, None otherwise.
     """
+    import logging
+    logger = logging.getLogger("aris.crud.user")
+    logger.info(f"[get_user] Querying for user_id={user_id}")
+    logger.info(f"[get_user] DB session: {db}, in_transaction: {db.in_transaction()}")
+
     result: Result[Any] = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
-    return result.scalars().first()
+    user = result.scalars().first()
+
+    logger.info(f"[get_user] Result: {user}")
+    if user:
+        logger.info(f"[get_user] Found user: id={user.id}, email={user.email}, deleted_at={user.deleted_at}")
+    else:
+        logger.warning(f"[get_user] User {user_id} not found in database")
+        # Query without deleted_at check to see if user exists but is deleted
+        check_result = await db.execute(select(User).where(User.id == user_id))
+        check_user = check_result.scalars().first()
+        if check_user:
+            logger.warning(f"[get_user] User {user_id} exists but is DELETED: deleted_at={check_user.deleted_at}")
+        else:
+            logger.warning(f"[get_user] User {user_id} does not exist at all in database")
+
+    return user
 
 
 async def create_user(name: str, initials: str, email: str, password_hash: str, db: AsyncSession):
@@ -181,9 +201,17 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
     Tags are fetched concurrently if requested to optimize performance.
     Includes all files where user has any permission level.
     """
+    import logging
+    logger = logging.getLogger("aris.crud.user")
+    logger.info(f"[get_user_files] Called for user_id={user_id}, with_tags={with_tags}")
+    logger.info(f"[get_user_files] DB session: {db}, in_transaction: {db.in_transaction()}")
+
     user = await get_user(user_id, db)
     if not user:
+        logger.error(f"[get_user_files] User {user_id} not found, raising ValueError")
         raise ValueError(f"User {user_id} not found")
+
+    logger.info(f"[get_user_files] User found: id={user.id}, email={user.email}")
 
     role_order = case(
         (FilePermission.role == FileRole.OWNER, 1),
