@@ -128,84 +128,42 @@
       ytext.value = ydoc.value.getText("text");
 
       // Create WebSocket provider
-      console.log(`[Y.js] 🔌 CREATING WEBSOCKET PROVIDER`);
-      console.log(`[Y.js] 🔌 URL: ${serverUrl.value}`);
-      console.log(`[Y.js] 🔌 Room: ${roomName.value}`);
-      console.log(`[Y.js] 🔌 Y.Doc state before connect: ${ydoc.value.getText('text').toString().length} chars`);
-
       provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value);
       awareness.value = provider.value.awareness;
-
-      console.log(`[Y.js] 👤 Setting user awareness: ${JSON.stringify(userInfo.value)}`);
       awareness.value.setLocalStateField("user", userInfo.value);
 
-      // EXTENSIVE WebSocket event logging
-      provider.value.ws?.addEventListener('open', () => {
-        console.log('[Y.js WS] ✅ WebSocket OPEN');
-      });
-      provider.value.ws?.addEventListener('close', (event) => {
-        console.log(`[Y.js WS] ❌ WebSocket CLOSE - code: ${event.code}, reason: ${event.reason}`);
-      });
+      // Log WebSocket errors only
       provider.value.ws?.addEventListener('error', (error) => {
-        console.error('[Y.js WS] ⚠️  WebSocket ERROR:', error);
-      });
-      provider.value.ws?.addEventListener('message', (event) => {
-        console.log(`[Y.js WS] 📩 Message received - size: ${event.data?.length || 0} bytes`);
+        console.error('[Y.js WS] WebSocket ERROR:', error);
       });
 
       // Monitor connection
       provider.value.on("status", (event) => {
         isConnected.value = event.status === "connected";
-        console.log(`[Y.js] 🔔 STATUS EVENT: ${event.status}`);
-        console.log(`[Y.js] 📊 wsconnected: ${provider.value.wsconnected}`);
-        console.log(`[Y.js] 📊 synced: ${provider.value.synced}`);
-        console.log(`[Y.js] 📊 ws.readyState: ${provider.value.ws?.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
       });
 
-      // Log connection attempts
-      provider.value.on("connection-close", (event) => {
-        console.log(`[Y.js] 🔔 CONNECTION CLOSE - code: ${event.code}`);
-      });
+      // Log connection errors
       provider.value.on("connection-error", (event) => {
-        console.error(`[Y.js] 🔔 CONNECTION ERROR:`, event);
+        console.error('[Y.js] Connection error:', event);
       });
 
       // Wait for initial sync before creating editor
       provider.value.once("synced", () => {
         const ytextLength = ytext.value.toString().length;
-        const ytextContent = ytext.value.toString();
-        console.log(`[Y.js] 🔔 SYNCED EVENT FIRED`);
-        console.log(`[Y.js] 📊 Provider state: connected=${provider.value.wsconnected}, synced=${provider.value.synced}`);
-        console.log(`[Y.js] 📄 Y.text length: ${ytextLength}`);
-        console.log(`[Y.js] 📄 Y.text content preview: "${ytextContent.substring(0, 80)}${ytextLength > 80 ? '...' : ''}"`);
-        console.log(`[Y.js] 📄 file.value.source length: ${file.value?.source?.length || 0}`);
 
         // Initialize ONLY if completely empty
         if (ytextLength === 0 && file.value?.source) {
-          console.log(
-            `[EditorCodeMirror] 🆕 FIRST CLIENT - Initializing Y.text with ${file.value.source.length} chars from database`
-          );
-          console.log(`[EditorCodeMirror] 📝 Content to insert: "${file.value.source.substring(0, 80)}..."`);
-          // Use transaction to ensure atomic initialization
+          if (import.meta.env.DEV) {
+            console.log(`[EditorCodeMirror] Initializing Y.text with ${file.value.source.length} chars from database`);
+          }
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
-          console.log(`[EditorCodeMirror] ✅ Y.text initialized, new length: ${ytext.value.toString().length}`);
-        } else if (ytextLength > 0) {
-          console.log(
-            `[EditorCodeMirror] 🔄 NOT FIRST CLIENT - Using existing content (${ytextLength} chars from server)`
-          );
-        } else {
-          console.log("[EditorCodeMirror] ⚠️  NO CONTENT - Y.text empty, no file.value.source");
         }
 
         // Create editor with yCollab binding
-        console.log("[EditorCodeMirror] 🏗️  CREATING CODEMIRROR with Y.js integration");
         const undoManager = new Y.UndoManager(ytext.value);
-
         const docContent = ytext.value.toString();
-        console.log(`[EditorCodeMirror] 📄 Initializing editor with doc content length: ${docContent.length}`);
-        console.log(`[EditorCodeMirror] 📄 Doc content preview: "${docContent.substring(0, 80)}${docContent.length > 80 ? '...' : ''}"`);
 
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
@@ -236,75 +194,8 @@
           parent: container,
         });
 
-        const editorContent = view.value.state.doc.toString();
-        console.log(`[EditorCodeMirror] ✅ EDITOR CREATED`);
-        console.log(`[EditorCodeMirror] 📊 Editor length: ${editorContent.length}`);
-        console.log(`[EditorCodeMirror] 📊 Editor content preview: "${editorContent.substring(0, 80)}${editorContent.length > 80 ? '...' : ''}"`);
-        console.log(`[EditorCodeMirror] 📊 Y.text length: ${ytext.value.toString().length}`);
-
-        // Store our client ID for echo detection
-        const ourClientId = awareness.value.clientID;
-        console.log(`[EditorCodeMirror] 📊 Our client ID: ${ourClientId}`);
-
-        // Add Y.text observer to log all changes with EXTENSIVE detail
-        ytext.value.observe((event, transaction) => {
-          const newContent = ytext.value.toString();
-          const origin = transaction.origin;
-          const isRemote = origin === provider.value;
-          const isLocal = origin === null || origin === undefined;
-
-          // CRITICAL FIX: Detect echoes from our own edits
-          // In CI Docker, yCollab's instance identity check fails due to timing,
-          // causing our own edits to be applied twice. We detect this by checking:
-          // 1. Is this a local transaction? (transaction.local === true)
-          // 2. Is the origin NOT from the provider? (not a genuine remote change)
-          // 3. Are we the only client? (no other editors to sync with)
-          const isOwnEditEcho = transaction.local && !isRemote && origin !== null && origin !== undefined;
-
-          console.log(`[Y.js Observer] 🔔 Y.text CHANGED`);
-          console.log(`[Y.js Observer] 📊 Transaction origin: ${origin?.constructor?.name || 'null/undefined'}`);
-          console.log(`[Y.js Observer] 📊 Is remote: ${isRemote}, Is local: ${isLocal}`);
-          console.log(`[Y.js Observer] 📊 Transaction local: ${transaction.local}`);
-          console.log(`[Y.js Observer] 📊 Is own edit echo: ${isOwnEditEcho}`);
-          console.log(`[Y.js Observer] 📊 Change delta length: ${event.delta?.length || 0}`);
-
-          // Log each delta change
-          if (event.delta) {
-            event.delta.forEach((delta, i) => {
-              if (delta.insert) {
-                console.log(`[Y.js Observer] 📊 Delta[${i}]: INSERT "${delta.insert}" (${delta.insert.length} chars)`);
-              } else if (delta.delete) {
-                console.log(`[Y.js Observer] 📊 Delta[${i}]: DELETE ${delta.delete} chars`);
-              } else if (delta.retain) {
-                console.log(`[Y.js Observer] 📊 Delta[${i}]: RETAIN ${delta.retain} chars`);
-              }
-            });
-          }
-
-          console.log(`[Y.js Observer] 📊 New Y.text length: ${newContent.length}`);
-          console.log(`[Y.js Observer] 📊 New Y.text content: "${newContent.substring(0, 100)}${newContent.length > 100 ? '...' : ''}"`);
-          console.log(`[Y.js Observer] 📊 Current editor length: ${view.value.state.doc.length}`);
-          console.log(`[Y.js Observer] 📊 Current editor content: "${view.value.state.doc.toString().substring(0, 100)}"`);
-          console.log(`[Y.js Observer] 📊 Lengths match: ${newContent.length === view.value.state.doc.length}`);
-        });
-
-        // Log editor state changes
-        let lastEditorContent = editorContent;
-        const checkEditorChanges = () => {
-          const currentContent = view.value.state.doc.toString();
-          if (currentContent !== lastEditorContent) {
-            console.log(`[Editor Observer] 🔔 EDITOR CONTENT CHANGED`);
-            console.log(`[Editor Observer] 📊 Old length: ${lastEditorContent.length}`);
-            console.log(`[Editor Observer] 📊 New length: ${currentContent.length}`);
-            console.log(`[Editor Observer] 📊 New content: "${currentContent.substring(0, 80)}${currentContent.length > 80 ? '...' : ''}"`);
-            lastEditorContent = currentContent;
-          }
-        };
-        setInterval(checkEditorChanges, 500);
-
         // Wait for editor to fully mount before marking as synced
         setTimeout(() => {
-          console.log(`[EditorCodeMirror] ⏱️  100ms timeout complete, exposing globals`);
           // Expose view and Y.js instances globally for testing (dev, CI, test - not prod)
           if (!import.meta.env.PROD) {
             window.__cmView = view.value;
@@ -315,32 +206,10 @@
           }
 
           isSynced.value = true;
-          console.log(`[EditorCodeMirror] ✅ COMPONENT FULLY SYNCED AND READY`);
+          if (import.meta.env.DEV) {
+            console.log('[EditorCodeMirror] Component synced and ready');
+          }
         }, 100);
-      });
-
-      // Monitor sync status
-      provider.value.on("sync", (synced) => {
-        const ytextLen = ytext.value.toString().length;
-        console.log(`[Y.js] 🔔 SYNC EVENT: ${synced}`);
-        console.log(`[Y.js] 📊 Y.text length at sync: ${ytextLen}`);
-        console.log(`[Y.js] 📊 Y.text content: "${ytext.value.toString().substring(0, 80)}"`);
-        console.log(`[Y.js] 📊 Provider state: wsconnected=${provider.value.wsconnected}, synced=${provider.value.synced}`);
-      });
-
-      // Monitor Y.Doc updates (catches all changes to the document)
-      ydoc.value.on("update", (update, origin, doc, transaction) => {
-        console.log(`[Y.Doc] 🔔 DOC UPDATE`);
-        console.log(`[Y.Doc] 📊 Update size: ${update.length} bytes`);
-        console.log(`[Y.Doc] 📊 Origin: ${origin?.constructor?.name || 'unknown'}`);
-        console.log(`[Y.Doc] 📊 Transaction local: ${transaction?.local}`);
-        console.log(`[Y.Doc] 📊 Current Y.text length: ${ytext.value.toString().length}`);
-      });
-
-      // Monitor awareness updates
-      awareness.value.on("change", (changes) => {
-        console.log(`[Y.js Awareness] 🔔 AWARENESS CHANGED`);
-        console.log(`[Y.js Awareness] 📊 Added: ${changes.added?.length || 0}, Updated: ${changes.updated?.length || 0}, Removed: ${changes.removed?.length || 0}`);
       });
     },
     { immediate: true }

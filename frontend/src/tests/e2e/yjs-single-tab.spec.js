@@ -105,18 +105,12 @@ async function getEditorContent(page) {
   return await page.evaluate("window.__cmView.state.doc.toString()");
 }
 
-// Helper to type in editor with CI-specific timing adjustments
+// Helper to type in editor
 async function typeInEditor(page, text) {
   await page.click(".cm-content");
-  await page.waitForTimeout(200);
-
-  // Fix #1: Increase keyboard delay in CI to prevent race conditions
-  const delay = process.env.CI ? 200 : 50;
-  await page.keyboard.type(text, { delay });
-
-  // Fix #3: Wait for content to stabilize (duplication happens 400ms after initial sync)
-  // Just wait longer in CI for the race condition to fully resolve
-  await page.waitForTimeout(process.env.CI ? 500 : 100);
+  await page.waitForTimeout(100);
+  await page.keyboard.type(text, { delay: 50 });
+  await page.waitForTimeout(50);
 }
 
 // Helper to insert text programmatically
