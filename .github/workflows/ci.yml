@@ -1677,7 +1677,6 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: frontend
-      if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
