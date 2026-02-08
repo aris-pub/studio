@@ -105,6 +105,11 @@ async function getEditorContent(page) {
   return await page.evaluate("window.__cmView.state.doc.toString()");
 }
 
+// Helper to get Y.text content
+async function getYTextContent(page) {
+  return await page.evaluate("window.__ytext.toString()");
+}
+
 // Helper to type in editor
 async function typeInEditor(page, text) {
   await page.click(".cm-content");
@@ -227,17 +232,27 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
         for (let i = 0; i < testString.length; i++) {
           await typeInEditor(page, testString[i]);
           const content = await getEditorContent(page);
+          const ytextContent = await getYTextContent(page);
 
           // Check no duplication after each character
           const expectedLength = i + 1;
           const expectedContent = testString.substring(0, i + 1);
           expect(content).toBe(expectedContent);
           expect(content.length).toBe(expectedLength);
+
+          // CRITICAL: Verify Y.text syncs with CodeMirror
+          expect(ytextContent).toBe(expectedContent);
+          expect(ytextContent.length).toBe(expectedLength);
         }
 
         const finalContent = await getEditorContent(page);
+        const finalYTextContent = await getYTextContent(page);
         expect(finalContent).toBe("HELLO");
         expect(finalContent.length).toBe(5);
+
+        // CRITICAL: Verify Y.text syncs with CodeMirror
+        expect(finalYTextContent).toBe("HELLO");
+        expect(finalYTextContent.length).toBe(5);
       } finally {
         await cleanupYjs(page);
         await context.close();
@@ -255,8 +270,13 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
         await insertText(page, "The quick brown fox jumps over the lazy dog");
 
         const content = await getEditorContent(page);
+        const ytextContent = await getYTextContent(page);
         expect(content).toBe("The quick brown fox jumps over the lazy dog");
         expect(content.length).toBe(43);
+
+        // CRITICAL: Verify Y.text syncs with CodeMirror
+        expect(ytextContent).toBe("The quick brown fox jumps over the lazy dog");
+        expect(ytextContent.length).toBe(43);
       } finally {
         await cleanupYjs(page);
         await context.close();
@@ -283,7 +303,11 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
         await page.waitForTimeout(200);
 
         const content = await getEditorContent(page);
+        const ytextContent = await getYTextContent(page);
         expect(content).toBe("Hello ");
+
+        // CRITICAL: Verify Y.text syncs with CodeMirror
+        expect(ytextContent).toBe("Hello ");
       } finally {
         await cleanupYjs(page);
         await context.close();
@@ -310,8 +334,13 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
         const duration = endTime - startTime;
 
         const content = await getEditorContent(page);
+        const ytextContent = await getYTextContent(page);
         expect(content.split("\n").length).toBe(101); // 100 lines + empty line
         expect(duration).toBeLessThan(2000); // Should be fast
+
+        // CRITICAL: Verify Y.text syncs with CodeMirror
+        expect(ytextContent).toBe(content);
+        expect(ytextContent.split("\n").length).toBe(101);
       } finally {
         await cleanupYjs(page);
         await context.close();
