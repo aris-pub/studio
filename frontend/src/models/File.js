@@ -25,6 +25,7 @@ export class File {
       tags: rawData.tags || [],
       minimap: rawData.minimap || null,
       ownerId: rawData.owner_id || null,
+      role: rawData.role || null,
       _settings: rawData._settings || null,
 
       // UI state

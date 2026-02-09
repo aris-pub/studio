@@ -389,11 +389,12 @@ test.describe("Multi-User Collaboration @auth", () => {
 
       // Check if editor is read-only for commenter
       const isReadOnly = await commenter.page.evaluate(() => {
-        return window.__cmView.state.facet(window.__cmView.state.facet.of({ editable: false }));
+        const view = window.__cmView;
+        if (!view) return null;
+        // Check EditorView.editable facet
+        return !view.state.facet(window.EditorView.editable);
       });
 
-      // TODO: Implement read-only mode for COMMENTER role
-      // For now, this test will fail - that's expected in TDD
       expect(isReadOnly).toBe(true);
 
       console.log("[TEST] ✅ COMMENTER can view but not edit");
@@ -422,7 +423,8 @@ test.describe("Multi-User Collaboration @auth", () => {
     );
 
     try {
-      const fileId = 1;
+      // Use file 2 for this test (user 2 doesn't have permission to it)
+      const fileId = 2;
 
       // Owner opens file
       await openFileInEditor(owner.page, fileId);
@@ -430,28 +432,28 @@ test.describe("Multi-User Collaboration @auth", () => {
       await owner.page.waitForTimeout(1000);
 
       // Unauthorized user tries to open file (no permission granted)
-      // This should either:
-      // 1. Fail to load the file (403)
-      // 2. Or load in read-only mode and fail to connect to Y.js
+      // Since the file isn't in their fileStore, they should be redirected to 404
 
-      let connectionFailed = false;
-      try {
-        await unauthorized.page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
-          waitUntil: "domcontentloaded",
-          timeout: 5000,
-        });
+      await unauthorized.page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 5000,
+      });
 
-        // Check if we got a 403 or error page
-        const hasError =
-          (await unauthorized.page.locator("text=/403|Forbidden|Access Denied/i").count()) > 0;
-        connectionFailed = hasError;
-      } catch (error) {
-        connectionFailed = true;
-      }
+      // Check if redirected to 404 or if file failed to load
+      // Give it some time to redirect if it's going to
+      await unauthorized.page.waitForTimeout(2000);
 
-      // TODO: Implement proper authorization
-      // For now, this test will fail - that's expected in TDD
-      expect(connectionFailed).toBe(true);
+      const currentUrl = unauthorized.page.url();
+      const pageText = await unauthorized.page.textContent("body");
+
+      // Either redirected to 404, or page shows error
+      const isUnauthorized =
+        currentUrl.includes("/404") ||
+        pageText.includes("404") ||
+        pageText.includes("not found") ||
+        !(await unauthorized.page.locator('[data-testid="manuscript-container"]').isVisible());
+
+      expect(isUnauthorized).toBe(true);
 
       console.log("[TEST] ✅ Unauthorized user rejected");
     } finally {

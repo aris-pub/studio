@@ -187,6 +187,12 @@
           return null;
         });
 
+        // Determine if editor should be read-only based on user role
+        const isReadOnly = file.value?.role === "COMMENTER";
+        const editableExtensions = isReadOnly
+          ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+          : [];
+
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
           // yCollab only handles incremental changes, not initial state
@@ -195,6 +201,7 @@
             customSetup,
             yCollabExtension,
             transactionLogger,
+            ...editableExtensions,
             EditorView.theme({
               "&": {
                 height: "100%",
@@ -225,6 +232,7 @@
             window.__ydoc = ydoc.value;
             window.__ytext = ytext.value;
             window.__provider = provider.value;
+            window.EditorView = EditorView;
             window.__awareness = awareness.value;
           }
 
