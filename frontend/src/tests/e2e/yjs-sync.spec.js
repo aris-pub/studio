@@ -87,38 +87,56 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
       // Open file in both tabs with auth
       console.log(`[Test] Setting up authentication for Tab 1...`);
       await page1.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-      await page1.evaluate((data) => {
-        localStorage.setItem("accessToken", data.access_token);
-        localStorage.setItem("refreshToken", data.refresh_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }, { ...loginData1, user: userData1 });
+      await page1.evaluate(
+        (data) => {
+          localStorage.setItem("accessToken", data.access_token);
+          localStorage.setItem("refreshToken", data.refresh_token);
+          localStorage.setItem("user", JSON.stringify(data.user));
+        },
+        { ...loginData1, user: userData1 }
+      );
 
       console.log(`[Test] Opening file ${fileId} in Tab 1...`);
-      await page1.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+      await page1.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+        waitUntil: "domcontentloaded",
+      });
 
       console.log(`[Test] Setting up authentication for Tab 2...`);
       await page2.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-      await page2.evaluate((data) => {
-        localStorage.setItem("accessToken", data.access_token);
-        localStorage.setItem("refreshToken", data.refresh_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }, { ...loginData2, user: userData2 });
+      await page2.evaluate(
+        (data) => {
+          localStorage.setItem("accessToken", data.access_token);
+          localStorage.setItem("refreshToken", data.refresh_token);
+          localStorage.setItem("user", JSON.stringify(data.user));
+        },
+        { ...loginData2, user: userData2 }
+      );
 
       console.log(`[Test] Opening file ${fileId} in Tab 2...`);
-      await page2.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+      await page2.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+        waitUntil: "domcontentloaded",
+      });
 
       // Open source editor in both tabs (same sequence as yjs-collaboration.spec.js)
       console.log("[Test] Opening source editor in Tab 1...");
       await page1.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
       await page1.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
       await page1.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page1.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page1.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
 
       console.log("[Test] Opening source editor in Tab 2...");
       await page2.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
       await page2.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
       await page2.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page2.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page2.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
 
       // Wait for Y.js initial sync
       console.log("[Test] Waiting for Y.js sync...");

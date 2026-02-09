@@ -54,18 +54,21 @@ async function createAuthenticatedPage(browser, request) {
   const page = await context.newPage();
 
   // Forward ALL browser console messages to test output
-  page.on('console', msg => {
+  page.on("console", (msg) => {
     const type = msg.type();
     const text = msg.text();
     console.log(`[BROWSER ${type.toUpperCase()}] ${text}`);
   });
 
   await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-  await page.evaluate((data) => {
-    localStorage.setItem('accessToken', data.access_token);
-    localStorage.setItem('refreshToken', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  }, { ...loginData, user: userData });
+  await page.evaluate(
+    (data) => {
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+    },
+    { ...loginData, user: userData }
+  );
 
   return { context, page };
 }
@@ -73,7 +76,9 @@ async function createAuthenticatedPage(browser, request) {
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
   console.log(`[TEST openFileInEditor] 🚀 Opening file ${fileId}`);
-  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+    waitUntil: "domcontentloaded",
+  });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
   console.log(`[TEST openFileInEditor] 📄 Manuscript loaded`);
 
@@ -92,11 +97,17 @@ async function openFileInEditor(page, fileId) {
     ytextLength: window.__ytext.toString().length,
     ytextContent: window.__ytext.toString().substring(0, 50),
     connected: window.__provider.wsconnected,
-    synced: window.__provider.synced
+    synced: window.__provider.synced,
   }));
-  console.log(`[TEST openFileInEditor] 📊 State - Editor: ${state.editorLength} chars, Y.text: ${state.ytextLength} chars`);
-  console.log(`[TEST openFileInEditor] 📊 Content - Editor: "${state.editorContent}...", Y.text: "${state.ytextContent}..."`);
-  console.log(`[TEST openFileInEditor] 📊 Provider - connected: ${state.connected}, synced: ${state.synced}`);
+  console.log(
+    `[TEST openFileInEditor] 📊 State - Editor: ${state.editorLength} chars, Y.text: ${state.ytextLength} chars`
+  );
+  console.log(
+    `[TEST openFileInEditor] 📊 Content - Editor: "${state.editorContent}...", Y.text: "${state.ytextContent}..."`
+  );
+  console.log(
+    `[TEST openFileInEditor] 📊 Provider - connected: ${state.connected}, synced: ${state.synced}`
+  );
   console.log(`[TEST openFileInEditor] ✅ Open complete`);
 }
 
@@ -143,10 +154,14 @@ async function insertText(page, text) {
     editorLength: window.__cmView.state.doc.length,
     editorContent: window.__cmView.state.doc.toString(),
     ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString()
+    ytextContent: window.__ytext.toString(),
   }));
-  console.log(`[TEST insertText] 📊 After insert - Editor: ${afterInsert.editorLength} chars "${afterInsert.editorContent}"`);
-  console.log(`[TEST insertText] 📊 After insert - Y.text: ${afterInsert.ytextLength} chars "${afterInsert.ytextContent}"`);
+  console.log(
+    `[TEST insertText] 📊 After insert - Editor: ${afterInsert.editorLength} chars "${afterInsert.editorContent}"`
+  );
+  console.log(
+    `[TEST insertText] 📊 After insert - Y.text: ${afterInsert.ytextLength} chars "${afterInsert.ytextContent}"`
+  );
 
   await page.waitForTimeout(100);
   console.log(`[TEST insertText] ✅ Insert complete`);
@@ -161,9 +176,11 @@ async function clearEditor(page) {
     editorLength: window.__cmView.state.doc.length,
     editorContent: window.__cmView.state.doc.toString().substring(0, 50),
     ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString().substring(0, 50)
+    ytextContent: window.__ytext.toString().substring(0, 50),
   }));
-  console.log(`[TEST clearEditor] 📊 Before clear - Editor: ${beforeClear.editorLength} chars, Y.text: ${beforeClear.ytextLength} chars`);
+  console.log(
+    `[TEST clearEditor] 📊 Before clear - Editor: ${beforeClear.editorLength} chars, Y.text: ${beforeClear.ytextLength} chars`
+  );
 
   await page.evaluate(() => {
     const view = window.__cmView;
@@ -186,9 +203,11 @@ async function clearEditor(page) {
   const afterClear = await page.evaluate(() => ({
     editorLength: window.__cmView.state.doc.length,
     ytextLength: window.__ytext.toString().length,
-    providerSynced: window.__provider.synced
+    providerSynced: window.__provider.synced,
   }));
-  console.log(`[TEST clearEditor] 📊 After clear - Editor: ${afterClear.editorLength} chars, Y.text: ${afterClear.ytextLength} chars, synced: ${afterClear.providerSynced}`);
+  console.log(
+    `[TEST clearEditor] 📊 After clear - Editor: ${afterClear.editorLength} chars, Y.text: ${afterClear.ytextLength} chars, synced: ${afterClear.providerSynced}`
+  );
 
   await page.waitForTimeout(100);
   console.log("[TEST clearEditor] ✅ Clear complete");

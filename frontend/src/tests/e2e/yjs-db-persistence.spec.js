@@ -57,11 +57,14 @@ async function createAuthenticatedPage(browser, request) {
   const page = await context.newPage();
 
   await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-  await page.evaluate((data) => {
-    localStorage.setItem('accessToken', data.access_token);
-    localStorage.setItem('refreshToken', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  }, { ...loginData, user: userData });
+  await page.evaluate(
+    (data) => {
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+    },
+    { ...loginData, user: userData }
+  );
 
   return { context, page, token: loginData.access_token };
 }
@@ -69,7 +72,9 @@ async function createAuthenticatedPage(browser, request) {
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
   console.log(`[TEST] Opening file ${fileId} in editor`);
-  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+    waitUntil: "domcontentloaded",
+  });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
 
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
@@ -98,11 +103,9 @@ async function insertText(page, text) {
   }, text);
 
   // Wait for local update
-  await page.waitForFunction(
-    (txt) => window.__cmView.state.doc.toString().includes(txt),
-    text,
-    { timeout: 5000 }
-  );
+  await page.waitForFunction((txt) => window.__cmView.state.doc.toString().includes(txt), text, {
+    timeout: 5000,
+  });
   console.log(`[TEST] Text inserted successfully`);
 }
 
@@ -142,7 +145,7 @@ async function cleanupYjs(page) {
         if (window.__provider) {
           const ws = window.__provider.ws;
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.addEventListener('close', () => resolve(), { once: true });
+            ws.addEventListener("close", () => resolve(), { once: true });
             window.__provider.disconnect();
             window.__provider.destroy();
           } else {
@@ -199,7 +202,7 @@ test.describe("Y.js Database Persistence @auth", () => {
       const fileData = await getFileFromDatabase(fileId, token);
 
       console.log(`[TEST] Database content length: ${fileData.source?.length || 0} chars`);
-      console.log(`[TEST] Database content: "${fileData.source?.substring(0, 100) || 'EMPTY'}..."`);
+      console.log(`[TEST] Database content: "${fileData.source?.substring(0, 100) || "EMPTY"}..."`);
 
       expect(fileData.source).toContain(testContent);
       console.log("[TEST] ✅ Content persisted to database");
@@ -233,7 +236,7 @@ test.describe("Y.js Database Persistence @auth", () => {
       console.log("[TEST] First session closed");
 
       // Wait a bit to ensure all connections are cleaned up
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Session 2: Reconnect and verify content
       const session2 = await createAuthenticatedPage(browser, request);
@@ -294,7 +297,10 @@ test.describe("Y.js Database Persistence @auth", () => {
     }
   });
 
-  test("should load initial content from database on first connect", async ({ browser, request }) => {
+  test("should load initial content from database on first connect", async ({
+    browser,
+    request,
+  }) => {
     test.setTimeout(60000);
 
     const { context, page, token } = await createAuthenticatedPage(browser, request);
@@ -348,7 +354,7 @@ test.describe("Y.js Database Persistence @auth", () => {
       console.log("[TEST] All clients disconnected");
 
       // Wait to ensure backend processes the disconnect
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Check database directly (no Y.js connection)
       const response = await fetch(`http://localhost:${BACKEND_PORT}/files/${fileId}`, {

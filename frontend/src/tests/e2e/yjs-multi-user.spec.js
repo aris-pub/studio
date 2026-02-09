@@ -67,11 +67,14 @@ async function createAuthenticatedPage(browser, request, email, password) {
   const page = await context.newPage();
 
   await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-  await page.evaluate((data) => {
-    localStorage.setItem('accessToken', data.access_token);
-    localStorage.setItem('refreshToken', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  }, { ...loginData, user: userData });
+  await page.evaluate(
+    (data) => {
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+    },
+    { ...loginData, user: userData }
+  );
 
   return { context, page, token: loginData.access_token, userId: userData.id };
 }
@@ -85,7 +88,11 @@ async function registerUser(request, email, name, initials, password) {
   if (!response.ok()) {
     const body = await response.text();
     // If user already exists, that's okay - we can still login
-    if (response.status() === 409 || body.includes('already registered') || body.includes('already exists')) {
+    if (
+      response.status() === 409 ||
+      body.includes("already registered") ||
+      body.includes("already exists")
+    ) {
       console.log(`[TEST] User ${email} already exists, skipping registration`);
       return null;
     }
@@ -101,38 +108,44 @@ async function openFileInEditor(page, fileId) {
   console.log(`[TEST] Opening file ${fileId} in editor`);
 
   // Listen for console errors
-  page.on('pageerror', error => {
+  page.on("pageerror", (error) => {
     console.log(`[TEST] Page error: ${error.message}`);
   });
-  page.on('console', msg => {
-    if (msg.type() === 'error') {
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
       console.log(`[TEST] Console error: ${msg.text()}`);
     }
   });
 
-  const response = await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  const response = await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+    waitUntil: "domcontentloaded",
+  });
   console.log(`[TEST] Page loaded with status: ${response?.status()}`);
 
   // Wait a bit for Vue to initialize
   await page.waitForTimeout(1000);
 
   // Check for error messages on page
-  const pageText = await page.textContent('body').catch(() => '');
-  if (pageText.includes('403') || pageText.includes('Access denied') || pageText.includes('Forbidden')) {
+  const pageText = await page.textContent("body").catch(() => "");
+  if (
+    pageText.includes("403") ||
+    pageText.includes("Access denied") ||
+    pageText.includes("Forbidden")
+  ) {
     console.log(`[TEST] ERROR: Page shows access denied: ${pageText.substring(0, 200)}`);
-    throw new Error('Access denied');
+    throw new Error("Access denied");
   }
 
   // Check if manuscript container exists before waiting
-  const hasContainer = await page.locator('[data-testid="manuscript-container"]').count() > 0;
+  const hasContainer = (await page.locator('[data-testid="manuscript-container"]').count()) > 0;
   if (!hasContainer) {
     console.log(`[TEST] ERROR: No manuscript container found. Page content:`);
     console.log(pageText.substring(0, 500));
     console.log(`[TEST] Page URL: ${page.url()}`);
 
     // Check if we got redirected
-    if (page.url().includes('/login')) {
-      throw new Error('Redirected to login - authentication issue');
+    if (page.url().includes("/login")) {
+      throw new Error("Redirected to login - authentication issue");
     }
   }
 
@@ -154,11 +167,9 @@ async function insertText(page, text) {
     view.dispatch({ changes: { from: pos, insert: txt } });
   }, text);
 
-  await page.waitForFunction(
-    (txt) => window.__cmView.state.doc.toString().includes(txt),
-    text,
-    { timeout: 5000 }
-  );
+  await page.waitForFunction((txt) => window.__cmView.state.doc.toString().includes(txt), text, {
+    timeout: 5000,
+  });
   console.log(`[TEST] Text inserted`);
 }
 
@@ -184,7 +195,7 @@ async function getEditorContent(page) {
 async function waitForSync(page, expectedContent) {
   await page.waitForFunction(
     (content) => {
-      const editorContent = window.__cmView?.state.doc.toString() || '';
+      const editorContent = window.__cmView?.state.doc.toString() || "";
       return editorContent.includes(content);
     },
     expectedContent,
@@ -196,10 +207,10 @@ async function waitForSync(page, expectedContent) {
 async function addCollaborator(fileId, userId, role, token) {
   console.log(`[TEST] Adding collaborator: user ${userId} as ${role} to file ${fileId}`);
   const response = await fetch(`http://localhost:${BACKEND_PORT}/files/${fileId}/permissions`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ user_id: userId, role }),
   });
@@ -207,7 +218,7 @@ async function addCollaborator(fileId, userId, role, token) {
   if (!response.ok) {
     const errorBody = await response.text();
     // If permission already exists, that's okay - we can proceed
-    if (response.status === 400 && errorBody.includes('already has permission')) {
+    if (response.status === 400 && errorBody.includes("already has permission")) {
       console.log(`[TEST] Permission already exists, skipping`);
       return null;
     }
@@ -228,7 +239,7 @@ async function cleanupYjs(page) {
         if (window.__provider) {
           const ws = window.__provider.ws;
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.addEventListener('close', () => resolve(), { once: true });
+            ws.addEventListener("close", () => resolve(), { once: true });
             window.__provider.disconnect();
             window.__provider.destroy();
           } else {
@@ -261,13 +272,29 @@ test.describe("Multi-User Collaboration @auth", () => {
     test.setTimeout(60000);
 
     // Register second user
-    await registerUser(request, TEST_USER2_EMAIL, TEST_USER2_NAME, TEST_USER2_INITIALS, TEST_USER2_PASSWORD);
+    await registerUser(
+      request,
+      TEST_USER2_EMAIL,
+      TEST_USER2_NAME,
+      TEST_USER2_INITIALS,
+      TEST_USER2_PASSWORD
+    );
 
     // Owner creates session
-    const owner = await createAuthenticatedPage(browser, request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+    const owner = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER_EMAIL,
+      TEST_USER_PASSWORD
+    );
 
     // Editor creates session
-    const editor = await createAuthenticatedPage(browser, request, TEST_USER2_EMAIL, TEST_USER2_PASSWORD);
+    const editor = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER2_EMAIL,
+      TEST_USER2_PASSWORD
+    );
 
     try {
       const fileId = 1;
@@ -317,10 +344,26 @@ test.describe("Multi-User Collaboration @auth", () => {
     test.setTimeout(60000);
 
     // Register third user
-    await registerUser(request, TEST_USER3_EMAIL, TEST_USER3_NAME, TEST_USER3_INITIALS, TEST_USER3_PASSWORD);
+    await registerUser(
+      request,
+      TEST_USER3_EMAIL,
+      TEST_USER3_NAME,
+      TEST_USER3_INITIALS,
+      TEST_USER3_PASSWORD
+    );
 
-    const owner = await createAuthenticatedPage(browser, request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    const commenter = await createAuthenticatedPage(browser, request, TEST_USER3_EMAIL, TEST_USER3_PASSWORD);
+    const owner = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER_EMAIL,
+      TEST_USER_PASSWORD
+    );
+    const commenter = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER3_EMAIL,
+      TEST_USER3_PASSWORD
+    );
 
     try {
       const fileId = 1;
@@ -365,8 +408,18 @@ test.describe("Multi-User Collaboration @auth", () => {
   test("should reject unauthorized user connection", async ({ browser, request }) => {
     test.setTimeout(60000);
 
-    const owner = await createAuthenticatedPage(browser, request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    const unauthorized = await createAuthenticatedPage(browser, request, TEST_USER2_EMAIL, TEST_USER2_PASSWORD);
+    const owner = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER_EMAIL,
+      TEST_USER_PASSWORD
+    );
+    const unauthorized = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER2_EMAIL,
+      TEST_USER2_PASSWORD
+    );
 
     try {
       const fileId = 1;
@@ -385,11 +438,12 @@ test.describe("Multi-User Collaboration @auth", () => {
       try {
         await unauthorized.page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
           waitUntil: "domcontentloaded",
-          timeout: 5000
+          timeout: 5000,
         });
 
         // Check if we got a 403 or error page
-        const hasError = await unauthorized.page.locator('text=/403|Forbidden|Access Denied/i').count() > 0;
+        const hasError =
+          (await unauthorized.page.locator("text=/403|Forbidden|Access Denied/i").count()) > 0;
         connectionFailed = hasError;
       } catch (error) {
         connectionFailed = true;
@@ -415,8 +469,18 @@ test.describe("Multi-User Collaboration @auth", () => {
   test("should persist multi-user edits to database", async ({ browser, request }) => {
     test.setTimeout(60000);
 
-    const owner = await createAuthenticatedPage(browser, request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    const editor = await createAuthenticatedPage(browser, request, TEST_USER2_EMAIL, TEST_USER2_PASSWORD);
+    const owner = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER_EMAIL,
+      TEST_USER_PASSWORD
+    );
+    const editor = await createAuthenticatedPage(
+      browser,
+      request,
+      TEST_USER2_EMAIL,
+      TEST_USER2_PASSWORD
+    );
 
     try {
       const fileId = 1;

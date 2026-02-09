@@ -133,8 +133,8 @@
       awareness.value.setLocalStateField("user", userInfo.value);
 
       // Log WebSocket errors only
-      provider.value.ws?.addEventListener('error', (error) => {
-        console.error('[Y.js WS] WebSocket ERROR:', error);
+      provider.value.ws?.addEventListener("error", (error) => {
+        console.error("[Y.js WS] WebSocket ERROR:", error);
       });
 
       // Monitor connection
@@ -144,7 +144,7 @@
 
       // Log connection errors
       provider.value.on("connection-error", (event) => {
-        console.error('[Y.js] Connection error:', event);
+        console.error("[Y.js] Connection error:", event);
       });
 
       // Wait for initial sync before creating editor
@@ -154,7 +154,9 @@
         // Initialize ONLY if completely empty
         if (ytextLength === 0 && file.value?.source) {
           if (import.meta.env.DEV) {
-            console.log(`[EditorCodeMirror] Initializing Y.text with ${file.value.source.length} chars from database`);
+            console.log(
+              `[EditorCodeMirror] Initializing Y.text with ${file.value.source.length} chars from database`
+            );
           }
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
@@ -228,7 +230,7 @@
 
           isSynced.value = true;
           if (import.meta.env.DEV) {
-            console.log('[EditorCodeMirror] Component synced and ready');
+            console.log("[EditorCodeMirror] Component synced and ready");
           }
         }, 100);
       });

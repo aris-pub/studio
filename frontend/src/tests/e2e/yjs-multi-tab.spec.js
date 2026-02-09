@@ -73,11 +73,14 @@ async function createAuthenticatedPage(browser, request) {
   const page = await context.newPage();
 
   await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
-  await page.evaluate((data) => {
-    localStorage.setItem('accessToken', data.access_token);
-    localStorage.setItem('refreshToken', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  }, { ...loginData, user: userData });
+  await page.evaluate(
+    (data) => {
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+    },
+    { ...loginData, user: userData }
+  );
 
   return { context, page };
 }
@@ -85,7 +88,9 @@ async function createAuthenticatedPage(browser, request) {
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
   console.log(`[TEST openFileInEditor] 🚀 Opening file ${fileId}`);
-  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+    waitUntil: "domcontentloaded",
+  });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
   console.log(`[TEST openFileInEditor] 📄 Manuscript loaded`);
 
@@ -105,11 +110,17 @@ async function openFileInEditor(page, fileId) {
     ytextLength: window.__ytext.toString().length,
     ytextContent: window.__ytext.toString().substring(0, 50),
     connected: window.__provider.wsconnected,
-    synced: window.__provider.synced
+    synced: window.__provider.synced,
   }));
-  console.log(`[TEST openFileInEditor] 📊 State - Editor: ${state.editorLength} chars, Y.text: ${state.ytextLength} chars`);
-  console.log(`[TEST openFileInEditor] 📊 Content - Editor: "${state.editorContent}...", Y.text: "${state.ytextContent}..."`);
-  console.log(`[TEST openFileInEditor] 📊 Provider - connected: ${state.connected}, synced: ${state.synced}`);
+  console.log(
+    `[TEST openFileInEditor] 📊 State - Editor: ${state.editorLength} chars, Y.text: ${state.ytextLength} chars`
+  );
+  console.log(
+    `[TEST openFileInEditor] 📊 Content - Editor: "${state.editorContent}...", Y.text: "${state.ytextContent}..."`
+  );
+  console.log(
+    `[TEST openFileInEditor] 📊 Provider - connected: ${state.connected}, synced: ${state.synced}`
+  );
   console.log(`[TEST openFileInEditor] ✅ Open complete`);
 }
 
@@ -143,10 +154,14 @@ async function insertText(page, text) {
     editorLength: window.__cmView.state.doc.length,
     editorContent: window.__cmView.state.doc.toString(),
     ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString()
+    ytextContent: window.__ytext.toString(),
   }));
-  console.log(`[TEST insertText] 📊 After insert - Editor: ${afterInsert.editorLength} chars "${afterInsert.editorContent}"`);
-  console.log(`[TEST insertText] 📊 After insert - Y.text: ${afterInsert.ytextLength} chars "${afterInsert.ytextContent}"`);
+  console.log(
+    `[TEST insertText] 📊 After insert - Editor: ${afterInsert.editorLength} chars "${afterInsert.editorContent}"`
+  );
+  console.log(
+    `[TEST insertText] 📊 After insert - Y.text: ${afterInsert.ytextLength} chars "${afterInsert.ytextContent}"`
+  );
 
   await page.waitForTimeout(100);
   console.log(`[TEST insertText] ✅ Insert complete`);
@@ -161,9 +176,11 @@ async function clearEditor(page) {
     editorLength: window.__cmView.state.doc.length,
     editorContent: window.__cmView.state.doc.toString().substring(0, 50),
     ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString().substring(0, 50)
+    ytextContent: window.__ytext.toString().substring(0, 50),
   }));
-  console.log(`[TEST clearEditor] 📊 Before clear - Editor: ${beforeClear.editorLength} chars, Y.text: ${beforeClear.ytextLength} chars`);
+  console.log(
+    `[TEST clearEditor] 📊 Before clear - Editor: ${beforeClear.editorLength} chars, Y.text: ${beforeClear.ytextLength} chars`
+  );
 
   await page.evaluate(() => {
     const view = window.__cmView;
@@ -178,9 +195,11 @@ async function clearEditor(page) {
   const afterClear = await page.evaluate(() => ({
     editorLength: window.__cmView.state.doc.length,
     ytextLength: window.__ytext.toString().length,
-    providerSynced: window.__provider.synced
+    providerSynced: window.__provider.synced,
   }));
-  console.log(`[TEST clearEditor] 📊 After clear - Editor: ${afterClear.editorLength} chars, Y.text: ${afterClear.ytextLength} chars, synced: ${afterClear.providerSynced}`);
+  console.log(
+    `[TEST clearEditor] 📊 After clear - Editor: ${afterClear.editorLength} chars, Y.text: ${afterClear.ytextLength} chars, synced: ${afterClear.providerSynced}`
+  );
 
   await page.waitForTimeout(100);
   console.log("[TEST clearEditor] ✅ Clear complete");
@@ -190,7 +209,7 @@ async function clearEditor(page) {
 async function waitForSync(page, expectedContent) {
   await page.waitForFunction(
     (content) => {
-      const editorContent = window.__cmView?.state.doc.toString() || '';
+      const editorContent = window.__cmView?.state.doc.toString() || "";
       return editorContent.includes(content);
     },
     expectedContent,
@@ -207,7 +226,7 @@ async function cleanupYjs(page) {
           // Wait for WebSocket to actually close
           const ws = window.__provider.ws;
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.addEventListener('close', () => resolve(), { once: true });
+            ws.addEventListener("close", () => resolve(), { once: true });
             window.__provider.disconnect();
             window.__provider.destroy();
           } else {
@@ -248,7 +267,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await clearEditor(tabA.page);
 
         // Wait for Tab B to see the clear
-        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
+        await tabB.page.waitForFunction(
+          () => window.__cmView.state.doc.length === 0,
+          {},
+          { timeout: 2000 }
+        );
 
         const testText = `Tab A: ${Date.now()}`;
         await insertText(tabA.page, testText);
@@ -260,7 +283,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
 
         const debugB = await tabB.page.evaluate(() => ({
           ytext: window.__ytext?.toString() || "UNDEFINED",
-          editor: window.__cmView?.state.doc.toString() || "UNDEFINED"
+          editor: window.__cmView?.state.doc.toString() || "UNDEFINED",
         }));
         console.log(`[DEBUG] Tab B - Y.text: "${debugB.ytext.substring(0, 50)}..."`);
         console.log(`[DEBUG] Tab B - Editor: "${debugB.editor.substring(0, 50)}..."`);
@@ -283,7 +306,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabB.page);
-        await tabA.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
+        await tabA.page.waitForFunction(
+          () => window.__cmView.state.doc.length === 0,
+          {},
+          { timeout: 2000 }
+        );
 
         const testText = `Tab B: ${Date.now()}`;
         await insertText(tabB.page, testText);
@@ -308,7 +335,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
+        await tabB.page.waitForFunction(
+          () => window.__cmView.state.doc.length === 0,
+          {},
+          { timeout: 2000 }
+        );
 
         await insertText(tabA.page, "From A\n");
         await waitForSync(tabB.page, "From A");
@@ -414,7 +445,10 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
   });
 
   test.describe("Concurrent Edits", () => {
-    test("should handle simultaneous edits at different positions @flaky", async ({ browser, request }) => {
+    test("should handle simultaneous edits at different positions @flaky", async ({
+      browser,
+      request,
+    }) => {
       const tabA = await createAuthenticatedPage(browser, request);
       const tabB = await createAuthenticatedPage(browser, request);
 
@@ -423,7 +457,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
+        await tabB.page.waitForFunction(
+          () => window.__cmView.state.doc.length === 0,
+          {},
+          { timeout: 2000 }
+        );
 
         await insertText(tabA.page, "START___END");
         await waitForSync(tabB.page, "START___END");
@@ -444,10 +482,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         ]);
 
         // Wait for both edits to sync
-        await Promise.all([
-          waitForSync(tabA.page, "BEGIN"),
-          waitForSync(tabB.page, "BEGIN"),
-        ]);
+        await Promise.all([waitForSync(tabA.page, "BEGIN"), waitForSync(tabB.page, "BEGIN")]);
 
         const contentA = await getEditorContent(tabA.page);
         const contentB = await getEditorContent(tabB.page);
@@ -526,7 +561,11 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await openFileInEditor(tabB.page, 1);
 
         await clearEditor(tabA.page);
-        await tabB.page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 2000 });
+        await tabB.page.waitForFunction(
+          () => window.__cmView.state.doc.length === 0,
+          {},
+          { timeout: 2000 }
+        );
 
         await insertText(tabA.page, "Before disconnect");
         await waitForSync(tabB.page, "Before disconnect");
