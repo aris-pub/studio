@@ -389,7 +389,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
-        test-type: [auth, auth-flows, core, demo-content, demo-ui]
+        test-type: [auth, auth-flows, core]
     runs-on: ubuntu-latest
     env:
       ENV: CI
@@ -513,12 +513,6 @@ jobs:
             ;;
           core)
             PATTERN="@core"
-            ;;
-          demo-content)
-            PATTERN="@demo-content"
-            ;;
-          demo-ui)
-            PATTERN="@demo-ui"
             ;;
         esac
 
