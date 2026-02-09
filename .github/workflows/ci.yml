@@ -276,8 +276,11 @@ jobs:
 
     - name: Clean up Docker volumes
       run: |
-        echo "🧹 Cleaning up any existing Docker volumes for $COMPOSE_PROJECT_NAME..."
-        docker compose down -v --remove-orphans 2>/dev/null || true
+        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
+        # Stop any containers first
+        docker compose down 2>/dev/null || true
+        # Nuclear option: force remove all volumes matching this project
+        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm || true
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
@@ -1663,8 +1666,11 @@ jobs:
 
     - name: Clean up Docker volumes
       run: |
-        echo "🧹 Cleaning up any existing Docker volumes for $COMPOSE_PROJECT_NAME..."
-        docker compose down -v --remove-orphans 2>/dev/null || true
+        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
+        # Stop any containers first
+        docker compose down 2>/dev/null || true
+        # Nuclear option: force remove all volumes matching this project
+        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm || true
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
