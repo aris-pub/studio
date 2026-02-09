@@ -276,9 +276,8 @@ jobs:
 
     - name: Clean up Docker volumes
       run: |
-        echo "🧹 Cleaning up any existing Docker volumes for this project..."
-        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
-        docker volume prune -f || true
+        echo "🧹 Cleaning up any existing Docker volumes for $COMPOSE_PROJECT_NAME..."
+        docker compose down -v --remove-orphans 2>/dev/null || true
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
@@ -370,8 +369,8 @@ jobs:
     - name: Cleanup Docker services
       if: always()
       run: |
-        echo "🧹 Cleaning up Docker services..."
-        docker compose --env-file .env down -v --remove-orphans
+        echo "🧹 Cleaning up Docker services for $COMPOSE_PROJECT_NAME..."
+        docker compose down -v --remove-orphans
         echo "✅ Cleanup complete"
 
   # Desktop E2E Tests (Chrome)
@@ -1664,10 +1663,8 @@ jobs:
 
     - name: Clean up Docker volumes
       run: |
-        echo "🧹 Cleaning up any existing Docker volumes..."
-        # Use same project name as start-dev.sh (basename of pwd = "studio")
-        docker compose --env-file .env --project-name studio down -v 2>/dev/null || true
-        docker volume prune -f || true
+        echo "🧹 Cleaning up any existing Docker volumes for $COMPOSE_PROJECT_NAME..."
+        docker compose down -v --remove-orphans 2>/dev/null || true
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
@@ -1753,7 +1750,7 @@ jobs:
     - name: Cleanup Docker services
       if: always()
       run: |
-        echo "🧹 Cleaning up Docker services..."
-        docker compose --env-file .env down -v
+        echo "🧹 Cleaning up Docker services for $COMPOSE_PROJECT_NAME..."
+        docker compose down -v --remove-orphans
         echo "✅ Cleanup complete"
 
