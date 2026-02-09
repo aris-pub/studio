@@ -13,6 +13,36 @@ aris/
 └── CLAUDE.md
 ```
 
+## Architecture: Services in Docker, Tests from Outside
+
+**Critical Architecture Decision:**
+- **DEV**: Docker Compose runs services (backend, frontend, site, storybook, collab), tests run from OUTSIDE containers
+- **CI**: Same Docker Compose setup as DEV, tests run from OUTSIDE containers
+- **Production**: Services containerized, requests/interactions come from outside (mirrors DEV/CI pattern)
+
+**Why tests run from outside containers:**
+- Mirrors production: containerized services receive requests from external clients/browsers
+- E2E tests (Playwright): Browser runs on host, loads frontend from Docker, tests real client behavior
+- Backend tests (pytest): Can run on host (macOS locally, Linux in CI) or inside container as needed
+- Eliminates Docker-in-Docker complexity for test execution
+
+**Platform-specific binaries (tree-sitter-rsm):**
+- `rsm/` and `rsm/tree-sitter-rsm` must be installed from local source (never PyPI/GitHub)
+- tree-sitter-rsm compiles platform-specific binaries (macOS .dylib vs Linux .so)
+- Solution: Platform-specific binary filenames allow macOS and Linux binaries to coexist
+  - setup.py uses `py_limited_api=False` to generate platform-specific names
+  - macOS: `_binding.cpython-313-darwin.so`
+  - Linux: `_binding.cpython-313-aarch64-linux-gnu.so` (or x86_64)
+  - Python's import system automatically loads the correct binary for each platform
+- Docker builds Linux binaries once on startup, local tests use macOS binaries
+- No rebuilding, no switching, no conflicts - both binaries coexist in the same directory
+
+**Commands:**
+```bash
+just dev     # Start Docker Compose services (same as CI)
+just test    # Run tests from host (connects to Docker services)
+```
+
 ## CLI Tool (Studio CLI)
 
 **Purpose**: Accelerate UI testing by eliminating authentication boilerplate and generating Playwright test templates.
@@ -20,6 +50,8 @@ aris/
 **Use case**: When implementing UI-heavy features (e.g., real-time collaboration), agents can use the CLI to skip writing repetitive login/navigation code and jump straight to testing the actual feature.
 
 ### Commands
+
+**All commands run from `cli/` directory**: `cd cli && uv run python -m cli <command>`
 
 ```bash
 # Login once (session stored in ~/.studio/session.json)
@@ -69,6 +101,35 @@ uv run python -m cli ui 123 --playwright > test_collab.py
 # The script already includes session injection and navigation boilerplate
 ```
 
+**Complete Example**:
+```python
+# Generated script includes this boilerplate automatically:
+# - Browser launch with headless mode
+# - Session injection (tokens + user data)
+# - Navigation to file URL
+
+# Agent only needs to add test code at the end:
+page.goto('http://localhost:5173/file/264', wait_until='domcontentloaded')
+
+# Verify authentication
+page.wait_for_selector('[data-testid="user-avatar"]', timeout=5000)
+print("✓ User authenticated")
+
+# Verify manuscript loaded
+page.wait_for_selector('[data-testid="manuscript-container"]', timeout=5000)
+print("✓ Manuscript container loaded")
+
+# Example: Open source editor (CodeMirror) for testing Y.js collaboration
+# IMPORTANT: Click the button element, not the label text
+page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button')
+page.wait_for_selector('.cm-container', timeout=5000)
+print("✓ Source editor opened")
+
+browser.close()
+```
+
+Run with: `cd cli && uv run python test_collab.py`
+
 ### Security & Environment
 
 - **Local-only**: Refuses to run in PROD/CI/STAGING environments
@@ -76,6 +137,179 @@ uv run python -m cli ui 123 --playwright > test_collab.py
 - **JWT validation**: Checks token expiration before operations
 
 See [cli/README.md](cli/README.md) for architecture details and full documentation.
+
+## Y.js Real-Time Collaboration
+
+Aris implements real-time collaborative editing using **Y.js CRDT** (Conflict-free Replicated Data Type) with a **backend-as-client architecture**.
+
+### Architecture Overview
+
+```
+┌────────────────────────────────────────┐
+│    Y.js WebSocket Server (Port 1234)   │
+│    - Pure message relay                 │
+│    - In-memory Y.Doc per room           │
+│    - No database logic                  │
+└──────┬───────────────────┬──────────────┘
+       │                   │
+   ┌───▼────┐       ┌──────▼──────┐
+   │Frontend│       │   Backend   │
+   │Clients │       │   Client    │
+   │        │       │             │
+   │Edit    │       │Observe      │
+   │        │       │Persist      │
+   └────────┘       └──────┬──────┘
+                          │
+                    ┌─────▼──────┐
+                    │ PostgreSQL │
+                    └────────────┘
+```
+
+### Key Components
+
+1. **WebSocket Server** (`multi-player/server.js`)
+   - Pure relay server using `y-websocket`
+   - Broadcasts updates between all connected peers
+   - 59 lines of code (y-websocket handles everything else)
+   - No persistence or database logic
+
+2. **Backend Client** (`backend/aris/collaboration/`)
+   - Connects to WebSocket server as a Y.js peer
+   - Loads file content from database on connect
+   - Observes Y.Doc changes and persists to database (500ms debounce)
+   - Auto-reconnects on disconnect with exponential backoff
+
+3. **Frontend Client** (`frontend/src/views/workspace/EditorCodeMirror.vue`)
+   - CodeMirror 6 editor with `y-codemirror.next` binding
+   - Connects to WebSocket server for real-time sync
+   - No direct database access (gets content via Y.js sync)
+
+### How It Works
+
+1. **User Opens File**
+   - Frontend creates Y.Doc and connects to `ws://multiplayer:1234/file-{id}`
+   - Backend creates Y.Doc, loads content from database, connects to same room
+   - Server syncs state between all clients
+
+2. **User Edits Content**
+   - Frontend applies edit to Y.Doc (via CodeMirror)
+   - Y.Doc generates update message
+   - Frontend sends update to WebSocket server
+   - Server broadcasts to all peers (other frontends + backend)
+   - Backend receives update, persists to database after 500ms
+
+3. **Multi-User Collaboration**
+   - Multiple users connect to same room (`file-{id}`)
+   - All send/receive updates through server
+   - Y.js CRDT resolves conflicts automatically
+   - Backend persists merged state to database
+
+### Permission System
+
+Collaboration respects file permissions:
+
+- **OWNER/EDITOR**: Can edit in real-time
+- **COMMENTER**: Read-only mode (CodeMirror set to read-only)
+- **Unauthorized**: Redirected to 404 page
+
+Backend checks permissions before starting Y.js client:
+```python
+from aris.collaboration import get_collaboration_manager
+from aris.authorization import has_permission, PermissionLevel
+
+if await has_permission(file_id, user_id, PermissionLevel.EDIT, db):
+    manager = get_collaboration_manager()
+    await manager.start_client(file_id)
+```
+
+### Configuration
+
+```bash
+# Environment variables
+MULTIPLAYER_HOST=multiplayer  # Or localhost for local dev
+MULTIPLAYER_PORT=1234
+VITE_MULTIPLAYER_URL=ws://localhost:1234  # Frontend WebSocket URL
+```
+
+### Known Issues & Patches
+
+**y-codemirror.next Echo Prevention Bug**
+
+**Problem**: Remote edits echo back to their origin, causing duplicates in Docker environments.
+
+**Root cause**: Object identity checks fail in Docker (`tr.origin !== ySyncOrigin` doesn't work because objects aren't identical across module boundaries).
+
+**Solution**: Patch to use `tr.local` flag instead of object identity:
+```javascript
+// Before (broken in Docker)
+if (tr.origin !== ySyncOrigin) { ... }
+
+// After (patched)
+if (tr.origin !== ySyncOrigin && !tr.local) { ... }
+```
+
+**Patch location**: `frontend/scripts/patch-y-codemirror.cjs`
+
+**Applied**: Automatically via npm postinstall hook and Docker entrypoint
+
+### Development & Debugging
+
+**Start collaboration services:**
+```bash
+just dev  # Starts backend, frontend, multiplayer server
+```
+
+**Check backend collaboration:**
+```bash
+docker compose logs -f backend | grep collaboration
+```
+
+**Expected logs:**
+```
+[aris.collaboration] Starting YDocClient for file 123
+[aris.collaboration] WebSocket connected for file 123
+[aris.collaboration] Loaded 1234 chars from DB for file 123
+[aris.collaboration] Saved: 1250 chars to DB for file 123
+```
+
+**Check WebSocket server:**
+```bash
+docker compose logs -f multiplayer
+```
+
+**Monitor active connections:**
+```bash
+# Should show backend + frontend clients
+[Y.js Server] Client connected (total: 2)
+```
+
+**Test multi-user collaboration:**
+```bash
+cd frontend
+npx playwright test yjs-multi-user.spec.js --project=chromium
+```
+
+### Testing
+
+- **Unit tests**: Backend Y.js client logic
+- **E2E tests**: Real collaboration scenarios
+  - Single-tab: 4 tests (basic functionality)
+  - Multi-tab: 7 tests (same user, multiple tabs)
+  - Multi-user: 8 tests (permissions, multi-user editing)
+  - All run in CI on every PR
+
+### Documentation
+
+- [Backend-as-Client Architecture](../backend/aris/collaboration/README.md)
+- [WebSocket Server](../multi-player/README.md)
+- [y-codemirror.next Patch](../frontend/scripts/patch-y-codemirror.cjs)
+
+### Future Enhancements
+
+- **Cursor awareness**: Show where other users are typing
+- **Presence indicators**: Display active users
+- **Version history**: Leverage Y.js history for undo/redo
+- **Offline support**: Queue updates when disconnected
 
 ## Just Commands (Task Runner)
 
@@ -203,29 +437,11 @@ For CI, STAGING, and PROD environments, set these environment variables directly
 - `DB_PORT`, `DB_NAME`, `TEST_DB_NAME`
 - Set `ENV=CI`, `ENV=STAGING`, or `ENV=PROD` to enable system environment variable mode
 
-### Standard Development
+### Development Setup
 ```bash
 just init                             # Sets up all .env files and installs all dependencies
 just dev                              # Start development containers
 ```
-
-### Containerized Development (Multi-Clone Setup)
-```bash
-# Quick setup for any clone
-just init                             # Sets up all .env files and installs dependencies
-just dev                              # Start containers (uses directory name as project name)
-
-# For additional clones, use the setup script
-./docker/scripts/setup-clone.sh
-
-# Access services (using your configured ports):
-# Frontend: http://localhost:{FRONTEND_PORT}
-# Storybook: http://localhost:{STORYBOOK_PORT}
-# Backend API: http://localhost:{BACKEND_PORT}/docs
-# Database: localhost:{DB_PORT}
-```
-
-See [docker/README.md](docker/README.md) for detailed multi-clone setup instructions.
 
 ## Frontend Commands
 ```bash
@@ -364,6 +580,12 @@ The `/ci-report` command provides comprehensive CI failure analysis:
 - **Text-based selectors**: Use `.filter({ hasText: "..." })` for text-based element selection
 - **Avoid CSS class selectors**: Only use CSS classes when no `data-testid` attribute exists
 - **Component developers**: Add `data-testid` attributes to all interactive elements
+- **CRITICAL: Click interactive elements, not labels**:
+  - Vue components often have separate label and button elements
+  - Example: SidebarItem has `.sb-item-label` (display text) and `ButtonToggle` (interactive)
+  - **WRONG**: `page.click('.sb-item-label:has-text("source")')` - clicks non-interactive label
+  - **CORRECT**: `page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button')` - clicks the actual button
+  - Always target the interactive element (`button`, `input`, `a`) within the component structure
 ```
 
 ## Language Guidelines

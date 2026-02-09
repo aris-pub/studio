@@ -29,11 +29,11 @@ docker compose -f docker-compose.dev.yml up --build
 - 👤 **Login**: `foo@bar.com` / `admin` (ready to use!)
 
 **Benefits:**
-- Complete isolation (perfect for multiple repository clones)
 - No local dependencies required
 - Production-like PostgreSQL environment
 - Auto-seeded with realistic data
 - Hot reloading for both frontend and backend
+- Complete Docker containerization
 
 #### Option B: Local Development
 
@@ -67,48 +67,6 @@ npm run dev              # Start development server (http://localhost:5173)
 
 ## 📋 Development Workflow
 
-### Multi-Clone Development with Docker
-
-If you're working on multiple features or need to compare different branches:
-
-1. **Set up multiple clones with different ports:**
-   ```bash
-   # Clone 1 (main development)
-   cd aris-main/docker
-   cp .env.example .env
-   # Uses default ports: Backend 8000, Frontend 5173
-
-   # Clone 2 (feature branch)
-   cd aris-feature/docker  
-   cp .env.example .env
-   # Edit .env: BACKEND_PORT=8001, FRONTEND_PORT=5174, DB_PORT=5433
-
-   # Clone 3 (experimental)
-   cd aris-experiment/docker
-   cp .env.example .env  
-   # Edit .env: BACKEND_PORT=8002, FRONTEND_PORT=5175, DB_PORT=5434
-   ```
-
-2. **Each clone gets its own isolated environment:**
-   - Separate databases with auto-seeded data
-   - No port conflicts between clones
-   - Independent development and testing
-
-3. **Quick clone management:**
-   ```bash
-   # Start specific clone (use unique project name)
-   docker compose -p aris-main -f docker-compose.dev.yml up -d
-   docker compose -p aris-feature -f docker-compose.dev.yml up -d
-
-   # Stop specific clone
-   docker compose -p aris-main -f docker-compose.dev.yml down
-   docker compose -p aris-feature -f docker-compose.dev.yml down
-
-   # Reset clone to fresh state (removes all data)
-   docker compose -p aris-main -f docker-compose.dev.yml down -v
-   ```
-
-   **Important**: Always use the `-p` flag with a unique project name to prevent clones from interfering with each other.
 ### Branch Strategy
 
 - **`main`** - Production-ready code

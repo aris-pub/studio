@@ -12,19 +12,23 @@ services:
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
-      - ../backend:/app
-      - ../styles:/app/styles
-      - ../brand:/app/brand
+      - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
-      - backend_venv:/app/.venv
+      - backend_venv:/workspace/studio/backend/.venv
+    working_dir: /workspace/studio/backend
     environment:
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - TEST_DB_URL=postgresql://postgres:postgres@postgres:5432/${TEST_DB_NAME}
       - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - DB_URL_LOCAL=postgresql+asyncpg://postgres:postgres@postgres:5432/${DB_NAME}
-      - ENV=LOCAL
+      - ENV=${ENV:-LOCAL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
+      - MULTIPLAYER_HOST=collab
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,8 +47,25 @@ services:
       - frontend_node_modules:/app/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
+      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
     command: npm run dev -- --host 0.0.0.0
-    
+
+  collab:
+    <<: *common-env
+    build:
+      context: ..
+      dockerfile: docker/multi-player/Dockerfile.dev
+      target: dev
+    ports:
+      - "${MULTIPLAYER_PORT}:1234"
+    volumes:
+      - ../multi-player:/app
+      - collab_node_modules:/app/node_modules
+    environment:
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - HOST=0.0.0.0
+    restart: unless-stopped
+
   storybook:
     <<: *common-env
     build:
@@ -99,5 +120,6 @@ services:
 volumes:
   backend_venv:
   frontend_node_modules:
+  collab_node_modules:
   site_node_modules:
   postgres_data:

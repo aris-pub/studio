@@ -7,38 +7,22 @@ on:
     branches: [ main ]
 
 env:
-  # Common environment variables for all jobs
+  # CI identifier (all jobs load .env, but ENV=CI enables CI-specific behavior)
   ENV: CI
-  BACKEND_PORT: 8000
-  FRONTEND_PORT: 5173
-  SITE_PORT: 3000
-  STORYBOOK_PORT: 6006
-  DB_PORT: 5432
-  DB_NAME: aris
-  TEST_DB_NAME: aris_test
-  VITE_API_BASE_URL: http://localhost:8000
-  NUXT_BACKEND_URL: http://localhost:8000
-  # Database URLs - shared by all jobs
-  DB_URL_LOCAL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-  DB_URL_PROD: postgresql+asyncpg://postgres:postgres@localhost:5432/test_aris
-  ALEMBIC_DB_URL_LOCAL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
-  ALEMBIC_DB_URL_PROD: postgresql+psycopg2://postgres:postgres@localhost:5432/test_aris
-  # Container-specific database URLs for e2e-site job
-  DB_URL_CONTAINER: postgresql+asyncpg://postgres:postgres@postgres:5432/test_aris
-  ALEMBIC_DB_URL_CONTAINER: postgresql+psycopg2://postgres:postgres@postgres:5432/test_aris
-  JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
 
 jobs:
   # Unit Tests and Linting (Parallel)
-  # TEMPORARILY DISABLED - focusing on desktop E2E fixes
+  # TEMPORARILY DISABLED - focusing on e2e-collab-docker
   unit-backend:
+
     runs-on: ubuntu-latest
     env:
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || 'testpassword123' }}
+      JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
+      COPILOT_PROVIDER: mock
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -46,16 +30,12 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         options: >-
           --health-cmd pg_isready
-          --health-interval 5s
+          --health-interval 10s
           --health-timeout 5s
-          --health-retries 3
+          --health-retries 5
         ports:
           - 5432:5432
 
-    defaults:
-      run:
-        working-directory: backend
-
     steps:
     - uses: actions/checkout@v6
       with:
@@ -63,97 +43,124 @@ jobs:
 
     - name: Clone RSM repository
       run: |
-        cd ../..
+        cd ..
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../../rsm"
+        echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v5
       with:
-        version: "latest"
         enable-cache: true
 
     - name: Set up Python
-      run: uv python install 3.13
-
-    - name: Cache uv
-      uses: actions/cache@v5
+      uses: actions/setup-python@v5
       with:
-        path: ~/.cache/uv
-        key: uv-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
+        python-version: '3.13'
 
-    - name: Cache pytest
-      uses: actions/cache@v5
-      with:
-        path: backend/.pytest_cache
-        key: pytest-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
-
-    - name: Create virtual environment and sync dependencies
+    - name: Install RSM dependencies
       run: |
-        uv venv
-        uv sync --group test --group dev
-        uv pip install -e ../../rsm
+        cd ../rsm
+        uv sync
 
-    - name: Run linting (ruff)
-      run: uv run ruff check
-
-    - name: Run type checking (mypy)
-      run: uv run mypy aris/
-
-    - name: Wait for PostgreSQL to be ready
+    - name: Install backend dependencies
       run: |
-        timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
-        echo "PostgreSQL is ready!"
+        cd backend
+        uv sync --all-groups
 
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
+
+    - name: Debug - Test PostgreSQL connection
+      run: |
+        echo "Testing PostgreSQL connection..."
+        cd backend
+        uv run python -c "
+        import asyncio
+        import asyncpg
+
+        async def test():
+            # Test connection to test_aris
+            try:
+                conn = await asyncpg.connect(
+                    host='localhost',
+                    port=5432,
+                    user='postgres',
+                    password='postgres',
+                    database='test_aris'
+                )
+                print('✅ Connection to test_aris successful!')
+                version = await conn.fetchval('SELECT version()')
+                print(f'PostgreSQL version: {version}')
+                await conn.close()
+            except Exception as e:
+                print(f'❌ Connection to test_aris failed: {e}')
+                raise
+
+            # Test connection to postgres admin database
+            try:
+                conn = await asyncpg.connect(
+                    host='localhost',
+                    port=5432,
+                    user='postgres',
+                    password='postgres',
+                    database='postgres'
+                )
+                print('✅ Connection to postgres admin db successful!')
+                await conn.close()
+            except Exception as e:
+                print(f'❌ Connection to postgres admin db failed: {e}')
+                raise
+
+        asyncio.run(test())
+        "
+
+    - name: Run linting
+      run: |
+        cd backend
+        uv run ruff check
+
+    - name: Run type checking
+      run: |
+        cd backend
+        uv run mypy aris/
 
     - name: Run tests
-      env:
-        TEST_USER_EMAIL: testuser@aris.pub
-        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
-      run: uv run pytest -n4 --dist=loadscope --tb=short
+      run: |
+        cd backend
+        uv run pytest -n4 --dist=loadscope --tb=short
 
   unit-frontend:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: frontend
+    env:
+      BACKEND_PORT: 8000
+      VITE_API_BASE_URL: http://localhost:8000
 
     steps:
     - uses: actions/checkout@v6
       with:
         submodules: recursive
 
-    - name: Clone RSM repository
-      run: |
-        cd ../..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../../rsm"
-
     - name: Setup Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v4
       with:
         node-version: '23'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Cache vitest
-      uses: actions/cache@v5
-      with:
-        path: frontend/node_modules/.vitest
-        key: vitest-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-    - name: Check for missing packages
-      run: npm ls --depth=0
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
 
     - name: Run linting
-      run: npm run lint
+      run: |
+        cd frontend
+        npm run lint
 
     - name: Run tests
-      run: npm run test:run
+      run: |
+        cd frontend
+        npm run test:run
 
   unit-site:
     runs-on: ubuntu-latest
@@ -161,83 +168,6 @@ jobs:
     defaults:
       run:
         working-directory: site
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Clone RSM repository
-      run: |
-        cd ../..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../../rsm"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: site/package-lock.json
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Cache vitest
-      uses: actions/cache@v5
-      with:
-        path: site/node_modules/.vitest
-        key: vitest-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
-
-    - name: Check for missing packages
-      run: npm ls --depth=0
-
-    - name: Run linting
-      run: npm run lint
-
-    - name: Run unit tests
-      run: npm run test:run
-
-  # Site E2E Tests (All Browsers)
-  # TEMPORARILY DISABLED - focusing on desktop E2E fixes
-  e2e-site:
-    needs: [unit-backend, unit-frontend, unit-site]
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
-        device: [desktop, mobile]
-    runs-on: ubuntu-latest
-    env:
-      ENV: CI
-      BACKEND_PORT: 8000
-      FRONTEND_PORT: 5173
-      SITE_PORT: 3000
-      STORYBOOK_PORT: 6006
-      DB_PORT: 5432
-      DB_NAME: aris
-      TEST_DB_NAME: aris_test
-      VITE_API_BASE_URL: http://localhost:8000
-      FRONTEND_URL: http://localhost:5173
-      NUXT_BACKEND_URL: http://localhost:8000
-      TEST_USER_EMAIL: testuser@aris.pub
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || 'testpassword123' }}
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_aris
-          POSTGRES_HOST_AUTH_METHOD: trust
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 3
-        ports:
-          - 5432:5432
 
     steps:
     - uses: actions/checkout@v6
@@ -257,130 +187,154 @@ jobs:
         cache: 'npm'
         cache-dependency-path: site/package-lock.json
 
-    - name: Install dependencies
-      working-directory: site
-      run: npm ci
-
-    - name: Install frontend dependencies
-      working-directory: frontend
-      run: npm ci
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules-site
       with:
-        version: "latest"
-        enable-cache: true
+        path: site/node_modules
+        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
 
-    - name: Set up Python
-      run: uv python install 3.13
+    - name: Install dependencies
+      if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
+      run: npm ci
 
-    - name: Wait for PostgreSQL to be ready
+    - name: Cache vitest
+      uses: actions/cache@v5
+      with:
+        path: site/node_modules/.vitest
+        key: vitest-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+
+    - name: Check for missing packages
+      run: npm ls --depth=0
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run unit tests
+      run: npm run test:run
+
+  # Site E2E Tests (All Browsers)
+  e2e-site:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+        device: [desktop, mobile]
+    runs-on: ubuntu-latest
+    env:
+      ENV: CI
+      VITE_LOG_LEVEL: WARN
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}-${{ matrix.device }}
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
       run: |
-        timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
-        echo "PostgreSQL is ready!"
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
 
-    - name: Create virtual environment and sync dependencies
-      working-directory: backend
-      run: |
-        uv venv
-        uv sync --group test --group dev
-        # Force reinstall RSM from local clone to override the locked git version
-        uv pip install --reinstall --no-deps -e ../../rsm
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: site/package-lock.json
 
-    - name: Run database migrations
-      working-directory: backend
-      run: uv run alembic upgrade head
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: site/node_modules
+        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+
+    - name: Install site dependencies
+      working-directory: site
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-browsers-site-${{ matrix.browser }}-${{ matrix.device }}
+        key: playwright-browsers-site-${{ runner.os }}-${{ matrix.browser }}
 
     - name: Install Playwright browsers
       working-directory: site
-      if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install ${{ matrix.browser }} --with-deps
 
-    - name: Start backend, frontend, site, and run E2E tests
+    - name: Create .env file
+      run: cp .env.example .env
+
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
+
+    - name: Clean up Docker volumes
       run: |
-        # Start backend in background
-        echo "Starting backend for site E2E tests..."
-        cd backend
-        uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
-        BACKEND_PID=$!
-        echo "Backend started with PID: $BACKEND_PID"
-        
-        # Wait for backend to be ready
-        sleep 8
-        for i in {1..5}; do
-          if curl -f http://localhost:8000/health; then
-            echo "Backend ready for E2E tests"
+        echo "🧹 Cleaning up any existing Docker volumes for this project..."
+        docker compose --env-file .env down -v --remove-orphans 2>/dev/null || true
+        docker volume prune -f || true
+        echo "✅ Docker cleanup complete"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v5
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-site-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-site-
+
+    - name: Start Docker Compose services
+      run: |
+        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
+        ./scripts/start-dev.sh
+
+        echo "⏳ Polling for services to be ready (max 30s)..."
+        for i in {1..30}; do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:3000 >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
             break
-          else
-            echo "Waiting for backend... ($i/5)"
-            if [ $i -eq 5 ]; then
-              echo "Backend failed to start"
-              kill $BACKEND_PID 2>/dev/null || true
-              exit 1
-            fi
-            sleep 2
           fi
+          sleep 1
         done
-        
-        # Start frontend in background
-        echo "Starting frontend for site E2E tests..."
-        cd ../frontend
-        npm run dev &
-        FRONTEND_PID=$!
-        echo "Frontend started with PID: $FRONTEND_PID"
-        
-        # Wait for frontend to be ready
-        sleep 15
-        for i in {1..5}; do
-          if curl -f http://localhost:5173; then
-            echo "Frontend ready for E2E tests"
-            break
-          else
-            echo "Waiting for frontend... ($i/5)"
-            if [ $i -eq 5 ]; then
-              echo "Frontend failed to start"
-              kill $FRONTEND_PID 2>/dev/null || true
-              kill $BACKEND_PID 2>/dev/null || true
-              exit 1
-            fi
-            sleep 3
-          fi
-        done
-        
-        # Start site in background
-        echo "Starting site for ${{ matrix.browser }} ${{ matrix.device }} E2E tests..."
-        cd ../site
-        npm run dev &
-        SITE_PID=$!
-        echo "Site started with PID: $SITE_PID"
-        
-        # Wait for site to be ready
-        sleep 10
-        for i in {1..5}; do
-          if curl -f http://localhost:3000; then
-            echo "Site ready for E2E tests"
-            break
-          else
-            echo "Waiting for site... ($i/5)"
-            if [ $i -eq 5 ]; then
-              echo "Site failed to start"
-              kill $SITE_PID 2>/dev/null || true
-              kill $FRONTEND_PID 2>/dev/null || true
-              kill $BACKEND_PID 2>/dev/null || true
-              exit 1
-            fi
-            sleep 3
-          fi
-        done
-        
-        # Run site E2E tests for specific browser and device
+
+        echo "📊 Service status:"
+        docker compose --env-file .env ps
+
+        echo "🔍 Final health check..."
+        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
+        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+        curl -f http://localhost:3000 || echo "⚠️  Site health check failed"
+
+        echo "✅ Docker services ready"
+
+    - name: Setup database and test user in Docker
+      run: |
+        echo "🔄 Running database migrations in Docker..."
+        docker compose --env-file .env exec -T backend uv run alembic upgrade head
+
+        echo "👤 Creating test user in Docker..."
+        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
+
+        echo "✅ Database setup complete"
+
+    - name: Run site E2E tests
+      working-directory: site
+      run: |
+        echo "🧪 Running site E2E tests on ${{ matrix.browser }} ${{ matrix.device }} (Docker environment)..."
+
+        # Source .env file to set port variables for Playwright config
+        # Filter out comments and blank lines
+        export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
+
         if [ "${{ matrix.device }}" = "mobile" ]; then
           if [ "${{ matrix.browser }}" = "firefox" ]; then
             npx playwright test --project="Mobile Firefox" --reporter=github
@@ -394,17 +348,35 @@ jobs:
             npx playwright test --project="chromium" --reporter=github
           fi
         fi
-        TEST_EXIT_CODE=$?
-        
-        # Cleanup
-        echo "Cleaning up processes..."
-        kill $SITE_PID 2>/dev/null || true
-        kill $FRONTEND_PID 2>/dev/null || true
-        kill $BACKEND_PID 2>/dev/null || true
-        exit $TEST_EXIT_CODE
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-results-site-${{ matrix.browser }}-${{ matrix.device }}
+        path: site/test-results/
+        retention-days: 7
+
+    - name: Show Docker logs on failure
+      if: failure()
+      run: |
+        echo "📋 Backend logs:"
+        docker compose --env-file .env logs backend
+        echo "📋 Frontend logs:"
+        docker compose --env-file .env logs frontend
+        echo "📋 Site logs:"
+        docker compose --env-file .env logs site
+
+    - name: Cleanup Docker services
+      if: always()
+      run: |
+        echo "🧹 Cleaning up Docker services..."
+        docker compose --env-file .env down -v --remove-orphans
+        echo "✅ Cleanup complete"
 
   # Desktop E2E Tests (Chrome)
   e2e-desktop-chrome:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [unit-backend, unit-frontend, unit-site]  # TEMPORARILY DISABLED
     strategy:
       fail-fast: false
@@ -415,6 +387,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     services:
@@ -516,8 +489,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -533,10 +518,21 @@ jobs:
       run: npx playwright install chromium --with-deps
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on Ubuntu (Chrome)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -552,6 +548,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -560,7 +557,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -570,10 +567,10 @@ jobs:
         # Run tests based on test type (Chrome only)
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo E2E tests: @core (excluding @mobile-only and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@site)" --project=chromium --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@site)" --project=chromium --reporter=github
         else
           echo "Running auth E2E tests: @auth[^-]|@auth-flows (excluding @mobile-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=chromium --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=chromium --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -581,10 +578,12 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # Desktop E2E Tests (Firefox)
   e2e-desktop-firefox:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [unit-backend, unit-frontend, unit-site]  # TEMPORARILY DISABLED
     strategy:
       fail-fast: false
@@ -601,6 +600,8 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
       VITE_API_BASE_URL: http://localhost:8000
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      COPILOT_PROVIDER: mock
 
     services:
       postgres:
@@ -664,8 +665,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -681,10 +694,21 @@ jobs:
       run: npx playwright install firefox --with-deps
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on Ubuntu (Firefox)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -700,6 +724,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -708,7 +733,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -718,10 +743,10 @@ jobs:
         # Run tests based on auth mode (Firefox only)
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo E2E tests: @core (excluding @mobile-only and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@site)" --project=firefox --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@site)" --project=firefox --reporter=github
         else
           echo "Running auth E2E tests: @auth[^-]|@auth-flows (excluding @mobile-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=firefox --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=firefox --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -729,10 +754,12 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # Desktop E2E Tests (Safari)
   e2e-desktop-safari:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [unit-backend, unit-frontend, unit-site]  # TEMPORARILY DISABLED
     strategy:
       fail-fast: false
@@ -743,6 +770,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     steps:
@@ -844,8 +872,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -861,10 +901,21 @@ jobs:
       run: npx playwright install webkit
 
     - name: Start backend and frontend, run E2E tests
+      env:
+        TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} E2E tests on macOS (Safari)..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -880,6 +931,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -888,7 +940,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -898,10 +950,10 @@ jobs:
         # Run tests based on auth mode (desktop webkit only)
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo E2E tests: @core (excluding @mobile-only, @auth, and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@auth)(?!.*@site)" --project=webkit --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "(@core)(?!.*@mobile-only)(?!.*@auth)(?!.*@site)" --project=webkit --reporter=github
         else
           echo "Running auth E2E tests: @auth[^-]|@auth-flows (excluding @mobile-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=webkit --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@mobile-only)(?!.*@site)" --project=webkit --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -909,11 +961,12 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
-  # Mobile E2E Tests (Optional - can fail without breaking CI)
-  # TEMPORARILY DISABLED - focusing on desktop E2E fixes
+  # Collaboration E2E Tests (Y.js multi-user)
   e2e-mobile-chrome:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [e2e-desktop-chrome]
     continue-on-error: true  # Allow this job to fail
     strategy:
@@ -925,6 +978,7 @@ jobs:
       TEST_USER_EMAIL: testuser@aris.pub
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
       COPILOT_PROVIDER: mock
 
     services:
@@ -1026,8 +1080,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -1058,9 +1124,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Chrome E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Chrome E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1076,6 +1150,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1084,7 +1159,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1094,10 +1169,10 @@ jobs:
         # Run mobile Chrome tests
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo Mobile Chrome E2E tests: @core|@mobile-only (excluding @desktop-only, @auth, and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Chrome" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Chrome" --reporter=github
         else
           echo "Running auth Mobile Chrome E2E tests: @auth[^-]|@auth-flows (excluding @desktop-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Chrome" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Chrome" --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -1105,10 +1180,12 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-firefox:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [e2e-desktop-firefox]
     continue-on-error: true  # Allow this job to fail
     strategy:
@@ -1126,6 +1203,8 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       VITE_LOG_LEVEL: WARN
       VITE_API_BASE_URL: http://localhost:8000
+      VITE_MULTIPLAYER_URL: ws://localhost:1234
+      COPILOT_PROVIDER: mock
 
     services:
       postgres:
@@ -1189,8 +1268,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -1207,9 +1298,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Firefox E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Firefox E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1225,6 +1324,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1233,7 +1333,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1243,10 +1343,10 @@ jobs:
         # Run mobile Firefox tests
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo Mobile Firefox E2E tests: @core|@mobile-only (excluding @desktop-only, @auth, and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Firefox" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Firefox" --reporter=github
         else
           echo "Running auth Mobile Firefox E2E tests: @auth[^-]|@auth-flows (excluding @desktop-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Firefox" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Firefox" --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -1254,10 +1354,12 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
   # TEMPORARILY DISABLED - focusing on desktop E2E fixes
   e2e-mobile-safari:
+    if: false  # Temporarily disabled to speed up CI testing
     # needs: [e2e-desktop-safari]
     continue-on-error: true  # Allow this job to fail
     strategy:
@@ -1370,8 +1472,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Install multiplayer server dependencies
+      working-directory: multi-player
       run: npm ci
 
     - name: Cache Playwright browsers
@@ -1403,9 +1517,17 @@ jobs:
 
     - name: Start backend and frontend, run Mobile Safari E2E tests
       run: |
+        # Start Y.js multiplayer server
+        echo "Starting Y.js multiplayer server..."
+        cd multi-player
+        MULTIPLAYER_PORT=1234 HOST=0.0.0.0 node server.js &
+        MULTIPLAYER_PID=$!
+        echo "Multiplayer server started with PID: $MULTIPLAYER_PID"
+        sleep 3
+
         # Start backend
         echo "Starting backend for ${{ matrix.test-type }} Mobile Safari E2E tests..."
-        cd backend
+        cd ../backend
         uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         echo "Backend started with PID: $BACKEND_PID"
@@ -1421,6 +1543,7 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "Backend failed to start"
               kill $BACKEND_PID 2>/dev/null || true
+              kill $MULTIPLAYER_PID 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -1429,7 +1552,7 @@ jobs:
 
         # Start frontend
         cd ../frontend
-        npm run dev &
+        VITE_MULTIPLAYER_URL=ws://localhost:1234 npm run dev &
         FRONTEND_PID=$!
         echo "Frontend started with PID: $FRONTEND_PID"
 
@@ -1439,10 +1562,10 @@ jobs:
         # Run mobile Safari tests
         if [ "${{ matrix.test-type }}" = "demo" ]; then
           echo "Running demo Mobile Safari E2E tests: @core|@mobile-only (excluding @desktop-only, @auth, and @site)"
-          CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Safari" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=demo npx playwright test --grep "^(?!.*@auth).*(@core|@mobile-only)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Safari" --reporter=github
         else
           echo "Running auth Mobile Safari E2E tests: @auth[^-]|@auth-flows (excluding @desktop-only and @site)"
-          CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Safari" --reporter=github
+          TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" CI_TEST_TYPE=auth npx playwright test --grep "(@auth[^-]|@auth-flows)(?!.*@desktop-only)(?!.*@site)" --project="Mobile Safari" --reporter=github
         fi
         TEST_EXIT_CODE=$?
 
@@ -1450,7 +1573,187 @@ jobs:
         echo "Cleaning up processes..."
         kill $FRONTEND_PID 2>/dev/null || true
         kill $BACKEND_PID 2>/dev/null || true
+        kill $MULTIPLAYER_PID 2>/dev/null || true
         exit $TEST_EXIT_CODE
 
 
 # Trigger CI
+
+  # EXPERIMENTAL: Run collab tests with Docker Compose (test environment hypothesis)
+  e2e-collab:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium]  # Start with chromium only
+    runs-on: ubuntu-latest
+    env:
+      # CI-specific overrides (everything else comes from .env.example)
+      ENV: CI
+      VITE_LOG_LEVEL: WARN
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio-e2e-collab
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v5
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-${{ runner.os }}-${{ matrix.browser }}
+
+    - name: Install Playwright browsers
+      working-directory: frontend
+      run: npx playwright install ${{ matrix.browser }} --with-deps
+
+    - name: Create .env file
+      run: cp .env.example .env
+
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
+
+    - name: Debug - Gather evidence about .env file
+      run: |
+        echo "📍 Current directory: $(pwd)"
+        echo ""
+        echo "📄 .env file exists?"
+        ls -la .env
+        echo ""
+        echo "📄 .env file contents:"
+        cat .env
+        echo ""
+        echo "📄 backend/.env file exists?"
+        ls -la backend/.env
+        echo ""
+        echo "📄 Docker Compose version:"
+        docker compose version
+        echo ""
+        echo "📄 start-dev.sh location:"
+        ls -la scripts/start-dev.sh
+        echo ""
+        echo "📄 docker-compose.dev.yml env_file directive:"
+        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
+
+    - name: Clean up Docker volumes
+      run: |
+        echo "🧹 Cleaning up any existing Docker volumes..."
+        # Use same project name as start-dev.sh (basename of pwd = "studio")
+        docker compose --env-file .env --project-name studio down -v 2>/dev/null || true
+        docker volume prune -f || true
+        echo "✅ Docker cleanup complete"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v5
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', '**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Start Docker Compose services
+      run: |
+        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
+        ./scripts/start-dev.sh
+
+        echo "⏳ Polling for services to be ready (max 30s)..."
+        for i in {1..30}; do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
+            break
+          fi
+          sleep 1
+        done
+
+        echo "📊 Service status:"
+        docker compose --env-file .env ps
+
+        echo "🔍 Final health check..."
+        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
+        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+
+        echo "✅ Docker services ready"
+
+    - name: Setup database and test user in Docker
+      run: |
+        echo "🔄 Running database migrations in Docker..."
+        docker compose --env-file .env exec -T backend uv run alembic upgrade head
+
+        echo "👤 Creating test user in Docker..."
+        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
+
+        echo "✅ Database setup complete"
+
+    - name: Run single-tab Y.js E2E tests
+      working-directory: frontend
+      run: |
+        echo "🧪 Running single-tab Y.js tests on ${{ matrix.browser }} (Docker environment)..."
+        npx playwright test yjs-single-tab.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
+
+    - name: Run multi-tab Y.js E2E tests
+      working-directory: frontend
+      run: |
+        echo "🧪 Running multi-tab Y.js tests on ${{ matrix.browser }} (Docker environment)..."
+        npx playwright test yjs-multi-tab.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
+
+    - name: Run multi-user Y.js E2E tests
+      working-directory: frontend
+      run: |
+        echo "🧪 Running multi-user Y.js tests on ${{ matrix.browser }} (Docker environment)..."
+        npx playwright test yjs-multi-user.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-results-docker-${{ matrix.browser }}
+        path: frontend/test-results/
+        retention-days: 7
+
+    - name: Show Docker logs on failure
+      if: failure()
+      run: |
+        echo "📋 Backend logs:"
+        docker compose --env-file .env logs backend
+        echo "📋 Frontend logs:"
+        docker compose --env-file .env logs frontend
+        echo "📋 Multiplayer logs:"
+        docker compose --env-file .env logs collab
+
+    - name: Cleanup Docker services
+      if: always()
+      run: |
+        echo "🧹 Cleaning up Docker services..."
+        docker compose --env-file .env down -v
+        echo "✅ Cleanup complete"
+

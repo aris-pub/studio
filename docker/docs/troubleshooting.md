@@ -7,7 +7,7 @@
 **Problem**: `Error: Port 8000 is already in use`
 
 **Solutions**:
-1. **Check your `.env` file** - ensure unique ports for each clone
+1. **Check your `.env` file** - ensure ports are not in use
 2. **Kill existing processes**:
    ```bash
    lsof -ti:8000 | xargs kill -9  # Replace 8000 with your port

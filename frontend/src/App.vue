@@ -5,6 +5,7 @@
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { createFileStore } from "@/store/FileStore.js";
   import { getLogger } from "@/utils/logger.js";
+  import { loadDesignAssets } from "@/utils/cssLoader.js";
   import axios from "axios";
 
   const logger = getLogger("App");
@@ -16,6 +17,15 @@
   });
 
   logger.info("API instance created", { baseURL: import.meta.env.VITE_API_BASE_URL });
+
+  // Load design assets (CSS) from backend immediately
+  loadDesignAssets(api)
+    .then(() => {
+      logger.info("Design assets loaded successfully");
+    })
+    .catch((cssError) => {
+      logger.error("Failed to load design assets", cssError);
+    });
 
   // Add access token to every request
   api.interceptors.request.use((config) => {
@@ -127,17 +137,8 @@
   // Load RSM CSS
   const rsmLink = document.createElement("link");
   rsmLink.rel = "stylesheet";
-  rsmLink.href = `${api.defaults.baseURL}/static/rsm.css`;
+  rsmLink.href = `${api.defaults.baseURL}/static/braiid.css`;
   document.head.appendChild(rsmLink);
-
-  // Load styles CSS
-  const styles = ["typography.css", "components.css", "layout.css", "variables.css"];
-  styles.forEach((filename) => {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = `${api.defaults.baseURL}/styles/css/${filename}`;
-    document.head.appendChild(link);
-  });
 
   // Provide viewport info
   const breakpoints = useBreakpoints({ xs: 425, ...breakpointsTailwind });

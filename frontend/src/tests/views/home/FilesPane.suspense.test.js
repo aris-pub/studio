@@ -327,9 +327,8 @@ describe("FilesPane.vue - Suspense and Async Behavior", () => {
 
   describe("Suspense Integration with Keyboard Navigation", () => {
     it("should integrate keyboard navigation with async FilesItems", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(0);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,

@@ -15,10 +15,19 @@ from alembic import context
 from aris.models import Base
 
 
-# Load the appropriate .env file based on environment
+# Load the appropriate .env files based on environment
 BASE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BASE_DIR.parent
+
+# Load root .env first (for DB_PORT, DB_NAME, etc.)
+root_env_file = ROOT_DIR / ".env"
+if root_env_file.exists():
+    load_dotenv(root_env_file)
+
+# Load backend .env second (for backend-specific settings, can override root)
 env_file = BASE_DIR / (".env.ci" if os.getenv("ENV") == "CI" else ".env")
-load_dotenv(env_file)
+if env_file.exists():
+    load_dotenv(env_file, override=True)
 
 config = context.config
 
@@ -41,6 +50,12 @@ def get_database_url() -> str:
         url = os.getenv("ALEMBIC_DB_URL_PROD")
     else:
         url = os.getenv("ALEMBIC_DB_URL_LOCAL")
+        # If not set, construct from DB_PORT and DB_NAME
+        if not url:
+            db_port = os.getenv("DB_PORT")
+            db_name = os.getenv("DB_NAME")
+            if db_port and db_name:
+                url = f"postgresql+psycopg2://postgres:postgres@localhost:{db_port}/{db_name}"
 
     if not url:
         raise RuntimeError(f"Database URL not found for environment '{env}'")

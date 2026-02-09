@@ -7,8 +7,11 @@ const loadedStylesheets = new Set();
 export function loadCSS(api, filename) {
   const url = `${api.defaults.baseURL}/styles/css/${filename}`;
 
+  console.log(`[cssLoader] Loading CSS from: ${url}`);
+
   // Avoid loading the same CSS file multiple times
   if (loadedStylesheets.has(url)) {
+    console.log(`[cssLoader] ${filename} already loaded, skipping`);
     return Promise.resolve();
   }
 
@@ -18,15 +21,19 @@ export function loadCSS(api, filename) {
     link.href = url;
 
     link.onload = () => {
+      console.log(`[cssLoader] ✓ ${filename} loaded successfully`);
       loadedStylesheets.add(url);
       resolve();
     };
 
     link.onerror = () => {
+      console.error(`[cssLoader] ✗ Failed to load ${filename} from ${url}`);
       reject(new Error(`Failed to load CSS: ${url}`));
     };
 
+    console.log(`[cssLoader] Appending <link> to document.head for ${filename}`);
     document.head.appendChild(link);
+    console.log(`[cssLoader] Link element appended, waiting for onload event`);
   });
 }
 

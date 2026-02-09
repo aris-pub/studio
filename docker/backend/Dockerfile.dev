@@ -13,29 +13,23 @@ RUN apt-get update && \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-WORKDIR /app
+WORKDIR /workspace/studio/backend
 
-# Copy dependency files first for optimal layer caching
+# Copy dependency files (sync happens in entrypoint after rsm mount is available)
 COPY backend/pyproject.toml backend/uv.lock ./
 
-# Install production dependencies with cache
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-# Development stage with all dependencies
+# Development stage
 FROM base AS dev
 
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
 COPY .env ../.env
 
-# Install all dependencies including dev dependencies with cache
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --all-groups --frozen
+# Dependencies will be synced in entrypoint when /workspace/rsm is available
 
 # Set up environment
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app"
+ENV PATH="/workspace/studio/backend/.venv/bin:$PATH"
+ENV PYTHONPATH="/workspace/studio/backend"
 
 # Note: Design assets are mounted as volume in dev mode via docker-compose
 # For production builds, they would be copied here
@@ -51,4 +45,4 @@ EXPOSE 8000
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Default development server command (can be overridden in docker-compose)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app", "--reload-dir", "/workspace/rsm"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/workspace/studio/backend", "--reload-dir", "/workspace/rsm"]

@@ -100,7 +100,7 @@ Unclosed enumerate section."""
         assert len(result) > 0
 
         # Check for expected HTML structure
-        assert '<div class="manuscriptwrapper">' in result
+        assert '<main class="manuscriptwrapper">' in result
         assert '<div class="manuscript"' in result
         assert '<h1' in result  # Main heading
         assert '<h2' in result  # Subheading
@@ -117,7 +117,7 @@ Unclosed enumerate section."""
 
         # Check basic structure
         assert result
-        assert '<div class="manuscriptwrapper">' in result
+        assert '<main class="manuscriptwrapper">' in result
         assert '<div class="manuscript"' in result
 
         # Check for main title
@@ -156,7 +156,7 @@ Unclosed enumerate section."""
         # Should return rendered HTML
         assert isinstance(result, str)
         assert len(result) > 0
-        assert '<div class="manuscriptwrapper">' in result
+        assert '<main class="manuscriptwrapper">' in result
 
         # Check for content preservation
         assert 'The Future of Web-Native Publishing' in result
@@ -224,7 +224,7 @@ Quotes: "smart quotes", 'apostrophes', and "unicode quotes".
         assert '🚀 📊 🔬' in result
 
         # Check HTML structure is maintained
-        assert '<div class="manuscriptwrapper">' in result
+        assert '<main class="manuscriptwrapper">' in result
 
     async def test_empty_rsm_document(self, db_session: AsyncSession):
         """Test rendering of empty RSM document."""
@@ -241,7 +241,7 @@ Quotes: "smart quotes", 'apostrophes', and "unicode quotes".
 
         assert result
         assert 'Minimal content' in result
-        assert '<div class="manuscriptwrapper">' in result
+        assert '<main class="manuscriptwrapper">' in result
 
     async def test_rsm_with_only_headings(self, db_session: AsyncSession):
         """Test RSM document with only headings."""

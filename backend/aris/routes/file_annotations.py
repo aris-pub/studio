@@ -1,7 +1,7 @@
 """Routes to manage annotations (notes and comments)."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
@@ -9,7 +9,9 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db
+from ..authorization import PermissionLevel, has_permission
 from ..models import Annotation, AnnotationMessage, AnnotationType
+from ..models.models import User
 
 
 router = APIRouter(
@@ -54,7 +56,15 @@ class AnnotationResponse(BaseModel):
 
 
 @router.post("/", response_model=AnnotationResponse, status_code=status.HTTP_201_CREATED)
-async def create_annotation(annotation: AnnotationCreate, db: AsyncSession = Depends(get_db)):
+async def create_annotation(
+    annotation: AnnotationCreate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Check COMMENT permission on the file
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+        raise HTTPException(status_code=403, detail="Comment permission required")
+
     db_annotation = Annotation(**annotation.dict())
     db.add(db_annotation)
     await db.commit()
@@ -69,8 +79,14 @@ async def get_annotations(
     include_deleted: bool = False,
     skip: int = 0,
     limit: int = 100,
+    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Check VIEW permission if file_id is provided
+    if file_id:
+        if not await has_permission(file_id, user.id, PermissionLevel.VIEW, db):
+            raise HTTPException(status_code=403, detail="Access denied")
+
     query = select(Annotation)
 
     if not include_deleted:
@@ -88,22 +104,10 @@ async def get_annotations(
 
 
 @router.get("/{annotation_id}", response_model=AnnotationResponse)
-async def get_annotation(annotation_id: int, db: AsyncSession = Depends(get_db)):
-    query = select(Annotation).where(
-        and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
-    )
-    result = await db.execute(query)
-    annotation = result.scalar_one_or_none()
-
-    if not annotation:
-        raise HTTPException(status_code=404, detail="Annotation not found")
-
-    return annotation
-
-
-@router.put("/{annotation_id}", response_model=AnnotationResponse)
-async def update_annotation(
-    annotation_id: int, annotation_update: AnnotationUpdate, db: AsyncSession = Depends(get_db)
+async def get_annotation(
+    annotation_id: int,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     query = select(Annotation).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
@@ -113,6 +117,33 @@ async def update_annotation(
 
     if not annotation:
         raise HTTPException(status_code=404, detail="Annotation not found")
+
+    # Check VIEW permission on the annotation's file
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return annotation
+
+
+@router.put("/{annotation_id}", response_model=AnnotationResponse)
+async def update_annotation(
+    annotation_id: int,
+    annotation_update: AnnotationUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(Annotation).where(
+        and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
+    )
+    result = await db.execute(query)
+    annotation = result.scalar_one_or_none()
+
+    if not annotation:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+    # Check COMMENT permission on the annotation's file
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+        raise HTTPException(status_code=403, detail="Comment permission required")
 
     update_data = annotation_update.dict(exclude_unset=True)
     for field, value in update_data.items():
@@ -124,7 +155,11 @@ async def update_annotation(
 
 
 @router.delete("/{annotation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_annotation(annotation_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_annotation(
+    annotation_id: int,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
     query = select(Annotation).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
     )
@@ -133,6 +168,10 @@ async def delete_annotation(annotation_id: int, db: AsyncSession = Depends(get_d
 
     if not annotation:
         raise HTTPException(status_code=404, detail="Annotation not found")
+
+    # Check COMMENT permission on the annotation's file
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+        raise HTTPException(status_code=403, detail="Comment permission required")
 
     annotation.deleted_at = datetime.now(timezone.utc)  # type: ignore
     await db.commit()
@@ -145,7 +184,10 @@ async def delete_annotation(annotation_id: int, db: AsyncSession = Depends(get_d
     status_code=status.HTTP_201_CREATED,
 )
 async def create_annotation_message(
-    annotation_id: int, message: AnnotationMessageCreate, db: AsyncSession = Depends(get_db)
+    annotation_id: int,
+    message: AnnotationMessageCreate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     # Verify annotation exists
     query = select(Annotation).where(
@@ -156,6 +198,10 @@ async def create_annotation_message(
 
     if not annotation:
         raise HTTPException(status_code=404, detail="Annotation not found")
+
+    # Check COMMENT permission on the annotation's file
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+        raise HTTPException(status_code=403, detail="Comment permission required")
 
     # Check constraint: notes can only have one non-deleted message
     if annotation.type == AnnotationType.NOTE:
@@ -187,8 +233,22 @@ async def get_annotation_messages(
     include_deleted: bool = False,
     skip: int = 0,
     limit: int = 100,
+    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Verify annotation exists and check VIEW permission
+    query_annotation = select(Annotation).where(
+        and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
+    )
+    result = await db.execute(query_annotation)
+    annotation = result.scalar_one_or_none()
+
+    if not annotation:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     query = select(AnnotationMessage).where(AnnotationMessage.annotation_id == annotation_id)
 
     if not include_deleted:
@@ -200,7 +260,11 @@ async def get_annotation_messages(
 
 
 @router.get("/messages/{message_id}", response_model=AnnotationMessageResponse)
-async def get_annotation_message(message_id: int, db: AsyncSession = Depends(get_db)):
+async def get_annotation_message(
+    message_id: int,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
     query = select(AnnotationMessage).where(
         and_(AnnotationMessage.id == message_id, AnnotationMessage.deleted_at.is_(None))
     )
@@ -209,12 +273,25 @@ async def get_annotation_message(message_id: int, db: AsyncSession = Depends(get
 
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
+
+    # Get the annotation to check file permission
+    query_annotation = select(Annotation).where(Annotation.id == message.annotation_id)
+    result = await db.execute(query_annotation)
+    annotation = cast(Optional[Annotation], result.scalar_one_or_none())
+
+    if annotation and not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return message
 
 
 @router.put("/messages/{message_id}", response_model=AnnotationMessageResponse)
-async def update_annotation_message(message_id: int, content: str, db: AsyncSession = Depends(get_db)):
+async def update_annotation_message(
+    message_id: int,
+    content: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
     query = select(AnnotationMessage).where(
         and_(AnnotationMessage.id == message_id, AnnotationMessage.deleted_at.is_(None))
     )
@@ -223,6 +300,19 @@ async def update_annotation_message(message_id: int, content: str, db: AsyncSess
 
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
+
+    # Get the annotation to check file permission
+    query_annotation = select(Annotation).where(Annotation.id == message.annotation_id)
+    result = await db.execute(query_annotation)
+    annotation = cast(Optional[Annotation], result.scalar_one_or_none())
+
+    if annotation:
+        if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+            raise HTTPException(status_code=403, detail="Comment permission required")
+
+    # Check message ownership
+    if message.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only edit your own messages")
 
     message.content = content  # type: ignore
     await db.commit()
@@ -231,7 +321,11 @@ async def update_annotation_message(message_id: int, content: str, db: AsyncSess
 
 
 @router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_annotation_message(message_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_annotation_message(
+    message_id: int,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
     query = select(AnnotationMessage).where(
         and_(AnnotationMessage.id == message_id, AnnotationMessage.deleted_at.is_(None))
     )
@@ -240,6 +334,19 @@ async def delete_annotation_message(message_id: int, db: AsyncSession = Depends(
 
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
+
+    # Get the annotation to check file permission
+    query_annotation = select(Annotation).where(Annotation.id == message.annotation_id)
+    result = await db.execute(query_annotation)
+    annotation = cast(Optional[Annotation], result.scalar_one_or_none())
+
+    if annotation:
+        if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
+            raise HTTPException(status_code=403, detail="Comment permission required")
+
+    # Check message ownership
+    if message.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only delete your own messages")
 
     message.deleted_at = datetime.now(timezone.utc)  # type: ignore
     await db.commit()

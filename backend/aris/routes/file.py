@@ -5,8 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db, get_file_service
+from ..authorization import require_edit, require_manage, require_view
+from ..collaboration import get_collaboration_manager
+from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..models import FileAsset
+from ..models.models import FileRole
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
 from .file_assets import FileAssetOut
 
@@ -156,19 +160,28 @@ async def create_file(
     
     # Create in memory
     result = await file_service.create_file(create_data)
-    
+
     # Save to database
     await file_service.save_file_to_database(result.id, db)
-    
+
+    # Create OWNER permission for the file creator
+    await create_permission(
+        file_id=result.id,
+        user_id=doc.owner_id,
+        role=FileRole.OWNER,
+        granted_by=doc.owner_id,
+        db=db,
+    )
+
     return {"id": result.id}
 
 
 @router.get("/{file_id}")
 async def get_file(
-    file_id: int, 
+    file_id: int,
+    user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
-    user: UserRead = Depends(current_user)
 ):
     """Retrieve a specific file by ID.
 
@@ -176,6 +189,8 @@ async def get_file(
     ----------
     file_id : int
         The unique identifier of the file to retrieve.
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -190,33 +205,33 @@ async def get_file(
     ------
     HTTPException
         404 error if file is not found or has been deleted.
+        403 error if user lacks VIEW permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for in-memory access.
+    Requires authentication and VIEW permission. Uses file service for in-memory access.
     """
-    # Check file ownership first
-    from ..models.models import File
-    result = await db.execute(select(File).where(File.id == file_id, File.deleted_at.is_(None)))
-    file_record = result.scalar_one_or_none()
-    
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    if file_record.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
-    
+
     # Get file from memory
     doc = await file_service.get_file(file_id)
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
-    
+
+    # Start Y.js collaboration client for this file (if not already running)
+    try:
+        manager = get_collaboration_manager()
+        await manager.start_client(file_id)
+    except Exception as e:
+        # Log error but don't fail the request - collaboration is optional
+        import logging
+        logger = logging.getLogger("aris.routes.file")
+        logger.warning(f"Failed to start collaboration client for file {file_id}: {e}")
+
     # Get extracted title
     title = await file_service.get_file_title(file_id)
-    
+
     return {
         "id": file_id,
         "title": title or doc.title,  # Use extracted title or fallback to original
@@ -233,9 +248,9 @@ async def get_file(
 async def update_file(
     file_id: int,
     file_data: FileUpdate,
+    user_role: FileRole = Depends(require_edit),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
-    user: UserRead = Depends(current_user)
 ):
     """Update an existing file's content and metadata.
 
@@ -245,6 +260,8 @@ async def update_file(
         The unique identifier of the file to update.
     file_data : FileUpdate
         Updated file data including title, abstract, and source.
+    user_role : FileRole
+        User's role for permission checking (injected by require_edit).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -259,24 +276,14 @@ async def update_file(
     ------
     HTTPException
         404 error if file is not found.
+        403 error if user lacks EDIT permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for in-memory updates.
+    Requires authentication and EDIT permission. Uses file service for in-memory updates.
     """
-    # Check file ownership first
-    from ..models.models import File
-    result = await db.execute(select(File).where(File.id == file_id, File.deleted_at.is_(None)))
-    file_record = result.scalar_one_or_none()
-    
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    if file_record.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
     # Validation happens automatically via Pydantic field_validator
-    
+
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
     
@@ -312,10 +319,10 @@ async def update_file(
 
 @router.delete("/{file_id}")
 async def soft_delete_file(
-    file_id: int, 
+    file_id: int,
+    user_role: FileRole = Depends(require_manage),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
-    user: UserRead = Depends(current_user)
 ):
     """Soft delete a file by setting deleted_at timestamp.
 
@@ -323,6 +330,8 @@ async def soft_delete_file(
     ----------
     file_id : int
         The unique identifier of the file to delete.
+    user_role : FileRole
+        User's role for permission checking (injected by require_manage).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -337,22 +346,12 @@ async def soft_delete_file(
     ------
     HTTPException
         404 error if file is not found.
+        403 error if user lacks OWNER permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for in-memory soft delete.
+    Requires authentication and OWNER permission. Uses file service for in-memory soft delete.
     """
-    # Check file ownership first
-    from ..models.models import File
-    result = await db.execute(select(File).where(File.id == file_id, File.deleted_at.is_(None)))
-    file_record = result.scalar_one_or_none()
-    
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    if file_record.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
     
@@ -369,7 +368,9 @@ async def soft_delete_file(
 
 @router.post("/{file_id}/duplicate")
 async def duplicate_file(
-    file_id: int, 
+    file_id: int,
+    user_role: FileRole = Depends(require_view),
+    user: UserRead = Depends(current_user),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
@@ -379,6 +380,10 @@ async def duplicate_file(
     ----------
     file_id : int
         The unique identifier of the file to duplicate.
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
+    user : UserRead
+        Current authenticated user.
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -393,11 +398,12 @@ async def duplicate_file(
     ------
     HTTPException
         404 error if original file is not found.
+        403 error if user lacks VIEW permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for in-memory duplication
-    and copies tags from the original file.
+    Requires authentication and VIEW permission. Uses file service for in-memory duplication
+    and copies tags from the original file. User becomes OWNER of the duplicated file.
     """
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
@@ -409,7 +415,16 @@ async def duplicate_file(
     
     # Save to database
     await file_service.save_file_to_database(new_doc.id, db)
-    
+
+    # Create OWNER permission for the duplicating user
+    await create_permission(
+        file_id=new_doc.id,
+        user_id=user.id,
+        role=FileRole.OWNER,
+        granted_by=user.id,
+        db=db,
+    )
+
     # Copy tags from original file (using original logic)
     from ..models.models import file_tags
     tag_ids = (
@@ -421,7 +436,7 @@ async def duplicate_file(
             [{"file_id": new_doc.id, "tag_id": tag.tag_id} for tag in tag_ids],
         )
         await db.commit()
-    
+
     return {"id": new_doc.id, "message": "File duplicated successfully"}
 
 
@@ -429,6 +444,7 @@ async def duplicate_file(
 async def get_file_content(
     file_id: int,
     format: str = "html",
+    user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
@@ -440,6 +456,8 @@ async def get_file_content(
         The unique identifier of the file to render.
     format : str, optional
         Response format: "html" for HTML response or "structured" for JSON with head/body/init_script (default: "html").
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -456,10 +474,11 @@ async def get_file_content(
     HTTPException
         404 error if file is not found.
         400 error if format parameter is invalid.
+        403 error if user lacks VIEW permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for cached rendering.
+    Requires authentication and VIEW permission. Uses file service for cached rendering.
     Structured format enables tooltip support by providing head dependencies and init scripts.
     """
     # Validate format parameter
@@ -488,6 +507,7 @@ async def get_file_section(
     file_id: int,
     section_name: str,
     handrails: bool = True,
+    user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
@@ -501,6 +521,8 @@ async def get_file_section(
         Name of the section to extract (e.g., 'minimap', 'abstract').
     handrails : bool, optional
         Whether to enable handrails in the rendered output (default: True).
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -515,10 +537,11 @@ async def get_file_section(
     ------
     HTTPException
         404 error if file or section is not found.
+        403 error if user lacks VIEW permission.
 
     Notes
     -----
-    Requires authentication. Uses file service for cached section rendering.
+    Requires authentication and VIEW permission. Uses file service for cached section rendering.
     """
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
@@ -535,6 +558,7 @@ async def get_file_section(
 @router.get("/{file_id}/assets", response_model=list[FileAssetOut])
 async def get_assets_for_file(
     file_id: int,
+    user_role: FileRole = Depends(require_view),
     db: AsyncSession = Depends(get_db),
     user=Depends(current_user),
 ):
@@ -544,6 +568,8 @@ async def get_assets_for_file(
     ----------
     file_id : int
         The unique identifier of the file whose assets to retrieve.
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
     db : AsyncSession
         SQLAlchemy async database session dependency.
     user : User
@@ -554,9 +580,14 @@ async def get_assets_for_file(
     list of FileAssetOut
         List of file assets owned by the user for the specified file.
 
+    Raises
+    ------
+    HTTPException
+        403 error if user lacks VIEW permission.
+
     Notes
     -----
-    Requires authentication. Only returns assets owned by the current user.
+    Requires authentication and VIEW permission. Only returns assets owned by the current user.
     Excludes soft-deleted assets.
     """
     result = await db.execute(
@@ -573,9 +604,9 @@ async def get_assets_for_file(
 @router.get("/{file_id}/download")
 async def download_file(
     file_id: int,
+    user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
-    user: UserRead = Depends(current_user)
 ):
     """Download file as a complete standalone HTML document.
 
@@ -583,12 +614,12 @@ async def download_file(
     ----------
     file_id : int
         The unique identifier of the file to download.
+    user_role : FileRole
+        User's role for permission checking (injected by require_view).
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
-    user : UserRead
-        Current authenticated user dependency.
 
     Returns
     -------
@@ -599,11 +630,11 @@ async def download_file(
     ------
     HTTPException
         404 error if file is not found or has been deleted.
-        403 error if user does not own the file.
+        403 error if user lacks VIEW permission.
 
     Notes
     -----
-    Requires authentication. Uses rsm.build() to generate a complete HTML document
+    Requires authentication and VIEW permission. Uses rsm.build() to generate a complete HTML document
     with all necessary CSS/JS includes for standalone viewing.
     File is downloaded with .html extension using the file's title as filename.
     """
@@ -611,18 +642,6 @@ async def download_file(
     import re
 
     import rsm
-
-    from ..models.models import File
-
-    # Check file ownership first
-    result = await db.execute(select(File).where(File.id == file_id, File.deleted_at.is_(None)))
-    file_record = result.scalar_one_or_none()
-
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    if file_record.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
@@ -649,7 +668,7 @@ async def download_file(
     # Get file title for filename
     title = await file_service.get_file_title(file_id)
     if not title:
-        title = str(file_record.title) if file_record.title else "manuscript"
+        title = str(file_data.title) if file_data.title else "manuscript"
 
     # Sanitize filename (remove invalid characters)
     filename = re.sub(r'[<>:"/\\|?*]', '_', title) + '.html'

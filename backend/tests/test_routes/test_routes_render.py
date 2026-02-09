@@ -8,9 +8,9 @@ from httpx import AsyncClient
 
 
 OUTPUT = """
-<body>
+<body data-accent="blue" data-lang="en" data-typography="sans-serif">
 
-<div class="manuscriptwrapper">
+<main class="manuscriptwrapper">
 
 <div class="manuscript" data-nodeid="0">
 
@@ -79,7 +79,7 @@ OUTPUT = """
 
 </div>
 
-</div>
+</main>
 
 </body>
 """

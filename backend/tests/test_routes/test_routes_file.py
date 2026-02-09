@@ -344,7 +344,7 @@ async def test_download_file_returns_complete_html_document(client: AsyncClient,
     assert "</html>" in response.text.lower(), "Downloaded file must contain closing </html> tag"
 
     # Should include CSS/JS resources for standalone viewing
-    assert "rsm.css" in response.text or "<style" in response.text, "Downloaded file should include styles"
+    assert 'rel="stylesheet"' in response.text or "<style" in response.text, "Downloaded file should include styles"
 
 
 async def test_download_file_permission_denied(client: AsyncClient, authenticated_user, second_authenticated_user):

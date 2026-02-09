@@ -30,6 +30,14 @@ vi.mock("@/composables/useKeyboardShortcuts.js", () => ({
   registerAsFallback: vi.fn(),
 }));
 
+// Mock EditorCodeMirror
+vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
+  default: {
+    name: "EditorCodeMirror",
+    template: "<div />",
+  },
+}));
+
 describe("Workspace State Management", () => {
   let fileStore;
   let mockApi;

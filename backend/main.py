@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aris.collaboration import get_collaboration_manager
 from aris.deps import get_db
 from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
@@ -20,6 +21,7 @@ from aris.routes import (
     file_assets_router,
     file_router,
     file_settings_router,
+    permissions_router,
     render_router,
     signup_router,
     tag_router,
@@ -32,6 +34,7 @@ from aris.routes import (
 # Initialize logging before anything else
 setup_logging()
 logger = get_logger(__name__)
+collab_logger = get_logger("aris.collaboration")
 
 
 # API metadata for documentation
@@ -299,6 +302,7 @@ app.include_router(auth_router, tags=["authentication"])
 app.include_router(user_router, tags=["users"])
 app.include_router(user_public_router, tags=["users"])
 app.include_router(file_router, tags=["files"])
+app.include_router(permissions_router, prefix="/files", tags=["permissions"])
 app.include_router(tag_router, tags=["tags"])
 app.include_router(file_assets_router, tags=["file-assets"])
 app.include_router(file_settings_router, tags=["file-settings"])
@@ -307,6 +311,34 @@ app.include_router(render_router, tags=["render"])
 app.include_router(signup_router, tags=["signup"])
 app.include_router(copilot_router, tags=["copilot"])
 logger.info("All routers registered successfully")
+
+
+@app.on_event("startup")
+async def startup_collaboration_manager():
+    """Initialize CollaborationManager for real-time collaboration."""
+    # Disable in PROD, STAGING, CI, and test environments
+    env = os.getenv("ENV", "").upper()
+    if env in ("PROD", "STAGING", "CI") or os.getenv("PYTEST_CURRENT_TEST"):
+        logger.info(f"CollaborationManager disabled in {env or 'test'} environment")
+        return
+
+    try:
+        get_collaboration_manager()
+        logger.info("CollaborationManager initialized and ready")
+    except Exception as e:
+        logger.error(f"Failed to initialize CollaborationManager: {e}", exc_info=True)
+
+
+@app.on_event("shutdown")
+async def shutdown_collaboration_manager():
+    """Gracefully shutdown CollaborationManager."""
+    try:
+        manager = get_collaboration_manager()
+        logger.info("Shutting down CollaborationManager")
+        await manager.shutdown_all()
+        logger.info("CollaborationManager shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during CollaborationManager shutdown: {e}", exc_info=True)
 
 
 @app.middleware("http")

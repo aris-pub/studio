@@ -2,11 +2,12 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import case, desc, select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import File, FileSettings, User
+from ..models.models import FilePermission, FileRole
 from .file import get_file, get_file_section
 from .tag import get_user_file_tags
 from .utils import extract_title
@@ -27,8 +28,28 @@ async def get_user(user_id: int, db: AsyncSession):
     User or None
         The user object if found and not deleted, None otherwise.
     """
+    import logging
+    logger = logging.getLogger("aris.crud.user")
+    logger.info(f"[get_user] Querying for user_id={user_id}")
+    logger.info(f"[get_user] DB session: {db}, in_transaction: {db.in_transaction()}")
+
     result: Result[Any] = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
-    return result.scalars().first()
+    user = result.scalars().first()
+
+    logger.info(f"[get_user] Result: {user}")
+    if user:
+        logger.info(f"[get_user] Found user: id={user.id}, email={user.email}, deleted_at={user.deleted_at}")
+    else:
+        logger.warning(f"[get_user] User {user_id} not found in database")
+        # Query without deleted_at check to see if user exists but is deleted
+        check_result = await db.execute(select(User).where(User.id == user_id))
+        check_user = check_result.scalars().first()
+        if check_user:
+            logger.warning(f"[get_user] User {user_id} exists but is DELETED: deleted_at={check_user.deleted_at}")
+        else:
+            logger.warning(f"[get_user] User {user_id} does not exist at all in database")
+
+    return user
 
 
 async def create_user(name: str, initials: str, email: str, password_hash: str, db: AsyncSession):
@@ -151,7 +172,7 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
 
 
 async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
-    """Retrieve all files owned by a user with optional tag information.
+    """Retrieve all files accessible by a user (owned or shared) with optional tag information.
 
     Parameters
     ----------
@@ -166,7 +187,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
     -------
     list of dict
         List of file dictionaries containing id, title, source, last_edited_at,
-        and tags (if with_tags=True).
+        role, and tags (if with_tags=True).
 
     Raises
     ------
@@ -175,27 +196,55 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
 
     Notes
     -----
-    Files are ordered by last edited date (descending) then by source content.
+    Files are ordered by role (OWNER > EDITOR > COMMENTER), then by last edited date (descending).
     Titles are extracted asynchronously from RSM content using extract_title.
     Tags are fetched concurrently if requested to optimize performance.
+    Includes all files where user has any permission level.
     """
+    import logging
+    logger = logging.getLogger("aris.crud.user")
+    logger.info(f"[get_user_files] Called for user_id={user_id}, with_tags={with_tags}")
+    logger.info(f"[get_user_files] DB session: {db}, in_transaction: {db.in_transaction()}")
+
     user = await get_user(user_id, db)
     if not user:
+        logger.error(f"[get_user_files] User {user_id} not found, raising ValueError")
         raise ValueError(f"User {user_id} not found")
 
-    result: Result[Any] = await db.execute(
-        select(File)
-        .where(File.owner_id == user_id, File.deleted_at.is_(None))
-        .order_by(desc(File.last_edited_at), asc(File.source))
+    logger.info(f"[get_user_files] User found: id={user.id}, email={user.email}")
+
+    role_order = case(
+        (FilePermission.role == FileRole.OWNER, 1),
+        (FilePermission.role == FileRole.EDITOR, 2),
+        (FilePermission.role == FileRole.COMMENTER, 3),
+        else_=4
     )
-    docs = result.scalars().all()
+
+    result: Result[Any] = await db.execute(
+        select(File, FilePermission.role)
+        .join(FilePermission, File.id == FilePermission.file_id)
+        .where(
+            FilePermission.user_id == user_id,
+            File.deleted_at.is_(None),
+            FilePermission.deleted_at.is_(None),
+        )
+        .order_by(role_order, desc(File.last_edited_at))
+    )
+    rows = result.all()
+    docs_with_roles = [(row[0], row[1]) for row in rows]
+
+    docs = [doc for doc, _ in docs_with_roles]
+    roles = {doc: role for doc, role in docs_with_roles}
 
     titles_list = await asyncio.gather(*(extract_title(d) for d in docs))
     titles = dict(zip(docs, titles_list))
 
     tags: dict[Any, Any] = {}
     if with_tags:
-        tags_list = await asyncio.gather(*(get_user_file_tags(user_id, d.id, db) for d in docs))
+        tags_list = []
+        for d in docs:
+            file_tags = await get_user_file_tags(user_id, d.id, db)
+            tags_list.append(file_tags)
         tags = dict(zip(docs, tags_list))
 
     return [
@@ -204,6 +253,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
             "title": titles[doc],
             "source": doc.source,
             "last_edited_at": doc.last_edited_at,
+            "role": roles[doc].value,
             "tags": tags.get(doc, []),
         }
         for doc in docs

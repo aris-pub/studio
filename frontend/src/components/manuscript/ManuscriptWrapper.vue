@@ -83,11 +83,17 @@
     await nextTick();
 
     try {
+      const mountPoint = manuscriptRef.value?.mountPoint;
+      if (!mountPoint) {
+        executeRenderInProgress = false;
+        return;
+      }
+
       if (!onloadCalled.value) {
-        await onload.value(selfRef.value, { keys: props.keys, path: staticPath });
+        await onload.value(mountPoint, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {
-        await onrender.value(selfRef.value);
+        await onrender.value(mountPoint);
       }
     } catch (err) {
       console.error("Render error:", err);

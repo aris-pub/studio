@@ -291,9 +291,8 @@ describe("FilesPane.vue", () => {
 
   describe("File Focus Management", () => {
     it("clears focus from all files when activeIndex changes to null", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(1); // Start with a focused index
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -317,9 +316,8 @@ describe("FilesPane.vue", () => {
     });
 
     it("sets focus on correct visible file when activeIndex changes", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(0);
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -342,9 +340,8 @@ describe("FilesPane.vue", () => {
     });
 
     it("handles invalid activeIndex gracefully", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
       const activeIndexRef = ref(999); // Out of bounds
       mockUseListKeyboardNavigation.useListKeyboardNavigation.mockReturnValue({
         activeIndex: activeIndexRef,
@@ -397,9 +394,8 @@ describe("FilesPane.vue", () => {
 
   describe("Integration with useListKeyboardNavigation", () => {
     it("calls useListKeyboardNavigation with correct parameters", async () => {
-      const mockUseListKeyboardNavigation = await import(
-        "@/composables/useListKeyboardNavigation.js"
-      );
+      const mockUseListKeyboardNavigation =
+        await import("@/composables/useListKeyboardNavigation.js");
 
       // Create wrapper to ensure component lifecycle and watchers are set up
       const _wrapper = createWrapper();

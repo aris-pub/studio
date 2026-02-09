@@ -13,7 +13,8 @@ from aris.crud.tag import (
     soft_delete_tag,
     update_tag,
 )
-from aris.models import File, Tag, file_tags
+from aris.models import File, FilePermission, Tag, file_tags
+from aris.models.models import FileRole
 
 
 async def test_create_tag_success(db_session, test_user):
@@ -90,6 +91,17 @@ async def test_get_user_file_tags(db_session, test_user):
     tag2 = Tag(name="T2", color="green", user_id=test_user.id)
     db_session.add_all([file, tag1, tag2])
     await db_session.commit()
+    await db_session.refresh(file)
+
+    # Create OWNER permission for the file
+    permission = FilePermission(
+        file_id=file.id,
+        user_id=test_user.id,
+        role=FileRole.OWNER,
+        granted_by=test_user.id,
+    )
+    db_session.add(permission)
+    await db_session.commit()
 
     await add_tag_to_file(test_user.id, file.id, tag1.id, db_session)
     await add_tag_to_file(test_user.id, file.id, tag2.id, db_session)
@@ -147,7 +159,7 @@ async def test_soft_delete_tag_not_found_raises(db_session, test_user):
 
 
 async def test_get_user_file_tags_file_not_found_raises(db_session, test_user):
-    with pytest.raises(ValueError, match="File with id 9999 not found or does not belong to user"):
+    with pytest.raises(ValueError, match="File with id 9999 not found or user .* has no permission"):
         await get_user_file_tags(test_user.id, 9999, db_session)
 
 

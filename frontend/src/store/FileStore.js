@@ -1,8 +1,8 @@
-import { ref, computed, reactive } from "vue";
+import { ref, computed } from "vue";
 import { File } from "@/models/File.js";
 
 /**
- * Creates a file store for managing file state and synchronization
+ * Creates a file store for managing file metadata and collections
  * @param {Object} api - Axios API instance for backend communication
  * @param {Object} user - User information object
  * @returns {Object} File store with methods and state
@@ -12,58 +12,10 @@ export function createFileStore(api, user) {
   const files = ref([]);
   const numFiles = computed(() => files.value?.length || 0);
   const tags = ref([]);
-  const syncQueue = reactive(new Set());
-  const syncInProgress = ref(false);
 
   // Forward declare store for circular reference
   // eslint-disable-next-line prefer-const
   let store;
-
-  /**
-   * Queue a file for synchronization
-   * @param {Object|Number} fileOrFileId - File object or file ID to synchronize
-   */
-  const queueSync = async (fileOrFileId) => {
-    const fileId = typeof fileOrFileId === "number" ? fileOrFileId : fileOrFileId.id;
-    syncQueue.add(fileId);
-    await scheduleSyncProcess();
-  };
-
-  /**
-   * Process the sync queue
-   */
-  const syncProcess = async () => {
-    if (syncInProgress.value || syncQueue.size === 0) return;
-
-    try {
-      syncInProgress.value = true;
-
-      for (const fileId of syncQueue) {
-        const file = files.value.find((f) => f.id === fileId);
-        if (!file) continue;
-        await File.save(file, api, user);
-      }
-
-      syncQueue.clear();
-    } catch (error) {
-      console.error("Error during file sync:", error);
-    } finally {
-      syncInProgress.value = false;
-      // If there are still items in the queue, schedule another sync
-      if (syncQueue.size > 0) {
-        scheduleSyncProcess();
-      }
-    }
-  };
-
-  /**
-   * Schedule sync process with debounce
-   */
-  let syncTimeout = null;
-  const scheduleSyncProcess = () => {
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(syncProcess, 800);
-  };
 
   /**
    * Load files from the server
@@ -134,8 +86,6 @@ export function createFileStore(api, user) {
       if (index !== -1) {
         files.value.splice(index, 1);
       }
-      // Remove from sync queue
-      syncQueue.delete(fileId);
     }
   };
 
@@ -305,10 +255,8 @@ export function createFileStore(api, user) {
     files,
     numFiles,
     tags,
-    syncInProgress,
     selectedFile,
     filteredFiles,
-    syncQueue, // Add syncQueue to the store for tests
 
     // File methods
     loadFiles,
@@ -319,7 +267,6 @@ export function createFileStore(api, user) {
     clearFilters,
     selectFile,
     clearSelection,
-    queueSync,
     getRecentFiles,
 
     // Tag methods

@@ -59,7 +59,21 @@ export default defineConfig({
         // CI: All browsers for comprehensive testing across different OS runners
         {
           name: "chromium",
-          use: { ...devices["Desktop Chrome"] },
+          use: {
+            ...devices["Desktop Chrome"],
+            // Fix #2: CI-specific Chromium flags to prevent timing issues
+            launchOptions: {
+              args: [
+                "--disable-background-timer-throttling", // Prevent timer delays
+                "--disable-backgrounding-occluded-windows", // No background throttling
+                "--disable-renderer-backgrounding", // Keep renderer active
+                "--disable-dev-shm-usage", // /dev/shm too small in Docker
+                "--disable-gpu", // No GPU in CI
+                "--no-sandbox", // Docker isolation already sandboxes
+                "--disable-setuid-sandbox",
+              ],
+            },
+          },
         },
         {
           name: "firefox",

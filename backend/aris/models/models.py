@@ -67,6 +67,25 @@ class AvatarColor(enum.Enum):
         return random.choice(list(cls))
 
 
+class FileRole(enum.Enum):
+    """Enum for file permission roles.
+
+    Attributes
+    ----------
+    OWNER : str
+        Full control over file, can manage collaborators.
+    EDITOR : str
+        Can edit and comment, cannot manage collaborators.
+    COMMENTER : str
+        Can view and comment only.
+
+    """
+
+    OWNER = "OWNER"
+    EDITOR = "EDITOR"
+    COMMENTER = "COMMENTER"
+
+
 class User(Base):
     """Represents an application user who owns files, tags, and file assets.
 
@@ -148,6 +167,12 @@ class User(Base):
         "FileAsset", back_populates="owner", cascade="all, delete-orphan"
     )
     profile_picture = relationship("ProfilePicture", back_populates="user")
+    file_permissions = relationship(
+        "FilePermission",
+        foreign_keys="[FilePermission.user_id]",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
     def __init__(self, **kwargs):
         """Initialize User with default values."""
@@ -324,6 +349,9 @@ class File(Base):
     )
     file_settings = relationship(
         "FileSettings", back_populates="file", cascade="all, delete-orphan"
+    )
+    permissions = relationship(
+        "FilePermission", back_populates="file", cascade="all, delete-orphan"
     )
 
     def __init__(self, **kwargs):
@@ -716,3 +744,47 @@ class Signup(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class FilePermission(Base):
+    """Represents a user's permission level for a file.
+
+    Attributes
+    ----------
+    id : int
+        Primary key.
+    file_id : int
+        Foreign key to File.
+    user_id : int
+        Foreign key to User.
+    role : FileRole
+        Permission role (OWNER, EDITOR, COMMENTER).
+    granted_at : datetime
+        When permission was granted.
+    granted_by : int
+        User ID who granted the permission.
+    deleted_at : datetime
+        Timestamp for soft deletes.
+
+    """
+
+    __tablename__ = "file_permissions"
+    __table_args__ = (
+        UniqueConstraint("file_id", "user_id", "deleted_at", name="uq_file_user_permission"),
+        Index("ix_file_permissions_file_id", "file_id"),
+        Index("ix_file_permissions_user_id", "user_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role: Mapped[FileRole] = mapped_column(
+        Enum(FileRole, name="filerole"), nullable=False
+    )
+    granted_at = Column(DateTime(timezone=True), server_default=func.now())
+    granted_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    file = relationship("File", back_populates="permissions")
+    user = relationship("User", foreign_keys=[user_id], back_populates="file_permissions")
+    grantor = relationship("User", foreign_keys=[granted_by])

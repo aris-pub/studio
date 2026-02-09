@@ -29,12 +29,26 @@ logs:
 # Testing Commands
 # ================
 
-# Run all tests (skip slow tests and E2E in dev, CI runs all)
+# Run all tests locally (Docker is for dev server only, not tests)
+# Backend tests run on macOS with macOS binaries (no binary conflicts)
+# CI runs tests on Linux separately
 test:
     cd backend && uv run pytest -n8 -m "not slow"
     cd cli && uv run pytest -v
     cd site && npm run test:all
     cd frontend && npm run test:run
+
+# Run Y.js collaboration E2E tests (requires 'just dev' running)
+# Tests spawn multiple browsers and must run sequentially (--workers=1)
+# Usage: just test-collab [browser] [reporter] (defaults: all browsers, line reporter)
+test-collab browser="" reporter="line":
+    #!/usr/bin/env bash
+    cd frontend
+    if [ -n "{{browser}}" ]; then
+        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
+    else
+        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
+    fi
 
 # Run all linters
 lint:
