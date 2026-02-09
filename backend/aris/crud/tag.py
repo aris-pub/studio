@@ -90,7 +90,7 @@ async def get_user_file_tags(user_id: int, doc_id: int, db: AsyncSession):
             FilePermission.deleted_at.is_(None),
         )
     )
-    file = file_result.scalar_one_or_none()
+    file = file_result.scalars().first()
 
     if file is None:
         raise ValueError(f"File with id {doc_id} not found or user {user_id} has no permission")

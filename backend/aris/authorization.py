@@ -52,7 +52,7 @@ async def get_user_role_for_file(
         )
     )
     result = await db.execute(stmt)
-    role = result.scalar_one_or_none()
+    role = result.scalars().first()
     return role
 
 

@@ -241,7 +241,10 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
 
     tags: dict[Any, Any] = {}
     if with_tags:
-        tags_list = await asyncio.gather(*(get_user_file_tags(user_id, d.id, db) for d in docs))
+        tags_list = []
+        for d in docs:
+            file_tags = await get_user_file_tags(user_id, d.id, db)
+            tags_list.append(file_tags)
         tags = dict(zip(docs, tags_list))
 
     return [
