@@ -27,11 +27,26 @@
     debounceTime: 2000,
     autoSaveInterval: 30000,
     onCompile: async () => {
+      // Get source from CodeMirror if available, otherwise from editSession
+      let source = editSession.content.value;
+      if (USE_CODEMIRROR.value && window.__ytext) {
+        source = window.__ytext.toString();
+        console.log("[COMPILE] Using source from Y.js");
+      } else {
+        console.log("[COMPILE] Using source from editSession");
+      }
+
+      console.log("[COMPILE] Source length:", source?.length);
+      console.log("[COMPILE] Source content:", source);
+      console.log("[COMPILE] Current HTML length:", file.value.html?.length);
       const response = await api.post("render/private", {
-        source: editSession.content.value,
+        source: source,
         file_id: file.value.id,
       });
+      console.log("[COMPILE] New HTML length:", response.data?.length);
+      console.log("[COMPILE] HTML changed:", file.value.html !== response.data);
       file.value.html = response.data;
+      console.log("[COMPILE] file.value.html updated");
     },
   });
 

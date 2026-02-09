@@ -35,7 +35,9 @@
   const manuscriptKey = ref(0);
   watch(
     () => props.htmlString,
-    () => {
+    (newVal, oldVal) => {
+      console.log("[ManuscriptWrapper] htmlString changed, length:", newVal?.length, "key:", manuscriptKey.value);
+      console.log("[ManuscriptWrapper] Changed:", newVal !== oldVal);
       manuscriptKey.value++;
     }
   );
@@ -66,29 +68,48 @@
   const selfRef = useTemplateRef("self-ref");
 
   const executeRender = async () => {
+    console.log("[ManuscriptWrapper executeRender] Called");
     if (executeRenderInProgress) {
+      console.log("[ManuscriptWrapper executeRender] Already in progress, skipping");
       return;
     }
 
     if (!selfRef.value || !props.htmlString || !onload.value) {
+      console.log("[ManuscriptWrapper executeRender] Missing dependencies:", {
+        selfRef: !!selfRef.value,
+        htmlString: !!props.htmlString,
+        onload: !!onload.value
+      });
       return;
     }
     if (props.htmlString === lastHtmlString) {
+      console.log("[ManuscriptWrapper executeRender] HTML unchanged, skipping");
       return;
     }
 
+    console.log("[ManuscriptWrapper executeRender] Rendering...");
     executeRenderInProgress = true;
     lastHtmlString = props.htmlString;
 
     await nextTick();
 
     try {
+      const mountPoint = manuscriptRef.value?.mountPoint;
+      if (!mountPoint) {
+        console.log("[ManuscriptWrapper executeRender] No mountPoint available");
+        executeRenderInProgress = false;
+        return;
+      }
+
       if (!onloadCalled.value) {
-        await onload.value(selfRef.value, { keys: props.keys, path: staticPath });
+        console.log("[ManuscriptWrapper executeRender] Calling onload on mountPoint");
+        await onload.value(mountPoint, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {
-        await onrender.value(selfRef.value);
+        console.log("[ManuscriptWrapper executeRender] Calling onrender on mountPoint");
+        await onrender.value(mountPoint);
       }
+      console.log("[ManuscriptWrapper executeRender] Render complete");
     } catch (err) {
       console.error("Render error:", err);
     } finally {
