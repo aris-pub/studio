@@ -330,6 +330,10 @@ jobs:
       working-directory: site
       run: |
         echo "🧪 Running site E2E tests on ${{ matrix.browser }} ${{ matrix.device }} (Docker environment)..."
+
+        # Source .env file to set port variables for Playwright config
+        export $(cat ../.env | xargs)
+
         if [ "${{ matrix.device }}" = "mobile" ]; then
           if [ "${{ matrix.browser }}" = "firefox" ]; then
             npx playwright test --project="Mobile Firefox" --reporter=github
