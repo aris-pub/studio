@@ -1,8 +1,36 @@
 #!/usr/bin/env node
 /* global require, __dirname, console, process */
 /**
- * Patch y-codemirror.next to fix echo prevention
- * Patches BOTH dist (CommonJS) and src (ES modules) because Vite uses src/
+ * Patch y-codemirror.next to fix echo prevention bug
+ *
+ * PROBLEM:
+ * Remote edits echo back to their origin, causing duplicate characters in Docker.
+ *
+ * ROOT CAUSE:
+ * y-codemirror.next uses object identity to prevent echoes:
+ *   if (tr.origin !== ySyncOrigin) { ... }
+ *
+ * This fails in Docker because the ySyncOrigin object created in one module
+ * isn't === identical to the same object in another module (different memory addresses).
+ *
+ * SOLUTION:
+ * Add check for tr.local flag which is set by Y.js for local transactions:
+ *   if (tr.origin !== ySyncOrigin && !tr.local) { ... }
+ *
+ * The tr.local flag is reliable across module boundaries because it's a boolean primitive.
+ *
+ * WHY PATCH TWO FILES:
+ * - dist/y-codemirror.cjs: Used by CommonJS builds
+ * - src/y-sync.js: Used by Vite (ES modules)
+ *
+ * APPLIED:
+ * - Automatically via npm postinstall hook
+ * - Automatically via Docker frontend entrypoint
+ *
+ * SEE ALSO:
+ * - ../backend/aris/collaboration/README.md (backend-as-client architecture)
+ * - ../../multi-player/README.md (WebSocket server)
+ * - ../.claude/CLAUDE.md (Y.js collaboration overview)
  */
 
 const fs = require('fs');
