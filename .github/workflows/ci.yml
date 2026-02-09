@@ -333,7 +333,8 @@ jobs:
         echo "🧪 Running site E2E tests on ${{ matrix.browser }} ${{ matrix.device }} (Docker environment)..."
 
         # Source .env file to set port variables for Playwright config
-        export $(cat ../.env | xargs)
+        # Filter out comments and blank lines
+        export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
         if [ "${{ matrix.device }}" = "mobile" ]; then
           if [ "${{ matrix.browser }}" = "firefox" ]; then
