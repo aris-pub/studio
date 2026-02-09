@@ -215,7 +215,6 @@ jobs:
 
   # Site E2E Tests (All Browsers)
   e2e-site:
-    needs: [unit-backend, unit-frontend, unit-site]
     strategy:
       fail-fast: false
       matrix:
