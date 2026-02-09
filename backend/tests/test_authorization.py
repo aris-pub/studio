@@ -8,7 +8,6 @@ from aris.authorization import (
     PermissionLevel,
     get_user_role_for_file,
     has_permission,
-    require_comment,
     require_edit,
     require_manage,
     require_view,

@@ -19,7 +19,7 @@ sys.path.insert(0, str(backend_dir))
 
 # Import aris modules after adding to path
 from aris.deps import ArisSession  # noqa: E402
-from aris.models.models import File, FileStatus, Tag, User  # noqa: E402
+from aris.models.models import File, FilePermission, FileRole, FileStatus, Tag, User  # noqa: E402
 from aris.security import hash_password  # noqa: E402
 
 
@@ -80,6 +80,11 @@ async def reset_test_user():
             print("🔍 [RESET-USER-DEBUG] Deleting file_tags...")
             await session.execute(
                 text("DELETE FROM file_tags WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id)"),
+                {"user_id": user_id},
+            )
+            print("🔍 [RESET-USER-DEBUG] Deleting file_permissions...")
+            await session.execute(
+                text("DELETE FROM file_permissions WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id)"),
                 {"user_id": user_id},
             )
             print("🔍 [RESET-USER-DEBUG] Deleting files...")
@@ -161,6 +166,19 @@ This is another stable test file for visual tests.
         print("🔍 [RESET-USER-DEBUG] Committing test files...")
         await session.commit()
         print(f"✅ [RESET-USER-DEBUG] Created {len(test_files)} test files")
+
+        # Create OWNER permissions for test files
+        print("🔍 [RESET-USER-DEBUG] Creating OWNER permissions for test files...")
+        for test_file in test_files:
+            permission = FilePermission(
+                file_id=test_file.id,
+                user_id=user_id,
+                role=FileRole.OWNER,
+                granted_by=user_id,
+            )
+            session.add(permission)
+        await session.commit()
+        print(f"✅ [RESET-USER-DEBUG] Created OWNER permissions for {len(test_files)} files")
 
         # Create stable test tags
         print("🔍 [RESET-USER-DEBUG] Creating test tags...")

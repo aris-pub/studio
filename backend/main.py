@@ -1,6 +1,5 @@
 """Aris backend: FastApi app."""
 
-import asyncio
 import importlib
 import os
 import sys
@@ -324,7 +323,7 @@ async def startup_collaboration_manager():
         return
 
     try:
-        manager = get_collaboration_manager()
+        get_collaboration_manager()
         logger.info("CollaborationManager initialized and ready")
     except Exception as e:
         logger.error(f"Failed to initialize CollaborationManager: {e}", exc_info=True)
