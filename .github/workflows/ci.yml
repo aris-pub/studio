@@ -372,8 +372,8 @@ jobs:
     - name: Cleanup Docker services
       if: always()
       run: |
-        echo "🧹 Cleaning up Docker services for $COMPOSE_PROJECT_NAME..."
-        docker compose down -v --remove-orphans
+        echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
+        docker compose down --remove-orphans
         echo "✅ Cleanup complete"
 
   # Desktop E2E Tests (Chrome)
@@ -1756,7 +1756,7 @@ jobs:
     - name: Cleanup Docker services
       if: always()
       run: |
-        echo "🧹 Cleaning up Docker services for $COMPOSE_PROJECT_NAME..."
-        docker compose down -v --remove-orphans
+        echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
+        docker compose down --remove-orphans
         echo "✅ Cleanup complete"
 
