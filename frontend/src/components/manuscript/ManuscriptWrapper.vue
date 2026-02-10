@@ -37,6 +37,9 @@
     () => props.htmlString,
     () => {
       manuscriptKey.value++;
+      // Reset onloadCalled when Manuscript is destroyed/recreated
+      // so the new mountPoint gets properly initialized with onload()
+      onloadCalled.value = false;
     }
   );
   const onload = ref(null);
