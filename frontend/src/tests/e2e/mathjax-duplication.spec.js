@@ -342,36 +342,50 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       expect(initialCounts.block).toBe(2);
 
       // Open the source editor by clicking the sidebar "source" button
-      const editorButton = page.locator(".sb-item").filter({ hasText: "source" });
-      await editorButton.click();
+      await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
 
       // Wait for editor to be visible
       await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
         timeout: 5000,
       });
 
-      // Wait for the textarea editor to load
-      const editor = page.locator("textarea.editor");
-      await expect(editor).toBeVisible({ timeout: 5000 });
+      // Wait for CodeMirror editor to load
+      await page.waitForSelector(".cm-editor", { timeout: 5000 });
+      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Get current content and modify it
-      const currentContent = await editor.inputValue();
-      const newContent = currentContent.replace(
-        "# Test Document for MathJax Bug",
-        "# Test Document for MathJax Bug EDIT1"
+      const currentContent = await page.evaluate(() => window.__cmView.state.doc.toString());
+
+      // Edit content via CodeMirror dispatch
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        const text = doc.toString();
+        const newText = text.replace(
+          "# Test Document for MathJax Bug",
+          "# Test Document for MathJax Bug EDIT1"
+        );
+        view.dispatch({
+          changes: { from: 0, to: doc.length, insert: newText }
+        });
+      });
+
+      // Wait for Y.js to sync and content to update
+      await page.waitForFunction(
+        () => window.__ytext?.toString().includes("EDIT1"),
+        {},
+        { timeout: 5000 }
       );
 
-      // Set up response wait BEFORE filling to catch the debounced save
-      const savePromise = page.waitForResponse(
-        (response) => response.url().includes("/files/") && response.request().method() === "PUT",
-        { timeout: 15000 }
+      // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+      await page.click('button:has-text("compile")');
+
+      // Wait for compilation to complete
+      await page.waitForResponse(
+        (response) => response.url().includes("/render/private") && response.status() === 200,
+        { timeout: 10000 }
       );
-
-      // Use fill() which reliably triggers Vue input events
-      await editor.fill(newContent);
-
-      // Wait for the save to complete
-      await savePromise;
 
       // Wait for MathJax to finish
       await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
@@ -411,31 +425,43 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       // On mobile, switch back to source editor for second edit
       if (isMobile) {
-        const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });
-        await sourceButton.click();
+        await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
         await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
           timeout: 5000,
         });
-        const editorAgain = page.locator("textarea.editor");
-        await editorAgain.click();
+        await page.waitForSelector(".cm-editor", { timeout: 5000 });
+        await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
       }
 
       // Get current content and make second edit
-      const editorAgainForEdit = isMobile ? page.locator("textarea.editor") : editor;
-      const currentContent2 = await editorAgainForEdit.inputValue();
-      const newContent2 = currentContent2.replace("EDIT1", "EDIT1 EDIT2");
+      const currentContent2 = await page.evaluate(() => window.__cmView.state.doc.toString());
 
-      // Set up save wait before second edit
-      const savePromise2 = page.waitForResponse(
-        (response) => response.url().includes("/files/") && response.request().method() === "PUT",
-        { timeout: 15000 }
+      // Make another edit via CodeMirror dispatch
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        const text = doc.toString();
+        const newText = text.replace("EDIT1", "EDIT1 EDIT2");
+        view.dispatch({
+          changes: { from: 0, to: doc.length, insert: newText }
+        });
+      });
+
+      // Wait for Y.js to sync and content to update
+      await page.waitForFunction(
+        () => window.__ytext?.toString().includes("EDIT2"),
+        {},
+        { timeout: 5000 }
       );
 
-      // Make another edit
-      await editorAgainForEdit.fill(newContent2);
+      // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+      await page.click('button:has-text("compile")');
 
-      // Wait for save
-      await savePromise2;
+      // Wait for compilation to complete
+      await page.waitForResponse(
+        (response) => response.url().includes("/render/private") && response.status() === 200,
+        { timeout: 10000 }
+      );
 
       // Wait for MathJax to finish
       await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
@@ -514,34 +540,50 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       console.log(`Initial MathJax script count: ${initialScriptCount}`);
 
       // Open editor
-      const editorButton = page.locator(".sb-item").filter({ hasText: "source" });
-      await editorButton.click();
+      await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
 
       await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
         timeout: 5000,
       });
 
-      const editor = page.locator("textarea.editor");
-      await expect(editor).toBeVisible({ timeout: 5000 });
+      // Wait for CodeMirror editor to load
+      await page.waitForSelector(".cm-editor", { timeout: 5000 });
+      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
-      // Make 2 edits and wait for each to save (2 is sufficient to verify no duplication)
-      let currentContent = await editor.inputValue();
-
+      // Make 2 edits and wait for each to sync (2 is sufficient to verify no duplication)
       for (let i = 0; i < 2; i++) {
+        // Get current content
+        const currentContent = await page.evaluate(() => window.__cmView.state.doc.toString());
+
         // Modify content
         const editMarker = i === 0 ? "# Test Document for MathJax Bug" : `edit${i - 1}`;
-        currentContent = currentContent.replace(editMarker, `${editMarker} edit${i}`);
+        const newContent = currentContent.replace(editMarker, `${editMarker} edit${i}`);
 
-        // Set up wait BEFORE filling
-        const savePromise = page.waitForResponse(
-          (response) => response.url().includes("/files/") && response.request().method() === "PUT",
-          { timeout: 15000 }
+        // Edit content via CodeMirror dispatch
+        await page.evaluate((content) => {
+          const view = window.__cmView;
+          const doc = view.state.doc;
+          view.dispatch({
+            changes: { from: 0, to: doc.length, insert: content }
+          });
+        }, newContent);
+
+        // Wait for Y.js to sync
+        await page.waitForFunction(
+          (marker) => window.__ytext?.toString().includes(marker),
+          `edit${i}`,
+          { timeout: 5000 }
         );
 
-        await editor.fill(currentContent);
+        // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+        await page.click('button:has-text("compile")');
 
-        // Wait for save
-        await savePromise;
+        // Wait for compilation to complete
+        await page.waitForResponse(
+          (response) => response.url().includes("/render/private") && response.status() === 200,
+          { timeout: 10000 }
+        );
 
         // Wait for MathJax to finish
         await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
