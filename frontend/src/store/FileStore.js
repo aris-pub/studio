@@ -26,8 +26,14 @@ export function createFileStore(api, user) {
         params: { with_tags: true },
       });
 
+      // Deduplicate response data by ID (in case API returns duplicates)
+      const uniqueFiles = new Map();
+      response.data.forEach((file) => {
+        uniqueFiles.set(file.id, file);
+      });
+
       // Preserve selected and filtered states when reloading
-      files.value = response.data.map((newFile) => {
+      files.value = Array.from(uniqueFiles.values()).map((newFile) => {
         const existingFile = files.value.find((f) => f.id === newFile.id);
 
         // DONT use createFile - that will create a new file in the DB!
