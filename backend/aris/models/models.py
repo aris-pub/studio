@@ -353,6 +353,9 @@ class File(Base):
     permissions = relationship(
         "FilePermission", back_populates="file", cascade="all, delete-orphan"
     )
+    versions = relationship(
+        "FileVersion", back_populates="file", cascade="all, delete-orphan"
+    )
 
     def __init__(self, **kwargs):
         """Initialize File with default values."""
@@ -361,6 +364,62 @@ class File(Base):
             kwargs["version"] = 0
         super().__init__(**kwargs)
 
+
+class FileVersion(Base):
+    """A named snapshot of a file at a specific point in time.
+
+    Stores RSM plaintext snapshots for version history and recovery.
+    Each version has a sequential number and optional user-provided name.
+
+    Attributes
+    ----------
+    id : int
+        Primary key.
+    file_id : int
+        Foreign key to File.
+    version_number : int
+        Sequential version number (1, 2, 3...).
+    version_name : str
+        User-provided version name (e.g., "Before review", "Final submission").
+    rsm_content : str
+        Full RSM plaintext snapshot at this version.
+    title : str
+        File title at time of version creation.
+    abstract : str
+        File abstract at time of version creation.
+    created_by : int
+        Foreign key to User who created this version.
+    created_at : datetime
+        Timestamp of version creation.
+    deleted_at : datetime
+        Soft delete marker.
+    file : File
+        Relationship to parent file.
+    creator : User
+        Relationship to user who created this version.
+
+    """
+
+    __tablename__ = "file_versions"
+    __table_args__ = (
+        UniqueConstraint("file_id", "version_number", name="uq_file_version_number"),
+        Index("ix_file_versions_file_id", "file_id"),
+        Index("ix_file_versions_created_at", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False)
+    version_number = Column(Integer, nullable=False)
+    version_name = Column(String(255), nullable=True)
+    rsm_content = Column(Text, nullable=False)
+    title = Column(String, nullable=True)
+    abstract = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    file = relationship("File", back_populates="versions")
+    creator = relationship("User")
 
 
 class Tag(Base):

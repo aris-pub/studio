@@ -11,6 +11,7 @@ from .tag import router as tag_router
 from .user import public_router as user_public_router
 from .user import router as user_router
 from .user_settings import router as user_settings_router
+from .versions import router as versions_router
 
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "user_router",
     "user_public_router",
     "user_settings_router",
+    "versions_router",
 ]
