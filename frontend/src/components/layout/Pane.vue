@@ -96,10 +96,14 @@
     margin-left: 4px;
   }
 
+  .content:not(:first-child) {
+    padding-top: 16px;
+  }
+
   .content {
     overflow-x: auto;
     overflow-y: auto;
-    padding-block: 16px;
+    padding-bottom: 16px;
     flex: 1;
     min-height: 0;
   }

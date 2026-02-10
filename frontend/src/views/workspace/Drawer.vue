@@ -29,15 +29,15 @@
   .drawer {
     background: var(--surface-page);
     position: absolute;
-    top: calc(-1 * 64px);
-    bottom: 16px;
+    top: -8px;
+    bottom: 24px;
     left: calc(-1 * var(--sidebar-width));
     width: calc(var(--sidebar-width) - 8px);
     border-radius: 16px;
     box-shadow: var(--shadow-soft);
     overflow: hidden;
-    border: var(--border-thin) solid var(--purple-300);
     opacity: 0;
+    overflow-y: auto;
     transition:
       left 0.3s ease,
       opacity 0.3s ease;

@@ -160,9 +160,10 @@ describe("DocumentView", () => {
       expect(wrapper.text()).toContain("Document Display");
     });
 
-    it("renders settings sections", () => {
-      const sections = wrapper.findAll('[data-testid="section"]');
-      expect(sections.length).toBeGreaterThanOrEqual(2);
+    it("renders settings and preview sections", () => {
+      // Verify the two main layout sections render
+      expect(wrapper.find(".pane-settings").exists()).toBe(true);
+      expect(wrapper.find(".settings-preview").exists()).toBe(true);
     });
 
     it("renders FileSettings component", () => {
@@ -285,7 +286,7 @@ describe("DocumentView", () => {
   describe("Layout Structure", () => {
     it("has proper CSS classes for layout", () => {
       expect(wrapper.find(".settings-main").exists()).toBe(true);
-      expect(wrapper.find(".settings-controls").exists()).toBe(true);
+      expect(wrapper.find(".pane-settings").exists()).toBe(true);
       expect(wrapper.find(".settings-preview").exists()).toBe(true);
     });
 

@@ -85,32 +85,24 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
     </template>
 
     <div class="settings-main">
-      <div class="settings-controls">
-        <Section>
-          <template #title>Display Settings</template>
-          <template #content>
-            <FileSettings
-              ref="file-settings-ref"
-              v-model="defaultSettings"
-              :header="false"
-              @save="onSave"
-            />
-          </template>
-        </Section>
 
-        <Section>
-          <template #content>
-            <div class="info">
-              <IconInfoCircle />
-              <p>
-                These settings will be applied to <em>new</em> files. Modify the settings of
-                <em>existing</em> files by opening them and choosing the Settings option in the
-                sidebar.
-              </p>
-            </div>
-          </template>
-        </Section>
-      </div>
+      <Pane class="pane-settings">
+        <FileSettings
+          ref="file-settings-ref"
+          v-model="defaultSettings"
+          :header="false"
+          @save="onSave"
+        />
+        <div class="info">
+          <IconInfoCircle />
+          <p>
+            These settings will be applied to <em>new</em> files. Modify the settings of
+            <em>existing</em> files by opening them and choosing the Settings option in the
+            sidebar.
+          </p>
+        </div>
+      </Pane>
+
       <div class="settings-preview">
         <ManuscriptWrapper
           :html-string="file?.html || ''"
@@ -118,6 +110,7 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
           :settings="defaultSettings"
         />
       </div>
+
     </div>
   </Pane>
 </template>
@@ -129,8 +122,8 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
     gap: 24px;
   }
 
-  .settings-controls {
-    width: 324px;
+  .pane-settings {
+    max-width: 356px;
     flex-shrink: 0;
   }
 

@@ -66,31 +66,18 @@ describe("FileSettings.vue", () => {
       props: { modelValue: settings, header: false },
       global: {
         provide: { mobileMode: false },
-        stubs: {
-          Pane: {
-            name: "Pane",
-            template:
-              '<div class="pane"><div v-if="$slots.header" class="pane-header"><slot name="header" /></div><div class="content"><slot /></div></div>',
-          },
-        },
       },
     });
-    expect(wrapperHide.findComponent({ name: "Pane" }).html()).not.toContain("File Settings");
+    expect(wrapperHide.find(".settings-header").exists()).toBe(false);
 
     const wrapperShow = shallowMount(FileSettings, {
       props: { modelValue: settings, header: true },
       global: {
         provide: { mobileMode: false },
-        stubs: {
-          Pane: {
-            name: "Pane",
-            template:
-              '<div class="pane"><div v-if="$slots.header" class="pane-header"><slot name="header" /></div><div class="content"><slot /></div></div>',
-          },
-        },
       },
     });
-    expect(wrapperShow.findComponent({ name: "Pane" }).html()).toContain("File Settings");
+    expect(wrapperShow.find(".settings-header").exists()).toBe(true);
+    expect(wrapperShow.find(".settings-header").text()).toContain("File Settings");
   });
 
   it("updates background when ColorPicker emits change", async () => {

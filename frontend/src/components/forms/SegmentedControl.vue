@@ -118,12 +118,12 @@
     }
 
     &:active {
-      background-color: var(--purple-400) !important;
+      background-color: var(--blue-400) !important;
     }
 
     &.active {
       color: var(--almost-black);
-      background-color: var(--purple-300);
+      background-color: var(--blue-300);
       border-color: transparent;
       box-shadow: var(--shadow-soft), var(--shadow-strong);
 
@@ -143,7 +143,7 @@
 
       &:hover {
         box-shadow: var(--shadow-strong);
-        background-color: var(--purple-100);
+        background-color: var(--blue-100);
         color: var(--extra-dark);
         & > .sc-icon {
           color: var(--extra-dark);

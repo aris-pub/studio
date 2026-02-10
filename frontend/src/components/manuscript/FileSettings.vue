@@ -74,95 +74,93 @@
 
 <template>
   <div class="settings">
-    <Pane>
-      <template v-if="header" #header>File Settings</template>
-      <Section variant="enhanced" theme="purple">
-        <template #title>Colors</template>
-        <template #content>
-          <div class="row theme">
-            <span class="label">Theme</span>
-            <span class="control">
-              <ThemeSwitch :labels="true" />
-            </span>
-          </div>
-          <div class="column bg">
-            <span class="label">Background</span>
-            <span class="control">
-              <ColorPicker :colors="bgColors" @change="onChangeBackground" />
-            </span>
-          </div>
-        </template>
-      </Section>
+    <header v-if="header" class="settings-header">File Settings</header>
+    <Section>
+      <template #title>Colors</template>
+      <template #content>
+        <div class="row theme">
+          <span class="label">Theme</span>
+          <span class="control">
+            <ThemeSwitch :labels="true" />
+          </span>
+        </div>
+        <div class="column bg">
+          <span class="label">Background</span>
+          <span class="control">
+            <ColorPicker :colors="bgColors" @change="onChangeBackground" />
+          </span>
+        </div>
+      </template>
+    </Section>
 
-      <Section variant="enhanced" theme="purple">
-        <template #title>Font</template>
-        <template #content>
-          <div class="row size">
-            <span class="label">Size</span>
-            <span class="control">
-              <SegmentedControl
-                v-model="fontSize"
-                :icons="['TextDecrease', 'LetterA', 'TextIncrease']"
-                :labels="['small', 'normal', 'large']"
-                :tooltips="['base size: 14px', 'base size: 16px', 'base size: 18px']"
-                :default-active="fontSize"
-              />
-            </span>
-          </div>
-          <div class="row">
-            <span class="label">Density</span>
-            <span class="control">
-              <SegmentedControl
-                v-model="lineHeight"
-                :labels="['tight', 'normal', 'roomy']"
-                :icons="['BaselineDensitySmall', 'BaselineDensityMedium', 'BaselineDensityLarge']"
-                :tooltips="['line height: 1.2', 'line height: 1.5', 'line height: 1.8']"
-                :default-active="lineHeight"
-              />
-            </span>
-          </div>
-          <div class="row style">
-            <span class="label">Style</span>
-            <span class="control">
-              <SegmentedControl
-                v-model="fontFamily"
-                :labels="['Sans', 'Serif']"
-                :tooltips="['Source Sans 3', 'Charter']"
-                :default-active="fontFamily"
-              />
-            </span>
-          </div>
-        </template>
-      </Section>
+    <Section>
+      <template #title>Font</template>
+      <template #content>
+        <div class="row size">
+          <span class="label">Size</span>
+          <span class="control">
+            <SegmentedControl
+              v-model="fontSize"
+              :icons="['TextDecrease', 'LetterA', 'TextIncrease']"
+              :labels="['small', 'normal', 'large']"
+              :tooltips="['base size: 14px', 'base size: 16px', 'base size: 18px']"
+              :default-active="fontSize"
+            />
+          </span>
+        </div>
+        <div class="row">
+          <span class="label">Density</span>
+          <span class="control">
+            <SegmentedControl
+              v-model="lineHeight"
+              :labels="['tight', 'normal', 'roomy']"
+              :icons="['BaselineDensitySmall', 'BaselineDensityMedium', 'BaselineDensityLarge']"
+              :tooltips="['line height: 1.2', 'line height: 1.5', 'line height: 1.8']"
+              :default-active="lineHeight"
+            />
+          </span>
+        </div>
+        <div class="row style">
+          <span class="label">Style</span>
+          <span class="control">
+            <SegmentedControl
+              v-model="fontFamily"
+              :labels="['Sans', 'Serif']"
+              :tooltips="['Source Sans 3', 'Charter']"
+              :default-active="fontFamily"
+            />
+          </span>
+        </div>
+      </template>
+    </Section>
 
-      <Section variant="enhanced" theme="purple">
-        <template #title>Layout</template>
-        <template #content>
-          <div class="row">
-            <span class="label">Width</span>
-            <span class="control">
-              <SegmentedControl
-                v-model="marginWidth"
-                :labels="['narrow', 'normal', 'wide']"
-                :icons="['ViewportNarrow', 'Crop11', 'ViewportWide']"
-                :tooltips="['wide margins', 'normal margins', 'no normal']"
-                :default-active="marginWidth"
-              />
-            </span>
-          </div>
-        </template>
-      </Section>
-      <div class="buttons">
-        <Button kind="tertiary" text="Reset" data-testid="reset-button" @click="onReset" />
-        <Button
-          class="cta"
-          kind="primary"
-          text="Save Settings"
-          data-testid="save-button"
-          @click="emit('save', settingsObj)"
-        />
-      </div>
-    </Pane>
+    <Section>
+      <template #title>Layout</template>
+      <template #content>
+        <div class="row">
+          <span class="label">Width</span>
+          <span class="control">
+            <SegmentedControl
+              v-model="marginWidth"
+              :labels="['narrow', 'normal', 'wide']"
+              :icons="['ViewportNarrow', 'Crop11', 'ViewportWide']"
+              :tooltips="['wide margins', 'normal margins', 'no normal']"
+              :default-active="marginWidth"
+            />
+          </span>
+        </div>
+      </template>
+    </Section>
+    <div class="buttons">
+      <Button kind="tertiary" text="Reset" data-testid="reset-button" @click="onReset" />
+      <Button
+        class="cta"
+        kind="primary"
+        text="Save Settings"
+        data-testid="save-button"
+        @click="emit('save', settingsObj)"
+      />
+    </div>
   </div>
 </template>
 
@@ -172,19 +170,16 @@
     flex-direction: column;
   }
 
-  .pane {
-    box-shadow: none !important;
-  }
-
-  :deep(.pane-header) {
-    background-color: var(--purple-200);
-    color: var(--purple-900);
+  .settings-header {
+    padding: 16px;
+    font-weight: 600;
   }
 
   .buttons {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    padding-bottom: 16px;
 
     & > button {
       padding-inline: 16px;
@@ -192,9 +187,8 @@
 
     & > .cta {
       padding-inline: 48px;
-      background-color: var(--purple-500);
-      border-color: var(--purple-500);
-      color: var(--purple-50);
+      background-color: var(--surface-action);
+      border-color: var(--border-action);
     }
   }
 

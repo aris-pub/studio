@@ -122,7 +122,7 @@ describe("WorkspaceView", () => {
     expect(wrapper.vm.sidebarWidth).toBe("64px");
     wrapper.vm.drawerOpen = true;
     await nextTick();
-    expect(wrapper.vm.sidebarWidth).toBe("360px");
+    expect(wrapper.vm.sidebarWidth).toBe("364px");
   });
 
   it("registers keyboard shortcuts for goHome and toggle focusMode", () => {

@@ -88,12 +88,12 @@
     transition: var(--transition-bg-color);
 
     &:active {
-      background-color: var(--purple-400) !important;
+      background-color: var(--blue-400) !important;
     }
 
     &:hover {
       cursor: pointer;
-      background-color: var(--purple-100);
+      background-color: var(--blue-100);
       color: var(--extra-dark);
 
       & .circle {
@@ -103,7 +103,7 @@
   }
 
   .swatch.active {
-    background-color: var(--purple-300);
+    background-color: var(--blue-300);
   }
 
   .swatch.active .circle {

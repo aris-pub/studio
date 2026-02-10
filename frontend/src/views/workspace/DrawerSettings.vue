@@ -24,16 +24,17 @@
 </script>
 
 <template>
-  <FileSettings ref="file-settings-ref" v-model="fileSettings" @save="onSave" />
+  <Pane>
+    <template #header>
+      <IconFileText />
+      <h3>Document Display</h3>
+    </template>
+    <FileSettings ref="file-settings-ref" v-model="fileSettings" :header="false" @save="onSave" />
+  </Pane>
 </template>
 
 <style scoped>
   .settings {
     height: 100%;
-  }
-
-  :deep(.pane) {
-    height: 100%;
-    background-color: v-bind(fileSettings.background);
   }
 </style>

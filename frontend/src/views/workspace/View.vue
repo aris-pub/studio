@@ -114,7 +114,7 @@
   // Sidebar drawer
   const drawerOpen = ref(false);
   provide("drawerOpen", drawerOpen);
-  const sidebarWidth = computed(() => (drawerOpen.value ? "360px" : "64px"));
+  const sidebarWidth = computed(() => (drawerOpen.value ? "364px" : "64px"));
 
   // Focus Mode
   const focusMode = ref(false);
