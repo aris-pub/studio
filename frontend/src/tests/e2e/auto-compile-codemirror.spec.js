@@ -108,10 +108,18 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
   });
 
   test.afterEach(async ({ request }) => {
-    if (fileId) {
-      await request.delete(`http://localhost:${BACKEND_PORT}/files/${fileId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+    if (fileId && accessToken) {
+      try {
+        const response = await request.delete(`http://localhost:${BACKEND_PORT}/files/${fileId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!response.ok()) {
+          console.error(`Failed to delete file ${fileId}: ${response.status()}`);
+        }
+      } catch (error) {
+        console.error(`Error during cleanup of file ${fileId}:`, error);
+      }
     }
 
     if (context) {

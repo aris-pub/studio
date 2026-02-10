@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
 import fs from "fs";
+import dotenv from "dotenv";
+
+dotenv.config({ path: path.resolve("../../../.env") });
+const BACKEND_PORT = process.env.BACKEND_PORT;
+
+if (!BACKEND_PORT) {
+  throw new Error("BACKEND_PORT must be set in .env");
+}
 
 // @auth
 import { AuthHelpers } from "./utils/auth-helpers.js";
@@ -21,6 +29,27 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     // Create test file once for the test
     testFileId = await fileHelpers.createNewFile();
     await fileHelpers.navigateToHome();
+  });
+
+  test.afterEach(async ({ page, request }) => {
+    if (testFileId) {
+      try {
+        // Get access token from localStorage
+        const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
+
+        if (accessToken) {
+          const response = await request.delete(`http://localhost:${BACKEND_PORT}/files/${testFileId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!response.ok()) {
+            console.error(`Failed to delete file ${testFileId}: ${response.status()}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error during cleanup of file ${testFileId}:`, error);
+      }
+    }
   });
 
   test("download menu item appears in file context menu", async ({ page }) => {

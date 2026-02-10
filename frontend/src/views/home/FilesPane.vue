@@ -59,7 +59,7 @@
           class="files"
           :class="mode"
         >
-          <template v-for="(file, idx) in visibleFiles" :key="file">
+          <template v-for="(file, idx) in visibleFiles" :key="file.id">
             <FilesItem v-model="visibleFiles[idx]" :mode="mode" />
           </template>
         </div>
