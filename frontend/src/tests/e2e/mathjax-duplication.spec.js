@@ -378,7 +378,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+      // Manually trigger compilation
       await page.click('button:has-text("compile")');
 
       // Wait for compilation to complete
@@ -454,7 +454,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+      // Manually trigger compilation
       await page.click('button:has-text("compile")');
 
       // Wait for compilation to complete
@@ -576,7 +576,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           { timeout: 5000 }
         );
 
-        // Manually trigger compilation (auto-compilation doesn't work with CodeMirror yet)
+        // Manually trigger compilation
         await page.click('button:has-text("compile")');
 
         // Wait for compilation to complete

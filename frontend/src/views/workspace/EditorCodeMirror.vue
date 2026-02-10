@@ -37,6 +37,7 @@
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
   const user = inject("user");
+  const editSession = inject("editSession", null);
 
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
@@ -76,9 +77,25 @@
     keymap.of([...defaultKeymap]),
   ];
 
+  // Auto-compilation on Y.Doc changes
+  let compileDebounceTimeout = null;
+  let ytextObserverCleanup = null;
+
   // Cleanup function
   const cleanup = () => {
     console.log("[EditorCodeMirror] Cleaning up");
+
+    // Clear auto-compile debounce timer
+    if (compileDebounceTimeout) {
+      clearTimeout(compileDebounceTimeout);
+      compileDebounceTimeout = null;
+    }
+
+    // Remove Y.Doc observer
+    if (ytextObserverCleanup) {
+      ytextObserverCleanup();
+      ytextObserverCleanup = null;
+    }
 
     if (view.value) {
       view.value.destroy();
@@ -161,6 +178,42 @@
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
+        }
+
+        // Setup auto-compilation on Y.Doc changes
+        if (editSession) {
+          const handleYtextChange = (event, transaction) => {
+            // Ignore remote changes (only trigger compilation for local edits)
+            if (transaction.local) {
+              if (import.meta.env.DEV) {
+                console.log("[EditorCodeMirror] Local Y.Doc change detected, debouncing compilation");
+              }
+
+              // Clear existing debounce timer
+              if (compileDebounceTimeout) {
+                clearTimeout(compileDebounceTimeout);
+              }
+
+              // Debounce compilation (2000ms to match editSession debounce)
+              compileDebounceTimeout = setTimeout(async () => {
+                if (import.meta.env.DEV) {
+                  console.log("[EditorCodeMirror] Triggering auto-compilation");
+                }
+                await editSession.compile();
+              }, 2000);
+            }
+          };
+
+          ytext.value.observe(handleYtextChange);
+
+          // Store cleanup function to remove observer later
+          ytextObserverCleanup = () => {
+            ytext.value.unobserve(handleYtextChange);
+          };
+
+          if (import.meta.env.DEV) {
+            console.log("[EditorCodeMirror] Auto-compilation observer attached");
+          }
         }
 
         // Create editor with yCollab binding
