@@ -20,16 +20,21 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
     const uploadButton = page.locator(".avatar-upload");
     await expect(uploadButton).toBeVisible();
 
-    // Test file upload interaction
-    // Note: In a real E2E test, we'd need to handle file selection
-    // For now, we verify the upload interface is accessible
+    // Set up file chooser listener BEFORE clicking to avoid Firefox page closure
+    // (Firefox treats file pickers as modals that trigger window close events)
+    // See: https://github.com/microsoft/playwright/issues/22928
+    const fileChooserPromise = page.waitForEvent('filechooser');
     await uploadButton.click();
 
-    // The hidden file input should be present
-    const fileInput = page.locator('input[type="file"][accept="image/*"]');
-    await expect(fileInput).toBeHidden(); // It's hidden but should exist
+    // Wait for file chooser to open
+    const fileChooser = await fileChooserPromise;
 
-    // Verify the file input accepts image types
+    // Verify file chooser configuration
+    expect(fileChooser.isMultiple()).toBe(false);
+
+    // Verify the hidden input exists and accepts image types
+    const fileInput = page.locator('input[type="file"][accept="image/*"]');
+    await expect(fileInput).toBeAttached();
     const acceptAttribute = await fileInput.getAttribute("accept");
     expect(acceptAttribute).toBe("image/*");
   });
