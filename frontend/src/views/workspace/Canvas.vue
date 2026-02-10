@@ -220,6 +220,7 @@
               <ManuscriptWrapper
                 v-if="file.html && (!mobileMode || (mobileMode && !showEditor))"
                 ref="manuscript-ref"
+                :key="file.html"
                 data-testid="manuscript-viewer"
                 :class="{ 'title-visible': isMainTitleVisible }"
                 :html-string="file.html || ''"
