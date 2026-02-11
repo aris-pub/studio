@@ -10,7 +10,9 @@ import VersionPreviewModal from '@/views/workspace/VersionPreviewModal.vue'
 
 // Mock API
 const mockApi = {
-  get: vi.fn()
+  get: vi.fn(),
+  post: vi.fn(),
+  patch: vi.fn()
 }
 
 // Mock user
@@ -182,11 +184,28 @@ describe('DrawerVersions', () => {
       expect(saveButton.props('kind')).toBe('primary')
     })
 
-    it('opens save modal when clicked', async () => {
+    it('creates new version and enters edit mode when clicked', async () => {
+      const newVersion = {
+        id: 4,
+        version_number: 4,
+        version_name: null,
+        created_at: new Date().toISOString(),
+        created_by: 1
+      }
+
+      mockApi.post.mockResolvedValue({ data: newVersion })
+
       const saveButton = wrapper.findComponent(Button)
       await saveButton.trigger('click')
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.showSaveModal).toBe(true)
+      expect(mockApi.post).toHaveBeenCalledWith('/files/123/versions/named', {
+        version_name: null
+      })
+      expect(wrapper.vm.versions).toHaveLength(4)
+      expect(wrapper.vm.versions[0]).toEqual(newVersion)
+      expect(wrapper.vm.editingVersionId).toBe(4)
     })
   })
 

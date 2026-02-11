@@ -1,7 +1,9 @@
 <script setup>
-  import { ref, inject, onMounted, computed } from "vue";
+  import { ref, inject, onMounted, computed, nextTick } from "vue";
   import { IconFileText, IconEye } from "@tabler/icons-vue";
   import Button from "@/components/base/Button.vue";
+  import EditableText from "@/components/forms/EditableText.vue";
+  import Toast from "@/components/ui/Toast.vue";
   import VersionPreviewModal from "./VersionPreviewModal.vue";
 
   const props = defineProps({
@@ -16,7 +18,10 @@
   const error = ref(null);
   const selectedVersion = ref(null);
   const showPreviewModal = ref(false);
-  const showSaveModal = ref(false);
+  const editingVersionId = ref(null);
+  const editingName = ref("");
+  const isSaving = ref(false);
+  const activeToast = ref(null);
 
   // Check if current user is file owner
   const isOwner = computed(() => {
@@ -59,9 +64,89 @@
     await fetchVersions();
   }
 
-  // Open save version modal
-  function openSaveVersionModal() {
-    showSaveModal.value = true;
+  // Toast helpers
+  function showToast(config) {
+    activeToast.value = { ...config, id: Date.now() };
+  }
+
+  function hideToast() {
+    activeToast.value = null;
+  }
+
+  // Save new version with inline naming
+  async function saveVersion() {
+    if (isSaving.value) return; // Prevent double-click
+
+    isSaving.value = true;
+    error.value = null;
+
+    try {
+      const response = await api.post(`/files/${props.file.id}/versions/named`, {
+        version_name: null,
+      });
+
+      const newVersion = response.data;
+      versions.value.unshift(newVersion);
+
+      // Enter edit mode for new version
+      editingVersionId.value = newVersion.id;
+      editingName.value = "";
+
+      // Scroll to top and auto-focus input
+      await nextTick();
+      const versionList = document.querySelector(".version-list");
+      versionList?.scrollTo({ top: 0, behavior: "smooth" });
+
+      await nextTick();
+      const input = document.querySelector(
+        `[data-version-id="${newVersion.id}"] input`
+      );
+      input?.focus();
+    } catch (err) {
+      console.error("Failed to save version:", err);
+      showToast({
+        type: "error",
+        message: "Failed to save version",
+        description: "Please try again",
+      });
+    } finally {
+      isSaving.value = false;
+    }
+  }
+
+  // Start editing version name
+  function startEditing(version) {
+    editingVersionId.value = version.id;
+    editingName.value = version.version_name || "";
+  }
+
+  // Handle version name save
+  async function handleSaveName(version) {
+    const originalName = version.version_name;
+
+    // Optimistic update
+    version.version_name = editingName.value || null;
+    editingVersionId.value = null;
+
+    try {
+      await api.patch(`/files/${props.file.id}/versions/${version.id}`, {
+        version_name: editingName.value || null,
+      });
+    } catch (err) {
+      console.error("Failed to save version name:", err);
+      // Rollback on failure
+      version.version_name = originalName;
+      // Auto-retry after 2 seconds
+      setTimeout(() => {
+        editingVersionId.value = version.id;
+        editingName.value = editingName.value || "";
+      }, 2000);
+    }
+  }
+
+  // Cancel editing
+  function handleCancelEdit() {
+    editingVersionId.value = null;
   }
 
   // Format date for display
@@ -102,8 +187,9 @@
         size="md"
         icon="Plus"
         text="Save Version"
+        :disabled="isSaving"
         data-testid="save-version-button"
-        @click="openSaveVersionModal"
+        @click="saveVersion"
       />
     </div>
 
@@ -122,18 +208,45 @@
     </div>
 
     <!-- Version List -->
-    <ul v-else class="version-list">
+    <TransitionGroup v-else name="version-list" tag="ul" class="version-list">
       <li
         v-for="version in versions"
+        :key="version.id"
         class="version-item"
+        :class="{ editing: editingVersionId === version.id }"
         :data-testid="'version-item'"
         :data-version-id="version.id"
       >
         <div class="version-info">
           <div class="version-header">
             <span class="version-number">v{{ version.version_number }}</span>
-            <span v-if="version.version_name" class="version-name">
+
+            <!-- Edit mode: inline input -->
+            <EditableText
+              v-if="editingVersionId === version.id"
+              v-model="editingName"
+              placeholder="Name this version..."
+              :edit-on-click="false"
+              :clear-on-start="false"
+              text-class="version-name"
+              @save="handleSaveName(version)"
+              @cancel="handleCancelEdit"
+            />
+
+            <!-- Display mode: show name or empty state -->
+            <span
+              v-else-if="version.version_name"
+              class="version-name"
+              @click="startEditing(version)"
+            >
               {{ version.version_name }}
+            </span>
+            <span
+              v-else
+              class="version-name-empty"
+              @click="startEditing(version)"
+            >
+              (no name)
             </span>
           </div>
           <div class="version-meta">
@@ -143,6 +256,7 @@
 
         <button
           class="btn-preview"
+          :class="{ dimmed: editingVersionId === version.id }"
           :data-testid="'preview-version-' + version.id"
           title="Preview version"
           @click="previewVersion(version)"
@@ -150,7 +264,7 @@
           <IconEye />
         </button>
       </li>
-    </ul>
+    </TransitionGroup>
 
     <!-- Version Preview Modal -->
     <VersionPreviewModal
@@ -162,13 +276,14 @@
       @restored="handleVersionRestored"
     />
 
-    <!-- Save Version Modal (TODO: Task #7) -->
-    <!-- <SaveVersionModal
-      v-if="showSaveModal"
-      :file-id="file.id"
-      @close="showSaveModal = false"
-      @saved="fetchVersions"
-    /> -->
+    <!-- Toast Notifications -->
+    <Toast
+      v-if="activeToast"
+      :type="activeToast.type"
+      :message="activeToast.message"
+      :description="activeToast.description"
+      @dismiss="hideToast"
+    />
   </Pane>
 </template>
 
@@ -217,7 +332,6 @@
     justify-content: space-between;
     padding: 12px 16px;
     border-bottom: 1px solid var(--color-border);
-    cursor: pointer;
     transition: background 0.2s;
   }
 
@@ -241,6 +355,7 @@
     font-weight: 600;
     color: var(--color-text-primary);
     font-size: 14px;
+    flex-shrink: 0;
   }
 
   .version-name {
@@ -249,6 +364,22 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .version-name:hover {
+    color: var(--color-text-primary);
+  }
+
+  .version-name-empty {
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+    font-style: italic;
+    cursor: pointer;
+  }
+
+  .version-name-empty:hover {
+    color: var(--color-text-secondary);
   }
 
   .version-meta {
@@ -276,5 +407,23 @@
   .btn-preview:hover {
     background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
+  }
+
+  .btn-preview.dimmed {
+    opacity: 0.4;
+  }
+
+  /* Transition animations */
+  .version-list-enter-active {
+    transition: all 0.3s ease-out;
+  }
+
+  .version-list-enter-from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+
+  .version-list-move {
+    transition: transform 0.3s ease;
   }
 </style>
