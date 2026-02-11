@@ -57,7 +57,6 @@
     } catch (err) {
       console.error("Failed to restore version:", err);
       alert("Failed to restore version. Please try again.");
-      showConfirmation.value = false;
     } finally {
       isRestoring.value = false;
     }
@@ -167,7 +166,12 @@
             ⚠️ Restore this version? This will replace the current content.
           </p>
           <div class="confirmation-actions">
-            <button class="btn-secondary" :disabled="isRestoring" @click="cancelRestore">
+            <button
+              class="btn-secondary"
+              data-testid="cancel-restore-button"
+              :disabled="isRestoring"
+              @click="cancelRestore"
+            >
               Cancel
             </button>
             <button

@@ -1,6 +1,7 @@
 <script setup>
   import { ref, inject, onMounted, computed } from "vue";
-  import { IconFileText, IconPlus, IconEye } from "@tabler/icons-vue";
+  import { IconFileText, IconEye } from "@tabler/icons-vue";
+  import Button from "@/components/base/Button.vue";
   import VersionPreviewModal from "./VersionPreviewModal.vue";
 
   const props = defineProps({
@@ -96,14 +97,14 @@
 
     <!-- Save Version Button -->
     <div class="save-version-container">
-      <button
-        class="btn-save-version"
+      <Button
+        kind="primary"
+        size="md"
+        icon="Plus"
+        text="Save Version"
         data-testid="save-version-button"
         @click="openSaveVersionModal"
-      >
-        <IconPlus />
-        Save Version
-      </button>
+      />
     </div>
 
     <!-- Loading State -->
@@ -124,7 +125,6 @@
     <ul v-else class="version-list">
       <li
         v-for="version in versions"
-        :key="version.id"
         class="version-item"
         :data-testid="'version-item'"
         :data-version-id="version.id"
@@ -176,27 +176,6 @@
   .save-version-container {
     padding: 16px;
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .btn-save-version {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .btn-save-version:hover {
-    background: var(--color-primary-hover);
   }
 
   .loading,
