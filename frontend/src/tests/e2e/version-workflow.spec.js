@@ -155,7 +155,7 @@ test.describe("Version Workflow @auth", () => {
     await expect(modal).toContainText("Version 1");
   });
 
-  test.skip("modal can be opened multiple times (regression test)", async ({ page }) => {
+  test("modal can be opened multiple times (regression test)", async ({ page }) => {
     // Create a version first
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
@@ -163,6 +163,10 @@ test.describe("Version Workflow @auth", () => {
 
     const versionItem = page.locator('[data-testid="version-item"]').first();
     const versionInfo = versionItem.locator('.version-info');
+
+    // After creating version, EditableText is in edit mode - press Escape to exit
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
 
     // Open modal first time
     await versionInfo.click();
@@ -190,6 +194,39 @@ test.describe("Version Workflow @auth", () => {
     await versionInfo.click();
     await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
     await expect(modal).toBeVisible();
+  });
+
+  test("modal can be reopened after closing with X button (regression test)", async ({ page }) => {
+    // First, create two versions so we're not clicking on a freshly-created one
+    await page.click('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
+    await page.keyboard.press('Escape'); // Exit edit mode
+    await page.waitForTimeout(300);
+
+    await page.click('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="version-item"]:nth-child(2)', { timeout: 5000 });
+    await page.keyboard.press('Escape'); // Exit edit mode
+    await page.waitForTimeout(300);
+
+    // Click on the SECOND version (not the one in edit mode)
+    const secondVersionItem = page.locator('[data-testid="version-item"]').nth(1);
+    const versionInfo = secondVersionItem.locator('.version-info');
+
+    // First open - click the version row
+    await versionInfo.click();
+    let modal = page.locator('[data-testid="version-preview-modal"]');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    // Close modal using X button
+    await page.click('[data-testid="close-preview-modal"]');
+    await page.waitForTimeout(500);
+    await expect(modal).not.toBeVisible();
+
+    // THIS IS THE BUG TEST: Try to reopen modal
+    await versionInfo.click();
+
+    // Modal should open again
+    await expect(modal).toBeVisible({ timeout: 5000 });
   });
 
   test("displays version metadata correctly", async ({ page }) => {

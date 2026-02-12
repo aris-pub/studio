@@ -301,6 +301,30 @@ describe("DrawerVersions", () => {
       expect(wrapper.vm.selectedVersion).toBe(null);
     });
 
+    it("allows reopening modal after closing it", async () => {
+      // First open
+      const versionItem = wrapper.find(".version-item");
+      await versionItem.trigger("click");
+      await wrapper.vm.$nextTick();
+      expect(wrapper.vm.showPreviewModal).toBe(true);
+      expect(wrapper.vm.selectedVersion).toEqual(mockVersions[0]);
+
+      // Close modal
+      const modal = wrapper.findComponent(VersionPreviewModal);
+      await modal.vm.$emit("close");
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick(); // Extra tick for cleanup
+      expect(wrapper.vm.showPreviewModal).toBe(false);
+      expect(wrapper.vm.selectedVersion).toBe(null);
+
+      // Second open - THIS IS THE BUG: clicking does nothing
+      await versionItem.trigger("click");
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick(); // Extra tick for state updates
+      expect(wrapper.vm.showPreviewModal).toBe(true);
+      expect(wrapper.vm.selectedVersion).toEqual(mockVersions[0]);
+    });
+
     it("refreshes versions after restore", async () => {
       await wrapper.find(".version-item").trigger("click");
       mockApi.get.mockClear(); // Clear previous calls

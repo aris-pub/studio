@@ -53,14 +53,24 @@
   }
 
   // Open preview modal for selected version
-  function previewVersion(version) {
+  async function previewVersion(version) {
+    // Defensive: if modal is somehow already open, close it first
+    if (showPreviewModal.value) {
+      showPreviewModal.value = false;
+      selectedVersion.value = null;
+      await nextTick();
+    }
+
+    // Set selected version first, then show modal
     selectedVersion.value = version;
+    await nextTick();
     showPreviewModal.value = true;
   }
 
   // Close preview modal
-  function closePreviewModal() {
+  async function closePreviewModal() {
     showPreviewModal.value = false;
+    await nextTick();
     selectedVersion.value = null;
   }
 
