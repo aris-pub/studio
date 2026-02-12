@@ -180,55 +180,59 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="loading">Loading versions...</div>
+    <Section>
+      <template #content>
+        <div v-if="isLoading" class="loading">Loading versions...</div>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="error">
-      {{ error }}
-    </div>
-
-    <!-- Empty State -->
-    <div v-else-if="versions.length === 0" class="empty-state">
-      <p>No versions yet</p>
-      <p class="empty-hint">Save your first version to create a checkpoint</p>
-    </div>
-
-    <!-- Version List -->
-    <TransitionGroup v-else name="version-list" tag="ul" class="version-list">
-      <li
-        v-for="version in versions"
-        :key="version.id"
-        class="version-item"
-        :data-testid="'version-item'"
-        :data-version-id="version.id"
-      >
-        <div class="version-info">
-          <div class="version-header">
-            <span class="version-number">v{{ version.version_number }}</span>
-
-            <EditableText
-              :ref="el => editableRefs[version.id] = el"
-              v-model="version.version_name"
-              placeholder="(no name)"
-              text-class="version-name"
-              @save="handleSaveName(version)"
-            />
-          </div>
-          <div class="version-meta">
-            <span class="version-date">{{ formatDate(version.created_at) }}</span>
-          </div>
+        <!-- Error State -->
+        <div v-else-if="error" class="error">
+          {{ error }}
         </div>
 
-        <button
-          class="btn-preview"
-          :data-testid="'preview-version-' + version.id"
-          title="Preview version"
-          @click="previewVersion(version)"
-        >
-          <IconEye />
-        </button>
-      </li>
-    </TransitionGroup>
+        <!-- Empty State -->
+        <div v-else-if="versions.length === 0" class="empty-state">
+          <p>No versions yet</p>
+          <p class="empty-hint">Save your first version to create a checkpoint</p>
+        </div>
+
+        <!-- Version List -->
+        <TransitionGroup v-else name="version-list" tag="ul" class="version-list">
+          <li
+            v-for="version in versions"
+            :key="version.id"
+            class="version-item"
+            :data-testid="'version-item'"
+            :data-version-id="version.id"
+          >
+            <div class="version-info">
+              <div class="version-header">
+                <EditableText
+                  :ref="(el) => (editableRefs[version.id] = el)"
+                  v-model="version.version_name"
+                  placeholder="Click to name this version"
+                  text-class="version-name"
+                  @save="handleSaveName(version)"
+                />
+              </div>
+              <div class="version-meta">
+                <span class="version-number">v{{ version.version_number }}</span>
+                <span class="version-date">{{ formatDate(version.created_at) }}</span>
+              </div>
+            </div>
+
+            <button
+              class="btn-preview"
+              :data-testid="'preview-version-' + version.id"
+              title="Preview version"
+              @click="previewVersion(version)"
+            >
+              <IconEye />
+            </button>
+          </li>
+        </TransitionGroup>
+
+      </template>
+    </Section>
 
     <!-- Version Preview Modal -->
     <Teleport to="body">
@@ -311,22 +315,21 @@
   }
 
   .version-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .version-number {
-    font-weight: 600;
-    color: var(--color-text-primary);
-    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
     flex-shrink: 0;
   }
 
   .version-name {
-    color: var(--color-text-secondary);
-    font-size: 14px;
+    color: var(--color-text-primary);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -339,7 +342,9 @@
 
   .version-name-empty {
     color: var(--color-text-tertiary);
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
     font-style: italic;
     cursor: pointer;
   }
@@ -350,8 +355,14 @@
 
   .version-meta {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  .version-date::before {
+    content: "•";
+    margin-right: 8px;
     color: var(--color-text-tertiary);
   }
 
