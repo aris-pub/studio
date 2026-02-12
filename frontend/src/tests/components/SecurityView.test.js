@@ -51,6 +51,14 @@ const MockPasswordStrength = {
   template: `<div class="password-strength">Password Strength</div>`,
 };
 
+const MockSection = {
+  name: "Section",
+  template: `<div class="mock-section">
+    <div v-if="$slots.title" class="title"><slot name="title"></slot></div>
+    <div class="content"><slot name="content"></slot></div>
+  </div>`,
+};
+
 describe("SecurityView Email Verification", () => {
   let wrapper;
   let mockApi;
@@ -86,6 +94,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
@@ -119,6 +128,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
@@ -154,6 +164,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
@@ -328,6 +339,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
@@ -377,6 +389,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
@@ -399,6 +412,7 @@ describe("SecurityView Email Verification", () => {
             Icon: MockIcon,
             Button: Button,
             Pane: MockPane,
+            Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
           },
