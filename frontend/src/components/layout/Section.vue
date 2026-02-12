@@ -86,6 +86,10 @@
     align-items: center;
   }
 
+  .section > .content:first-child {
+    padding-top: 8px;
+  }
+
   .section > .content:not(:last-child) {
     padding-bottom: 16px;
   }
