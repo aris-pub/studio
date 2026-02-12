@@ -131,13 +131,17 @@ test.describe("Version Workflow @auth", () => {
     await expect(emptyState).toBeVisible();
   });
 
-  test.skip("opens preview modal when clicking version row", async ({ page }) => {
+  test("opens preview modal when clicking version row", async ({ page }) => {
     // Create a version first
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
 
     // Wait for version to be fully created (API response)
     await page.waitForTimeout(1000);
+
+    // Press Escape to exit edit mode
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
 
     // Click on the version row (not the context menu)
     const versionItem = page.locator('[data-testid="version-item"]').first();
@@ -152,6 +156,29 @@ test.describe("Version Workflow @auth", () => {
     await expect(modal).toBeVisible();
 
     // Modal should show version number
+    await expect(modal).toContainText("Version 1");
+  });
+
+  test("clicking version row works after hover (regression test for CSS transform)", async ({ page }) => {
+    // Create a version
+    await page.click('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
+    await page.keyboard.press('Escape'); // Exit edit mode
+    await page.waitForTimeout(300);
+
+    const versionItem = page.locator('[data-testid="version-item"]').first();
+    const versionInfo = versionItem.locator('.version-info');
+
+    // Hover over the version item to trigger CSS hover state
+    await versionItem.hover();
+    await page.waitForTimeout(300); // Wait for CSS transitions
+
+    // Click while in hover state - this catches CSS issues like transform breaking click detection
+    await versionInfo.click();
+
+    // Modal should open despite hover state
+    const modal = page.locator('[data-testid="version-preview-modal"]');
+    await expect(modal).toBeVisible({ timeout: 5000 });
     await expect(modal).toContainText("Version 1");
   });
 
@@ -530,5 +557,55 @@ test.describe("Version Workflow @auth", () => {
 
     // Menu should be visible
     await expect(page.locator('button:has-text("Rename")')).toBeVisible();
+  });
+
+  test("clicking version name opens modal (regression test)", async ({ page }) => {
+    // Create a version with a name
+    await page.click('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
+
+    const versionItem = page.locator('[data-testid="version-item"]').first();
+    await versionItem.locator('[data-testid="trigger-button"]').click();
+    await page.click('button:has-text("Rename")');
+    const editableInput = versionItem.locator("input, textarea").first();
+    await editableInput.fill("Test Version");
+    await editableInput.press("Enter");
+    await page.waitForTimeout(500);
+
+    // Click on the version name text (not the input, the displayed text)
+    const versionName = versionItem.locator('.version-name');
+    await versionName.click();
+
+    // Modal should open
+    const modal = page.locator('[data-testid="version-preview-modal"]');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+  });
+
+  test("pressing ESC in modal closes only modal, not drawer (regression test)", async ({ page }) => {
+    // Create a version
+    await page.click('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
+    await page.keyboard.press('Escape'); // Exit edit mode
+    await page.waitForTimeout(300);
+
+    const versionItem = page.locator('[data-testid="version-item"]').first();
+    const versionInfo = versionItem.locator('.version-info');
+
+    // Open modal by clicking version
+    await versionInfo.click();
+    const modal = page.locator('[data-testid="version-preview-modal"]');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    // Press ESC to close modal
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+
+    // Modal should be closed
+    await expect(modal).not.toBeVisible();
+
+    // Drawer should still be open (versions list still visible)
+    const saveVersionButton = page.locator('[data-testid="save-version-button"]');
+    await expect(saveVersionButton).toBeVisible();
+    await expect(versionItem).toBeVisible();
   });
 });

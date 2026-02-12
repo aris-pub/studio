@@ -269,7 +269,6 @@
               text-class="version-name"
               :edit-on-click="false"
               @save="handleSaveName(version)"
-              @click.stop
             />
           </div>
           <div class="version-meta">
@@ -353,16 +352,11 @@
     margin: 0;
   }
 
-  .version-item:not(:last-child) {
-    border-bottom: 1px solid var(--border-primary);
-  }
-
   .version-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border);
     transition: all 0.2s ease;
     cursor: pointer;
     border-radius: 8px;
@@ -371,7 +365,6 @@
 
   .version-item:hover {
     background: var(--gray-100);
-    transform: translateX(2px);
   }
 
   .version-info {

@@ -184,13 +184,13 @@ describe("VersionPreviewModal", () => {
     });
 
     it("registers ESC key listener on mount", () => {
-      expect(global.addEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+      expect(global.addEventListener).toHaveBeenCalledWith("keydown", expect.any(Function), { capture: true });
     });
 
     it("removes ESC key listener on unmount", () => {
       wrapper.unmount();
 
-      expect(global.removeEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+      expect(global.removeEventListener).toHaveBeenCalledWith("keydown", expect.any(Function), { capture: true });
     });
   });
 

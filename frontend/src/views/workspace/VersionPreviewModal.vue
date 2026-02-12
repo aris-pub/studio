@@ -100,19 +100,22 @@
   // Handle ESC key
   function handleKeydown(event) {
     if (event.key === "Escape" && !isRestoring.value) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
       close();
     }
   }
 
   onMounted(() => {
     fetchVersionContent();
-    window.addEventListener("keydown", handleKeydown);
+    // Use capture phase to run before drawer's ESC handler
+    window.addEventListener("keydown", handleKeydown, { capture: true });
   });
 
   // Cleanup
   import { onBeforeUnmount } from "vue";
   onBeforeUnmount(() => {
-    window.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("keydown", handleKeydown, { capture: true });
   });
 </script>
 
