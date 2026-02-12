@@ -52,7 +52,7 @@ async def create_version(
         .where(FileVersion.file_id == file_id)
         .where(FileVersion.deleted_at.is_(None))
     )
-    max_version = result.scalar()
+    max_version: int | None = result.scalar()
     next_version_number = (max_version or 0) + 1
 
     # Create version snapshot
@@ -161,6 +161,9 @@ async def rename_version(
 
     """
     version = await get_version(version_id, db=db)
+    if version is None:
+        raise ValueError(f"Version {version_id} not found")
+
     version.version_name = new_name
 
     await db.commit()
