@@ -296,6 +296,7 @@ describe("DrawerVersions", () => {
 
       const modal = wrapper.findComponent(VersionPreviewModal);
       await modal.vm.$emit("close");
+      await wrapper.vm.$nextTick(); // Wait for async closePreviewModal to complete
 
       expect(wrapper.vm.showPreviewModal).toBe(false);
       expect(wrapper.vm.selectedVersion).toBe(null);
