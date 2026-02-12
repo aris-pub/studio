@@ -6,37 +6,41 @@
   import Toast from "@/components/ui/Toast.vue";
   import VersionPreviewModal from "./VersionPreviewModal.vue";
 
-  const props = defineProps({
-    file: { type: Object, required: true },
-  });
-
   const api = inject("api");
   const user = inject("user");
+  const file = inject("file");
 
   const versions = ref([]);
   const isLoading = ref(false);
   const error = ref(null);
   const selectedVersion = ref(null);
   const showPreviewModal = ref(false);
-  const editingVersionId = ref(null);
-  const editingName = ref("");
   const isSaving = ref(false);
   const activeToast = ref(null);
+  const editableRefs = ref({});
+
+  // Get current file ID
+  const fileId = computed(() => file.value?.id);
 
   // Check if current user is file owner
   const isOwner = computed(() => {
-    return user.value && props.file?.owner_id === user.value.id;
+    return user.value && file.value?.owner_id === user.value.id;
+  });
+
+  // Check if modal should be shown
+  const shouldShowModal = computed(() => {
+    return !!(showPreviewModal.value && selectedVersion.value && fileId.value);
   });
 
   // Fetch versions for current file
   async function fetchVersions() {
-    if (!props.file?.id) return;
+    if (!fileId.value) return;
 
     isLoading.value = true;
     error.value = null;
 
     try {
-      const response = await api.get(`/files/${props.file.id}/versions`);
+      const response = await api.get(`/files/${fileId.value}/versions`);
       versions.value = response.data;
     } catch (err) {
       console.error("Failed to fetch versions:", err);
@@ -81,27 +85,24 @@
     error.value = null;
 
     try {
-      const response = await api.post(`/files/${props.file.id}/versions/named`, {
+      const response = await api.post(`/files/${fileId.value}/versions/named`, {
         version_name: null,
       });
 
       const newVersion = response.data;
       versions.value.unshift(newVersion);
 
-      // Enter edit mode for new version
-      editingVersionId.value = newVersion.id;
-      editingName.value = "";
-
-      // Scroll to top and auto-focus input
+      // Scroll to top and auto-focus new version
       await nextTick();
       const versionList = document.querySelector(".version-list");
       versionList?.scrollTo({ top: 0, behavior: "smooth" });
 
+      // Wait for DOM update and activate edit mode
       await nextTick();
-      const input = document.querySelector(
-        `[data-version-id="${newVersion.id}"] input`
-      );
-      input?.focus();
+      const editableRef = editableRefs.value[newVersion.id];
+      if (editableRef?.startEditing) {
+        editableRef.startEditing();
+      }
     } catch (err) {
       console.error("Failed to save version:", err);
       showToast({
@@ -114,39 +115,24 @@
     }
   }
 
-  // Start editing version name
-  function startEditing(version) {
-    editingVersionId.value = version.id;
-    editingName.value = version.version_name || "";
-  }
-
   // Handle version name save
   async function handleSaveName(version) {
     const originalName = version.version_name;
 
-    // Optimistic update
-    version.version_name = editingName.value || null;
-    editingVersionId.value = null;
-
     try {
-      await api.patch(`/files/${props.file.id}/versions/${version.id}`, {
-        version_name: editingName.value || null,
+      await api.put(`/files/${fileId.value}/versions/${version.id}`, {
+        version_name: version.version_name || null,
       });
     } catch (err) {
       console.error("Failed to save version name:", err);
       // Rollback on failure
       version.version_name = originalName;
-      // Auto-retry after 2 seconds
-      setTimeout(() => {
-        editingVersionId.value = version.id;
-        editingName.value = editingName.value || "";
-      }, 2000);
+      showToast({
+        type: "error",
+        message: "Failed to save version name",
+        description: err.response?.data?.detail || "Please try again",
+      });
     }
-  }
-
-  // Cancel editing
-  function handleCancelEdit() {
-    editingVersionId.value = null;
   }
 
   // Format date for display
@@ -213,7 +199,6 @@
         v-for="version in versions"
         :key="version.id"
         class="version-item"
-        :class="{ editing: editingVersionId === version.id }"
         :data-testid="'version-item'"
         :data-version-id="version.id"
       >
@@ -221,33 +206,13 @@
           <div class="version-header">
             <span class="version-number">v{{ version.version_number }}</span>
 
-            <!-- Edit mode: inline input -->
             <EditableText
-              v-if="editingVersionId === version.id"
-              v-model="editingName"
-              placeholder="Name this version..."
-              :edit-on-click="false"
-              :clear-on-start="false"
+              :ref="el => editableRefs[version.id] = el"
+              v-model="version.version_name"
+              placeholder="(no name)"
               text-class="version-name"
               @save="handleSaveName(version)"
-              @cancel="handleCancelEdit"
             />
-
-            <!-- Display mode: show name or empty state -->
-            <span
-              v-else-if="version.version_name"
-              class="version-name"
-              @click="startEditing(version)"
-            >
-              {{ version.version_name }}
-            </span>
-            <span
-              v-else
-              class="version-name-empty"
-              @click="startEditing(version)"
-            >
-              (no name)
-            </span>
           </div>
           <div class="version-meta">
             <span class="version-date">{{ formatDate(version.created_at) }}</span>
@@ -256,7 +221,6 @@
 
         <button
           class="btn-preview"
-          :class="{ dimmed: editingVersionId === version.id }"
           :data-testid="'preview-version-' + version.id"
           title="Preview version"
           @click="previewVersion(version)"
@@ -267,14 +231,16 @@
     </TransitionGroup>
 
     <!-- Version Preview Modal -->
-    <VersionPreviewModal
-      v-if="showPreviewModal && selectedVersion"
-      :version="selectedVersion"
-      :file-id="file.id"
-      :is-owner="isOwner"
-      @close="closePreviewModal"
-      @restored="handleVersionRestored"
-    />
+    <Teleport to="body">
+      <VersionPreviewModal
+        v-if="shouldShowModal && fileId"
+        :version="selectedVersion"
+        :file-id="fileId"
+        :is-owner="isOwner"
+        @close="closePreviewModal"
+        @restored="handleVersionRestored"
+      />
+    </Teleport>
 
     <!-- Toast Notifications -->
     <Toast

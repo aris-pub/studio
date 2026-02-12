@@ -1,6 +1,7 @@
 <script setup>
   import { ref, inject, onMounted } from "vue";
   import { IconX } from "@tabler/icons-vue";
+  import Button from "@/components/base/Button.vue";
   import { useVersionRestore } from "@/composables/useVersionRestore";
 
   const props = defineProps({
@@ -19,7 +20,17 @@
   const isRestoring = ref(false);
   const showConfirmation = ref(false);
 
-  const { restoreVersion } = useVersionRestore(props.fileId);
+  // Only initialize restore functionality if user is owner and Y.js is available
+  let restoreVersion = null;
+  if (props.isOwner) {
+    try {
+      const versionRestore = useVersionRestore(props.fileId);
+      restoreVersion = versionRestore.restoreVersion;
+    } catch (err) {
+      console.warn("Y.js not available for version restore:", err);
+      // Restore functionality will be disabled
+    }
+  }
 
   // Fetch version content for preview
   async function fetchVersionContent() {
@@ -44,6 +55,11 @@
 
   // Confirm and execute restore
   async function confirmRestore() {
+    if (!restoreVersion) {
+      alert("Restore functionality is not available. Y.js editor must be active.");
+      return;
+    }
+
     isRestoring.value = true;
 
     try {
@@ -148,12 +164,11 @@
         <!-- Error State -->
         <div v-else-if="contentError" class="error-state">
           <p>{{ contentError }}</p>
-          <button @click="fetchVersionContent">Retry</button>
+          <Button kind="primary" size="sm" text="Retry" @click="fetchVersionContent" />
         </div>
 
         <!-- Version Content -->
         <div v-else class="version-content">
-          <div class="read-only-indicator">🔒 Read-only preview</div>
           <pre class="rsm-source">{{ versionContent }}</pre>
         </div>
       </div>
@@ -166,38 +181,38 @@
             ⚠️ Restore this version? This will replace the current content.
           </p>
           <div class="confirmation-actions">
-            <button
-              class="btn-secondary"
+            <Button
+              kind="secondary"
+              size="md"
+              text="Cancel"
               data-testid="cancel-restore-button"
               :disabled="isRestoring"
               @click="cancelRestore"
-            >
-              Cancel
-            </button>
-            <button
-              class="btn-danger"
+            />
+            <Button
+              kind="primary"
+              size="md"
+              :text="isRestoring ? 'Restoring...' : 'Restore'"
               data-testid="confirm-restore-button"
               :disabled="isRestoring"
               @click="confirmRestore"
-            >
-              {{ isRestoring ? "Restoring..." : "Restore" }}
-            </button>
+            />
           </div>
         </div>
 
         <!-- Default State -->
         <div v-else class="actions">
-          <button class="btn-secondary" :disabled="isRestoring" @click="close">Close</button>
-          <button
+          <Button kind="secondary" size="md" text="Close" :disabled="isRestoring" @click="close" />
+          <Button
             v-if="isOwner"
-            class="btn-primary"
+            kind="primary"
+            size="md"
+            :text="`Restore v${version.version_number}`"
             data-testid="restore-version-button"
             :disabled="isRestoring"
             title="Restore this version (Owner only)"
             @click="handleRestoreClick"
-          >
-            Restore v{{ version.version_number }}
-          </button>
+          />
           <div v-else class="owner-only-note">Only the file owner can restore versions</div>
         </div>
       </div>
@@ -216,12 +231,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999;
     padding: 20px;
   }
 
   .modal-container {
-    background: var(--color-bg-primary);
+    background: var(--white);
     border-radius: 8px;
     width: 100%;
     max-width: 900px;
@@ -229,6 +244,7 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-primary);
   }
 
   .modal-header {
@@ -236,7 +252,7 @@
     align-items: flex-start;
     justify-content: space-between;
     padding: 20px 24px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
   }
 
@@ -249,18 +265,18 @@
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: var(--color-text-primary);
+    color: var(--text-primary);
   }
 
   .version-name {
     font-weight: 400;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
   }
 
   .version-meta {
     margin-top: 4px;
     font-size: 13px;
-    color: var(--color-text-tertiary);
+    color: var(--text-tertiary);
   }
 
   .btn-close {
@@ -274,13 +290,13 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     transition: all 0.2s;
   }
 
   .btn-close:hover:not(:disabled) {
-    background: var(--color-bg-secondary);
-    color: var(--color-text-primary);
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .btn-close:disabled {
@@ -303,13 +319,13 @@
     justify-content: center;
     height: 100%;
     gap: 16px;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
   }
 
   .spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid var(--color-border);
+    border: 3px solid var(--border-primary);
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -337,26 +353,26 @@
   .read-only-indicator {
     position: sticky;
     top: 0;
-    background: var(--color-bg-secondary);
+    background: var(--surface-hover);
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 13px;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     margin-bottom: 16px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border-primary);
     z-index: 10;
   }
 
   .rsm-source {
     margin: 0;
     padding: 16px;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--surface-hover);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
     font-size: 14px;
     line-height: 1.6;
-    color: var(--color-text-primary);
+    color: var(--text-primary);
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -364,7 +380,7 @@
 
   .modal-footer {
     padding: 16px 24px;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--border-primary);
     flex-shrink: 0;
   }
 
@@ -377,7 +393,7 @@
   .confirmation-message {
     margin: 0;
     font-size: 14px;
-    color: var(--color-text-primary);
+    color: var(--text-primary);
   }
 
   .confirmation-actions {
@@ -395,7 +411,7 @@
 
   .owner-only-note {
     font-size: 13px;
-    color: var(--color-text-tertiary);
+    color: var(--text-tertiary);
     font-style: italic;
   }
 
@@ -421,13 +437,13 @@
   }
 
   .btn-secondary {
-    background: var(--color-bg-secondary);
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: var(--color-bg-tertiary);
+    background: var(--surface-disabled);
   }
 
   .btn-danger {
