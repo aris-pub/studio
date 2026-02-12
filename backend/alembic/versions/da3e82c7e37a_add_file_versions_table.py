@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column('title', sa.String(), nullable=True),
         sa.Column('abstract', sa.Text(), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
         sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['file_id'], ['files.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id']),

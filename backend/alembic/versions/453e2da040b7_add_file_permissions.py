@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column('file_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('role', sa.Enum('OWNER', 'EDITOR', 'COMMENTER', name='filerole'), nullable=False),
-        sa.Column('granted_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        sa.Column('granted_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
         sa.Column('granted_by', sa.Integer(), nullable=False),
         sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['file_id'], ['files.id'], ondelete='CASCADE'),

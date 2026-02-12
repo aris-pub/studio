@@ -10,23 +10,10 @@
  */
 
 import { test, expect } from "@playwright/test";
-import dotenv from "dotenv";
-import path from "path";
 
-dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT;
-const FRONTEND_PORT = process.env.FRONTEND_PORT;
-
-if (!BACKEND_PORT || !FRONTEND_PORT) {
-  throw new Error("BACKEND_PORT and FRONTEND_PORT must be set in .env");
-}
-
+const backendURL = process.env.VITE_API_BASE_URL;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
 const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
-
-if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
-  throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env");
-}
 
 // Second test user for multi-user scenarios
 const TEST_USER2_EMAIL = "testuser2@example.com";
@@ -42,7 +29,7 @@ const TEST_USER3_INITIALS = "TU3";
 
 // Helper to create authenticated session
 async function createAuthenticatedPage(browser, request, email, password) {
-  const loginResponse = await request.post(`http://localhost:${BACKEND_PORT}/login`, {
+  const loginResponse = await request.post(`${backendURL}/login`, {
     data: { email, password },
   });
 
@@ -52,7 +39,7 @@ async function createAuthenticatedPage(browser, request, email, password) {
 
   const loginData = await loginResponse.json();
 
-  const userResponse = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+  const userResponse = await request.get(`${backendURL}/me`, {
     headers: { Authorization: `Bearer ${loginData.access_token}` },
   });
 
@@ -61,12 +48,11 @@ async function createAuthenticatedPage(browser, request, email, password) {
   }
 
   const userData = await userResponse.json();
-  console.log(`[TEST] Logged in as user ID: ${userData.id}, email: ${userData.email}`);
 
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/`, { waitUntil: "domcontentloaded" });
   await page.evaluate(
     (data) => {
       localStorage.setItem("accessToken", data.access_token);
@@ -81,7 +67,7 @@ async function createAuthenticatedPage(browser, request, email, password) {
 
 // Helper to register a new user (or skip if already exists)
 async function registerUser(request, email, name, initials, password) {
-  const response = await request.post(`http://localhost:${BACKEND_PORT}/register`, {
+  const response = await request.post(`${backendURL}/register`, {
     data: { email, name, initials, password },
   });
 
@@ -93,34 +79,29 @@ async function registerUser(request, email, name, initials, password) {
       body.includes("already registered") ||
       body.includes("already exists")
     ) {
-      console.log(`[TEST] User ${email} already exists, skipping registration`);
       return null;
     }
     throw new Error(`Registration failed: ${response.status()} ${body}`);
   }
 
-  console.log(`[TEST] User ${email} registered successfully`);
   return await response.json();
 }
 
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
-  console.log(`[TEST] Opening file ${fileId} in editor`);
-
   // Listen for console errors
-  page.on("pageerror", (error) => {
-    console.log(`[TEST] Page error: ${error.message}`);
+  page.on("pageerror", (_error) => {
+    // Capture page errors
   });
   page.on("console", (msg) => {
     if (msg.type() === "error") {
-      console.log(`[TEST] Console error: ${msg.text()}`);
+      // Capture console errors
     }
   });
 
-  const response = await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+  await page.goto(`/file/${fileId}`, {
     waitUntil: "domcontentloaded",
   });
-  console.log(`[TEST] Page loaded with status: ${response?.status()}`);
 
   // Wait a bit for Vue to initialize
   await page.waitForTimeout(1000);
@@ -132,17 +113,12 @@ async function openFileInEditor(page, fileId) {
     pageText.includes("Access denied") ||
     pageText.includes("Forbidden")
   ) {
-    console.log(`[TEST] ERROR: Page shows access denied: ${pageText.substring(0, 200)}`);
     throw new Error("Access denied");
   }
 
   // Check if manuscript container exists before waiting
   const hasContainer = (await page.locator('[data-testid="manuscript-container"]').count()) > 0;
   if (!hasContainer) {
-    console.log(`[TEST] ERROR: No manuscript container found. Page content:`);
-    console.log(pageText.substring(0, 500));
-    console.log(`[TEST] Page URL: ${page.url()}`);
-
     // Check if we got redirected
     if (page.url().includes("/login")) {
       throw new Error("Redirected to login - authentication issue");
@@ -155,12 +131,10 @@ async function openFileInEditor(page, fileId) {
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
   await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
-  console.log(`[TEST] File ${fileId} editor opened and synced`);
 }
 
 // Helper to insert text
 async function insertText(page, text) {
-  console.log(`[TEST] Inserting: "${text}"`);
   await page.evaluate((txt) => {
     const view = window.__cmView;
     const pos = view.state.doc.length;
@@ -170,12 +144,10 @@ async function insertText(page, text) {
   await page.waitForFunction((txt) => window.__cmView.state.doc.toString().includes(txt), text, {
     timeout: 5000,
   });
-  console.log(`[TEST] Text inserted`);
 }
 
 // Helper to clear editor
 async function clearEditor(page) {
-  console.log("[TEST] Clearing editor");
   await page.evaluate(() => {
     const view = window.__cmView;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
@@ -183,7 +155,6 @@ async function clearEditor(page) {
 
   await page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 5000 });
   await page.waitForFunction(() => window.__ytext.toString().length === 0, {}, { timeout: 5000 });
-  console.log("[TEST] Editor cleared");
 }
 
 // Helper to get editor content
@@ -205,8 +176,7 @@ async function waitForSync(page, expectedContent) {
 
 // Helper to add collaborator via API
 async function addCollaborator(fileId, userId, role, token) {
-  console.log(`[TEST] Adding collaborator: user ${userId} as ${role} to file ${fileId}`);
-  const response = await fetch(`http://localhost:${BACKEND_PORT}/files/${fileId}/permissions`, {
+  const response = await fetch(`${backendURL}/files/${fileId}/permissions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -219,15 +189,12 @@ async function addCollaborator(fileId, userId, role, token) {
     const errorBody = await response.text();
     // If permission already exists, that's okay - we can proceed
     if (response.status === 400 && errorBody.includes("already has permission")) {
-      console.log(`[TEST] Permission already exists, skipping`);
       return null;
     }
-    console.log(`[TEST] Failed to add collaborator: ${response.status} - ${errorBody}`);
     throw new Error(`Failed to add collaborator: ${response.status} - ${errorBody}`);
   }
 
   const result = await response.json();
-  console.log(`[TEST] Permission created:`, result);
   return result;
 }
 
@@ -262,8 +229,8 @@ async function cleanupYjs(page) {
         delete window.__cmView;
       });
     });
-  } catch (error) {
-    console.log("[TEST] Y.js cleanup error (expected if page closed):", error.message);
+  } catch (_error) {
+    // Ignore cleanup errors
   }
 }
 
@@ -306,7 +273,6 @@ test.describe("Multi-User Collaboration @auth", () => {
 
       // Owner adds editor as collaborator
       await addCollaborator(fileId, editor.userId, "EDITOR", owner.token);
-      console.log("[TEST] Added EDITOR collaborator");
 
       // Editor opens file
       await openFileInEditor(editor.page, fileId);
@@ -330,8 +296,6 @@ test.describe("Multi-User Collaboration @auth", () => {
       expect(editorContent).toContain(ownerText);
       expect(editorContent).toContain(editorText);
       expect(ownerContent).toBe(editorContent);
-
-      console.log("[TEST] ✅ OWNER and EDITOR can both edit");
     } finally {
       await cleanupYjs(owner.page);
       await cleanupYjs(editor.page);
@@ -378,7 +342,6 @@ test.describe("Multi-User Collaboration @auth", () => {
 
       // Add commenter
       await addCollaborator(fileId, commenter.userId, "COMMENTER", owner.token);
-      console.log("[TEST] Added COMMENTER collaborator");
 
       // Commenter opens file
       await openFileInEditor(commenter.page, fileId);
@@ -396,8 +359,6 @@ test.describe("Multi-User Collaboration @auth", () => {
       });
 
       expect(isReadOnly).toBe(true);
-
-      console.log("[TEST] ✅ COMMENTER can view but not edit");
     } finally {
       await cleanupYjs(owner.page);
       await cleanupYjs(commenter.page);
@@ -434,7 +395,7 @@ test.describe("Multi-User Collaboration @auth", () => {
       // Unauthorized user tries to open file (no permission granted)
       // Since the file isn't in their fileStore, they should be redirected to 404
 
-      await unauthorized.page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+      await unauthorized.page.goto(`/file/${fileId}`, {
         waitUntil: "domcontentloaded",
         timeout: 5000,
       });
@@ -454,13 +415,11 @@ test.describe("Multi-User Collaboration @auth", () => {
         !(await unauthorized.page.locator('[data-testid="manuscript-container"]').isVisible());
 
       expect(isUnauthorized).toBe(true);
-
-      console.log("[TEST] ✅ Unauthorized user rejected");
     } finally {
       await cleanupYjs(owner.page);
       try {
         await cleanupYjs(unauthorized.page);
-      } catch (e) {
+      } catch (_e) {
         // May fail if page didn't load
       }
       await owner.context.close();
@@ -503,7 +462,7 @@ test.describe("Multi-User Collaboration @auth", () => {
       await owner.page.waitForTimeout(1000);
 
       // Check database via API
-      const response = await fetch(`http://localhost:${BACKEND_PORT}/files/${fileId}`, {
+      const response = await fetch(`${backendURL}/files/${fileId}`, {
         headers: { Authorization: `Bearer ${owner.token}` },
       });
 
@@ -512,8 +471,6 @@ test.describe("Multi-User Collaboration @auth", () => {
 
       expect(fileData.source).toContain("Line from owner");
       expect(fileData.source).toContain("Line from editor");
-
-      console.log("[TEST] ✅ Multi-user edits persisted to database");
     } finally {
       await cleanupYjs(owner.page);
       await cleanupYjs(editor.page);

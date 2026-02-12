@@ -276,7 +276,6 @@
       <Icon name="AlertCircle" size="16" />
       <span>You have unsaved changes</span>
     </div>
-
   </Pane>
 </template>
 

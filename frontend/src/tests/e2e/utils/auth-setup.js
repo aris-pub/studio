@@ -24,7 +24,7 @@ export async function setupSharedAuth(page) {
   try {
     await authHelpers.saveAuthState(AUTH_STATE_PATH);
   } catch (error) {
-    console.warn("[AuthSetup] Could not save auth state:", error.message);
+    // Ignore save errors - not critical
   }
 
   return authHelpers;
@@ -41,7 +41,6 @@ export async function verifyAuthInBeforeEach(page) {
   const isAuthenticated = await authHelpers.verifyLoggedIn();
 
   if (!isAuthenticated) {
-    console.log("[AuthSetup] Auth verification failed, re-authenticating...");
     await authHelpers.ensureLoggedIn(true); // Fast re-auth if needed
   }
 
@@ -65,14 +64,12 @@ export async function createAuthenticatedContext(browser, baseURL) {
     const authHelpers = new AuthHelpers(page);
 
     if (await authHelpers.verifyLoggedIn()) {
-      console.log("[AuthSetup] Using cached authenticated context");
       return { context, authHelpers };
     } else {
-      console.log("[AuthSetup] Cached auth state invalid, creating new one");
       await context.close();
     }
   } catch (_error) {
-    console.log("[AuthSetup] No cached auth state found, creating new one");
+    // Ignore errors loading saved state
   }
 
   // Create new authenticated context

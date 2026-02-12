@@ -1,14 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
 import fs from "fs";
-import dotenv from "dotenv";
 
-dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT;
-
-if (!BACKEND_PORT) {
-  throw new Error("BACKEND_PORT must be set in .env");
-}
+const backendURL = process.env.VITE_API_BASE_URL;
 
 // @auth
 import { AuthHelpers } from "./utils/auth-helpers.js";
@@ -38,19 +32,16 @@ test.describe("File Download Tests @auth @desktop-only", () => {
         const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
 
         if (accessToken) {
-          const response = await request.delete(
-            `http://localhost:${BACKEND_PORT}/files/${testFileId}`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            }
-          );
+          const response = await request.delete(`${backendURL}/files/${testFileId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
 
           if (!response.ok()) {
-            console.error(`Failed to delete file ${testFileId}: ${response.status()}`);
+            // Failed to delete test file
           }
         }
-      } catch (error) {
-        console.error(`Error during cleanup of file ${testFileId}:`, error);
+      } catch (_error) {
+        // Ignore cleanup errors
       }
     }
   });

@@ -39,7 +39,7 @@ async def render(data: RenderObject):
         # Import rsm here to avoid circular imports
         import rsm
         try:
-            structured_content = rsm.build(data.source, handrails=True, structured=True)
+            structured_content = rsm.build(data.source, handrails=True, structured=True, theme_toggle=False)
             if not isinstance(structured_content, dict):
                 # Fallback if structured format fails
                 html = await crud.render(data.source)

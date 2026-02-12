@@ -1,29 +1,15 @@
 import { test, expect } from "@playwright/test";
-import dotenv from "dotenv";
-import path from "path";
 
 // @auth-flows
 import { AuthHelpers } from "./utils/auth-helpers.js";
 import { TEST_CREDENTIALS } from "./setup/test-data.js";
-
-// Load environment variables from root .env file
-dotenv.config({ path: path.resolve("../../../.env") });
-
-// Get backend port from environment - NO fallback, will crash if not set
-const BACKEND_PORT = process.env.BACKEND_PORT;
-
-if (!BACKEND_PORT) {
-  console.error("❌ FATAL: BACKEND_PORT environment variable not set");
-  console.error("   Ensure .env file exists at project root with all required variables");
-  process.exit(1);
-}
 
 test.describe("Auth Enabled - Production Mode @auth-flows", () => {
   test("verifies auth guards are active and login flow works", async ({ page }) => {
     const auth = new AuthHelpers(page);
 
     // Test 1: Verify backend API is responding
-    const healthResponse = await page.request.get(`http://localhost:${BACKEND_PORT}/health`);
+    const healthResponse = await page.request.get(`${process.env.VITE_API_BASE_URL}/health`);
     expect(healthResponse.ok()).toBeTruthy();
 
     // Test 2: Verify protected routes redirect to login

@@ -9,8 +9,7 @@ test.describe("Settings Navigation @auth @desktop-only", () => {
     // Set desktop viewport for desktop-only tests
     await page.setViewportSize({ width: 1024, height: 768 });
     authHelpers = new AuthHelpers(page);
-    await page.goto("/");
-    await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
+    await authHelpers.ensureLoggedIn();
   });
 
   test.afterEach(async () => {
@@ -160,8 +159,7 @@ test.describe("Settings Error Handling @auth @desktop-only", () => {
     // Set desktop viewport for desktop-only tests
     await page.setViewportSize({ width: 1024, height: 768 });
     authHelpers = new AuthHelpers(page);
-    await page.goto("/");
-    await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
+    await authHelpers.ensureLoggedIn();
   });
 
   test.afterEach(async () => {

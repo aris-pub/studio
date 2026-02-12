@@ -26,27 +26,14 @@
  */
 
 import { test, expect } from "@playwright/test";
-import dotenv from "dotenv";
-import path from "path";
 
-dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT;
-const FRONTEND_PORT = process.env.FRONTEND_PORT;
-
-if (!BACKEND_PORT || !FRONTEND_PORT) {
-  throw new Error("BACKEND_PORT and FRONTEND_PORT must be set in .env");
-}
-
+const backendURL = process.env.VITE_API_BASE_URL;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
 const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
 
-if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
-  throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env");
-}
-
 // Helper to create authenticated session
 async function createAuthenticatedPage(browser, request) {
-  const loginResponse = await request.post(`http://localhost:${BACKEND_PORT}/login`, {
+  const loginResponse = await request.post(`${backendURL}/login`, {
     data: {
       email: TEST_USER_EMAIL,
       password: TEST_USER_PASSWORD,
@@ -59,7 +46,7 @@ async function createAuthenticatedPage(browser, request) {
 
   const loginData = await loginResponse.json();
 
-  const userResponse = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+  const userResponse = await request.get(`${backendURL}/me`, {
     headers: { Authorization: `Bearer ${loginData.access_token}` },
   });
 
@@ -72,7 +59,7 @@ async function createAuthenticatedPage(browser, request) {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/`, { waitUntil: "domcontentloaded" });
   await page.evaluate(
     (data) => {
       localStorage.setItem("accessToken", data.access_token);
@@ -87,41 +74,18 @@ async function createAuthenticatedPage(browser, request) {
 
 // Helper to open file and editor
 async function openFileInEditor(page, fileId) {
-  console.log(`[TEST openFileInEditor] 🚀 Opening file ${fileId}`);
-  await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+  await page.goto(`/file/${fileId}`, {
     waitUntil: "domcontentloaded",
   });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
-  console.log(`[TEST openFileInEditor] 📄 Manuscript loaded`);
 
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
-  console.log(`[TEST openFileInEditor] 📝 Source editor opened`);
 
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
-  console.log(`[TEST openFileInEditor] ✅ __cmView available`);
 
   // Wait for Y.js provider to be synced (not just connected)
   await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
-
-  const state = await page.evaluate(() => ({
-    editorLength: window.__cmView.state.doc.length,
-    editorContent: window.__cmView.state.doc.toString().substring(0, 50),
-    ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString().substring(0, 50),
-    connected: window.__provider.wsconnected,
-    synced: window.__provider.synced,
-  }));
-  console.log(
-    `[TEST openFileInEditor] 📊 State - Editor: ${state.editorLength} chars, Y.text: ${state.ytextLength} chars`
-  );
-  console.log(
-    `[TEST openFileInEditor] 📊 Content - Editor: "${state.editorContent}...", Y.text: "${state.ytextContent}..."`
-  );
-  console.log(
-    `[TEST openFileInEditor] 📊 Provider - connected: ${state.connected}, synced: ${state.synced}`
-  );
-  console.log(`[TEST openFileInEditor] ✅ Open complete`);
 }
 
 // Helper to get editor content
@@ -131,14 +95,11 @@ async function getEditorContent(page) {
 
 // Helper to insert text programmatically
 async function insertText(page, text) {
-  console.log(`[TEST insertText] ✍️  Inserting: "${text}"`);
   const startLength = await page.evaluate(() => window.__cmView.state.doc.length);
-  console.log(`[TEST insertText] 📊 Editor length before insert: ${startLength}`);
 
   await page.evaluate((txt) => {
     const view = window.__cmView;
     const pos = view.state.doc.length;
-    console.log(`[insertText] Dispatching insert at pos ${pos}: "${txt}"`);
     view.dispatch({
       changes: { from: pos, insert: txt },
     });
@@ -150,41 +111,15 @@ async function insertText(page, text) {
     { timeout: 5000 }
   );
 
-  const afterInsert = await page.evaluate(() => ({
-    editorLength: window.__cmView.state.doc.length,
-    editorContent: window.__cmView.state.doc.toString(),
-    ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString(),
-  }));
-  console.log(
-    `[TEST insertText] 📊 After insert - Editor: ${afterInsert.editorLength} chars "${afterInsert.editorContent}"`
-  );
-  console.log(
-    `[TEST insertText] 📊 After insert - Y.text: ${afterInsert.ytextLength} chars "${afterInsert.ytextContent}"`
-  );
-
   await page.waitForTimeout(100);
-  console.log(`[TEST insertText] ✅ Insert complete`);
 }
 
 // Helper to clear editor
 async function clearEditor(page) {
-  console.log("[TEST clearEditor] 🧹 Starting clear operation");
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
-
-  const beforeClear = await page.evaluate(() => ({
-    editorLength: window.__cmView.state.doc.length,
-    editorContent: window.__cmView.state.doc.toString().substring(0, 50),
-    ytextLength: window.__ytext.toString().length,
-    ytextContent: window.__ytext.toString().substring(0, 50),
-  }));
-  console.log(
-    `[TEST clearEditor] 📊 Before clear - Editor: ${beforeClear.editorLength} chars, Y.text: ${beforeClear.ytextLength} chars`
-  );
 
   await page.evaluate(() => {
     const view = window.__cmView;
-    console.log("[clearEditor] Dispatching clear change");
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: "" },
     });
@@ -192,17 +127,7 @@ async function clearEditor(page) {
 
   await page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 5000 });
 
-  const afterClear = await page.evaluate(() => ({
-    editorLength: window.__cmView.state.doc.length,
-    ytextLength: window.__ytext.toString().length,
-    providerSynced: window.__provider.synced,
-  }));
-  console.log(
-    `[TEST clearEditor] 📊 After clear - Editor: ${afterClear.editorLength} chars, Y.text: ${afterClear.ytextLength} chars, synced: ${afterClear.providerSynced}`
-  );
-
   await page.waitForTimeout(100);
-  console.log("[TEST clearEditor] ✅ Clear complete");
 }
 
 // Helper to wait for content to sync between tabs
@@ -249,8 +174,8 @@ async function cleanupYjs(page) {
         delete window.__cmView;
       });
     });
-  } catch (error) {
-    console.log("[Test] Y.js cleanup error (expected if page closed):", error.message);
+  } catch (_error) {
+    // Ignore cleanup errors
   }
 }
 
@@ -281,13 +206,6 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
 
         const contentB = await getEditorContent(tabB.page);
 
-        const debugB = await tabB.page.evaluate(() => ({
-          ytext: window.__ytext?.toString() || "UNDEFINED",
-          editor: window.__cmView?.state.doc.toString() || "UNDEFINED",
-        }));
-        console.log(`[DEBUG] Tab B - Y.text: "${debugB.ytext.substring(0, 50)}..."`);
-        console.log(`[DEBUG] Tab B - Editor: "${debugB.editor.substring(0, 50)}..."`);
-        console.log(`[DEBUG] Expected to contain: "${testText}"`);
         expect(contentB).toContain(testText);
       } finally {
         await cleanupYjs(tabA.page);
@@ -570,7 +488,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await insertText(tabA.page, "Before disconnect");
         await waitForSync(tabB.page, "Before disconnect");
 
-        await tabB.page.goto(`http://localhost:${FRONTEND_PORT}/`);
+        await tabB.page.goto(`/`);
 
         await insertText(tabA.page, "\nDuring disconnect");
 

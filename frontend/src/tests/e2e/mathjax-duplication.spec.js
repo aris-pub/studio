@@ -116,10 +116,6 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
         mathJaxScripts: document.querySelectorAll('script[id="MathJax-script"]').length,
       }));
 
-      console.log("Init state:", JSON.stringify(initState));
-      console.log("Onload init messages:", consoleLogs.length);
-      console.log("Page errors:", errors);
-
       // CRITICAL: onload should only initialize ONCE (catches infinite import loop)
       // If this fails with a high number, the bug has regressed
       expect(consoleLogs.length).toBeLessThanOrEqual(1);
@@ -175,8 +171,6 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
           mjxContainerCount: document.querySelectorAll("mjx-container").length,
         };
       });
-
-      console.log("Render check:", JSON.stringify(renderCheck));
 
       // Raw LaTeX should NEVER be visible in rendered output
       expect(renderCheck.hasRawInlineDelimiters).toBe(false);
@@ -334,9 +328,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         block: document.querySelectorAll("div.mathblock > .hr-content-zone > mjx-container").length,
       }));
 
-      console.log(`Initial inline MathJax containers: ${initialCounts.inline}`);
-      console.log(`Initial block MathJax containers: ${initialCounts.block}`);
-
       // EXPECTED: 2 inline (span.math) + 2 block (div.mathblock)
       expect(initialCounts.inline).toBe(2);
       expect(initialCounts.block).toBe(2);
@@ -425,8 +416,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         };
       });
 
-      console.log("After first edit:", JSON.stringify(afterFirstEdit));
-
       // On mobile, switch back to source editor for second edit
       if (isMobile) {
         await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
@@ -500,8 +489,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         };
       });
 
-      console.log("After second edit:", JSON.stringify(afterSecondEdit));
-
       // Raw LaTeX should never be visible
       expect(afterFirstEdit.hasRawInlineLatex).toBe(false);
       expect(afterFirstEdit.hasRawBlockLatex).toBe(false);
@@ -544,8 +531,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       const initialScriptCount = await page.evaluate(() => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
-
-      console.log(`Initial MathJax script count: ${initialScriptCount}`);
 
       // Open editor
       await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
@@ -606,8 +591,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       const finalScriptCount = await page.evaluate(() => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
-
-      console.log(`Final MathJax script count after 2 edits: ${finalScriptCount}`);
 
       // Script count should remain 1
       expect(finalScriptCount).toBe(1);

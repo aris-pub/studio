@@ -190,3 +190,31 @@ async def delete_version(
     if version:
         version.deleted_at = datetime.now(timezone.utc)
         await db.commit()
+
+
+async def soft_delete_versions_for_file(
+    file_id: int,
+    db: AsyncSession,
+) -> None:
+    """Soft delete all versions for a file.
+
+    Called when a file is soft-deleted to ensure its versions are also marked as deleted.
+
+    Parameters
+    ----------
+    file_id : int
+        ID of the file whose versions should be deleted.
+    db : AsyncSession
+        Database session.
+
+    """
+    deleted_at = datetime.now(timezone.utc)
+
+    # Get all non-deleted versions for this file
+    versions = await get_versions_for_file(file_id, db=db, include_deleted=False)
+
+    # Soft delete each version
+    for version in versions:
+        version.deleted_at = deleted_at
+
+    # Commit is handled by the caller (delete_file_in_database)

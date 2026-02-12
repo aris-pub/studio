@@ -12,7 +12,7 @@
  * 7. Multi-version scenarios
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/api-intercept.js";
 import { AuthHelpers } from "./utils/auth-helpers.js";
 import { FileHelpers } from "./utils/file-helpers.js";
 
@@ -25,14 +25,12 @@ test.describe("Version Workflow @auth", () => {
     authHelpers = new AuthHelpers(page);
     fileHelpers = new FileHelpers(page);
 
-    // Login using AuthHelpers
-    await authHelpers.login(
-      process.env.TEST_USER_EMAIL,
-      process.env.TEST_USER_PASSWORD
-    );
+    // Ensure logged in (skips if already authenticated)
+    await authHelpers.ensureLoggedIn();
 
     // Create a test file using FileHelpers
     fileId = await fileHelpers.createNewFile();
+    console.log(`[TEST] Created file with ID: ${fileId}`);
 
     // Navigate to the file
     await page.goto(`/file/${fileId}`);
@@ -40,10 +38,33 @@ test.describe("Version Workflow @auth", () => {
 
     // Open versions drawer
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
-    await page.waitForSelector('[data-testid="save-version-button"]');
+    await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
+
+    // Wait for drawer animation to complete (0.3s transition)
+    // We wait for the drawer to reach its final position by checking CSS
+    await page.waitForFunction(
+      () => {
+        const drawer = document.querySelector(".drawer.active");
+        if (!drawer) return false;
+        const styles = window.getComputedStyle(drawer);
+        return styles.left === "64px" && styles.opacity === "1";
+      },
+      { timeout: 1000 }
+    );
+  });
+
+  test.afterEach(async () => {
+    if (fileId) {
+      console.log(`[TEST] Deleting file with ID: ${fileId}`);
+      await fileHelpers.deleteFile(fileId);
+      console.log(`[TEST] File ${fileId} deleted successfully`);
+    }
   });
 
   test("creates a new version when clicking Save Version button", async ({ page }) => {
+    // Wait for versions to load (loading state to disappear)
+    await page.waitForSelector(".loading", { state: "hidden", timeout: 5000 });
+
     // Initially should show empty state
     const emptyState = page.locator(".empty-state");
     await expect(emptyState).toBeVisible();
@@ -88,10 +109,7 @@ test.describe("Version Workflow @auth", () => {
     await editableInput.fill("First Draft");
     await editableInput.press("Enter");
 
-    // Wait for save to complete
-    await page.waitForTimeout(500);
-
-    // Verify name was updated
+    // Verify name was updated (expect has implicit waiting)
     await expect(versionItem).toContainText("First Draft");
   });
 
@@ -120,10 +138,7 @@ test.describe("Version Workflow @auth", () => {
 
     await page.click('button:has-text("Delete")');
 
-    // Wait for deletion to complete
-    await page.waitForTimeout(500);
-
-    // Verify version was deleted and empty state is shown
+    // Verify version was deleted (expect has implicit waiting)
     versionItems = page.locator('[data-testid="version-item"]');
     await expect(versionItems).toHaveCount(0);
 
@@ -137,16 +152,14 @@ test.describe("Version Workflow @auth", () => {
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
 
     // Wait for version to be fully created (API response)
-    await page.waitForTimeout(1000);
 
     // Press Escape to exit edit mode
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await page.keyboard.press("Escape");
 
     // Click on the version row (not the context menu)
     const versionItem = page.locator('[data-testid="version-item"]').first();
     // Click in the middle of the version info area (not on buttons)
-    await versionItem.locator('.version-info').click();
+    await versionItem.locator(".version-info").click();
 
     // Modal should appear
     await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
@@ -159,19 +172,19 @@ test.describe("Version Workflow @auth", () => {
     await expect(modal).toContainText("Version 1");
   });
 
-  test("clicking version row works after hover (regression test for CSS transform)", async ({ page }) => {
+  test("clicking version row works after hover (regression test for CSS transform)", async ({
+    page,
+  }) => {
     // Create a version
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
-    await page.keyboard.press('Escape'); // Exit edit mode
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape"); // Exit edit mode
 
     const versionItem = page.locator('[data-testid="version-item"]').first();
-    const versionInfo = versionItem.locator('.version-info');
+    const versionInfo = versionItem.locator(".version-info");
 
     // Hover over the version item to trigger CSS hover state
     await versionItem.hover();
-    await page.waitForTimeout(300); // Wait for CSS transitions
 
     // Click while in hover state - this catches CSS issues like transform breaking click detection
     await versionInfo.click();
@@ -186,14 +199,12 @@ test.describe("Version Workflow @auth", () => {
     // Create a version first
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
-    await page.waitForTimeout(1000);
 
     const versionItem = page.locator('[data-testid="version-item"]').first();
-    const versionInfo = versionItem.locator('.version-info');
+    const versionInfo = versionItem.locator(".version-info");
 
     // After creating version, EditableText is in edit mode - press Escape to exit
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await page.keyboard.press("Escape");
 
     // Open modal first time
     await versionInfo.click();
@@ -203,7 +214,6 @@ test.describe("Version Workflow @auth", () => {
 
     // Close modal
     await page.click('[data-testid="close-preview-modal"]');
-    await page.waitForTimeout(500);
     await expect(modal).not.toBeVisible();
 
     // Open modal second time - THIS IS THE REGRESSION TEST
@@ -217,7 +227,6 @@ test.describe("Version Workflow @auth", () => {
 
     // Close and open a third time to be sure
     await page.click('[data-testid="close-preview-modal"]');
-    await page.waitForTimeout(500);
     await versionInfo.click();
     await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
     await expect(modal).toBeVisible();
@@ -227,26 +236,23 @@ test.describe("Version Workflow @auth", () => {
     // First, create two versions so we're not clicking on a freshly-created one
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
-    await page.keyboard.press('Escape'); // Exit edit mode
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape"); // Exit edit mode
 
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]:nth-child(2)', { timeout: 5000 });
-    await page.keyboard.press('Escape'); // Exit edit mode
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape"); // Exit edit mode
 
     // Click on the SECOND version (not the one in edit mode)
     const secondVersionItem = page.locator('[data-testid="version-item"]').nth(1);
-    const versionInfo = secondVersionItem.locator('.version-info');
+    const versionInfo = secondVersionItem.locator(".version-info");
 
     // First open - click the version row
     await versionInfo.click();
-    let modal = page.locator('[data-testid="version-preview-modal"]');
+    const modal = page.locator('[data-testid="version-preview-modal"]');
     await expect(modal).toBeVisible({ timeout: 5000 });
 
     // Close modal using X button
     await page.click('[data-testid="close-preview-modal"]');
-    await page.waitForTimeout(500);
     await expect(modal).not.toBeVisible();
 
     // THIS IS THE BUG TEST: Try to reopen modal
@@ -329,7 +335,6 @@ test.describe("Version Workflow @auth", () => {
     const editableInput = versionItem.locator("input, textarea").first();
     await editableInput.fill("Test Name");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // Verify name appears
     await expect(versionItem).toContainText("Test Name");
@@ -339,7 +344,6 @@ test.describe("Version Workflow @auth", () => {
     await page.click('button:has-text("Rename")');
     await editableInput.fill("");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // After clearing, should still show version number (no custom name)
     await expect(versionItem).toContainText("v1");
@@ -362,8 +366,6 @@ test.describe("Version Workflow @auth", () => {
     await editableInput.fill(specialName);
     await editableInput.press("Enter");
 
-    await page.waitForTimeout(500);
-
     // Verify special characters are preserved
     await expect(versionItem).toContainText(specialName);
   });
@@ -380,7 +382,6 @@ test.describe("Version Workflow @auth", () => {
     const editableInput = versionItem.locator("input, textarea").first();
     await editableInput.fill("Original Name");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // Now try to rename but cancel with Escape
     await versionItem.locator('[data-testid="trigger-button"]').click();
@@ -388,7 +389,6 @@ test.describe("Version Workflow @auth", () => {
 
     await editableInput.fill("Changed Name");
     await editableInput.press("Escape");
-    await page.waitForTimeout(300);
 
     // Original name should still be there
     await expect(versionItem).toContainText("Original Name");
@@ -407,14 +407,16 @@ test.describe("Version Workflow @auth", () => {
     const versionItem = versionItems.first();
     await versionItem.locator('[data-testid="trigger-button"]').click();
 
-    // Set up dialog handler to dismiss
-    page.once("dialog", (dialog) => {
+    // Wait for Delete button to be ready
+    await page.waitForSelector('button:has-text("Delete")');
+
+    // Set up dialog handler to dismiss (same pattern as the working delete test)
+    page.on("dialog", (dialog) => {
       expect(dialog.message()).toContain("Delete version");
       dialog.dismiss();
     });
 
     await page.click('button:has-text("Delete")');
-    await page.waitForTimeout(500);
 
     // Version should still exist
     versionItems = page.locator('[data-testid="version-item"]');
@@ -425,7 +427,6 @@ test.describe("Version Workflow @auth", () => {
     // Create 3 versions
     for (let i = 0; i < 3; i++) {
       await page.click('[data-testid="save-version-button"]');
-      await page.waitForTimeout(500);
     }
 
     // Wait for all versions to appear
@@ -446,14 +447,17 @@ test.describe("Version Workflow @auth", () => {
     // Create 3 versions with names
     for (let i = 1; i <= 3; i++) {
       await page.click('[data-testid="save-version-button"]');
-      await page.waitForTimeout(500);
+      await page.waitForSelector('[data-testid="version-item"]');
+
+      // New version auto-enters edit mode, so we can directly fill the name
       const versionItem = page.locator('[data-testid="version-item"]').first();
-      await versionItem.locator('[data-testid="trigger-button"]').click();
-      await page.click('button:has-text("Rename")');
       const editableInput = versionItem.locator("input, textarea").first();
+      await editableInput.waitFor({ state: "visible", timeout: 3000 });
       await editableInput.fill(`Version ${i}`);
       await editableInput.press("Enter");
-      await page.waitForTimeout(500);
+
+      // Wait for edit mode to exit before next iteration
+      await editableInput.waitFor({ state: "hidden", timeout: 3000 });
     }
 
     // Verify 3 versions exist
@@ -466,7 +470,6 @@ test.describe("Version Workflow @auth", () => {
 
     page.once("dialog", (dialog) => dialog.accept());
     await page.click('button:has-text("Delete")');
-    await page.waitForTimeout(500);
 
     // Should have 2 versions remaining
     versionItems = page.locator('[data-testid="version-item"]');
@@ -475,15 +478,15 @@ test.describe("Version Workflow @auth", () => {
     // Verify correct versions remain
     await expect(page.locator('[data-testid="version-item"]:has-text("Version 3")')).toBeVisible();
     await expect(page.locator('[data-testid="version-item"]:has-text("Version 1")')).toBeVisible();
-    await expect(page.locator('[data-testid="version-item"]:has-text("Version 2")')).not.toBeVisible();
+    await expect(
+      page.locator('[data-testid="version-item"]:has-text("Version 2")')
+    ).not.toBeVisible();
   });
 
   test("renames different versions independently", async ({ page }) => {
     // Create 2 versions
     await page.click('[data-testid="save-version-button"]');
-    await page.waitForTimeout(500);
     await page.click('[data-testid="save-version-button"]');
-    await page.waitForTimeout(500);
 
     const versionItems = page.locator('[data-testid="version-item"]');
     await expect(versionItems).toHaveCount(2);
@@ -495,7 +498,6 @@ test.describe("Version Workflow @auth", () => {
     let editableInput = firstVersion.locator("input, textarea").first();
     await editableInput.fill("Latest Draft");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // Rename second version (v1)
     const secondVersion = versionItems.nth(1);
@@ -504,7 +506,6 @@ test.describe("Version Workflow @auth", () => {
     editableInput = secondVersion.locator("input, textarea").first();
     await editableInput.fill("Initial Draft");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // Verify both names are correct
     await expect(firstVersion).toContainText("Latest Draft");
@@ -525,12 +526,11 @@ test.describe("Version Workflow @auth", () => {
     await page.click('button:has-text("Rename")');
 
     // Type a very long name
-    const longName = "This is a very long version name that might cause display issues if not handled properly with ellipsis or truncation";
+    const longName =
+      "This is a very long version name that might cause display issues if not handled properly with ellipsis or truncation";
     const editableInput = versionItem.locator("input, textarea").first();
     await editableInput.fill(longName);
     await editableInput.press("Enter");
-
-    await page.waitForTimeout(500);
 
     // Verify the name was saved (even if visually truncated)
     const versionNameElement = versionItem.locator(".version-name");
@@ -549,7 +549,6 @@ test.describe("Version Workflow @auth", () => {
     await versionItem.locator('[data-testid="trigger-button"]').click();
 
     // Wait a moment
-    await page.waitForTimeout(300);
 
     // Modal should NOT have opened
     const modal = page.locator('[data-testid="version-preview-modal"]');
@@ -570,10 +569,9 @@ test.describe("Version Workflow @auth", () => {
     const editableInput = versionItem.locator("input, textarea").first();
     await editableInput.fill("Test Version");
     await editableInput.press("Enter");
-    await page.waitForTimeout(500);
 
     // Click on the version name text (not the input, the displayed text)
-    const versionName = versionItem.locator('.version-name');
+    const versionName = versionItem.locator(".version-name");
     await versionName.click();
 
     // Modal should open
@@ -581,15 +579,16 @@ test.describe("Version Workflow @auth", () => {
     await expect(modal).toBeVisible({ timeout: 5000 });
   });
 
-  test("pressing ESC in modal closes only modal, not drawer (regression test)", async ({ page }) => {
+  test("pressing ESC in modal closes only modal, not drawer (regression test)", async ({
+    page,
+  }) => {
     // Create a version
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
-    await page.keyboard.press('Escape'); // Exit edit mode
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape"); // Exit edit mode
 
     const versionItem = page.locator('[data-testid="version-item"]').first();
-    const versionInfo = versionItem.locator('.version-info');
+    const versionInfo = versionItem.locator(".version-info");
 
     // Open modal by clicking version
     await versionInfo.click();
@@ -597,8 +596,7 @@ test.describe("Version Workflow @auth", () => {
     await expect(modal).toBeVisible({ timeout: 5000 });
 
     // Press ESC to close modal
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape");
 
     // Modal should be closed
     await expect(modal).not.toBeVisible();

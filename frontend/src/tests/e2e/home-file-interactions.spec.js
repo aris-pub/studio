@@ -12,11 +12,7 @@ test.describe("Home View File Interactions @auth @desktop-only", () => {
     authHelpers = new AuthHelpers(page);
     fileHelpers = new FileHelpers(page);
 
-    await page.goto("/");
-    await authHelpers.clearAuthState();
-    await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
-    await authHelpers.expectToBeLoggedIn();
-
+    await authHelpers.ensureLoggedIn();
     await fileHelpers.waitForFilesLoaded();
   });
 });

@@ -39,35 +39,28 @@ export class AccountHelpers {
    * Send verification email and handle the response
    */
   async sendVerificationEmail() {
-    console.log("[AccountHelpers] Starting sendVerificationEmail");
-
     await this.navigateToAccountPage("security");
-    console.log("[AccountHelpers] Navigated to security page for email verification");
 
     // Check if the verification section is visible
     const emailSection = this.page.locator(".status-item").filter({ hasText: "Email" });
     await expect(emailSection).toBeVisible();
-    console.log("[AccountHelpers] Email section is visible");
 
     const sendButton = this.page.locator(".verification-actions button");
 
     // Log if button is found
     const buttonCount = await sendButton.count();
-    console.log("[AccountHelpers] Send verification button count:", buttonCount);
 
     if (buttonCount === 0) {
       // Check email verification status
       const statusIndicator = emailSection.locator(".status-indicator");
       const isVerified = await statusIndicator.evaluate((el) => el.classList.contains("verified"));
       const isUnverified = await statusIndicator.evaluate((el) => el.classList.contains("warning"));
-      console.log("[AccountHelpers] Email verification status:", { isVerified, isUnverified });
 
       throw new Error("Send verification button not found in .verification-actions");
     }
 
     await expect(sendButton).toBeVisible();
     await expect(sendButton).toBeEnabled();
-    console.log("[AccountHelpers] Send button is visible and enabled");
 
     // Click and wait for API response
     const responsePromise = this.page.waitForResponse(
@@ -75,22 +68,16 @@ export class AccountHelpers {
         response.url().includes("/send-verification") && response.request().method() === "POST"
     );
 
-    console.log("[AccountHelpers] Clicking send verification button");
     await sendButton.click();
     const response = await responsePromise;
 
-    console.log("[AccountHelpers] Verification email response:", {
-      status: response.status(),
-      statusText: response.statusText(),
-      url: response.url(),
-    });
+    expect(response.status()).toBe(200);
 
     let responseData = {};
     try {
       responseData = await response.json();
-      console.log("[AccountHelpers] Verification response data:", responseData);
     } catch (error) {
-      console.log("[AccountHelpers] Could not parse verification response as JSON:", error.message);
+      // Ignore JSON parse errors
     }
 
     return {
@@ -104,14 +91,7 @@ export class AccountHelpers {
    * Change user password through the UI
    */
   async changePassword(currentPassword, newPassword, confirmPassword = null) {
-    console.log("[AccountHelpers] Starting changePassword:", {
-      currentPassword: "***",
-      newPassword: "***",
-      confirmPassword: confirmPassword ? "***" : "null",
-    });
-
     await this.navigateToAccountPage("security");
-    console.log("[AccountHelpers] Navigated to security page");
 
     const currentPasswordInput = this.page
       .locator(".input-text")
@@ -126,45 +106,32 @@ export class AccountHelpers {
       .filter({ hasText: /^Confirm New Password$/ })
       .locator("input");
 
-    console.log("[AccountHelpers] Located password input fields");
-
     // Check if inputs are visible
     await expect(currentPasswordInput).toBeVisible();
     await expect(newPasswordInput).toBeVisible();
     await expect(confirmPasswordInput).toBeVisible();
-    console.log("[AccountHelpers] All password inputs are visible");
 
     await currentPasswordInput.fill(currentPassword);
     await newPasswordInput.fill(newPassword);
     await confirmPasswordInput.fill(confirmPassword || newPassword);
-    console.log("[AccountHelpers] Filled password fields");
 
     const updateButton = this.page.locator('button:has-text("Update Password")');
     await expect(updateButton).toBeVisible();
     await expect(updateButton).toBeEnabled();
-    console.log("[AccountHelpers] Update button is visible and enabled");
 
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes("/change-password") && response.request().method() === "POST"
     );
 
-    console.log("[AccountHelpers] Clicking update button and waiting for response");
     await updateButton.click();
     const response = await responsePromise;
-
-    console.log("[AccountHelpers] Password change response received:", {
-      status: response.status(),
-      statusText: response.statusText(),
-      url: response.url(),
-    });
 
     let responseData = {};
     try {
       responseData = await response.json();
-      console.log("[AccountHelpers] Response data:", responseData);
     } catch (error) {
-      console.log("[AccountHelpers] Could not parse response as JSON:", error.message);
+      // Ignore JSON parse errors
     }
 
     return {

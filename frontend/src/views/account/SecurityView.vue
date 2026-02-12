@@ -227,8 +227,7 @@
       <span class="title">Security</span>
     </template>
 
-
-      <!-- Account Status -->
+    <!-- Account Status -->
     <Section>
       <template #title>Account Status</template>
       <template #content>
@@ -246,14 +245,14 @@
                 size="sm"
                 :disabled="isSendingVerification || verificationSent"
                 :icon="
-                verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'
+                  verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'
                 "
                 :text="
-                verificationSent
-                ? 'Verification email sent'
-                : isSendingVerification
-                ? 'Sending...'
-                : 'Send Verification Email'
+                  verificationSent
+                    ? 'Verification email sent'
+                    : isSendingVerification
+                      ? 'Sending...'
+                      : 'Send Verification Email'
                 "
                 @click="onSendVerificationEmail"
               />
@@ -263,8 +262,7 @@
       </template>
     </Section>
 
-
-      <!-- Password Management -->
+    <!-- Password Management -->
     <Section>
       <template #title>Password</template>
       <template #content>
@@ -317,10 +315,8 @@
           <Icon name="AlertCircle" size="16" />
           <span>You have unsaved password changes</span>
         </div>
-
       </template>
     </Section>
-
   </Pane>
 </template>
 

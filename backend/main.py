@@ -373,6 +373,22 @@ app.mount(
     name="static",
 )
 
+# Mount braiid CSS directory
+def find_braiid_dir():
+    """Find braiid directory in RSM package."""
+    import rsm
+    rsm_module_path = Path(rsm.__file__).parent.parent
+    braiid_dir = rsm_module_path / "braiid"
+    if braiid_dir.exists():
+        return str(braiid_dir)
+    raise RuntimeError(f"Braiid directory not found at {braiid_dir}")
+
+app.mount(
+    "/braiid",
+    StaticFiles(directory=find_braiid_dir()),
+    name="braiid",
+)
+
 # Mount styles (only if directory exists)
 styles_paths = [
     "../styles",  # When running from backend/ directory

@@ -123,8 +123,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         referenceLinks: document.querySelectorAll("a.reference").length,
       }));
 
-      console.log("Initial state:", JSON.stringify(initialState));
-
       expect(initialState.referenceLinks).toBeGreaterThan(0);
 
       // Find the reference link and hover over it
@@ -158,8 +156,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         };
       });
 
-      console.log("Tooltip state:", JSON.stringify(tooltipState));
-
       expect(tooltipState.tooltipVisible).toBe(true);
       expect(tooltipState.tooltipMjxCount).toBeGreaterThan(0);
       expect(tooltipState.hasRawLatexInTooltip).toBe(false);
@@ -181,7 +177,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
       }));
 
-      console.log("Final state:", JSON.stringify(finalState));
       expect(finalState.nestedMjxCount).toBe(0);
     } finally {
       await deleteTestFile(request, fileId);
@@ -218,8 +213,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         };
       });
 
-      console.log("Before tooltip:", JSON.stringify(beforeTooltip));
-
       // Hover over reference to trigger tooltip
       const referenceLink = page.locator("a.reference").first();
       await referenceLink.hover();
@@ -239,8 +232,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
           nestedMjx: document.querySelectorAll("mjx-container mjx-container").length,
         };
       });
-
-      console.log("After tooltip:", JSON.stringify(afterTooltip));
 
       // Manuscript mjx count should NOT increase
       expect(afterTooltip.manuscriptMjx).toBe(beforeTooltip.manuscriptMjx);

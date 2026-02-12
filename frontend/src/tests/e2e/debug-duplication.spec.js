@@ -19,7 +19,7 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
       msg.text().includes("[executeRender]") ||
       msg.text().includes("span.math")
     ) {
-      console.log("BROWSER:", msg.text());
+      // Filtered: ignore math typesetting logs
     }
   });
 
@@ -56,7 +56,6 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
         structure,
       };
     });
-    console.log("INITIAL:", JSON.stringify(initial));
 
     // Open editor and make a trivial edit to the title
     await page.locator(".sb-item").filter({ hasText: "source" }).click();
@@ -83,7 +82,6 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
         structure,
       };
     });
-    console.log("AFTER EDIT:", JSON.stringify(afterEdit));
 
     // Check for VISUAL duplication (ignoring assistive MathML)
     const visualContainers = await page.evaluate(() => {
@@ -92,7 +90,6 @@ test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }
         "span.math > mjx-container, div.mathblock mjx-container:not(mjx-assistive-mml mjx-container)"
       ).length;
     });
-    console.log("VISUAL CONTAINERS:", visualContainers);
 
     // The real bug: visual containers should equal initial count
     expect(visualContainers).toBe(1);

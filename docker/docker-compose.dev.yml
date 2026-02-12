@@ -1,6 +1,6 @@
 # Common configuration for all services
 x-common-env: &common-env
-  env_file: ../.env
+  env_file: .env
 
 services:
   backend:
@@ -33,7 +33,37 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    
+
+  backend-test:
+    <<: *common-env
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile.dev
+      target: dev
+    ports:
+      - "8001:8000"
+    volumes:
+      - ..:/workspace/studio
+      - ../../rsm:/workspace/rsm
+      - backend_test_venv:/workspace/studio/backend/.venv
+      - rsm_test_venv:/workspace/rsm/.venv
+    working_dir: /workspace/studio/backend
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
+      - ENV=TEST
+      - DB_URL_LOCAL=sqlite+aiosqlite:///./test_e2e.db
+      - ALEMBIC_DB_URL_LOCAL=sqlite+pysqlite:///./test_e2e.db
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - COPILOT_PROVIDER=${COPILOT_PROVIDER}
+      - MULTIPLAYER_HOST=collab
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
   frontend:
     <<: *common-env
     build:
@@ -119,5 +149,7 @@ services:
 
 volumes:
   backend_venv:
+  backend_test_venv:
+  rsm_test_venv:
   site_node_modules:
   postgres_data:

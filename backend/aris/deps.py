@@ -32,13 +32,18 @@ from .services.file_service import InMemoryFileService
 load_dotenv()
 
 
+# PostgreSQL-specific connect_args (not compatible with SQLite)
+_db_url = settings.DB_URL_PROD if settings.ENV == "PROD" else settings.DB_URL_LOCAL
+_connect_args = (
+    {"statement_cache_size": 0, "prepared_statement_name_func": lambda: ""}
+    if not _db_url.startswith("sqlite")
+    else {}
+)
+
 ENGINE = create_async_engine(
-    settings.DB_URL_PROD if settings.ENV == "PROD" else settings.DB_URL_LOCAL,
+    _db_url,
     future=True,
-    connect_args={
-        "statement_cache_size": 0,
-        "prepared_statement_name_func": lambda: "",
-    },
+    connect_args=_connect_args,
 )
 ArisSession = async_sessionmaker(ENGINE, expire_on_commit=False)
 

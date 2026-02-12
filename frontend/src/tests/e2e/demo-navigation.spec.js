@@ -86,7 +86,6 @@ test.describe.skip("Demo Navigation & Access @demo-disabled", () => {
       const currentUrl = page.url();
       if (currentUrl.includes("/demo")) {
         // If still on demo, check if link is actually functioning
-        console.log("Still on demo page, checking if back link is functional");
         // This might be expected behavior depending on implementation
       } else {
         // Navigation worked, verify we're in an expected location
@@ -208,7 +207,6 @@ test.describe.skip("Demo Navigation & Access @demo-disabled", () => {
       const currentUrl = page.url();
       if (currentUrl.includes("/demo")) {
         // If still on demo, check if link is actually functioning
-        console.log("Still on demo page after back link click");
         // This might be expected behavior depending on implementation
       } else {
         // Navigation worked, verify we're in an expected location

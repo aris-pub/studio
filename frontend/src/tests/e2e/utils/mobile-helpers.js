@@ -68,8 +68,6 @@ export class MobileHelpers {
     const timeouts = this.getTimeouts();
     const timeout = customTimeout || timeouts.elementRender;
 
-    console.log(`[Element Visibility] Waiting for element to be visible (timeout: ${timeout}ms)`);
-
     // Scroll element into view for all browsers if needed
     try {
       await locator.scrollIntoViewIfNeeded({ timeout: 2000 });
@@ -79,19 +77,15 @@ export class MobileHelpers {
 
     try {
       await expect(locator).toBeVisible({ timeout });
-      console.log(`[Element Visibility] Element is now visible`);
     } catch (error) {
-      console.error(`[Element Visibility] Element not visible after ${timeout}ms`);
-
       // Debug element state
       const elementInfo = await this.debugElementState(locator);
-      console.error(`[Element Visibility] Element debug info:`, elementInfo);
 
       // Take screenshot for debugging
       try {
         await this.page.screenshot({ path: `debug/debug-element-visibility-${Date.now()}.png` });
       } catch (screenshotError) {
-        console.error(`[Element Visibility] Failed to take screenshot: ${screenshotError.message}`);
+        // Ignore screenshot errors
       }
 
       throw error;
@@ -141,26 +135,20 @@ export class MobileHelpers {
    * Enhanced element click for mobile browsers
    */
   async clickElement(locator) {
-    console.log(`[Mobile Click] Attempting to click element: ${locator}`);
-
     if (this.isMobileViewport()) {
       try {
         await locator.scrollIntoViewIfNeeded();
         await this.page.waitForTimeout(100); // Brief delay for scroll completion
       } catch (scrollError) {
-        console.warn(`[Mobile Click] Scroll failed, proceeding with click: ${scrollError.message}`);
         // Continue with click even if scroll fails
       }
     }
 
     try {
       await locator.click();
-      console.log(`[Mobile Click] Successfully clicked element`);
     } catch (error) {
-      console.error(`[Mobile Click] Click failed: ${error.message}`);
       // If click is intercepted, try force click
       if (error.message.includes("intercepts pointer events")) {
-        console.log(`[Mobile Click] Retrying with force click`);
         await locator.click({ force: true });
       } else {
         throw error;
@@ -177,9 +165,6 @@ export class MobileHelpers {
         await locator.scrollIntoViewIfNeeded();
         await this.page.waitForTimeout(100); // Brief delay for scroll completion
       } catch (scrollError) {
-        console.warn(
-          `[Mobile Force Click] Scroll failed, proceeding with force click: ${scrollError.message}`
-        );
         // Continue with force click even if scroll fails
       }
     }
@@ -193,21 +178,14 @@ export class MobileHelpers {
     const timeouts = this.getTimeouts();
     const timeout = customTimeout || timeouts.navigation;
 
-    console.log(`[Mobile Navigation] Waiting for URL pattern: ${pattern} (timeout: ${timeout}ms)`);
-
     try {
       await this.page.waitForURL(pattern, { timeout });
-      console.log(`[Mobile Navigation] Successfully navigated to: ${this.page.url()}`);
     } catch (error) {
-      console.error(`[Mobile Navigation] Failed to navigate to pattern: ${pattern}`);
-      console.error(`[Mobile Navigation] Current URL: ${this.page.url()}`);
-      console.error(`[Mobile Navigation] Error: ${error.message}`);
-
       // Take screenshot for debugging
       try {
         await this.page.screenshot({ path: `debug-navigation-timeout-${Date.now()}.png` });
       } catch (screenshotError) {
-        console.error(`[Mobile Navigation] Failed to take screenshot: ${screenshotError.message}`);
+        // Ignore screenshot errors
       }
 
       throw error;
@@ -258,8 +236,6 @@ export class MobileHelpers {
   async waitForContentLoaded(selector) {
     const timeouts = this.getTimeouts();
 
-    console.log(`[Content Loading] Waiting for content to load: ${selector}`);
-
     // Wait for network to settle but avoid networkidle as it's discouraged
     await this.page.waitForLoadState("load");
     await this.waitForMobileRendering();
@@ -280,8 +256,6 @@ export class MobileHelpers {
         { timeout: timeouts.contentLoad }
       );
     }
-
-    console.log(`[Content Loading] Successfully loaded content: ${selector}`);
   }
 
   /**
@@ -289,11 +263,9 @@ export class MobileHelpers {
    */
   async debugLoadState() {
     const url = this.page.url();
-    console.log(`[Load Debug] Current URL: ${url}`);
 
     // Check document ready state
     const readyState = await this.page.evaluate(() => document.readyState);
-    console.log(`[Load Debug] Document ready state: ${readyState}`);
 
     // Check for pending requests
     const pendingRequests = await this.page.evaluate(() => {
@@ -309,8 +281,6 @@ export class MobileHelpers {
       };
     });
 
-    console.log(`[Load Debug] Page state:`, pendingRequests);
-
     // Check for Vue.js app mount state
     const vueAppState = await this.page.evaluate(() => {
       const app = document.querySelector("#app");
@@ -321,16 +291,12 @@ export class MobileHelpers {
         childrenCount: app ? app.children.length : 0,
       };
     });
-
-    console.log(`[Load Debug] Vue app state:`, vueAppState);
   }
 
   /**
    * Wait for Vue.js component to be fully mounted
    */
   async waitForVueComponentMount() {
-    console.log(`[Vue Mount] Waiting for Vue component to mount`);
-
     await this.page.waitForFunction(
       () => {
         const app = document.querySelector("#app");
@@ -343,7 +309,5 @@ export class MobileHelpers {
     if (this.isMobileViewport()) {
       await this.waitForMobileRendering();
     }
-
-    console.log(`[Vue Mount] Vue component successfully mounted`);
   }
 }

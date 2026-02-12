@@ -19,11 +19,16 @@ if (!FRONTEND_PORT || !BACKEND_PORT) {
   process.exit(1);
 }
 
+// E2E backend selection: Local uses backend-test (port 8001), CI uses backend (production-like)
+const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : "8001";
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: "./src/tests/e2e",
+  /* Global setup for logging and initialization */
+  globalSetup: "./src/tests/e2e/global-setup.js",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -53,66 +58,73 @@ export default defineConfig({
     navigationTimeout: process.env.CI ? 8000 : 3000, // CI: 8s for Safari/WebKit, Local: 3s for content load
   },
 
+  /* Environment variables for test helpers (direct API calls, not browser requests) */
+  env: {
+    E2E_API_BASE_URL: `http://localhost:${E2E_BACKEND_PORT}`,
+  },
+
   /* Configure projects for major browsers */
-  projects: process.env.CI
-    ? [
-        // CI: All browsers for comprehensive testing across different OS runners
-        {
-          name: "chromium",
-          use: {
-            ...devices["Desktop Chrome"],
-            // Fix #2: CI-specific Chromium flags to prevent timing issues
-            launchOptions: {
-              args: [
-                "--disable-background-timer-throttling", // Prevent timer delays
-                "--disable-backgrounding-occluded-windows", // No background throttling
-                "--disable-renderer-backgrounding", // Keep renderer active
-                "--disable-dev-shm-usage", // /dev/shm too small in Docker
-                "--disable-gpu", // No GPU in CI
-                "--no-sandbox", // Docker isolation already sandboxes
-                "--disable-setuid-sandbox",
-              ],
+  projects: [
+    ...(process.env.CI
+      ? [
+          // CI: All browsers for comprehensive testing across different OS runners
+          {
+            name: "chromium",
+            use: {
+              ...devices["Desktop Chrome"],
+              // Fix #2: CI-specific Chromium flags to prevent timing issues
+              launchOptions: {
+                args: [
+                  "--disable-background-timer-throttling", // Prevent timer delays
+                  "--disable-backgrounding-occluded-windows", // No background throttling
+                  "--disable-renderer-backgrounding", // Keep renderer active
+                  "--disable-dev-shm-usage", // /dev/shm too small in Docker
+                  "--disable-gpu", // No GPU in CI
+                  "--no-sandbox", // Docker isolation already sandboxes
+                  "--disable-setuid-sandbox",
+                ],
+              },
             },
           },
-        },
-        {
-          name: "firefox",
-          use: { ...devices["Desktop Firefox"] },
-        },
-        {
-          name: "webkit",
-          use: { ...devices["Desktop Safari"] },
-        },
-        {
-          name: "Mobile Chrome",
-          use: { ...devices["Pixel 5"] },
-        },
-        {
-          name: "Mobile Firefox",
-          use: {
-            browserName: "firefox",
-            viewport: { width: 393, height: 851 },
-            deviceScaleFactor: 3,
-            hasTouch: true,
-            userAgent: "Mozilla/5.0 (Mobile; rv:109.0) Gecko/109.0 Firefox/109.0",
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"] },
           },
-        },
-        {
-          name: "Mobile Safari",
-          use: { ...devices["iPhone 12"] },
-        },
-      ]
-    : [
-        // Development: Chromium + Firefox for cross-browser testing
-        {
-          name: "chromium",
-          use: { ...devices["Desktop Chrome"] },
-        },
-        {
-          name: "firefox",
-          use: { ...devices["Desktop Firefox"] },
-        },
-      ],
+          {
+            name: "webkit",
+            use: { ...devices["Desktop Safari"] },
+          },
+          {
+            name: "Mobile Chrome",
+            use: { ...devices["Pixel 5"] },
+          },
+          {
+            name: "Mobile Firefox",
+            use: {
+              browserName: "firefox",
+              viewport: { width: 393, height: 851 },
+              deviceScaleFactor: 3,
+              hasTouch: true,
+              userAgent: "Mozilla/5.0 (Mobile; rv:109.0) Gecko/109.0 Firefox/109.0",
+            },
+          },
+          {
+            name: "Mobile Safari",
+            use: { ...devices["iPhone 12"] },
+          },
+        ]
+      : [
+          // Development: Chromium + Firefox for cross-browser testing
+          {
+            name: "chromium",
+            use: { ...devices["Desktop Chrome"] },
+          },
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"] },
+          },
+        ]),
+  ],
 
   /* Use containerized dev server - no local webServer needed */
   webServer: undefined,

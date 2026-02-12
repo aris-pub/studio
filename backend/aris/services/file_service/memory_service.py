@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Set
 
 import rsm
 from bs4 import BeautifulSoup
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -352,9 +352,12 @@ class InMemoryFileService(FileServiceInterface):
             # Load all non-deleted files from database
             result: Result[Any] = await db.execute(select(DbFile).where(DbFile.deleted_at.is_(None)))
             db_files = result.scalars().all()
-            
+
+            # Get max ID from all files (including deleted) to avoid ID reuse
+            max_id_result: Result[Any] = await db.execute(select(func.max(DbFile.id)))
+            max_id = max_id_result.scalar() or 0
+
             # Convert database files to in-memory format
-            max_id = 0
             for db_file in db_files:
                 file_data = FileData(
                     id=db_file.id,
@@ -374,9 +377,6 @@ class InMemoryFileService(FileServiceInterface):
                 if db_file.owner_id not in self._user_files:
                     self._user_files[db_file.owner_id] = set()
                 self._user_files[db_file.owner_id].add(db_file.id)
-                
-                # Track max ID for auto-increment
-                max_id = max(max_id, db_file.id)
             
             # Set next ID to be one greater than max existing ID
             self._next_id = max_id + 1
@@ -428,22 +428,28 @@ class InMemoryFileService(FileServiceInterface):
         """Soft delete a specific file in database."""
         if db is None:
             return False
-            
+
         async with self._lock:
             file_data = self._files.get(file_id)
             if not file_data or not file_data.is_deleted():
                 return False
-            
+
             # Find the database record and soft delete it
             result: Result[Any] = await db.execute(select(DbFile).where(DbFile.id == file_id))
             db_file = result.scalars().first()
-            
+
             if db_file:
+                # Soft delete the file
                 db_file.deleted_at = file_data.deleted_at
+
+                # Also soft delete all associated versions
+                from aris.crud.versions import soft_delete_versions_for_file
+                await soft_delete_versions_for_file(file_id, db)
+
                 await db.commit()
-                logger.debug(f"Soft deleted file {file_id} in database")
+                logger.debug(f"Soft deleted file {file_id} and its versions in database")
                 return True
-            
+
             return False
     
     async def _save_or_update_file_in_db(self, file_data: FileData, db: AsyncSession) -> bool:

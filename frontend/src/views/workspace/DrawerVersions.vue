@@ -252,42 +252,42 @@
 
         <!-- Version List -->
         <TransitionGroup v-else name="version-list" tag="ul" class="version-list">
-      <li
-        v-for="version in versions"
-        :key="version.id"
-        class="version-item"
-        :data-testid="'version-item'"
-        :data-version-id="version.id"
-        @click="previewVersion(version)"
-      >
-        <div class="version-info">
-          <div class="version-header">
-            <EditableText
-              :ref="(el) => (editableRefs[version.id] = el)"
-              v-model="version.version_name"
-              placeholder="Unnamed version"
-              text-class="version-name"
-              :edit-on-click="false"
-              @save="handleSaveName(version)"
-            />
-          </div>
-          <div class="version-meta">
-            <span class="version-number">v{{ version.version_number }}</span>
-            <span class="version-date">{{ formatDate(version.created_at) }}</span>
-          </div>
-        </div>
+          <li
+            v-for="version in versions"
+            :key="version.id"
+            class="version-item"
+            :data-testid="'version-item'"
+            :data-version-id="version.id"
+            @click="previewVersion(version)"
+          >
+            <div class="version-info">
+              <div class="version-header">
+                <EditableText
+                  :ref="(el) => (editableRefs[version.id] = el)"
+                  v-model="version.version_name"
+                  placeholder="Unnamed version"
+                  text-class="version-name"
+                  :edit-on-click="false"
+                  @save="handleSaveName(version)"
+                />
+              </div>
+              <div class="version-meta">
+                <span class="version-number">v{{ version.version_number }}</span>
+                <span class="version-date">{{ formatDate(version.created_at) }}</span>
+              </div>
+            </div>
 
-        <ContextMenu placement="bottom-end" @click.stop>
-          <ContextMenuItem icon="Edit" caption="Rename" @click="handleRename(version)" />
-          <ContextMenuItem
-            icon="TrashX"
-            caption="Delete"
-            class="danger"
-            @click="handleDelete(version)"
-          />
-        </ContextMenu>
-      </li>
-    </TransitionGroup>
+            <ContextMenu placement="bottom-end">
+              <ContextMenuItem icon="Edit" caption="Rename" @click="handleRename(version)" />
+              <ContextMenuItem
+                icon="TrashX"
+                caption="Delete"
+                class="danger"
+                @click="handleDelete(version)"
+              />
+            </ContextMenu>
+          </li>
+        </TransitionGroup>
       </template>
     </Section>
 

@@ -459,7 +459,6 @@ test.describe.skip("Demo Workspace Functionality @demo-disabled @desktop-only", 
           expect(menuItemCount).toBeGreaterThanOrEqual(0);
         } else {
           // Handrails may be hidden by default - that's OK for demo content
-          console.log("Handrails found but hidden - this is expected behavior for demo content");
         }
       }
     });

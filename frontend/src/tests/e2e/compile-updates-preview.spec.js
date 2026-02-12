@@ -9,26 +9,13 @@
  */
 
 import { test, expect } from "@playwright/test";
-import dotenv from "dotenv";
-import path from "path";
 
-dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT;
-const FRONTEND_PORT = process.env.FRONTEND_PORT;
-
-if (!BACKEND_PORT || !FRONTEND_PORT) {
-  throw new Error("BACKEND_PORT and FRONTEND_PORT must be set in .env");
-}
-
+const backendURL = process.env.VITE_API_BASE_URL;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
 const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
 
-if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
-  throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env");
-}
-
 async function createAuthenticatedPage(browser, request) {
-  const loginResponse = await request.post(`http://localhost:${BACKEND_PORT}/login`, {
+  const loginResponse = await request.post(`${backendURL}/login`, {
     data: {
       email: TEST_USER_EMAIL,
       password: TEST_USER_PASSWORD,
@@ -41,7 +28,7 @@ async function createAuthenticatedPage(browser, request) {
 
   const loginData = await loginResponse.json();
 
-  const userResponse = await request.get(`http://localhost:${BACKEND_PORT}/me`, {
+  const userResponse = await request.get(`${backendURL}/me`, {
     headers: { Authorization: `Bearer ${loginData.access_token}` },
   });
 
@@ -54,7 +41,7 @@ async function createAuthenticatedPage(browser, request) {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`http://localhost:${FRONTEND_PORT}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/`, { waitUntil: "domcontentloaded" });
   await page.evaluate(
     (data) => {
       localStorage.setItem("accessToken", data.access_token);
@@ -79,7 +66,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
     const user = JSON.parse(await page.evaluate(() => localStorage.getItem("user")));
 
     // Always create a fresh test file for reliable testing
-    const createResponse = await request.post(`http://localhost:${BACKEND_PORT}/files`, {
+    const createResponse = await request.post(`${backendURL}/files`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       data: {
         title: `E2E Test ${Date.now()}`,
@@ -98,7 +85,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
     fileId = fileData.id;
 
     // Compile it once to generate HTML
-    await request.post(`http://localhost:${BACKEND_PORT}/render/private`, {
+    await request.post(`${backendURL}/render/private`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       data: {
         source: "# Original\n\noriginal text",
@@ -109,7 +96,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
 
   test.afterEach(async ({ request }) => {
     if (fileId) {
-      await request.delete(`http://localhost:${BACKEND_PORT}/files/${fileId}`, {
+      await request.delete(`${backendURL}/files/${fileId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
     }
@@ -120,7 +107,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
   });
 
   test("should compile and update preview with Y.js content", async () => {
-    await page.goto(`http://localhost:${FRONTEND_PORT}/file/${fileId}`, {
+    await page.goto(`/file/${fileId}`, {
       waitUntil: "domcontentloaded",
     });
     await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });

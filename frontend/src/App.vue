@@ -137,7 +137,7 @@
   // Load RSM CSS
   const rsmLink = document.createElement("link");
   rsmLink.rel = "stylesheet";
-  rsmLink.href = `${api.defaults.baseURL}/static/braiid.css`;
+  rsmLink.href = `${api.defaults.baseURL}/braiid/braiid.css`;
   document.head.appendChild(rsmLink);
 
   // Provide viewport info
