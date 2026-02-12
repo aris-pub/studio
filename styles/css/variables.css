@@ -18,8 +18,8 @@
   --surface-page: #F5F7F8;
   --surface-primary: #FFFFFF;
   --surface-secondary: #F9FAFB;
-  --surface-action: var(--primary-500);
-  --surface-action-hover: var(--primary-600);
+  --surface-action: var(--information-500);
+  --surface-action-hover: var(--information-600);
   --surface-information: #EFF6FF;
   --surface-hint: #F3F4F6;
 

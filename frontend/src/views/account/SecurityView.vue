@@ -227,51 +227,48 @@
       <span class="title">Security</span>
     </template>
 
-    <div class="security-layout">
-      <!-- Account Status -->
-      <div class="content-section">
-        <div class="section-header">
-          <h2>Account Status</h2>
-          <p>Your account security status and verification</p>
-        </div>
 
-        <div class="status-grid">
-          <div class="status-item">
-            <div :class="['status-indicator', user?.email_verified ? 'verified' : 'warning']">
-              <Icon :name="user?.email_verified ? 'Check' : 'AlertCircle'" size="16" />
-            </div>
-            <div class="status-content">
-              <h3>{{ user?.email_verified ? "Email Verified" : "Email Not Verified" }}</h3>
-              <p>{{ user?.email || "No email" }}</p>
-              <div v-if="!user?.email_verified" class="verification-actions">
-                <Button
-                  kind="secondary"
-                  size="sm"
-                  :disabled="isSendingVerification || verificationSent"
-                  :icon="
-                    verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'
-                  "
-                  :text="
-                    verificationSent
-                      ? 'Verification email sent'
-                      : isSendingVerification
-                        ? 'Sending...'
-                        : 'Send Verification Email'
-                  "
-                  @click="onSendVerificationEmail"
-                />
-              </div>
+      <!-- Account Status -->
+    <Section>
+      <template #title>Account Status</template>
+      <template #content>
+        <p>Your account security status and verification</p>
+        <div class="status-item">
+          <div :class="['status-indicator', user?.email_verified ? 'verified' : 'warning']">
+            <Icon :name="user?.email_verified ? 'Check' : 'AlertCircle'" size="16" />
+          </div>
+          <div class="status-content">
+            <h3>{{ user?.email_verified ? "Email Verified" : "Email Not Verified" }}</h3>
+            <p>{{ user?.email || "No email" }}</p>
+            <div v-if="!user?.email_verified" class="verification-actions">
+              <Button
+                kind="secondary"
+                size="sm"
+                :disabled="isSendingVerification || verificationSent"
+                :icon="
+                verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'
+                "
+                :text="
+                verificationSent
+                ? 'Verification email sent'
+                : isSendingVerification
+                ? 'Sending...'
+                : 'Send Verification Email'
+                "
+                @click="onSendVerificationEmail"
+              />
             </div>
           </div>
         </div>
-      </div>
+      </template>
+    </Section>
+
 
       <!-- Password Management -->
-      <div class="content-section">
-        <div class="section-header">
-          <h2>Password</h2>
-          <p>Change your account password</p>
-        </div>
+    <Section>
+      <template #title>Password</template>
+      <template #content>
+        <p>Change your account password</p>
 
         <div class="form-group">
           <InputText
@@ -320,8 +317,10 @@
           <Icon name="AlertCircle" size="16" />
           <span>You have unsaved password changes</span>
         </div>
-      </div>
-    </div>
+
+      </template>
+    </Section>
+
   </Pane>
 </template>
 
@@ -342,46 +341,7 @@
     gap: 24px;
   }
 
-  /* Content Section */
-  .content-section {
-    background: var(--surface-primary);
-    border-radius: 16px;
-    border: var(--border-thin) solid var(--gray-200);
-    box-shadow: none;
-    padding: 24px;
-    transition: box-shadow 0.2s ease;
-  }
-
-  .content-section:hover {
-    box-shadow: var(--shadow-soft);
-  }
-
-  .section-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: var(--border-thin) solid var(--gray-200);
-  }
-
-  .section-header h2 {
-    font-size: 20px;
-    font-weight: var(--weight-semi);
-    color: var(--gray-900);
-    margin: 0 0 4px 0;
-  }
-
-  .section-header p {
-    font-size: 14px;
-    color: var(--gray-600);
-    margin: 0;
-  }
-
   /* Status Grid */
-  .status-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
   .status-item {
     display: flex;
     align-items: center;
@@ -457,7 +417,6 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin-bottom: 24px;
   }
 
   .password-field {
@@ -468,7 +427,6 @@
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 24px;
     padding-top: 20px;
     border-top: var(--border-thin) solid var(--gray-200);
   }

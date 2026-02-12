@@ -176,109 +176,107 @@
       <span class="title">Profile</span>
     </template>
 
-    <div class="profile-layout">
-      <!-- Hero Section: Profile Overview -->
-      <div class="hero-section">
-        <div class="profile-hero">
-          <div class="avatar-container">
-            <div
-              class="avatar"
-              :style="{
-                backgroundImage: previewUrl ? `url(${previewUrl})` : 'none',
-              }"
-            >
-              <div v-if="!previewUrl" class="avatar-placeholder">
-                <Icon name="User" size="32" />
-              </div>
-              <Button
-                kind="tertiary"
-                :icon="isUploadingAvatar ? 'Loader2' : 'Camera'"
-                class="avatar-upload"
-                size="sm"
-                :disabled="isUploadingAvatar"
-                @click="onUpload"
-              />
-              <input
-                ref="fileInputRef"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="onFileSelected"
-              />
+    <!-- Hero Section: Profile Overview -->
+    <div class="hero-section">
+      <div class="profile-hero">
+        <div class="avatar-container">
+          <div
+            class="avatar"
+            :style="{
+              backgroundImage: previewUrl ? `url(${previewUrl})` : 'none',
+            }"
+          >
+            <div v-if="!previewUrl" class="avatar-placeholder">
+              <Icon name="User" size="32" />
             </div>
+            <Button
+              kind="tertiary"
+              :icon="isUploadingAvatar ? 'Loader2' : 'Camera'"
+              class="avatar-upload"
+              size="sm"
+              :disabled="isUploadingAvatar"
+              @click="onUpload"
+            />
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="onFileSelected"
+            />
           </div>
-          <div class="profile-info">
-            <h1 class="user-name">{{ user.name }}</h1>
-            <p class="user-email">{{ user.email }}</p>
-            <div class="user-meta">
-              <span class="member-since">
-                <Icon name="Calendar" size="14" />
-                Member since {{ new Date(user.created_at).toLocaleDateString() }}
-              </span>
-            </div>
+        </div>
+        <div class="profile-info">
+          <h1 class="user-name">{{ user.name }}</h1>
+          <p class="user-email">{{ user.email }}</p>
+          <div class="user-meta">
+            <span class="member-since">
+              <Icon name="Calendar" size="14" />
+              Member since {{ new Date(user.created_at).toLocaleDateString() }}
+            </span>
           </div>
         </div>
       </div>
-
-      <!-- Profile Information Form -->
-      <Section>
-        <template #title>Personal Information</template>
-
-        <template #content>
-          <div class="form-group">
-            <InputText
-              v-model="newName"
-              label="Full Name"
-              :placeholder="user.name"
-              direction="column"
-            />
-            <InputText
-              v-model="newInitials"
-              label="Initials"
-              :placeholder="user.initials"
-              direction="column"
-            />
-            <InputText
-              v-model="newEmail"
-              label="Email Address"
-              :placeholder="user.email"
-              type="email"
-              direction="column"
-            />
-            <InputText
-              v-model="newAffiliation"
-              label="Affiliation"
-              :placeholder="user.affiliation || 'Enter your institution or affiliation'"
-              direction="column"
-            />
-          </div>
-
-          <div class="form-actions">
-            <Button
-              kind="tertiary"
-              :disabled="isSaving || !hasUnsavedProfileChanges"
-              @click="onDiscard"
-            >
-              Reset
-            </Button>
-            <Button
-              kind="primary"
-              :disabled="isSaving || !hasUnsavedProfileChanges"
-              :icon="isSaving ? 'Loader2' : undefined"
-              @click="onSave"
-            >
-              {{ isSaving ? "Saving..." : "Save Changes" }}
-            </Button>
-          </div>
-        </template>
-      </Section>
-
-      <div v-if="hasUnsavedProfileChanges" class="status-message warning">
-        <Icon name="AlertCircle" size="16" />
-        <span>You have unsaved changes</span>
-      </div>
-
     </div>
+
+    <!-- Profile Information Form -->
+    <Section>
+      <template #title>Personal Information</template>
+
+      <template #content>
+        <div class="form-group">
+          <InputText
+            v-model="newName"
+            label="Full Name"
+            :placeholder="user.name"
+            direction="column"
+          />
+          <InputText
+            v-model="newInitials"
+            label="Initials"
+            :placeholder="user.initials"
+            direction="column"
+          />
+          <InputText
+            v-model="newEmail"
+            label="Email Address"
+            :placeholder="user.email"
+            type="email"
+            direction="column"
+          />
+          <InputText
+            v-model="newAffiliation"
+            label="Affiliation"
+            :placeholder="user.affiliation || 'Enter your institution or affiliation'"
+            direction="column"
+          />
+        </div>
+
+        <div class="form-actions">
+          <Button
+            kind="tertiary"
+            :disabled="isSaving || !hasUnsavedProfileChanges"
+            @click="onDiscard"
+          >
+            Reset
+          </Button>
+          <Button
+            kind="primary"
+            :disabled="isSaving || !hasUnsavedProfileChanges"
+            :icon="isSaving ? 'Loader2' : undefined"
+            @click="onSave"
+          >
+            {{ isSaving ? "Saving..." : "Save Changes" }}
+          </Button>
+        </div>
+      </template>
+    </Section>
+
+    <div v-if="hasUnsavedProfileChanges" class="status-message warning">
+      <Icon name="AlertCircle" size="16" />
+      <span>You have unsaved changes</span>
+    </div>
+
   </Pane>
 </template>
 
@@ -289,20 +287,13 @@
     font-weight: var(--weight-medium);
   }
 
-  /* Profile Layout Container */
-  .profile-layout {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
   /* Hero Section */
   .hero-section {
-    background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+    background: linear-gradient(135deg, var(--information-50) 0%, var(--information-100) 100%);
     margin: 0 0 24px 0;
     border-radius: 16px;
     padding: 32px;
-    border: var(--border-thin) solid var(--primary-200);
+    border: var(--border-thin) solid var(--information-200);
   }
 
   .profile-hero {
@@ -386,20 +377,6 @@
     gap: 6px;
     font-size: 13px;
     color: var(--gray-500);
-  }
-
-  /* Content Section */
-  .content-section {
-    background: var(--surface-primary);
-    border-radius: 16px;
-    border: var(--border-thin) solid var(--gray-200);
-    box-shadow: none;
-    padding: 24px;
-    transition: box-shadow 0.2s ease;
-  }
-
-  .content-section:hover {
-    box-shadow: var(--shadow-soft);
   }
 
   /* Form Styling */

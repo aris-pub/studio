@@ -3,7 +3,6 @@
 Following TDD approach: Write tests first, implement to make them pass.
 """
 
-import pytest
 from sqlalchemy import select
 
 from aris.crud.versions import (

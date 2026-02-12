@@ -8,7 +8,7 @@ in time, allowing users to track changes and restore previous states.
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.models import File, FileVersion

@@ -9,7 +9,6 @@ Tests for /files/{file_id}/versions endpoints including:
 - Permission checks
 """
 
-import pytest
 from httpx import AsyncClient
 
 from aris.crud.file import create_file
