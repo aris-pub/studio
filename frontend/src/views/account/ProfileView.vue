@@ -221,63 +221,63 @@
       </div>
 
       <!-- Profile Information Form -->
-      <div class="content-section">
-        <div class="section-header">
-          <h2>Personal Information</h2>
-          <p>Update your basic profile information</p>
-        </div>
+      <Section>
+        <template #title>Personal Information</template>
 
-        <div class="form-group">
-          <InputText
-            v-model="newName"
-            label="Full Name"
-            :placeholder="user.name"
-            direction="column"
-          />
-          <InputText
-            v-model="newInitials"
-            label="Initials"
-            :placeholder="user.initials"
-            direction="column"
-          />
-          <InputText
-            v-model="newEmail"
-            label="Email Address"
-            :placeholder="user.email"
-            type="email"
-            direction="column"
-          />
-          <InputText
-            v-model="newAffiliation"
-            label="Affiliation"
-            :placeholder="user.affiliation || 'Enter your institution or affiliation'"
-            direction="column"
-          />
-        </div>
+        <template #content>
+          <div class="form-group">
+            <InputText
+              v-model="newName"
+              label="Full Name"
+              :placeholder="user.name"
+              direction="column"
+            />
+            <InputText
+              v-model="newInitials"
+              label="Initials"
+              :placeholder="user.initials"
+              direction="column"
+            />
+            <InputText
+              v-model="newEmail"
+              label="Email Address"
+              :placeholder="user.email"
+              type="email"
+              direction="column"
+            />
+            <InputText
+              v-model="newAffiliation"
+              label="Affiliation"
+              :placeholder="user.affiliation || 'Enter your institution or affiliation'"
+              direction="column"
+            />
+          </div>
 
-        <div class="form-actions">
-          <Button
-            kind="tertiary"
-            :disabled="isSaving || !hasUnsavedProfileChanges"
-            @click="onDiscard"
-          >
-            Reset
-          </Button>
-          <Button
-            kind="primary"
-            :disabled="isSaving || !hasUnsavedProfileChanges"
-            :icon="isSaving ? 'Loader2' : undefined"
-            @click="onSave"
-          >
-            {{ isSaving ? "Saving..." : "Save Changes" }}
-          </Button>
-        </div>
+          <div class="form-actions">
+            <Button
+              kind="tertiary"
+              :disabled="isSaving || !hasUnsavedProfileChanges"
+              @click="onDiscard"
+            >
+              Reset
+            </Button>
+            <Button
+              kind="primary"
+              :disabled="isSaving || !hasUnsavedProfileChanges"
+              :icon="isSaving ? 'Loader2' : undefined"
+              @click="onSave"
+            >
+              {{ isSaving ? "Saving..." : "Save Changes" }}
+            </Button>
+          </div>
+        </template>
+      </Section>
 
-        <div v-if="hasUnsavedProfileChanges" class="status-message warning">
-          <Icon name="AlertCircle" size="16" />
-          <span>You have unsaved changes</span>
-        </div>
+      <div v-if="hasUnsavedProfileChanges" class="status-message warning">
+        <Icon name="AlertCircle" size="16" />
+        <span>You have unsaved changes</span>
       </div>
+
     </div>
   </Pane>
 </template>
@@ -402,38 +402,17 @@
     box-shadow: var(--shadow-soft);
   }
 
-  .section-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: var(--border-thin) solid var(--gray-200);
-  }
-
-  .section-header h2 {
-    font-size: 20px;
-    font-weight: var(--weight-semi);
-    color: var(--gray-900);
-    margin: 0 0 4px 0;
-  }
-
-  .section-header p {
-    font-size: 14px;
-    color: var(--gray-600);
-    margin: 0;
-  }
-
   /* Form Styling */
   .form-group {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin-bottom: 24px;
   }
 
   .form-actions {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 24px;
     padding-top: 20px;
     border-top: var(--border-thin) solid var(--gray-200);
   }

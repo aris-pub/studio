@@ -94,6 +94,7 @@
     display: flex;
     flex-direction: column;
     padding-inline: 8px;
+    padding-bottom: 8px;
     gap: 16px;
   }
 

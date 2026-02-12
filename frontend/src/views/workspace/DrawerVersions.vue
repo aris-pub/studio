@@ -262,7 +262,7 @@
         </div>
 
         <ContextMenu placement="bottom-end" @click.stop>
-          <ContextMenuItem icon="edit" caption="Rename" @click="handleRename(version)" />
+          <ContextMenuItem icon="pencil" caption="Rename" @click="handleRename(version)" />
           <ContextMenuItem icon="trash" caption="Delete" @click="handleDelete(version)" />
         </ContextMenu>
       </li>
@@ -273,7 +273,7 @@
     <!-- Version Preview Modal -->
     <Teleport to="body">
       <VersionPreviewModal
-        v-if="shouldShowModal && fileId"
+        v-if="showPreviewModal && selectedVersion"
         :version="selectedVersion"
         :file-id="fileId"
         :is-owner="isOwner"

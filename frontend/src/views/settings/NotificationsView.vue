@@ -128,20 +128,18 @@
       </template>
     </Section>
 
-    <Section>
-      <template #content>
-        <div class="settings-actions">
-          <Button
-            :disabled="loading"
-            kind="primary"
-            :class="{ saved: saved }"
-            @click="saveSettings"
-          >
-            {{ loading ? "Saving..." : saved ? "Saved!" : "Save Settings" }}
-          </Button>
-        </div>
-      </template>
-    </Section>
+
+    <div class="settings-actions">
+      <Button
+        :disabled="loading"
+        kind="primary"
+        :class="{ saved: saved }"
+        @click="saveSettings"
+      >
+        {{ loading ? "Saving..." : saved ? "Saved!" : "Save Settings" }}
+      </Button>
+    </div>
+
   </Pane>
 </template>
 
