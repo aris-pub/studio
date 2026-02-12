@@ -150,7 +150,7 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
       const view = window.__cmView;
       const currentLength = view.state.doc.length;
       view.dispatch({
-        changes: { from: currentLength, insert: " World" }
+        changes: { from: currentLength, insert: " World" },
       });
     });
 
@@ -215,7 +215,7 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
         const view = window.__cmView;
         const currentLength = view.state.doc.length;
         view.dispatch({
-          changes: { from: currentLength, insert: ` ${num}` }
+          changes: { from: currentLength, insert: ` ${num}` },
         });
       }, i);
       await page.waitForTimeout(300); // 300ms between edits (< 2000ms debounce)

@@ -351,7 +351,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       // Wait for CodeMirror editor to load
       await page.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Get current content and modify it
@@ -367,7 +371,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           "# Test Document for MathJax Bug EDIT1"
         );
         view.dispatch({
-          changes: { from: 0, to: doc.length, insert: newText }
+          changes: { from: 0, to: doc.length, insert: newText },
         });
       });
 
@@ -430,7 +434,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           timeout: 5000,
         });
         await page.waitForSelector(".cm-editor", { timeout: 5000 });
-        await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+        await page.waitForFunction(
+          () => typeof window.__cmView !== "undefined",
+          {},
+          { timeout: 5000 }
+        );
       }
 
       // Get current content and make second edit
@@ -443,7 +451,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         const text = doc.toString();
         const newText = text.replace("EDIT1", "EDIT1 EDIT2");
         view.dispatch({
-          changes: { from: 0, to: doc.length, insert: newText }
+          changes: { from: 0, to: doc.length, insert: newText },
         });
       });
 
@@ -548,7 +556,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       // Wait for CodeMirror editor to load
       await page.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Make 2 edits and wait for each to sync (2 is sufficient to verify no duplication)
@@ -565,7 +577,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           const view = window.__cmView;
           const doc = view.state.doc;
           view.dispatch({
-            changes: { from: 0, to: doc.length, insert: content }
+            changes: { from: 0, to: doc.length, insert: content },
           });
         }, newContent);
 

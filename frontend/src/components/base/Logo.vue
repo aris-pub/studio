@@ -53,9 +53,9 @@
   }
 
   .logo__text {
-    font-family: "Georgia", serif;
+    font-family: "Crimson Pro", serif;
     font-size: 40px;
-    font-weight: var(--weight-regular);
+    font-weight: var(--weight-semi);
     line-height: 1.2;
     color: var(--gray-800);
     white-space: nowrap;

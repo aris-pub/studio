@@ -138,7 +138,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
       const view = window.__cmView;
       const currentLength = view.state.doc.length;
       view.dispatch({
-        changes: { from: currentLength, insert: " updated" }
+        changes: { from: currentLength, insert: " updated" },
       });
     });
 

@@ -186,7 +186,9 @@
             // Ignore remote changes (only trigger compilation for local edits)
             if (transaction.local) {
               if (import.meta.env.DEV) {
-                console.log("[EditorCodeMirror] Local Y.Doc change detected, debouncing compilation");
+                console.log(
+                  "[EditorCodeMirror] Local Y.Doc change detected, debouncing compilation"
+                );
               }
 
               // Clear existing debounce timer

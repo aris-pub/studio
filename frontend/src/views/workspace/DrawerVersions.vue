@@ -259,8 +259,7 @@
 
 <style scoped>
   .save-version-container {
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 16px;
   }
 
   .loading,
@@ -296,12 +295,15 @@
     margin: 0;
   }
 
+  .version-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-primary);
+  }
+
   .version-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
   }
 
@@ -315,7 +317,7 @@
   }
 
   .version-header {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
   .version-number {

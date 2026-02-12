@@ -113,7 +113,7 @@ describe("Workspace Sidebar", () => {
       const items = wrapper.vm.items;
 
       const drawerItems = items.filter((item) => item.type === "drawer");
-      expect(drawerItems).toHaveLength(1);
+      expect(drawerItems).toHaveLength(2);
 
       const drawerNames = drawerItems.map((item) => item.name);
       expect(drawerNames).toContain("DrawerSettings");

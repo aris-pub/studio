@@ -86,12 +86,15 @@
     align-items: center;
   }
 
+  .section > .content:not(:last-child) {
+    padding-bottom: 16px;
+  }
+
   .section > :is(.content, .footer) {
     display: flex;
     flex-direction: column;
     padding-inline: 8px;
     gap: 16px;
-    padding-bottom: 16px;
   }
 
   /* Legacy danger support for backward compatibility */

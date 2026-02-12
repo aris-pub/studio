@@ -38,9 +38,12 @@ test.describe("File Download Tests @auth @desktop-only", () => {
         const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
 
         if (accessToken) {
-          const response = await request.delete(`http://localhost:${BACKEND_PORT}/files/${testFileId}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          const response = await request.delete(
+            `http://localhost:${BACKEND_PORT}/files/${testFileId}`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
 
           if (!response.ok()) {
             console.error(`Failed to delete file ${testFileId}: ${response.status()}`);

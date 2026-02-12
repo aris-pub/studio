@@ -28,6 +28,14 @@
     },
     { name: "Separator", state: false },
     {
+      name: "DrawerVersions",
+      icon: "Versions",
+      label: "versions",
+      key: "v",
+      state: false,
+      type: "drawer",
+    },
+    {
       name: "DrawerSettings",
       icon: "AdjustmentsHorizontal",
       label: "settings",
