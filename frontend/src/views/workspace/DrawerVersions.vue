@@ -262,8 +262,8 @@
         </div>
 
         <ContextMenu placement="bottom-end" @click.stop>
-          <ContextMenuItem icon="pencil" caption="Rename" @click="handleRename(version)" />
-          <ContextMenuItem icon="trash" caption="Delete" @click="handleDelete(version)" />
+          <ContextMenuItem icon="Edit" caption="Rename" @click="handleRename(version)" />
+          <ContextMenuItem icon="TrashX" caption="Delete" @click="handleDelete(version)" />
         </ContextMenu>
       </li>
     </TransitionGroup>
