@@ -35,9 +35,15 @@ fi
 echo "Running database migrations..."
 uv run alembic upgrade head
 
-# Reset test user to known state (matches CI setup)
-echo "Setting up test user..."
-uv run python scripts/reset_test_user.py || echo "Warning: Could not reset test user (may not be an issue in production)"
+# Reset test user to known state (CI only - not in local dev)
+# This script deletes all test user data including files and versions!
+# Only run in CI environment to ensure stable visual regression test data
+if [ "$ENV" = "CI" ]; then
+    echo "CI environment detected - resetting test user to known state..."
+    uv run python scripts/reset_test_user.py || echo "Warning: Could not reset test user"
+else
+    echo "Skipping test user reset (only runs in CI environment)"
+fi
 
 # Start the application
 echo "Starting FastAPI application..."
