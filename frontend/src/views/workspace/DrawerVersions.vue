@@ -1,10 +1,12 @@
 <script setup>
   import { ref, inject, onMounted, computed, nextTick } from "vue";
-  import { IconFileText, IconEye } from "@tabler/icons-vue";
+  import { IconFileText } from "@tabler/icons-vue";
   import Button from "@/components/base/Button.vue";
   import EditableText from "@/components/forms/EditableText.vue";
   import Toast from "@/components/ui/Toast.vue";
   import VersionPreviewModal from "./VersionPreviewModal.vue";
+  import ContextMenu from "@/components/navigation/ContextMenu.vue";
+  import ContextMenuItem from "@/components/navigation/ContextMenuItem.vue";
 
   const api = inject("api");
   const user = inject("user");
@@ -135,6 +137,42 @@
     }
   }
 
+  // Trigger rename for a version
+  function handleRename(version) {
+    const editableRef = editableRefs.value[version.id];
+    if (editableRef?.startEditing) {
+      editableRef.startEditing();
+    }
+  }
+
+  // Delete a version
+  async function handleDelete(version) {
+    if (
+      !confirm(
+        `Delete version ${version.version_number}${version.version_name ? ` "${version.version_name}"` : ""}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/files/${fileId.value}/versions/${version.id}`);
+      versions.value = versions.value.filter((v) => v.id !== version.id);
+      showToast({
+        type: "success",
+        message: "Version deleted",
+        description: `Version ${version.version_number} has been removed`,
+      });
+    } catch (err) {
+      console.error("Failed to delete version:", err);
+      showToast({
+        type: "error",
+        message: "Failed to delete version",
+        description: err.response?.data?.detail || "Please try again",
+      });
+    }
+  }
+
   // Format date for display
   function formatDate(dateString) {
     const date = new Date(dateString);
@@ -197,40 +235,38 @@
 
         <!-- Version List -->
         <TransitionGroup v-else name="version-list" tag="ul" class="version-list">
-          <li
-            v-for="version in versions"
-            :key="version.id"
-            class="version-item"
-            :data-testid="'version-item'"
-            :data-version-id="version.id"
-          >
-            <div class="version-info">
-              <div class="version-header">
-                <EditableText
-                  :ref="(el) => (editableRefs[version.id] = el)"
-                  v-model="version.version_name"
-                  placeholder="Click to name this version"
-                  text-class="version-name"
-                  @save="handleSaveName(version)"
-                />
-              </div>
-              <div class="version-meta">
-                <span class="version-number">v{{ version.version_number }}</span>
-                <span class="version-date">{{ formatDate(version.created_at) }}</span>
-              </div>
-            </div>
+      <li
+        v-for="version in versions"
+        :key="version.id"
+        class="version-item"
+        :data-testid="'version-item'"
+        :data-version-id="version.id"
+        @click="previewVersion(version)"
+      >
+        <div class="version-info">
+          <div class="version-header">
+            <EditableText
+              :ref="(el) => (editableRefs[version.id] = el)"
+              v-model="version.version_name"
+              placeholder="Unnamed version"
+              text-class="version-name"
+              :edit-on-click="false"
+              @save="handleSaveName(version)"
+              @click.stop
+            />
+          </div>
+          <div class="version-meta">
+            <span class="version-number">v{{ version.version_number }}</span>
+            <span class="version-date">{{ formatDate(version.created_at) }}</span>
+          </div>
+        </div>
 
-            <button
-              class="btn-preview"
-              :data-testid="'preview-version-' + version.id"
-              title="Preview version"
-              @click="previewVersion(version)"
-            >
-              <IconEye />
-            </button>
-          </li>
-        </TransitionGroup>
-
+        <ContextMenu placement="bottom-end" @click.stop>
+          <ContextMenuItem icon="edit" caption="Rename" @click="handleRename(version)" />
+          <ContextMenuItem icon="trash" caption="Delete" @click="handleDelete(version)" />
+        </ContextMenu>
+      </li>
+    </TransitionGroup>
       </template>
     </Section>
 
@@ -304,7 +340,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
+    cursor: pointer;
   }
 
   .version-item:hover {
@@ -317,7 +355,7 @@
   }
 
   .version-header {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .version-number {
@@ -335,11 +373,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .version-name:hover {
-    color: var(--color-text-primary);
   }
 
   .version-name-empty {
@@ -348,11 +381,6 @@
     font-weight: 600;
     line-height: 1.5;
     font-style: italic;
-    cursor: pointer;
-  }
-
-  .version-name-empty:hover {
-    color: var(--color-text-secondary);
   }
 
   .version-meta {
@@ -366,30 +394,6 @@
     content: "•";
     margin-right: 8px;
     color: var(--color-text-tertiary);
-  }
-
-  .btn-preview {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: all 0.2s;
-  }
-
-  .btn-preview:hover {
-    background: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-  }
-
-  .btn-preview.dimmed {
-    opacity: 0.4;
   }
 
   /* Transition animations */

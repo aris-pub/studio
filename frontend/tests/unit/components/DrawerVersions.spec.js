@@ -83,6 +83,9 @@ describe("DrawerVersions", () => {
           Pane: {
             template: '<div><slot name="header"></slot><slot></slot></div>',
           },
+          Section: {
+            template: '<div><slot name="content"></slot></div>',
+          },
           IconFileText: true,
           IconEye: true,
           Button: Button,
@@ -93,6 +96,11 @@ describe("DrawerVersions", () => {
             template:
               '<div class="version-preview-modal" data-testid="version-preview-modal"></div>',
           },
+          ContextMenu: {
+            name: "ContextMenu",
+            template: '<div class="context-menu"><slot></slot></div>',
+          },
+          ContextMenuItem: true,
         },
       },
     });
@@ -179,10 +187,11 @@ describe("DrawerVersions", () => {
       expect(items[0].find(".version-date").text()).toContain("3 days ago");
     });
 
-    it("displays preview button for each version", () => {
+    it("displays context menu for each version", () => {
       const items = wrapper.findAll(".version-item");
       items.forEach((item) => {
-        expect(item.find(".btn-preview").exists()).toBe(true);
+        const contextMenu = item.findComponent({ name: "ContextMenu" });
+        expect(contextMenu.exists()).toBe(true);
       });
     });
   });
@@ -248,9 +257,9 @@ describe("DrawerVersions", () => {
       expect(wrapper.findComponent(VersionPreviewModal).exists()).toBe(false);
     });
 
-    it("opens preview modal when clicking preview button", async () => {
-      const previewButton = wrapper.find(".btn-preview");
-      await previewButton.trigger("click");
+    it("opens preview modal when clicking version item", async () => {
+      const versionItem = wrapper.find(".version-item");
+      await versionItem.trigger("click");
       await wrapper.vm.$nextTick();
 
       expect(wrapper.vm.showPreviewModal).toBe(true);
@@ -258,7 +267,7 @@ describe("DrawerVersions", () => {
     });
 
     it("passes correct props to preview modal", async () => {
-      await wrapper.find(".btn-preview").trigger("click");
+      await wrapper.find(".version-item").trigger("click");
       await wrapper.vm.$nextTick();
 
       const modal = wrapper.findComponent(VersionPreviewModal);
@@ -270,7 +279,7 @@ describe("DrawerVersions", () => {
     it("passes correct file-id to preview modal when file is a ref", async () => {
       // This test ensures that when file is injected as a ref,
       // the modal receives file.value.id, not file.id (which would be undefined)
-      await wrapper.find(".btn-preview").trigger("click");
+      await wrapper.find(".version-item").trigger("click");
       await wrapper.vm.$nextTick();
 
       const modal = wrapper.findComponent(VersionPreviewModal);
@@ -282,7 +291,7 @@ describe("DrawerVersions", () => {
     });
 
     it("closes preview modal on close event", async () => {
-      await wrapper.find(".btn-preview").trigger("click");
+      await wrapper.find(".version-item").trigger("click");
       expect(wrapper.vm.showPreviewModal).toBe(true);
 
       const modal = wrapper.findComponent(VersionPreviewModal);
@@ -293,7 +302,7 @@ describe("DrawerVersions", () => {
     });
 
     it("refreshes versions after restore", async () => {
-      await wrapper.find(".btn-preview").trigger("click");
+      await wrapper.find(".version-item").trigger("click");
       mockApi.get.mockClear(); // Clear previous calls
 
       const modal = wrapper.findComponent(VersionPreviewModal);
