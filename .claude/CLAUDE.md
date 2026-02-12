@@ -532,6 +532,10 @@ The `/ci-report` command provides comprehensive CI failure analysis:
   - Network-dependent components, file upload handlers
 
 **Network and Timing**:
+- **NEVER use `waitForTimeout()` or arbitrary time-based waits** - they waste CI time and cause flaky tests
+  - Time-based waits add unnecessary delays (30-60+ seconds per test file)
+  - State can change faster or slower than arbitrary timeouts
+  - **ALWAYS use state/logic-based waits instead**: `waitForSelector()`, `waitForResponse()`, `waitForFunction()`, `expect(element).toBeVisible()`
 - **NEVER use `networkidle`** - it's unreliable and causes flaky tests
 - **Use explicit waits**: `waitForSelector()`, `waitForResponse()`, `waitForFunction()`
 - **Wait for specific elements**: `await expect(locator).toBeVisible()`
