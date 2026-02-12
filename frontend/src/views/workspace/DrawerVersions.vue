@@ -280,7 +280,12 @@
 
         <ContextMenu placement="bottom-end" @click.stop>
           <ContextMenuItem icon="Edit" caption="Rename" @click="handleRename(version)" />
-          <ContextMenuItem icon="TrashX" caption="Delete" @click="handleDelete(version)" />
+          <ContextMenuItem
+            icon="TrashX"
+            caption="Delete"
+            class="danger"
+            @click="handleDelete(version)"
+          />
         </ContextMenu>
       </li>
     </TransitionGroup>
@@ -358,12 +363,15 @@
     justify-content: space-between;
     padding: 12px 16px;
     border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s;
+    transition: all 0.2s ease;
     cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 4px;
   }
 
   .version-item:hover {
-    background: var(--color-bg-secondary);
+    background: var(--gray-100);
+    transform: translateX(2px);
   }
 
   .version-info {
