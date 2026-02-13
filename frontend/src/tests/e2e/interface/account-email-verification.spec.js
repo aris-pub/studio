@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
-// @auth
+// @auth @auth-interface
 test.describe("Account Email Verification E2E Tests @auth", () => {
   let authHelpers;
 

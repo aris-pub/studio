@@ -1,6 +1,7 @@
+// @auth @auth-content
 import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { TEST_CREDENTIALS } from "./setup/test-data.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TEST_CREDENTIALS } from "../setup/test-data.js";
 
 /**
  * MathJax Duplication Bug Regression Test

@@ -1,8 +1,8 @@
 import { test, expect, devices } from "@playwright/test";
 
-// @auth @auth-flows
-import { MobileHelpers } from "./utils/mobile-helpers.js";
-import { AuthHelpers } from "./utils/auth-helpers.js";
+// @auth @auth-interface
+import { MobileHelpers } from "../utils/mobile-helpers.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
 test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
   let mobileHelpers;

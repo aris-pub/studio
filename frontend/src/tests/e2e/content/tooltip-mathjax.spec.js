@@ -1,5 +1,6 @@
+// @auth @auth-content
 import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
 /**
  * Tooltip MathJax Rendering Test

@@ -1,3 +1,4 @@
+// @auth @auth-content
 /**
  * E2E test for automatic compilation when editing with CodeMirror
  *

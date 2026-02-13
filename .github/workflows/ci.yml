@@ -392,7 +392,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
-        test-type: [auth, auth-flows, core]
+        test-type: [auth-content, auth-interface, auth-flows, core]
     runs-on: ubuntu-latest
     env:
       ENV: CI
@@ -506,24 +506,31 @@ jobs:
         # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        # Map test-type to grep pattern
+        # Map test-type to test path and grep pattern
         case "${{ matrix.test-type }}" in
-          auth)
-            PATTERN="@auth[^-]"
+          auth-content)
+            TEST_PATH="src/tests/e2e/content/"
+            PATTERN="@auth"
+            ;;
+          auth-interface)
+            TEST_PATH="src/tests/e2e/interface/"
+            PATTERN="@auth"
             ;;
           auth-flows)
+            TEST_PATH=""
             PATTERN="@auth-flows"
             ;;
           core)
+            TEST_PATH=""
             PATTERN="@core"
             ;;
         esac
 
         # Run tests
         if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test --grep "$PATTERN" --project=firefox --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
         else
-          npx playwright test --grep "$PATTERN" --project=chromium --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
         fi
 
     - name: Upload test results on failure

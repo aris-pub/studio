@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { TIMEOUTS } from "./utils/timeout-constants.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TIMEOUTS } from "../utils/timeout-constants.js";
 
-// @auth
+// @auth @auth-interface
 test.describe("Account Password Change Integration E2E Tests @auth", () => {
   let authHelpers;
 

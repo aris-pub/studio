@@ -4,9 +4,9 @@ import fs from "fs";
 
 const backendURL = process.env.VITE_API_BASE_URL;
 
-// @auth
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { FileHelpers } from "./utils/file-helpers.js";
+// @auth @auth-content
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { FileHelpers } from "../utils/file-helpers.js";
 
 test.describe("File Download Tests @auth @desktop-only", () => {
   let authHelpers;

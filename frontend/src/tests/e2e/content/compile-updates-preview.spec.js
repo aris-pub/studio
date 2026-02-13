@@ -1,3 +1,4 @@
+// @auth @auth-content
 /**
  * E2E test for compile button updating preview with Y.js content
  *

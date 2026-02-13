@@ -1,6 +1,6 @@
 /**
  * @file E2E tests for version workflow
- * @tags @auth
+ * @tags @auth @auth-content
  *
  * Tests essential version management flows:
  * 1. Creating versions
@@ -12,9 +12,9 @@
  * 7. Multi-version scenarios
  */
 
-import { test, expect } from "./fixtures/api-intercept.js";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { FileHelpers } from "./utils/file-helpers.js";
+import { test, expect } from "../fixtures/api-intercept.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { FileHelpers } from "../utils/file-helpers.js";
 
 test.describe("Version Workflow @auth", () => {
   let fileId;
