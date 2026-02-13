@@ -59,45 +59,6 @@ test-collab browser="" reporter="line":
         TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
     fi
 
-# Run E2E auth content tests (files, versions, rendering)
-# Usage: just test-e2e-auth-content [browser] [reporter] (defaults: chromium, line reporter)
-test-e2e-auth-content browser="chromium" reporter="line":
-    #!/usr/bin/env bash
-    cd frontend
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/content/ --grep "@auth" --project={{browser}} --reporter={{reporter}}
-
-# Run E2E auth interface tests (account, navigation, settings)
-# Usage: just test-e2e-auth-interface [browser] [reporter] (defaults: chromium, line reporter)
-test-e2e-auth-interface browser="chromium" reporter="line":
-    #!/usr/bin/env bash
-    cd frontend
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/interface/ --grep "@auth" --project={{browser}} --reporter={{reporter}}
-
-# Run E2E auth flow tests (login, registration, redirects)
-# Usage: just test-e2e-auth-flows [browser] [reporter] (defaults: chromium, line reporter)
-test-e2e-auth-flows browser="chromium" reporter="line":
-    #!/usr/bin/env bash
-    cd frontend
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@auth-flows" --project={{browser}} --reporter={{reporter}}
-
-# Run E2E core tests (smoke tests)
-# Usage: just test-e2e-core [browser] [reporter] (defaults: chromium, line reporter)
-test-e2e-core browser="chromium" reporter="line":
-    #!/usr/bin/env bash
-    cd frontend
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@core" --project={{browser}} --reporter={{reporter}}
-
-# Run all E2E auth tests (content + interface, matching CI split)
-# Usage: just test-e2e-auth [browser] [reporter] (defaults: chromium, line reporter)
-test-e2e-auth browser="chromium" reporter="line":
-    #!/usr/bin/env bash
-    cd frontend
-    echo "Running auth-content tests..."
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/content/ --grep "@auth" --project={{browser}} --reporter={{reporter}}
-    echo ""
-    echo "Running auth-interface tests..."
-    TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/interface/ --grep "@auth" --project={{browser}} --reporter={{reporter}}
-
 # Run all linters
 lint:
     cd backend && uv run ruff check --fix
