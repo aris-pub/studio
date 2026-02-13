@@ -305,9 +305,12 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
+        # Source .env to get port variables
+        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
+
         echo "⏳ Polling for services to be ready (max 30s)..."
         for i in {1..30}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:3000 >/dev/null 2>&1; then
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
             echo "✅ Services ready after ${i}s"
             break
           fi
@@ -320,7 +323,7 @@ jobs:
         echo "🔍 Final health check..."
         curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
         curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
-        curl -f http://localhost:3000 || echo "⚠️  Site health check failed"
+        curl -f http://localhost:$SITE_PORT || echo "⚠️  Site health check failed"
 
         echo "✅ Docker services ready"
 
