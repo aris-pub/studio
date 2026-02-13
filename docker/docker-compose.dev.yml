@@ -1,10 +1,10 @@
 # Common configuration for all services
-x-common-env: &common-env
-  env_file: .env
+# Note: .env is loaded via docker compose --env-file flag (see start-dev.sh)
+# This provides variable substitution (${VAR}) in this file.
+# Each service explicitly lists its environment variables below.
 
 services:
   backend:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile.dev
@@ -35,7 +35,6 @@ services:
     restart: unless-stopped
 
   backend-test:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile.dev
@@ -65,7 +64,6 @@ services:
     restart: unless-stopped
 
   frontend:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile.dev
@@ -81,7 +79,6 @@ services:
     command: npm run dev -- --host 0.0.0.0
 
   collab:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/multi-player/Dockerfile.dev
@@ -97,7 +94,6 @@ services:
     restart: unless-stopped
 
   storybook:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile.dev
@@ -112,7 +108,6 @@ services:
     command: npm run storybook -- --host 0.0.0.0 --no-open
     
   site:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/site/Dockerfile.dev
@@ -129,7 +124,6 @@ services:
     command: npm run dev
     
   postgres:
-    <<: *common-env
     image: postgres:16
     ports:
       - "${DB_PORT}:5432"
