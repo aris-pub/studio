@@ -119,7 +119,7 @@ services:
       dockerfile: docker/site/Dockerfile.dev
       target: dev
     ports:
-      - "${SITE_PORT}:${SITE_PORT}"
+      - "${SITE_PORT}:3000"
     volumes:
       - ../site:/app
       - ../brand:/brand
