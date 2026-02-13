@@ -26,9 +26,15 @@ export default async function globalSetup() {
 
     // Clean SQLite database before each test run
     const { execSync } = await import("child_process");
+    const { basename, dirname } = await import("path");
+
+    // Get project name from parent directory (tests run from frontend/ or site/ subdirectory)
+    const projectName = process.env.COMPOSE_PROJECT_NAME || basename(dirname(process.cwd()));
+    const containerName = `${projectName}-backend-test-1`;
+
     try {
       execSync(
-        "docker exec docker-backend-test-1 rm -f test_e2e.db && docker restart docker-backend-test-1",
+        `docker exec ${containerName} rm -f test_e2e.db && docker restart ${containerName}`,
         {
           stdio: "ignore",
         }
