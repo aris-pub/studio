@@ -2,7 +2,7 @@
  * @file E2E tests for security features - HTTPS redirect and headers
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/api-intercept.js";
 
 test.describe("Security", () => {
   test("HTTP redirects to HTTPS on production domain @core", async ({ page }) => {

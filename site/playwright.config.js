@@ -1,8 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
-import { config } from "dotenv";
+import dotenv from "dotenv";
+import path from "path";
 
-// Load environment variables
-config();
+// Load environment variables from root .env file
+dotenv.config({ path: path.resolve("../.env") });
+
+// Get ports from environment - NO fallbacks, will crash if not set
+const SITE_PORT = process.env.SITE_PORT;
+const BACKEND_PORT = process.env.BACKEND_PORT;
+
+if (!SITE_PORT || !BACKEND_PORT) {
+  console.error("❌ FATAL: Required environment variables not set");
+  console.error(
+    "   Missing:",
+    [!SITE_PORT && "SITE_PORT", !BACKEND_PORT && "BACKEND_PORT"].filter(Boolean).join(", ")
+  );
+  console.error("   Ensure .env file exists at project root with all required variables");
+  process.exit(1);
+}
 
 /**
  * Playwright E2E Test Configuration
@@ -17,7 +32,7 @@ config();
  */
 export default defineConfig({
   testDir: "./tests/e2e",
-  globalSetup: "./playwright-global-setup.js",
+  globalSetup: "./tests/e2e/global-setup.js",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -33,7 +48,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: `http://localhost:${process.env.SITE_PORT}`,
+    baseURL: `http://localhost:${SITE_PORT}`,
     /* Timeout for individual actions like click, fill, etc. */
     actionTimeout: 5000, // Reduced from 10s to match frontend
     /* Timeout for navigation actions like goto, waitForLoadState */
@@ -104,7 +119,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: "NODE_ENV=test npm run dev",
-    url: `http://localhost:${process.env.SITE_PORT}`,
+    url: `http://localhost:${SITE_PORT}`,
     reuseExistingServer: true, // Always reuse existing server (CI starts it manually)
   },
 });

@@ -494,6 +494,7 @@ test.describe("Version Workflow @auth", () => {
     // Rename first version (v2)
     const firstVersion = versionItems.nth(0);
     await firstVersion.locator('[data-testid="trigger-button"]').click();
+    await page.waitForSelector('button:has-text("Rename")');
     await page.click('button:has-text("Rename")');
     let editableInput = firstVersion.locator("input, textarea").first();
     await editableInput.fill("Latest Draft");
@@ -502,6 +503,7 @@ test.describe("Version Workflow @auth", () => {
     // Rename second version (v1)
     const secondVersion = versionItems.nth(1);
     await secondVersion.locator('[data-testid="trigger-button"]').click();
+    await page.waitForSelector('button:has-text("Rename")');
     await page.click('button:has-text("Rename")');
     editableInput = secondVersion.locator("input, textarea").first();
     await editableInput.fill("Initial Draft");

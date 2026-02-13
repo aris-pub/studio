@@ -20,7 +20,16 @@ migrate:
 # Stop development containers
 stop:
     @echo "Stopping containers for $(basename $(pwd))..."
-    docker compose -p $(basename $(pwd)) -f docker/docker-compose.dev.yml down
+    docker compose --env-file .env -p $(basename $(pwd)) -f docker/docker-compose.dev.yml down
+    @echo "Cleaning up any orphaned containers on dev ports..."
+    @docker ps --filter "publish=8001" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${BACKEND_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${FRONTEND_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${SITE_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${STORYBOOK_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${MULTIPLAYER_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${DB_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @echo "All containers stopped"
 
 # View logs for development containers
 logs:
