@@ -29,6 +29,9 @@ services:
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=collab
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,6 +63,9 @@ services:
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=collab
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
