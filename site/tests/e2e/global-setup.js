@@ -54,7 +54,7 @@ export default async function globalSetup() {
             ready = true;
             console.log("   ✓ Backend-test ready");
           }
-        } catch (_error) {
+        } catch {
           // Backend not ready yet, wait and retry
         }
 
@@ -67,7 +67,7 @@ export default async function globalSetup() {
       if (!ready) {
         console.log("   ⚠ Backend-test did not become ready within 30 seconds");
       }
-    } catch (_error) {
+    } catch {
       console.log("   ⚠ Could not clean database (container may not be running)");
     }
   }
