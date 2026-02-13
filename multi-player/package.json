@@ -6,10 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "ws": "^8.18.0",
     "y-websocket": "^2.0.4"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
   }
 }
