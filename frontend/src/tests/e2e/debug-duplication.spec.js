@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { AuthHelpers } from "./utils/auth-helpers.js";
 
 // Minimal RSM source with just one inline math expression

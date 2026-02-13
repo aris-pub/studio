@@ -7,7 +7,7 @@
  * Scope: studio-elz (Y.js: Same user, multiple tabs - self-collaboration)
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 const TEST_USER = {
   email: process.env.TEST_USER_EMAIL,

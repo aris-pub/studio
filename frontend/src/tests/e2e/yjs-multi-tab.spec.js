@@ -25,7 +25,7 @@
  * 3. Timing delays compound in long sequential runs
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 const backendURL = process.env.VITE_API_BASE_URL;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;

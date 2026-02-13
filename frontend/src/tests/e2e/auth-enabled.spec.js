@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 // @auth-flows
 import { AuthHelpers } from "./utils/auth-helpers.js";

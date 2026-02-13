@@ -9,7 +9,7 @@
  * TDD: This test should FAIL initially, then PASS after implementing Y.Doc observer
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 
 const backendURL = process.env.VITE_API_BASE_URL;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;

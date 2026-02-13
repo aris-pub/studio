@@ -43,7 +43,7 @@ services:
       dockerfile: docker/backend/Dockerfile.dev
       target: dev
     ports:
-      - "8001:8000"
+      - "${BACKEND_TEST_PORT}:8000"
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm

@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test } from "../fixtures.js";
 
 // @auth @auth-interface
 import { AuthHelpers } from "../utils/auth-helpers.js";

@@ -1,5 +1,5 @@
 // @collab
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { AuthHelpers } from "./utils/auth-helpers.js";
 import { FileHelpers } from "./utils/file-helpers.js";
 
@@ -93,15 +93,36 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
     // Wait for persistence
     await page.waitForTimeout(2000);
 
+    // Get auth tokens before closing tab
+    const authTokens = await page.evaluate(() => ({
+      accessToken: localStorage.getItem("accessToken"),
+      refreshToken: localStorage.getItem("refreshToken"),
+    }));
+
     // Close the tab (simulates user closing tab)
     await page.close();
 
     // Wait for cleanup
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Open new tab and verify content persisted
+    // Open new tab and set up route interception (newPage doesn't inherit fixture)
     const newPage = await context.newPage();
-    await authHelpers.injectAuthState(newPage);
+
+    // Apply route interception to newPage
+    const BACKEND_PORT = process.env.BACKEND_PORT;
+    const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
+    await newPage.route(`http://localhost:${BACKEND_PORT}/**`, async (route) => {
+      const originalUrl = route.request().url();
+      const newUrl = originalUrl.replace(`:${BACKEND_PORT}`, `:${BACKEND_TEST_PORT}`);
+      await route.continue({ url: newUrl });
+    });
+
+    // Inject auth state
+    await newPage.goto("/", { waitUntil: "domcontentloaded" });
+    await newPage.evaluate((tokens) => {
+      localStorage.setItem("accessToken", tokens.accessToken);
+      localStorage.setItem("refreshToken", tokens.refreshToken);
+    }, authTokens);
     await newPage.goto(`/file/${fileId}`);
     await newPage.waitForSelector('[data-testid="manuscript-viewer"]', { timeout: 5000 });
 

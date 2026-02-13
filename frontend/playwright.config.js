@@ -8,19 +8,26 @@ dotenv.config({ path: path.resolve("../.env") });
 // Get ports from environment - NO fallbacks, will crash if not set
 const FRONTEND_PORT = process.env.FRONTEND_PORT;
 const BACKEND_PORT = process.env.BACKEND_PORT;
+const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
 
-if (!FRONTEND_PORT || !BACKEND_PORT) {
+if (!FRONTEND_PORT || !BACKEND_PORT || !BACKEND_TEST_PORT) {
   console.error("❌ FATAL: Required environment variables not set");
   console.error(
     "   Missing:",
-    [!FRONTEND_PORT && "FRONTEND_PORT", !BACKEND_PORT && "BACKEND_PORT"].filter(Boolean).join(", ")
+    [
+      !FRONTEND_PORT && "FRONTEND_PORT",
+      !BACKEND_PORT && "BACKEND_PORT",
+      !BACKEND_TEST_PORT && "BACKEND_TEST_PORT",
+    ]
+      .filter(Boolean)
+      .join(", ")
   );
   console.error("   Ensure .env file exists at project root with all required variables");
   process.exit(1);
 }
 
-// E2E backend selection: Local uses backend-test (port 8001), CI uses backend (production-like)
-const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : "8001";
+// E2E backend selection: Local uses backend-test, CI uses backend (production-like)
+const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : BACKEND_TEST_PORT;
 
 /**
  * @see https://playwright.dev/docs/test-configuration

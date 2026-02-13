@@ -1,5 +1,5 @@
 // @auth @auth-content
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
 import { TEST_CREDENTIALS } from "../setup/test-data.js";
 

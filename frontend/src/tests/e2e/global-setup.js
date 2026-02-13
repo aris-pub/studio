@@ -7,7 +7,8 @@
 
 // Get backend ports from environment
 const BACKEND_PORT = process.env.BACKEND_PORT;
-const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : "8001";
+const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
+const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : BACKEND_TEST_PORT;
 
 export default async function globalSetup() {
   // Set E2E_API_BASE_URL for test helpers

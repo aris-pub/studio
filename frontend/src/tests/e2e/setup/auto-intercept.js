@@ -8,7 +8,8 @@
 import { test as setup } from "@playwright/test";
 
 const BACKEND_PORT = process.env.BACKEND_PORT;
-const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : "8001";
+const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
+const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : BACKEND_TEST_PORT;
 
 // This setup runs once before all tests
 setup("configure API interception", async () => {
