@@ -276,6 +276,12 @@ if os.getenv('FRONTEND_PORT'):
         f"http://127.0.0.1:{int(os.getenv('FRONTEND_PORT', '5173')) + 2}",  # 127.0.0.1 variant
     ])
 
+if os.getenv('FRONTEND_TEST_PORT'):
+    origins.extend([
+        f"http://localhost:{os.getenv('FRONTEND_TEST_PORT')}",  # E2E test frontend
+        f"http://127.0.0.1:{os.getenv('FRONTEND_TEST_PORT')}",  # 127.0.0.1 variant
+    ])
+
 if os.getenv('SITE_PORT'):
     origins.extend([
         f"http://localhost:{os.getenv('SITE_PORT')}",  # local Nuxt app

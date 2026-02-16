@@ -7,15 +7,17 @@ dotenv.config({ path: path.resolve("../.env") });
 
 // Get ports from environment - NO fallbacks, will crash if not set
 const FRONTEND_PORT = process.env.FRONTEND_PORT;
+const FRONTEND_TEST_PORT = process.env.FRONTEND_TEST_PORT;
 const BACKEND_PORT = process.env.BACKEND_PORT;
 const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
 
-if (!FRONTEND_PORT || !BACKEND_PORT || !BACKEND_TEST_PORT) {
+if (!FRONTEND_PORT || !FRONTEND_TEST_PORT || !BACKEND_PORT || !BACKEND_TEST_PORT) {
   console.error("❌ FATAL: Required environment variables not set");
   console.error(
     "   Missing:",
     [
       !FRONTEND_PORT && "FRONTEND_PORT",
+      !FRONTEND_TEST_PORT && "FRONTEND_TEST_PORT",
       !BACKEND_PORT && "BACKEND_PORT",
       !BACKEND_TEST_PORT && "BACKEND_TEST_PORT",
     ]
@@ -51,7 +53,9 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: `http://localhost:${FRONTEND_PORT}`,
+    baseURL: process.env.CI
+      ? `http://localhost:${FRONTEND_PORT}`
+      : `http://localhost:${FRONTEND_TEST_PORT}`,
     /* Always run in headless mode */
     headless: true,
     /* Collect trace only on failure, not retry */
@@ -132,7 +136,4 @@ export default defineConfig({
           },
         ]),
   ],
-
-  /* Use containerized dev server - no local webServer needed */
-  webServer: undefined,
 });

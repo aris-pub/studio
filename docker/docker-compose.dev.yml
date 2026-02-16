@@ -64,6 +64,7 @@ services:
       - MULTIPLAYER_HOST=collab
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
       - FRONTEND_PORT=${FRONTEND_PORT}
+      - FRONTEND_TEST_PORT=${FRONTEND_TEST_PORT}
       - SITE_PORT=${SITE_PORT}
       - STORYBOOK_PORT=${STORYBOOK_PORT}
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -82,6 +83,29 @@ services:
     environment:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+    command: npm run dev -- --host 0.0.0.0
+
+  frontend-test:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile.dev
+      target: dev
+    ports:
+      - "${FRONTEND_TEST_PORT}:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules_test  # Separate node_modules for test frontend
+    environment:
+      - BACKEND_PORT=${BACKEND_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_TEST_PORT}
+      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+      - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
     command: npm run dev -- --host 0.0.0.0
 
   collab:

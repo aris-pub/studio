@@ -105,17 +105,8 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
     // Wait for cleanup
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Open new tab and set up route interception (newPage doesn't inherit fixture)
+    // Open new tab
     const newPage = await context.newPage();
-
-    // Apply route interception to newPage
-    const BACKEND_PORT = process.env.BACKEND_PORT;
-    const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
-    await newPage.route(`http://localhost:${BACKEND_PORT}/**`, async (route) => {
-      const originalUrl = route.request().url();
-      const newUrl = originalUrl.replace(`:${BACKEND_PORT}`, `:${BACKEND_TEST_PORT}`);
-      await route.continue({ url: newUrl });
-    });
 
     // Inject auth state
     await newPage.goto("/", { waitUntil: "domcontentloaded" });

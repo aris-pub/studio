@@ -5,7 +5,7 @@ import { getTimeouts } from "./timeout-constants.js";
 export class AuthHelpers {
   constructor(page) {
     this.page = page;
-    // Use E2E-specific API URL if set (for route interception to backend-test)
+    // Use E2E-specific API URL for direct backend calls
     this.baseURL = process.env.E2E_API_BASE_URL || process.env.VITE_API_BASE_URL;
     if (!this.baseURL) {
       throw new Error("E2E_API_BASE_URL or VITE_API_BASE_URL environment variable not set");

@@ -7,6 +7,23 @@ set -e
 echo "Installing platform-specific dependencies..."
 npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl @esbuild/linux-arm64 || true
 
+# For frontend-test: Remove .env file so docker-compose env vars take precedence
+# Vite loads .env files which override environment variables, but we want
+# frontend-test to use VITE_API_BASE_URL from docker-compose (backend-test)
+echo "DEBUG: VITE_API_BASE_URL=$VITE_API_BASE_URL"
+echo "DEBUG: .env exists=$(test -f ../.env && echo yes || echo no)"
+if [ "$VITE_API_BASE_URL" = "http://localhost:8001" ]; then
+  if [ -f "../.env" ]; then
+    echo "🧪 Test environment detected - removing .env to use docker-compose env vars"
+    rm -f ../.env
+    echo "DEBUG: .env removed=$(test -f ../.env && echo no-still-there || echo yes-deleted)"
+  else
+    echo "DEBUG: .env file not found"
+  fi
+else
+  echo "DEBUG: Not test environment (VITE_API_BASE_URL != http://localhost:8001)"
+fi
+
 # Patch y-codemirror.next to fix echo prevention in Docker
 echo "Patching y-codemirror.next for Docker echo prevention..."
 if [ -d "node_modules/y-codemirror.next" ]; then

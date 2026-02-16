@@ -12,7 +12,7 @@
  * 7. Multi-version scenarios
  */
 
-import { test, expect } from "../fixtures/api-intercept.js";
+import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
 import { FileHelpers } from "../utils/file-helpers.js";
 

@@ -71,14 +71,10 @@ export class FileHelpers {
       }
     }
 
-    // Wait for files to actually render instead of fixed timeout
-    await this.page.waitForFunction(
-      () => {
-        const container = document.querySelector('[data-testid="files-container"]');
-        return container && container.children.length > 0;
-      },
-      { timeout: timeouts.contentLoad }
-    );
+    // Wait for files container to exist (may be empty for new users)
+    await this.page.waitForSelector('[data-testid="files-container"]', {
+      timeout: timeouts.contentLoad,
+    });
   }
 
   /**
@@ -271,7 +267,7 @@ export class FileHelpers {
   async deleteFile(fileId) {
     const accessToken = await this.page.evaluate(() => localStorage.getItem("accessToken"));
 
-    // Use E2E-specific API URL if set (for route interception to backend-test)
+    // Use E2E-specific API URL for direct backend calls
     const baseURL = process.env.E2E_API_BASE_URL || process.env.VITE_API_BASE_URL;
     if (!baseURL) {
       throw new Error("E2E_API_BASE_URL or VITE_API_BASE_URL environment variable not set");

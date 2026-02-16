@@ -1,8 +1,7 @@
 /**
  * Global setup for E2E tests
  *
- * Configures API route interception to redirect requests from backend to backend-test
- * for SQLite-based test isolation.
+ * Cleans SQLite database and waits for backend-test to be ready.
  */
 
 // Get backend ports from environment
@@ -22,10 +21,10 @@ export default async function globalSetup() {
   if (process.env.CI) {
     console.log("   Mode: CI - using backend service (PostgreSQL)");
   } else {
-    console.log("   Mode: Local - intercepting to backend-test (SQLite)");
+    console.log("   Mode: Local - using backend-test (SQLite)");
     console.log("   Cleaning SQLite database for fresh test run...");
 
-    // Clean SQLite database before each test run
+    // Clean SQLite database before each test run (no container restart needed)
     const { execSync } = await import("child_process");
     const { basename, dirname } = await import("path");
 
@@ -34,39 +33,51 @@ export default async function globalSetup() {
     const containerName = `${projectName}-backend-test-1`;
 
     try {
-      execSync(
-        `docker exec ${containerName} rm -f test_e2e.db && docker restart ${containerName}`,
-        {
-          stdio: "ignore",
-        }
-      );
-      console.log("   ✓ Database cleaned and backend-test restarting...");
+      // Clean the database file and run migrations
+      execSync(`docker exec ${containerName} rm -f test_e2e.db`, {
+        stdio: "ignore",
+      });
+      console.log("   ✓ Database cleaned");
 
-      // Wait for backend-test to be ready (poll health endpoint)
-      console.log("   Waiting for backend-test to be ready...");
-      const maxAttempts = 60; // 60 attempts * 500ms = 30 seconds max
-      let attempt = 0;
-      let ready = false;
+      // Run migrations to create tables
+      execSync(`docker exec ${containerName} alembic upgrade head`, {
+        stdio: "ignore",
+      });
+      console.log("   ✓ Migrations applied");
 
-      while (attempt < maxAttempts && !ready) {
-        try {
-          const response = await fetch(`http://localhost:${E2E_BACKEND_PORT}/health`);
-          if (response.ok) {
-            ready = true;
-            console.log("   ✓ Backend-test ready");
-          }
-        } catch (_error) {
-          // Backend not ready yet, wait and retry
-        }
+      // Create test user
+      const testEmail = process.env.TEST_USER_EMAIL || "testuser@aris.pub";
+      const testPassword = process.env.TEST_USER_PASSWORD || "testpassword123";
 
-        if (!ready) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          attempt++;
+      try {
+        const response = await fetch(`http://localhost:${E2E_BACKEND_PORT}/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: testEmail,
+            password: testPassword,
+            name: "Test User",
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`   ✓ Test user created (${testEmail})`);
+        } else {
+          const errorText = await response.text();
+          console.log(`   ⚠ Test user creation failed: ${errorText}`);
         }
+      } catch (error) {
+        console.log(`   ⚠ Test user creation failed: ${error.message}`);
       }
 
-      if (!ready) {
-        console.log("   ⚠ Backend-test did not become ready within 30 seconds");
+      // Quick health check (backend-test should already be running)
+      try {
+        const response = await fetch(`http://localhost:${E2E_BACKEND_PORT}/health`);
+        if (response.ok) {
+          console.log("   ✓ Backend-test ready");
+        }
+      } catch (_error) {
+        console.log("   ⚠ Backend-test health check failed (may need to start container)");
       }
     } catch (_error) {
       console.log("   ⚠ Could not clean database (container may not be running)");
