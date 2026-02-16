@@ -2,6 +2,7 @@
 import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
 import { TEST_CREDENTIALS } from "../setup/test-data.js";
+import { getBackendURL } from "../utils/test-config.js";
 
 /**
  * MathJax Duplication Bug Regression Test
@@ -39,10 +40,7 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   let testUserId;
 
   test.beforeEach(async ({ page }) => {
-    baseURL = process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("VITE_API_BASE_URL environment variable is required");
-    }
+    baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
     // Wait for any pending requests from post-login navigation to complete
@@ -193,10 +191,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
   test.beforeEach(async ({ page }) => {
     // Get API base URL (required - no fallback)
-    baseURL = process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("VITE_API_BASE_URL environment variable is required");
-    }
+    baseURL = getBackendURL();
 
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();

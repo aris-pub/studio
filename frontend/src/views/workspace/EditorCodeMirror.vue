@@ -137,7 +137,9 @@
       // Cleanup previous instance
       cleanup();
 
-      roomName.value = `file-${fileId}`;
+      // Use environment namespace to prevent conflicts between dev/test
+      const env = (import.meta.env.VITE_ENV || "local").toLowerCase();
+      roomName.value = `file-${fileId}-${env}`;
       console.log(`[EditorCodeMirror] Setting up collaboration for ${roomName.value}`);
 
       // Create Y.Doc and Y.Text

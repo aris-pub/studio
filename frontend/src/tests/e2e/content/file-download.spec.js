@@ -1,8 +1,9 @@
 import { test, expect } from "../fixtures.js";
 import path from "path";
 import fs from "fs";
+import { getBackendURL } from "../utils/test-config.js";
 
-const backendURL = process.env.VITE_API_BASE_URL;
+const backendURL = getBackendURL();
 
 // @auth @auth-content
 import { AuthHelpers } from "../utils/auth-helpers.js";

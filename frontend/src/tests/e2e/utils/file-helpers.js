@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import { MobileHelpers } from "./mobile-helpers.js";
 import { getTimeouts } from "./timeout-constants.js";
+import { getBackendURL } from "./test-config.js";
 
 export class FileHelpers {
   constructor(page) {
@@ -268,10 +269,7 @@ export class FileHelpers {
     const accessToken = await this.page.evaluate(() => localStorage.getItem("accessToken"));
 
     // Use E2E-specific API URL for direct backend calls
-    const baseURL = process.env.E2E_API_BASE_URL || process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("E2E_API_BASE_URL or VITE_API_BASE_URL environment variable not set");
-    }
+    const baseURL = getBackendURL();
 
     const response = await this.page.request.delete(`${baseURL}/files/${fileId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },

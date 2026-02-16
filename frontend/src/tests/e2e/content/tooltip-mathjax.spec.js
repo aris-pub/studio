@@ -1,6 +1,7 @@
 // @auth @auth-content
 import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
+import { getBackendURL } from "../utils/test-config.js";
 
 /**
  * Tooltip MathJax Rendering Test
@@ -35,10 +36,7 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   let testUserId;
 
   test.beforeEach(async ({ page }) => {
-    baseURL = process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("VITE_API_BASE_URL environment variable is required");
-    }
+    baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
     // Wait for any pending requests from post-login navigation to complete

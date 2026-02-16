@@ -28,9 +28,18 @@ export default async function globalSetup() {
     const { execSync } = await import("child_process");
     const { basename, dirname } = await import("path");
 
-    // Get project name from parent directory (tests run from frontend/ or site/ subdirectory)
-    const projectName = process.env.COMPOSE_PROJECT_NAME || basename(dirname(process.cwd()));
-    const containerName = `${projectName}-backend-test-1`;
+    // Find the actual backend-test container name (project name varies based on where compose file is)
+    const containerListOutput = execSync(
+      'docker ps --filter "name=backend-test" --format "{{.Names}}"',
+      {
+        encoding: "utf-8",
+      }
+    ).trim();
+    const containerName = containerListOutput.split("\n")[0];
+
+    if (!containerName) {
+      throw new Error("backend-test container not found. Make sure docker compose is running.");
+    }
 
     try {
       // Clean the database file and run migrations

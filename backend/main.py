@@ -324,12 +324,15 @@ logger.info("All routers registered successfully")
 @app.on_event("startup")
 async def startup_collaboration_manager():
     """Initialize CollaborationManager for real-time collaboration."""
-    # Disable in PROD, STAGING, CI, and test environments
-    env = os.getenv("ENV", "").upper()
-    if env in ("PROD", "STAGING", "CI") or os.getenv("PYTEST_CURRENT_TEST"):
-        logger.info(f"CollaborationManager disabled in {env or 'test'} environment")
+    # Disable for pytest unit tests only
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        logger.info("CollaborationManager disabled during pytest")
         return
 
+    # Enable CollaborationManager in all environments (production-ready, no longer POC)
+    # Separate multiplayer servers ensure backend-1 and backend-test don't conflict:
+    # - backend-1 connects to collab:1234
+    # - backend-test connects to collab-test:1235
     try:
         get_collaboration_manager()
         logger.info("CollaborationManager initialized and ready")

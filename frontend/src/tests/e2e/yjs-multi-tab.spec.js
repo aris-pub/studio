@@ -26,8 +26,9 @@
  */
 
 import { test, expect } from "./fixtures.js";
+import { getBackendURL } from "./utils/test-config.js";
 
-const backendURL = process.env.VITE_API_BASE_URL;
+const backendURL = getBackendURL();
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
 const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
 

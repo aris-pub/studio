@@ -53,7 +53,9 @@ class CollaborationManager:
             return True
 
         try:
-            websocket_url = f"{self.websocket_base_url}/file-{file_id}"
+            # Use environment namespace to prevent conflicts between dev/test
+            env = os.getenv("ENV", "local").lower()
+            websocket_url = f"{self.websocket_base_url}/file-{file_id}-{env}"
             logger.info(f"Starting YDocClient for file {file_id} at {websocket_url}")
 
             client = YDocClient(

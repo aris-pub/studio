@@ -8,6 +8,7 @@
  */
 
 import { test, expect } from "./fixtures.js";
+import { getBackendURL } from "./utils/test-config.js";
 
 const TEST_USER = {
   email: process.env.TEST_USER_EMAIL,
@@ -29,7 +30,7 @@ test.describe("Y.js Real-time Collaboration @auth", () => {
     page2.on("console", (msg) => {});
 
     try {
-      const backendURL = process.env.VITE_API_BASE_URL;
+      const backendURL = getBackendURL();
 
       // Login Tab 1
       const loginResponse1 = await request.post(`${backendURL}/login`, {

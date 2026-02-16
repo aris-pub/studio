@@ -3,8 +3,9 @@ import { test, expect } from "./fixtures.js";
 // @auth
 import { AuthHelpers } from "./utils/auth-helpers.js";
 import { TEST_CREDENTIALS } from "./setup/test-data.js";
+import { getBackendURL } from "./utils/test-config.js";
 
-const backendURL = process.env.VITE_API_BASE_URL;
+const backendURL = getBackendURL();
 
 test.describe("Debug Auth-Enabled Desktop Failures @auth", () => {
   let authHelpers;

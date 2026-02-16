@@ -1,15 +1,13 @@
 import { expect } from "@playwright/test";
 import { TEST_CREDENTIALS } from "../setup/test-data.js";
 import { getTimeouts } from "./timeout-constants.js";
+import { getBackendURL } from "./test-config.js";
 
 export class AuthHelpers {
   constructor(page) {
     this.page = page;
     // Use E2E-specific API URL for direct backend calls
-    this.baseURL = process.env.E2E_API_BASE_URL || process.env.VITE_API_BASE_URL;
-    if (!this.baseURL) {
-      throw new Error("E2E_API_BASE_URL or VITE_API_BASE_URL environment variable not set");
-    }
+    this.baseURL = getBackendURL();
   }
 
   async login(email, password) {

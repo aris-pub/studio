@@ -3,13 +3,14 @@ import { test, expect } from "./fixtures.js";
 // @auth-flows
 import { AuthHelpers } from "./utils/auth-helpers.js";
 import { TEST_CREDENTIALS } from "./setup/test-data.js";
+import { getBackendURL } from "./utils/test-config.js";
 
 test.describe("Auth Enabled - Production Mode @auth-flows", () => {
   test("verifies auth guards are active and login flow works", async ({ page }) => {
     const auth = new AuthHelpers(page);
 
     // Test 1: Verify backend API is responding
-    const healthResponse = await page.request.get(`${process.env.VITE_API_BASE_URL}/health`);
+    const healthResponse = await page.request.get(`${getBackendURL()}/health`);
     expect(healthResponse.ok()).toBeTruthy();
 
     // Test 2: Verify protected routes redirect to login

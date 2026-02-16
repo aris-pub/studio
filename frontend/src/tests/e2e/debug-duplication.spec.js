@@ -6,9 +6,10 @@ const MINIMAL_SOURCE = `# Title
 
 Math: $x^2$`;
 
+import { getBackendURL } from "./utils/test-config.js";
+
 test("mjx-container nesting bug - minimal repro @auth", async ({ page, request }) => {
-  const baseURL = process.env.VITE_API_BASE_URL;
-  if (!baseURL) throw new Error("VITE_API_BASE_URL required");
+  const baseURL = getBackendURL();
 
   // Capture console logs
   page.on("console", (msg) => {
