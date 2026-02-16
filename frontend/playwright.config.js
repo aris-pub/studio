@@ -31,6 +31,22 @@ if (!FRONTEND_PORT || !FRONTEND_TEST_PORT || !BACKEND_PORT || !BACKEND_TEST_PORT
 // E2E backend selection: Local uses backend-test, CI uses backend (production-like)
 const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : BACKEND_TEST_PORT;
 
+// Test user credentials (required for authentication)
+const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
+
+if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
+  console.error("❌ FATAL: Test user credentials not set");
+  console.error(
+    "   Missing:",
+    [!TEST_USER_EMAIL && "TEST_USER_EMAIL", !TEST_USER_PASSWORD && "TEST_USER_PASSWORD"]
+      .filter(Boolean)
+      .join(", ")
+  );
+  console.error("   Ensure .env file contains TEST_USER_EMAIL and TEST_USER_PASSWORD");
+  process.exit(1);
+}
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -72,8 +88,8 @@ export default defineConfig({
   /* Environment variables for test helpers (direct API calls, not browser requests) */
   env: {
     E2E_API_BASE_URL: `http://localhost:${E2E_BACKEND_PORT}`,
-    TEST_USER_EMAIL: process.env.TEST_USER_EMAIL,
-    TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD,
+    TEST_USER_EMAIL,
+    TEST_USER_PASSWORD,
   },
 
   /* Configure projects for major browsers */
