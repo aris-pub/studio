@@ -468,32 +468,6 @@ npx playwright test --debug               # Run in debug mode
 npx playwright test --reporter=html       # Generate HTML report
 ```
 
-## CI Debugging and Analysis
-
-### Custom Claude Code Commands
-
-#### CI Reporting
-```bash
-/ci-report                    # Analyze CI for current branch's PR
-/ci-report 123               # Analyze CI for specific PR number
-```
-
-The `/ci-report` command provides comprehensive CI failure analysis:
-- **Automatic PR detection**: Finds open PR for current branch or uses specified PR number
-- **CI cancellation**: Automatically cancels running CI to get fresh logs
-- **Failure pattern analysis**: Categorizes failures (unit tests, E2E, site tests, browser-specific)
-- **Structured reporting**: Provides summary with job counts and actionable recommendations
-
-**Implementation**: 
-- Command: `.claude/commands/ci-report.md`
-- Data collection: `scripts/get-ci-data.sh`
-- Uses GitHub CLI (`gh`) for PR and workflow data retrieval
-
-#### Manual CI Data Collection
-```bash
-./scripts/get-ci-data.sh [PR_NUMBER]    # Standalone script for CI data gathering
-```
-
 ## Critical Rules
 
 ### Environment Configuration
