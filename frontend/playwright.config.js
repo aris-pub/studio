@@ -72,6 +72,8 @@ export default defineConfig({
   /* Environment variables for test helpers (direct API calls, not browser requests) */
   env: {
     E2E_API_BASE_URL: `http://localhost:${E2E_BACKEND_PORT}`,
+    TEST_USER_EMAIL: process.env.TEST_USER_EMAIL,
+    TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD,
   },
 
   /* Configure projects for major browsers */

@@ -54,6 +54,12 @@ export default async function globalSetup() {
       });
       console.log("   ✓ Migrations applied");
 
+      // Fix database permissions (migrations run as root, app runs as different user)
+      execSync(`docker exec ${containerName} chmod 666 test_e2e.db`, {
+        stdio: "ignore",
+      });
+      console.log("   ✓ Database permissions fixed");
+
       // Create test user
       const testEmail = process.env.TEST_USER_EMAIL || "testuser@aris.pub";
       const testPassword = process.env.TEST_USER_PASSWORD || "testpassword123";
@@ -73,7 +79,12 @@ export default async function globalSetup() {
           console.log(`   ✓ Test user created (${testEmail})`);
         } else {
           const errorText = await response.text();
-          console.log(`   ⚠ Test user creation failed: ${errorText}`);
+          // If user already exists, that's fine - we can use it for tests
+          if (errorText.includes("already registered")) {
+            console.log(`   ✓ Test user already exists (${testEmail})`);
+          } else {
+            console.log(`   ⚠ Test user creation failed: ${errorText}`);
+          }
         }
       } catch (error) {
         console.log(`   ⚠ Test user creation failed: ${error.message}`);
