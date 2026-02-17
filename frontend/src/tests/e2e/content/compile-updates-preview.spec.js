@@ -108,7 +108,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
     }
   });
 
-  test("should compile and update preview with Y.js content", async () => {
+  test("should compile and update preview with Y.js content @flaky", async () => {
     await page.goto(`/file/${fileId}`, {
       waitUntil: "domcontentloaded",
     });

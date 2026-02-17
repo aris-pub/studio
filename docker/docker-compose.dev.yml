@@ -10,7 +10,7 @@ services:
       dockerfile: docker/backend/Dockerfile.dev
       target: dev
     ports:
-      - "${BACKEND_PORT}:8000"
+      - "${BACKEND_PORT:?BACKEND_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
@@ -43,7 +43,7 @@ services:
       dockerfile: docker/backend/Dockerfile.dev
       target: dev
     ports:
-      - "${BACKEND_TEST_PORT}:8000"
+      - "${BACKEND_TEST_PORT:?BACKEND_TEST_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
@@ -63,11 +63,12 @@ services:
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=collab
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - YJS_DEBOUNCE_MS=2000
       - FRONTEND_PORT=${FRONTEND_PORT}
       - FRONTEND_TEST_PORT=${FRONTEND_TEST_PORT}
       - SITE_PORT=${SITE_PORT}
       - STORYBOOK_PORT=${STORYBOOK_PORT}
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port ${BACKEND_CONTAINER_PORT} --reload
     restart: unless-stopped
 
   frontend:
@@ -76,7 +77,7 @@ services:
       dockerfile: docker/frontend/Dockerfile.dev
       target: dev
     ports:
-      - "${FRONTEND_PORT}:5173"
+      - "${FRONTEND_PORT:?FRONTEND_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
     volumes:
       - ../frontend:/app
       - /app/node_modules  # Anonymous volume - no races, each container gets its own
@@ -91,7 +92,7 @@ services:
       dockerfile: docker/frontend/Dockerfile.dev
       target: dev
     ports:
-      - "${FRONTEND_TEST_PORT}:5173"
+      - "${FRONTEND_TEST_PORT:?FRONTEND_TEST_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
     volumes:
       - ../frontend:/app
       - /app/node_modules_test  # Separate node_modules for test frontend
@@ -115,7 +116,7 @@ services:
       dockerfile: docker/multi-player/Dockerfile.dev
       target: dev
     ports:
-      - "${MULTIPLAYER_PORT}:1234"
+      - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:${MULTIPLAYER_PORT}"
     volumes:
       - ../multi-player:/app
       - /app/node_modules  # Anonymous volume - no races, each container gets its own
@@ -130,7 +131,7 @@ services:
       dockerfile: docker/frontend/Dockerfile.dev
       target: dev
     ports:
-      - "${STORYBOOK_PORT}:${STORYBOOK_PORT}"
+      - "${STORYBOOK_PORT:?STORYBOOK_PORT is required}:${STORYBOOK_PORT}"
     volumes:
       - ../frontend:/app
       - /app/node_modules  # Anonymous volume - no races
@@ -144,7 +145,7 @@ services:
       dockerfile: docker/site/Dockerfile.dev
       target: dev
     ports:
-      - "${SITE_PORT}:3000"
+      - "${SITE_PORT:?SITE_PORT is required}:${SITE_CONTAINER_PORT:?SITE_CONTAINER_PORT is required}"
     volumes:
       - ../site:/app
       - ../brand:/brand
@@ -157,7 +158,7 @@ services:
   postgres:
     image: postgres:16
     ports:
-      - "${DB_PORT}:5432"
+      - "${DB_PORT:?DB_PORT is required}:${DB_CONTAINER_PORT:?DB_CONTAINER_PORT is required}"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

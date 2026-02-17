@@ -195,8 +195,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
-    // Wait for any pending requests from post-login navigation to complete
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForSelector('[data-testid="files-container"]', { timeout: 5000 });
 
     // Get access token from localStorage after login
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
@@ -204,11 +203,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     // Get user ID for file creation
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
-  });
-
-  test.afterEach(async ({ page }) => {
-    // Wait for pending requests to complete before next test starts
-    await page.waitForLoadState("networkidle").catch(() => {});
   });
 
   /**
@@ -287,7 +281,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     await page.evaluate(() => delete window.__mjxStabilityCheck);
   }
 
-  test("block math equations should not duplicate when editing source", async ({
+  test("block math equations should not duplicate when editing source @flaky", async ({
     page,
     request,
   }) => {

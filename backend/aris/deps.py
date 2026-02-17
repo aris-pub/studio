@@ -22,6 +22,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, ConfigDict, EmailStr
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from . import crud
@@ -45,6 +46,14 @@ ENGINE = create_async_engine(
     future=True,
     connect_args=_connect_args,
 )
+
+if _db_url.startswith("sqlite"):
+    @event.listens_for(ENGINE.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 ArisSession = async_sessionmaker(ENGINE, expire_on_commit=False)
 
 

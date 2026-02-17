@@ -10,7 +10,7 @@ from typing import Optional
 
 from pycrdt import Doc, Text, TextEvent, create_sync_message, handle_sync_message
 from sqlalchemy import text as sql_text
-from websockets import connect
+from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
 from aris.deps import ArisSession
@@ -44,6 +44,7 @@ class YDocClient:
         # Persistence state
         self._save_task: Optional[asyncio.Task] = None
         self._shutdown = False
+        self._ws: Optional[ClientConnection] = None  # Active WebSocket, set during connection
 
         # Reconnection state
         self._reconnect_attempt = 0
@@ -59,7 +60,16 @@ class YDocClient:
                 if not self._shutdown:
                     logger.warning(f"Connection closed for file {self.file_id}, reconnecting...")
                     await self._wait_before_reconnect()
-            except (ConnectionClosed, WebSocketException) as e:
+            except ConnectionClosed as e:
+                # Code 4000 = intentional server-side cleanup, do not reconnect
+                if e.rcvd is not None and e.rcvd.code == 4000:
+                    logger.info(f"Server closed connection for cleanup (file {self.file_id}), shutting down client")
+                    self._shutdown = True
+                    break
+                if not self._shutdown:
+                    logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
+                    await self._wait_before_reconnect()
+            except WebSocketException as e:
                 if not self._shutdown:
                     logger.warning(f"WebSocket error for file {self.file_id}: {e}, reconnecting...")
                     await self._wait_before_reconnect()
@@ -75,6 +85,7 @@ class YDocClient:
         logger.info(f"Connecting to {self.websocket_url} for file {self.file_id}")
 
         async with connect(self.websocket_url) as websocket:
+            self._ws = websocket
             self._reconnect_attempt = 0
             logger.info(f"WebSocket connected for file {self.file_id}")
 
@@ -217,3 +228,8 @@ class YDocClient:
 
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()
+
+        # Close the WebSocket to unblock the message loop immediately
+        # rather than waiting for the server to send the next message.
+        if self._ws is not None:
+            await self._ws.close()

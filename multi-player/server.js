@@ -62,7 +62,7 @@ wss.on('connection', (ws, req) => {
         console.log(`[Y.js Server] Only backend remaining in ${docName}, closing it`);
         // Get the last remaining connection and close it
         for (const conn of doc.conns.keys()) {
-          conn.close();
+          conn.close(4000, 'cleanup');
         }
         // Clean up the document
         docs.delete(docName);
