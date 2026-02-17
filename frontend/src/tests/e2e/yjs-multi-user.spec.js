@@ -53,7 +53,7 @@ async function createAuthenticatedPage(browser, request, email, password) {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/`, { waitUntil: "commit" });
   await page.evaluate(
     (data) => {
       localStorage.setItem("accessToken", data.access_token);
@@ -100,33 +100,19 @@ async function openFileInEditor(page, fileId) {
     }
   });
 
-  await page.goto(`/file/${fileId}`, {
-    waitUntil: "domcontentloaded",
-  });
+  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
 
-  // Wait a bit for Vue to initialize
-  await page.waitForTimeout(1000);
+  // Wait for Vue to mount and authenticate the route
+  const container = await page
+    .waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 })
+    .catch(() => null);
 
-  // Check for error messages on page
-  const pageText = await page.textContent("body").catch(() => "");
-  if (
-    pageText.includes("403") ||
-    pageText.includes("Access denied") ||
-    pageText.includes("Forbidden")
-  ) {
-    throw new Error("Access denied");
-  }
-
-  // Check if manuscript container exists before waiting
-  const hasContainer = (await page.locator('[data-testid="manuscript-container"]').count()) > 0;
-  if (!hasContainer) {
-    // Check if we got redirected
+  if (!container) {
     if (page.url().includes("/login")) {
       throw new Error("Redirected to login - authentication issue");
     }
+    throw new Error("Access denied or page failed to load");
   }
-
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
@@ -270,7 +256,12 @@ test.describe("Multi-User Collaboration @auth", () => {
       // Owner opens file and clears it
       await openFileInEditor(owner.page, fileId);
       await clearEditor(owner.page);
-      await owner.page.waitForTimeout(1000);
+      // Wait for clear to propagate to Y.js server before collaborator joins
+      await owner.page.waitForFunction(
+        () => window.__provider?.synced === true,
+        {},
+        { timeout: 5000 }
+      );
 
       // Owner adds editor as collaborator
       await addCollaborator(fileId, editor.userId, "EDITOR", owner.token);
@@ -336,7 +327,11 @@ test.describe("Multi-User Collaboration @auth", () => {
       // Owner prepares file
       await openFileInEditor(owner.page, fileId);
       await clearEditor(owner.page);
-      await owner.page.waitForTimeout(1000);
+      await owner.page.waitForFunction(
+        () => window.__provider?.synced === true,
+        {},
+        { timeout: 5000 }
+      );
 
       const ownerText = "Owner content\n";
       await insertText(owner.page, ownerText);
@@ -391,19 +386,23 @@ test.describe("Multi-User Collaboration @auth", () => {
       // Owner opens file
       await openFileInEditor(owner.page, fileId);
       await clearEditor(owner.page);
-      await owner.page.waitForTimeout(1000);
+      await owner.page.waitForFunction(
+        () => window.__provider?.synced === true,
+        {},
+        { timeout: 5000 }
+      );
 
       // Unauthorized user tries to open file (no permission granted)
       // Since the file isn't in their fileStore, they should be redirected to 404
 
-      await unauthorized.page.goto(`/file/${fileId}`, {
-        waitUntil: "domcontentloaded",
-        timeout: 5000,
-      });
+      await unauthorized.page.goto(`/file/${fileId}`, { waitUntil: "commit" });
 
-      // Check if redirected to 404 or if file failed to load
-      // Give it some time to redirect if it's going to
-      await unauthorized.page.waitForTimeout(2000);
+      // Wait for Vue to process the auth check and either redirect or show error
+      await unauthorized.page
+        .waitForURL((url) => !url.includes(`/file/${fileId}`), { timeout: 8000 })
+        .catch(() => {
+          // No redirect — page stays at file URL but should not show manuscript
+        });
 
       const currentUrl = unauthorized.page.url();
       const pageText = await unauthorized.page.textContent("body");
@@ -450,7 +449,11 @@ test.describe("Multi-User Collaboration @auth", () => {
       // Setup collaboration
       await openFileInEditor(owner.page, fileId);
       await clearEditor(owner.page);
-      await owner.page.waitForTimeout(1000);
+      await owner.page.waitForFunction(
+        () => window.__provider?.synced === true,
+        {},
+        { timeout: 5000 }
+      );
 
       await addCollaborator(fileId, editor.userId, "EDITOR", owner.token);
       await openFileInEditor(editor.page, fileId);
@@ -459,19 +462,20 @@ test.describe("Multi-User Collaboration @auth", () => {
       await insertText(owner.page, "Line from owner\n");
       await insertText(editor.page, "Line from editor\n");
 
-      // Wait for persistence
-      await owner.page.waitForTimeout(1000);
-
-      // Check database via API
-      const response = await fetch(`${backendURL}/files/${fileId}`, {
-        headers: { Authorization: `Bearer ${owner.token}` },
-      });
-
-      expect(response.ok).toBeTruthy();
-      const fileData = await response.json();
-
-      expect(fileData.source).toContain("Line from owner");
-      expect(fileData.source).toContain("Line from editor");
+      // Poll API until Y.js debounce flushes both edits to the database
+      await expect
+        .poll(
+          async () => {
+            const r = await fetch(`${backendURL}/files/${fileId}`, {
+              headers: { Authorization: `Bearer ${owner.token}` },
+            });
+            const data = await r.json();
+            const source = data.source ?? "";
+            return source.includes("Line from owner") && source.includes("Line from editor");
+          },
+          { timeout: 10000 }
+        )
+        .toBe(true);
     } finally {
       await cleanupYjs(owner.page);
       await cleanupYjs(editor.page);

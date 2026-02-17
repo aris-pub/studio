@@ -43,7 +43,7 @@ async function createAuthenticatedPage(browser, request) {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/`, { waitUntil: "commit" });
   await page.evaluate(
     (data) => {
       localStorage.setItem("accessToken", data.access_token);
@@ -109,9 +109,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
   });
 
   test("should compile and update preview with Y.js content @flaky", async () => {
-    await page.goto(`/file/${fileId}`, {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
     await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
     const initialContent = await page.textContent('[data-testid="manuscript-viewer"]');
