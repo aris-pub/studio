@@ -43,7 +43,7 @@ uv run alembic upgrade head
 # Runs in TEST (local E2E with SQLite) and CI (automated testing)
 if [ "$ENV" = "TEST" ] || [ "$ENV" = "CI" ]; then
     echo "Test environment detected - resetting test user to known state..."
-    uv run python scripts/reset_test_user.py || echo "Warning: Could not reset test user"
+    uv run python scripts/reset_test_user.py
 else
     echo "Skipping test user reset (only runs in TEST/CI environments)"
 fi

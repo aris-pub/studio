@@ -329,13 +329,10 @@ jobs:
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run site E2E tests
       working-directory: site
@@ -490,13 +487,10 @@ jobs:
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run frontend E2E tests
       working-directory: frontend
@@ -691,13 +685,10 @@ jobs:
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run single-tab Y.js E2E tests
       working-directory: frontend
