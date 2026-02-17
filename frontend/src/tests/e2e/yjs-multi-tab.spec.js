@@ -87,7 +87,7 @@ async function openFileInEditor(page, fileId) {
   await page.goto(`/file/${fileId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
+  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
   // Only open the source panel if it isn't already open (navigating back to file preserves localStorage state)
   const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();

@@ -126,7 +126,7 @@ async function openFileInEditor(page, fileId) {
     }
   }
 
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
+  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });

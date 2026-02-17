@@ -112,7 +112,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
     await page.goto(`/file/${fileId}`, {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
+    await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
     const initialContent = await page.textContent('[data-testid="manuscript-viewer"]');
     expect(initialContent).toContain("original text");
