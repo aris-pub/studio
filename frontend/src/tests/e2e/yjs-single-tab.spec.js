@@ -41,13 +41,17 @@ async function createAuthenticatedPage(browser, request) {
 
   const userData = await userResponse.json();
 
+  const fileResponse = await request.post(`${backendURL}/files`, {
+    headers: { Authorization: `Bearer ${loginData.access_token}` },
+    data: { title: "", abstract: "", source: "", owner_id: userData.id },
+  });
+  if (!fileResponse.ok()) {
+    throw new Error(`Failed to create file: ${fileResponse.status()} ${await fileResponse.text()}`);
+  }
+  const { id: fileId } = await fileResponse.json();
+
   const context = await browser.newContext();
   const page = await context.newPage();
-
-  // Forward ALL browser console messages to test output
-  page.on("console", (_msg) => {
-    // Capture console messages for debugging
-  });
 
   await page.goto(`/`, { waitUntil: "domcontentloaded" });
   await page.evaluate(
@@ -59,7 +63,7 @@ async function createAuthenticatedPage(browser, request) {
     { ...loginData, user: userData }
   );
 
-  return { context, page };
+  return { context, page, fileId };
 }
 
 // Helper to open file and editor
@@ -74,7 +78,8 @@ async function openFileInEditor(page, fileId) {
 
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
 
-  await page.waitForTimeout(1000);
+  // Wait for Y.js provider to be synced before proceeding (ensures server state is received)
+  await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 }
 
 // Helper to get editor content
@@ -166,10 +171,10 @@ async function cleanupYjs(page) {
 test.describe("Y.js Single User, Single Tab @collab", () => {
   test.describe("Basic Editing - No Duplication", () => {
     test("should not duplicate keystrokes when typing", async ({ browser, request }) => {
-      const { context, page } = await createAuthenticatedPage(browser, request);
+      const { context, page, fileId } = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(page, 1);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         // Type HELLO character by character
@@ -205,10 +210,10 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
     });
 
     test("should handle rapid typing without duplication", async ({ browser, request }) => {
-      const { context, page } = await createAuthenticatedPage(browser, request);
+      const { context, page, fileId } = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(page, 1);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         // Rapid insert
@@ -229,10 +234,10 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
     });
 
     test("should handle delete operations correctly", async ({ browser, request }) => {
-      const { context, page } = await createAuthenticatedPage(browser, request);
+      const { context, page, fileId } = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(page, 1);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         await insertText(page, "Hello World");
@@ -262,10 +267,10 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
 
   test.describe("Performance", () => {
     test("should handle large document without lag", async ({ browser, request }) => {
-      const { context, page } = await createAuthenticatedPage(browser, request);
+      const { context, page, fileId } = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(page, 1);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         // Insert large text

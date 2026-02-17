@@ -99,8 +99,22 @@ async def reset_test_user():
             )
 
             # Reset file ID sequence to ensure file ID 1 is used
+            # Note: SQLite AUTOINCREMENT resets automatically when all rows are deleted
+            # PostgreSQL requires explicit sequence reset
             print("🔍 [RESET-USER-DEBUG] Resetting file ID sequence...")
-            await session.execute(text("ALTER SEQUENCE files_id_seq RESTART WITH 1"))
+            db_url = os.getenv("DB_URL_LOCAL", "")
+            if "postgresql" in db_url or "postgres" in db_url:
+                await session.execute(text("ALTER SEQUENCE files_id_seq RESTART WITH 1"))
+                print("🔍 [RESET-USER-DEBUG] PostgreSQL sequence reset")
+            else:
+                # SQLite - AUTOINCREMENT resets when table is empty
+                # Delete the sqlite_sequence entry to reset to 1 (if it exists)
+                try:
+                    await session.execute(text("DELETE FROM sqlite_sequence WHERE name='files'"))
+                    print("🔍 [RESET-USER-DEBUG] SQLite sequence reset")
+                except Exception:
+                    # sqlite_sequence table doesn't exist yet (no AUTOINCREMENT columns used)
+                    print("🔍 [RESET-USER-DEBUG] SQLite sequence table not found (will auto-reset)")
 
             # Update user with fresh password hash
             print("🔍 [RESET-USER-DEBUG] Hashing password...")

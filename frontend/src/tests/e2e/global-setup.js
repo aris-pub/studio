@@ -22,11 +22,9 @@ export default async function globalSetup() {
     console.log("   Mode: CI - using backend service (PostgreSQL)");
   } else {
     console.log("   Mode: Local - using backend-test (SQLite)");
-    console.log("   Cleaning SQLite database for fresh test run...");
+    console.log("   Resetting test state...");
 
-    // Clean SQLite database before each test run (no container restart needed)
     const { execSync } = await import("child_process");
-    const { basename, dirname } = await import("path");
 
     // Find the actual backend-test container name (project name varies based on where compose file is)
     const containerListOutput = execSync(
@@ -42,50 +40,19 @@ export default async function globalSetup() {
     }
 
     try {
-      // Clean the database file and run migrations
-      execSync(`docker exec ${containerName} rm -f test_e2e.db`, {
-        stdio: "ignore",
-      });
-      console.log("   ✓ Database cleaned");
-
-      // Run migrations to create tables
+      // Apply any pending migrations (no-op if schema is already current)
       execSync(`docker exec ${containerName} alembic upgrade head`, {
         stdio: "ignore",
       });
       console.log("   ✓ Migrations applied");
 
-      // Fix database permissions (migrations run as root, app runs as different user)
-      execSync(`docker exec ${containerName} chmod 666 test_e2e.db`, {
-        stdio: "ignore",
-      });
-      console.log("   ✓ Database permissions fixed");
-
-      // Create test user
-      const testEmail = process.env.TEST_USER_EMAIL || "testuser@aris.pub";
-      const testPassword = process.env.TEST_USER_PASSWORD || "testpassword123";
-
+      // Reset test user and seed stable test files
+      console.log("   Creating test user and files...");
       try {
-        const response = await fetch(`http://localhost:${E2E_BACKEND_PORT}/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: testEmail,
-            password: testPassword,
-            name: "Test User",
-          }),
+        execSync(`docker exec ${containerName} uv run python scripts/reset_test_user.py`, {
+          stdio: "pipe",
         });
-
-        if (response.ok) {
-          console.log(`   ✓ Test user created (${testEmail})`);
-        } else {
-          const errorText = await response.text();
-          // If user already exists, that's fine - we can use it for tests
-          if (errorText.includes("already registered")) {
-            console.log(`   ✓ Test user already exists (${testEmail})`);
-          } else {
-            console.log(`   ⚠ Test user creation failed: ${errorText}`);
-          }
-        }
+        console.log("   ✓ Test user and files created");
       } catch (error) {
         console.log(`   ⚠ Test user creation failed: ${error.message}`);
       }
@@ -100,7 +67,7 @@ export default async function globalSetup() {
         console.log("   ⚠ Backend-test health check failed (may need to start container)");
       }
     } catch (_error) {
-      console.log("   ⚠ Could not clean database (container may not be running)");
+      console.log("   ⚠ Could not reset test state (container may not be running)");
     }
   }
 }

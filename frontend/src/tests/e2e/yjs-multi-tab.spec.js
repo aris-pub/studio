@@ -57,6 +57,15 @@ async function createAuthenticatedPage(browser, request) {
 
   const userData = await userResponse.json();
 
+  const fileResponse = await request.post(`${backendURL}/files`, {
+    headers: { Authorization: `Bearer ${loginData.access_token}` },
+    data: { title: "", abstract: "", source: "", owner_id: userData.id },
+  });
+  if (!fileResponse.ok()) {
+    throw new Error(`Failed to create file: ${fileResponse.status()} ${await fileResponse.text()}`);
+  }
+  const { id: fileId } = await fileResponse.json();
+
   const context = await browser.newContext();
   const page = await context.newPage();
 
@@ -70,7 +79,7 @@ async function createAuthenticatedPage(browser, request) {
     { ...loginData, user: userData }
   );
 
-  return { context, page };
+  return { context, page, fileId };
 }
 
 // Helper to open file and editor
@@ -80,7 +89,11 @@ async function openFileInEditor(page, fileId) {
   });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
 
-  await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
+  // Only open the source panel if it isn't already open (navigating back to file preserves localStorage state)
+  const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();
+  if (!editorAlreadyOpen) {
+    await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
+  }
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
 
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
@@ -187,8 +200,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabA.page);
 
@@ -221,8 +234,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabB.page);
         await tabA.page.waitForFunction(
@@ -250,8 +263,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -291,9 +304,9 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabC = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
-        await openFileInEditor(tabC.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
+        await openFileInEditor(tabC.page, tabA.fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -372,8 +385,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -423,8 +436,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -476,8 +489,8 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       const tabB = await createAuthenticatedPage(browser, request);
 
       try {
-        await openFileInEditor(tabA.page, 1);
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabA.page, tabA.fileId);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -493,7 +506,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
 
         await insertText(tabA.page, "\nDuring disconnect");
 
-        await openFileInEditor(tabB.page, 1);
+        await openFileInEditor(tabB.page, tabA.fileId);
 
         const contentB = await getEditorContent(tabB.page);
         expect(contentB).toContain("Before disconnect");
