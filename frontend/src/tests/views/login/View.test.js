@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 import { mount, RouterLinkStub } from "@vue/test-utils";
 import LoginView from "@/views/login/View.vue";
 import Button from "@/components/base/Button.vue";
@@ -48,5 +48,30 @@ describe("LoginView", () => {
     const registerBtn = wrapper.find('[data-testid="register-link"]');
     await registerBtn.trigger("click");
     expect(pushMock).toHaveBeenCalledWith("/register");
+  });
+
+  it("pre-populates credentials when isDev is true", async () => {
+    vi.stubEnv("VITE_DEV_LOGIN_EMAIL", "dev@example.com");
+    vi.stubEnv("VITE_DEV_LOGIN_PASSWORD", "devpassword");
+
+    const devWrapper = mount(LoginView, {
+      global: {
+        components: { Button },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: {
+          api: { post: vi.fn(), get: vi.fn() },
+          user: ref(null),
+          fileStore: ref(null),
+          isDev: true,
+        },
+      },
+    });
+
+    await nextTick();
+
+    expect(devWrapper.find('[data-testid="email-input"]').element.value).toBe("dev@example.com");
+    expect(devWrapper.find('[data-testid="password-input"]').element.value).toBe("devpassword");
+
+    vi.unstubAllEnvs();
   });
 });

@@ -329,7 +329,7 @@
   provide("refreshUser", refreshUser);
   provide("fileStore", fileStore);
 
-  const isDev = import.meta.env.VITE_ENV === "DEV";
+  const isDev = import.meta.env.DEV;
   provide("isDev", isDev);
 
   // Determine which clone this is based on backend port
