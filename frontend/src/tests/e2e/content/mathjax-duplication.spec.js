@@ -242,6 +242,35 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
   }
 
   /**
+   * Wait for compiled content to appear in the manuscript viewer with MathJax settled.
+   *
+   * After compile, Canvas destroys the old ManuscriptWrapper (via :key="file.html") and
+   * creates a new one. During Vue's reconciliation both instances can briefly co-exist,
+   * and the old MathJax is already done — so the naive !MathJax_Processing check resolves
+   * too early. This waits until:
+   *   1. Exactly one manuscript viewer exists AND it contains the expected new content
+   *   2. MathJax containers are present (MathJax has run on the new content)
+   *   3. MathJax is no longer processing
+   */
+  async function waitForCompiledContent(page, contentMarker) {
+    await page.waitForFunction(
+      (marker) => {
+        const viewers = document.querySelectorAll('[data-testid="manuscript-viewer"]');
+        if (viewers.length !== 1) return false;
+        if (!viewers[0].textContent?.includes(marker)) return false;
+        const inline = document.querySelectorAll("span.math > mjx-container").length;
+        const block = document.querySelectorAll(
+          "div.mathblock > .hr-content-zone > mjx-container"
+        ).length;
+        if (inline === 0 || block === 0) return false;
+        return !document.querySelector(".MathJax_Processing");
+      },
+      contentMarker,
+      { timeout: 15000 }
+    );
+  }
+
+  /**
    * Wait for MathJax rendering to stabilize by checking container counts
    */
   async function waitForMathJaxStable(page) {
@@ -372,12 +401,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         { timeout: 10000 }
       );
 
-      // Wait for MathJax to finish
-      await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
-        timeout: 5000,
-      });
-
-      // On mobile, switch back to manuscript view
+      // On mobile, switch back to manuscript view so the viewer is in the DOM
       const viewport = page.viewportSize();
       const isMobile = viewport && viewport.width < 640;
       if (isMobile) {
@@ -387,6 +411,10 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           timeout: 5000,
         });
       }
+
+      // Wait for the new compiled content to settle (guards against the Vue reconciliation
+      // window where old and new ManuscriptWrapper instances briefly co-exist)
+      await waitForCompiledContent(page, "EDIT1");
 
       // Check state after first edit
       const afterFirstEdit = await page.evaluate(() => {
@@ -450,12 +478,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         { timeout: 10000 }
       );
 
-      // Wait for MathJax to finish
-      await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
-        timeout: 5000,
-      });
-
-      // On mobile, switch back to manuscript view
+      // On mobile, switch back to manuscript view so the viewer is in the DOM
       if (isMobile) {
         const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });
         await sourceButton.click();
@@ -463,6 +486,8 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           timeout: 5000,
         });
       }
+
+      await waitForCompiledContent(page, "EDIT2");
 
       const afterSecondEdit = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
@@ -575,10 +600,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           { timeout: 10000 }
         );
 
-        // Wait for MathJax to finish
-        await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
-          timeout: 5000,
-        });
+        await waitForCompiledContent(page, `edit${i}`);
       }
 
       const finalScriptCount = await page.evaluate(() => {

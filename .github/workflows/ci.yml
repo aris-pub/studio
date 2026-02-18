@@ -556,7 +556,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium]  # Start with chromium only
+        browser: [chromium, firefox]
     runs-on: ubuntu-latest
     env:
       # CI-specific overrides (everything else comes from .env.example)

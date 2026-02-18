@@ -10,259 +10,153 @@
  */
 
 import { test, expect } from "./fixtures.js";
+import {
+  loginUser,
+  createTestFile,
+  deleteTestFile,
+  createAuthenticatedContext,
+  openFileInEditor,
+  clearEditor,
+  insertText,
+  getEditorContent,
+  cleanupYjs,
+} from "./yjs-helpers.js";
 import { getBackendURL } from "./utils/test-config.js";
 
 const backendURL = getBackendURL();
-const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
-const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
 
-// Helper to create authenticated session
-async function createAuthenticatedPage(browser, request) {
-  const loginResponse = await request.post(`${backendURL}/login`, {
-    data: {
-      email: TEST_USER_EMAIL,
-      password: TEST_USER_PASSWORD,
-    },
-  });
-
-  if (!loginResponse.ok()) {
-    throw new Error(`Login failed: ${loginResponse.status()} ${await loginResponse.text()}`);
-  }
-
-  const loginData = await loginResponse.json();
-
-  const userResponse = await request.get(`${backendURL}/me`, {
-    headers: { Authorization: `Bearer ${loginData.access_token}` },
-  });
-
-  if (!userResponse.ok()) {
-    throw new Error(`Failed to fetch user data: ${userResponse.status()}`);
-  }
-
-  const userData = await userResponse.json();
-
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  await page.goto(`/`, { waitUntil: "domcontentloaded" });
-  await page.evaluate(
-    (data) => {
-      localStorage.setItem("accessToken", data.access_token);
-      localStorage.setItem("refreshToken", data.refresh_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-    },
-    { ...loginData, user: userData }
-  );
-
-  return { context, page, token: loginData.access_token };
-}
-
-// Helper to open file and editor
-async function openFileInEditor(page, fileId) {
-  await page.goto(`/file/${fileId}`, {
-    waitUntil: "domcontentloaded",
-  });
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
-
-  await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-  await page.waitForSelector(".cm-editor", { timeout: 5000 });
-  await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
-
-  // Wait for Y.js provider to be synced
-  await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
-}
-
-// Helper to get editor content
-async function getEditorContent(page) {
-  return await page.evaluate("window.__cmView.state.doc.toString()");
-}
-
-// Helper to insert text programmatically
-async function insertText(page, text) {
-  await page.evaluate((txt) => {
-    const view = window.__cmView;
-    const pos = view.state.doc.length;
-    view.dispatch({
-      changes: { from: pos, insert: txt },
-    });
-  }, text);
-
-  // Wait for local update
-  await page.waitForFunction((txt) => window.__cmView.state.doc.toString().includes(txt), text, {
-    timeout: 5000,
-  });
-}
-
-// Helper to clear editor
-async function clearEditor(page) {
-  await page.evaluate(() => {
-    const view = window.__cmView;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: "" },
-    });
-  });
-
-  await page.waitForFunction(() => window.__cmView.state.doc.length === 0, {}, { timeout: 5000 });
-  await page.waitForFunction(() => window.__ytext.toString().length === 0, {}, { timeout: 5000 });
-}
-
-// Helper to get file content from database via API
 async function getFileFromDatabase(fileId, token) {
   const response = await fetch(`${backendURL}/files/${fileId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${response.status}`);
-  }
-
-  return await response.json();
+  if (!response.ok) throw new Error(`Failed to fetch file: ${response.status}`);
+  return response.json();
 }
 
-// Helper to cleanup Y.js state
-async function cleanupYjs(page) {
-  try {
-    await page.evaluate(() => {
-      return new Promise((resolve) => {
-        if (window.__provider) {
-          const ws = window.__provider.ws;
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.addEventListener("close", () => resolve(), { once: true });
-            window.__provider.disconnect();
-            window.__provider.destroy();
-          } else {
-            window.__provider.disconnect();
-            window.__provider.destroy();
-            resolve();
-          }
-          delete window.__provider;
-        } else {
-          resolve();
-        }
-
-        if (window.__ydoc) {
-          window.__ydoc.destroy();
-          delete window.__ydoc;
-        }
-
-        delete window.__ytext;
-        delete window.__awareness;
-        delete window.__cmView;
-      });
-    });
-  } catch (_error) {
-    // Ignore cleanup errors
+// Poll the DB until matcher returns true or timeout is reached.
+// Polling (not page.waitForTimeout) because DB persistence is a backend-side event
+// with no observable browser signal.
+async function waitForDbContent(fileId, token, matcher, { timeout = 8000 } = {}) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const data = await getFileFromDatabase(fileId, token);
+    if (matcher(data.source ?? "")) return data;
+    await new Promise((r) => setTimeout(r, 300));
   }
+  const data = await getFileFromDatabase(fileId, token);
+  if (matcher(data.source ?? "")) return data;
+  throw new Error(
+    `DB content did not satisfy condition within ${timeout}ms. ` +
+      `Last value: ${JSON.stringify(data.source)}`
+  );
 }
 
 test.describe("Y.js Database Persistence @auth", () => {
+  let auth;
+
+  test.beforeAll(async ({ request }) => {
+    auth = await loginUser(request);
+  });
+
   test("should persist Y.js edits to database", async ({ browser, request }) => {
     test.setTimeout(60000);
-
-    const { context, page, token } = await createAuthenticatedPage(browser, request);
+    const fileId = await createTestFile(request, auth.token, auth.userData.id);
+    const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
-      const fileId = 1;
-
-      // Open file and clear content
       await openFileInEditor(page, fileId);
       await clearEditor(page);
 
-      // Wait for backend to persist the clear (500ms debounce + buffer)
-      await page.waitForTimeout(1000);
-
-      // Insert unique test content
       const testContent = `DB Persistence Test - ${Date.now()}\nThis content should persist to database`;
       await insertText(page, testContent);
 
-      // Wait for backend to persist (500ms debounce + buffer)
-      await page.waitForTimeout(1000);
-
-      // Verify content is in database
-      const fileData = await getFileFromDatabase(fileId, token);
-
+      const fileData = await waitForDbContent(fileId, auth.token, (src) =>
+        src.includes(testContent)
+      );
       expect(fileData.source).toContain(testContent);
     } finally {
       await cleanupYjs(page);
       await context.close();
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 
   test("should restore content from database on reconnect", async ({ browser, request }) => {
     test.setTimeout(60000);
-
-    // Session 1: Create content
-    const session1 = await createAuthenticatedPage(browser, request);
-    const fileId = 1;
+    const fileId = await createTestFile(request, auth.token, auth.userData.id);
+    const session1 = await createAuthenticatedContext(browser, auth);
+    let session2 = null;
 
     try {
       await openFileInEditor(session1.page, fileId);
       await clearEditor(session1.page);
-      await session1.page.waitForTimeout(1000);
 
       const testContent = `Reconnect Test - ${Date.now()}\nContent should persist across sessions`;
       await insertText(session1.page, testContent);
 
-      await session1.page.waitForTimeout(1000);
+      // Wait until backend has flushed to DB before closing the session
+      await waitForDbContent(fileId, auth.token, (src) => src.includes(testContent));
 
-      // Close first session completely
       await cleanupYjs(session1.page);
       await session1.context.close();
 
-      // Wait a bit to ensure all connections are cleaned up
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Allow WS connections to tear down before opening a new session
+      await new Promise((r) => setTimeout(r, 1000));
 
-      // Session 2: Reconnect and verify content
-      const session2 = await createAuthenticatedPage(browser, request);
+      session2 = await createAuthenticatedContext(browser, auth);
       await openFileInEditor(session2.page, fileId);
-
-      const restoredContent = await getEditorContent(session2.page);
-
-      expect(restoredContent).toContain(testContent);
+      expect(await getEditorContent(session2.page)).toContain(testContent);
 
       await cleanupYjs(session2.page);
       await session2.context.close();
+      session2 = null;
     } catch (error) {
-      // Cleanup on error
       try {
         await cleanupYjs(session1.page);
         await session1.context.close();
       } catch (_e) {
-        // Ignore cleanup errors
+        /* best-effort cleanup */
+      }
+      if (session2) {
+        try {
+          await cleanupYjs(session2.page);
+          await session2.context.close();
+        } catch (_e) {
+          /* best-effort cleanup */
+        }
       }
       throw error;
+    } finally {
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 
   test("should handle multiple rapid edits with debounce", async ({ browser, request }) => {
     test.setTimeout(60000);
-
-    const { context, page, token } = await createAuthenticatedPage(browser, request);
+    const fileId = await createTestFile(request, auth.token, auth.userData.id);
+    const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
-      const fileId = 1;
-
       await openFileInEditor(page, fileId);
       await clearEditor(page);
-      await page.waitForTimeout(1000);
 
       // Make multiple rapid edits (within debounce window)
       await insertText(page, "Line 1\n");
       await insertText(page, "Line 2\n");
       await insertText(page, "Line 3\n");
 
-      // All edits should be batched by debounce (500ms)
-      await page.waitForTimeout(1000);
-
-      // Verify all content is in database
-      const fileData = await getFileFromDatabase(fileId, token);
-
+      const fileData = await waitForDbContent(
+        fileId,
+        auth.token,
+        (src) => src.includes("Line 1") && src.includes("Line 2") && src.includes("Line 3")
+      );
       expect(fileData.source).toContain("Line 1");
       expect(fileData.source).toContain("Line 2");
       expect(fileData.source).toContain("Line 3");
     } finally {
       await cleanupYjs(page);
       await context.close();
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 
@@ -271,72 +165,53 @@ test.describe("Y.js Database Persistence @auth", () => {
     request,
   }) => {
     test.setTimeout(60000);
-
-    const { context, page, token } = await createAuthenticatedPage(browser, request);
+    const initialSource = `Initial Content - ${Date.now()}\nThis was seeded from the database.`;
+    const fileId = await createTestFile(request, auth.token, auth.userData.id, initialSource);
+    const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
-      const fileId = 1;
-
-      // Get current database content
-      const initialFileData = await getFileFromDatabase(fileId, token);
-      const dbContent = initialFileData.source || "";
-
-      // Open file in editor (should load from DB)
       await openFileInEditor(page, fileId);
-
-      // Get editor content
       const editorContent = await getEditorContent(page);
-
-      // Editor should match database
-      expect(editorContent).toBe(dbContent);
+      expect(editorContent).toBe(initialSource);
     } finally {
       await cleanupYjs(page);
       await context.close();
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 
   test("should persist content after all clients disconnect", async ({ browser, request }) => {
     test.setTimeout(60000);
-
-    const fileId = 1;
+    const fileId = await createTestFile(request, auth.token, auth.userData.id);
     const testContent = `Disconnect Test - ${Date.now()}\nContent should survive all disconnects`;
-
-    // Create session, edit, and fully disconnect
-    const { context, page, token } = await createAuthenticatedPage(browser, request);
+    const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
       await openFileInEditor(page, fileId);
       await clearEditor(page);
-      await page.waitForTimeout(1000);
-
       await insertText(page, testContent);
 
-      await page.waitForTimeout(1000);
-
-      // Close everything
       await cleanupYjs(page);
       await context.close();
 
-      // Wait to ensure backend processes the disconnect
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Check database directly (no Y.js connection)
-      const response = await fetch(`${backendURL}/files/${fileId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      expect(response.ok).toBeTruthy();
-      const fileData = await response.json();
-
+      // Poll DB until backend has written its final save after disconnect
+      const fileData = await waitForDbContent(
+        fileId,
+        auth.token,
+        (src) => src.includes(testContent),
+        { timeout: 10000 }
+      );
       expect(fileData.source).toContain(testContent);
     } catch (error) {
       try {
         await cleanupYjs(page);
         await context.close();
       } catch (_e) {
-        // Ignore cleanup errors
+        /* best-effort cleanup */
       }
       throw error;
+    } finally {
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 });

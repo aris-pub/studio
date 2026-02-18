@@ -93,17 +93,60 @@ class YDocClient:
             self.doc = Doc()
             self.text = self.doc.get("text", type=Text)
 
-            # Load content from database
-            await self._load_from_db()
+            # Sync with room first — room state is authoritative.
+            # This ensures we see any edits already in the room before deciding
+            # whether to seed from the database, preventing CRDT duplication
+            # when the backend reconnects to a room that already has newer edits.
+            await self._send_sync_step1(websocket)
+            await self._receive_sync_step2(websocket)
+
+            # Only seed from DB when the room was empty (first peer to connect,
+            # or room was reset). If the room already had content, we absorbed it
+            # via SyncStep2 above and must not insert stale DB content on top.
+            if len(self.text) == 0:
+                await self._load_from_db()
+            else:
+                # Room had content when we connected. The observer is not set up yet,
+                # so SyncStep2 won't trigger _on_text_change. Persist now in case the
+                # room is ahead of what's stored (e.g. backend connected after edits).
+                await self._save_to_db()
 
             # Setup observer for persistence
             self.text.observe(self._on_text_change)
 
-            # Send initial sync (SyncStep1)
-            await self._send_sync_step1(websocket)
-
             # Handle incoming messages
             await self._message_loop(websocket)
+
+    async def _receive_sync_step2(self, websocket):
+        """Receive messages until the room's SyncStep2 has been processed.
+
+        The room sends SyncStep2 (all updates the client is missing) immediately
+        in response to our SyncStep1. After processing it, self.text reflects the
+        room's authoritative state. Any remaining messages (e.g. the room's own
+        SyncStep1) are left in the buffer for _message_loop to handle normally.
+        """
+        assert self.doc is not None, "doc must be initialized before receiving sync"
+        assert self.text is not None, "text must be initialized before receiving sync"
+        while True:
+            message = await websocket.recv()
+            if not message:
+                continue
+
+            msg_type = message[0]
+            payload = message[1:]
+
+            if msg_type == 0:  # Sync message
+                reply = handle_sync_message(payload, self.doc)
+                if reply:
+                    await websocket.send(reply)
+                    logger.debug(f"Sent sync reply for file {self.file_id}")
+
+                # payload[0] == 1 means this was SyncStep2 — the room's update
+                # to us. Our doc now has the room's current state.
+                if payload and payload[0] == 1:
+                    logger.debug(f"Room SyncStep2 received for file {self.file_id}, "
+                                 f"text length: {len(self.text)}")
+                    return
 
     async def _send_sync_step1(self, websocket):
         """Send SyncStep1 message to initiate sync."""
