@@ -108,6 +108,10 @@ class YDocClient:
         async with connect(self.websocket_url) as websocket:
             self._ws = websocket
             self._reconnect_attempt = 0
+            # Scope the websockets library's internal logger to this file so that
+            # PING/PONG/keepalive log lines show "websockets.client.file_N" and
+            # can be identified after tests.
+            websocket.logger = logging.getLogger(f"websockets.client.file_{self.file_id}")
             logger.info(f"WebSocket connected for file {self.file_id}")
 
             # Create Y.Doc

@@ -257,18 +257,16 @@ async def collab_start(
 
 
 @router.post("/{file_id}/collab/stop")
-async def collab_stop(
-    file_id: int,
-    user_role: FileRole = Depends(require_edit),
-):
+async def collab_stop(file_id: int):
     """Signal that the collaborative editor has closed for this file.
 
     Called by the frontend when the CodeMirror editor unmounts. Stops the backend
     Y.js client cleanly after persisting any remaining changes.
 
-    No file existence check: the file may have already been deleted (e.g. in tests
-    the finally block deletes the file before the browser context closes), and we
-    still need to stop the Y.js client in that case.
+    No file existence check: the file may have already been deleted (e.g. test
+    teardown deletes the file before the browser context finishes closing), and we
+    still need to stop the Y.js client. Authentication is enforced by the router-level
+    dependency.
     """
     manager = get_collaboration_manager()
     await manager.stop_client(file_id)

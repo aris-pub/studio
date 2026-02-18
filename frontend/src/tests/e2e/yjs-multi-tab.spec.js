@@ -22,6 +22,9 @@ import {
   waitForSync,
   cleanupYjs,
 } from "./yjs-helpers.js";
+import { getBackendURL } from "./utils/test-config.js";
+
+const backendURL = getBackendURL();
 
 test.describe("Y.js Single User, Multiple Tabs @collab", () => {
   let auth;
@@ -354,6 +357,13 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
       } finally {
         await cleanupYjs(tabA.page);
         await cleanupYjs(tabB.page);
+        // Explicitly stop the backend client started by the reconnect openFileInEditor call.
+        // code 4000 from the multiplayer server is not reliable enough for abrupt context closes.
+        await request
+          .post(`${backendURL}/files/${fileId}/collab/stop`, {
+            headers: { Authorization: `Bearer ${auth.token}` },
+          })
+          .catch(() => {});
         await tabA.context.close();
         await tabB.context.close();
         await deleteTestFile(request, auth.token, fileId);

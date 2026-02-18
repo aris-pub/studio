@@ -11,7 +11,7 @@ import { getBackendURL } from "./utils/test-config.js";
 const backendURL = getBackendURL();
 
 async function openFileInEditor(page, fileId) {
-  await page.goto(`/file/${fileId}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
@@ -76,8 +76,16 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
       expect(persistedContent).toContain("Test Persistence");
       expect(persistedContent).toContain("This content should persist after closing the file.");
     } finally {
-      await deleteTestFile(request, auth.token, fileId);
+      // Explicitly stop the backend client (the reopen above started a second one).
+      // The browser context closing does not reliably trigger Vue's onBeforeUnmount,
+      // so we stop via HTTP before teardown.
+      await request
+        .post(`${backendURL}/files/${fileId}/collab/stop`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        })
+        .catch(() => {});
       await context.close();
+      await deleteTestFile(request, auth.token, fileId);
     }
   });
 
