@@ -312,6 +312,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
 
   test.describe("Reconnection Handling", () => {
     test("should sync after disconnect and reconnect", async ({ browser }) => {
+      test.setTimeout(30000); // 3 sequential openFileInEditor calls: initial open × 2 + reconnect
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 

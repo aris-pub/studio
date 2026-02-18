@@ -33,7 +33,7 @@ test.describe("Version Workflow @auth", () => {
     console.log(`[TEST] Created file with ID: ${fileId}`);
 
     // Navigate to the file
-    await page.goto(`/file/${fileId}`);
+    await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
     await page.waitForLoadState("domcontentloaded");
 
     // Open versions drawer

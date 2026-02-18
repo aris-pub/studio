@@ -146,7 +146,7 @@ export class FileHelpers {
   async navigateToHome() {
     // Use standard navigation for all browsers
     try {
-      await this.page.goto("/");
+      await this.page.goto("/", { waitUntil: "commit" });
     } catch (error) {
       if (this.page.isClosed()) {
         throw new Error("Browser closed during navigation - cannot recover");

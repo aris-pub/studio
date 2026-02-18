@@ -11,7 +11,7 @@ export class AuthHelpers {
   }
 
   async login(email, password) {
-    await this.page.goto("/login");
+    await this.page.goto("/login", { waitUntil: "commit" });
 
     await this.page.fill('[data-testid="email-input"]', email);
 
@@ -43,7 +43,7 @@ export class AuthHelpers {
       // Ensure we're on a page that allows localStorage access
       const currentUrl = this.page.url();
       if (!currentUrl.includes("localhost")) {
-        await this.page.goto("/");
+        await this.page.goto("/", { waitUntil: "commit" });
         await this.page.waitForLoadState("domcontentloaded");
       }
 
@@ -89,7 +89,7 @@ export class AuthHelpers {
       );
 
       // Navigate to home page to activate the auth state
-      await this.page.goto("/");
+      await this.page.goto("/", { waitUntil: "commit" });
       await this.page.waitForLoadState("domcontentloaded");
 
       // Force Vue app to re-initialize by reloading after localStorage is set
@@ -152,7 +152,7 @@ export class AuthHelpers {
    */
   async ensureLoggedIn(skipDOMVerification = false) {
     // Navigate to home page first to enable localStorage access
-    await this.page.goto("/");
+    await this.page.goto("/", { waitUntil: "commit" });
     await this.page.waitForLoadState("domcontentloaded");
 
     // Check if already authenticated (lightweight)
@@ -167,7 +167,7 @@ export class AuthHelpers {
       const fastAuthSuccess = await this.fastAuth();
       if (fastAuthSuccess) {
         if (!skipDOMVerification) {
-          await this.page.goto("/");
+          await this.page.goto("/", { waitUntil: "commit" });
           await this.page.waitForLoadState("domcontentloaded");
         }
         return;
@@ -175,7 +175,7 @@ export class AuthHelpers {
     }
 
     // Fallback to original UI-based authentication
-    await this.page.goto("/");
+    await this.page.goto("/", { waitUntil: "commit" });
     await this.page.waitForLoadState("domcontentloaded");
 
     // Wait for potential auth redirect to complete (deterministic)

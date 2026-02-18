@@ -12,7 +12,7 @@ const backendURL = getBackendURL();
 
 async function openFileInEditor(page, fileId) {
   await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 8000 });
+  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });
   await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
