@@ -690,23 +690,11 @@ jobs:
 
         echo "✅ Database setup complete (test user created by backend entrypoint)"
 
-    - name: Run single-tab Y.js E2E tests
+    - name: Run Y.js collaboration E2E tests
       working-directory: frontend
       run: |
-        echo "🧪 Running single-tab Y.js tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test yjs-single-tab.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
-
-    - name: Run multi-tab Y.js E2E tests
-      working-directory: frontend
-      run: |
-        echo "🧪 Running multi-tab Y.js tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test yjs-multi-tab.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
-
-    - name: Run multi-user Y.js E2E tests
-      working-directory: frontend
-      run: |
-        echo "🧪 Running multi-user Y.js tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test yjs-multi-user.spec.js --project=${{ matrix.browser }} --reporter=github --workers=1
+        echo "🧪 Running @collab E2E tests on ${{ matrix.browser }} (Docker environment)..."
+        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
 
     - name: Upload test results on failure
       if: failure()

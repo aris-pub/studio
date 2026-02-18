@@ -225,7 +225,7 @@ test.describe("Input Regression Tests @core @desktop-only", () => {
   });
 });
 
-test.describe("Component Interference Detection @regression", () => {
+test.describe("Component Interference Detection @core", () => {
   test("page components don't globally interfere with input events", async ({ page }) => {
     // Navigate to a page that might have interfering components
     await page.goto("/demo/content", { waitUntil: "networkidle" });
