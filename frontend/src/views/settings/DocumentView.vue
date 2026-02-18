@@ -85,7 +85,6 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
     </template>
 
     <div class="settings-main">
-
       <Pane class="pane-settings">
         <FileSettings
           ref="file-settings-ref"
@@ -97,8 +96,7 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
           <IconInfoCircle />
           <p>
             These settings will be applied to <em>new</em> files. Modify the settings of
-            <em>existing</em> files by opening them and choosing the Settings option in the
-            sidebar.
+            <em>existing</em> files by opening them and choosing the Settings option in the sidebar.
           </p>
         </div>
       </Pane>
@@ -110,7 +108,6 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
           :settings="defaultSettings"
         />
       </div>
-
     </div>
   </Pane>
 </template>

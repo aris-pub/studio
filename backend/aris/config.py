@@ -89,10 +89,18 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def build_database_urls(self):
         """Build database URLs from DB_PORT and DB_NAME if not explicitly set."""
-        if not self.DB_URL_LOCAL:
-            self.DB_URL_LOCAL = f"postgresql+asyncpg://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
-        if not self.ALEMBIC_DB_URL_LOCAL:
-            self.ALEMBIC_DB_URL_LOCAL = f"postgresql+psycopg2://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
+        # Test environment: use SQLite for local testing
+        if self.ENV == "TEST":
+            if not self.DB_URL_LOCAL:
+                self.DB_URL_LOCAL = "sqlite+aiosqlite:///./test_e2e.db"
+            if not self.ALEMBIC_DB_URL_LOCAL:
+                self.ALEMBIC_DB_URL_LOCAL = "sqlite+pysqlite:///./test_e2e.db"
+        else:
+            # Local development and production: use PostgreSQL
+            if not self.DB_URL_LOCAL:
+                self.DB_URL_LOCAL = f"postgresql+asyncpg://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
+            if not self.ALEMBIC_DB_URL_LOCAL:
+                self.ALEMBIC_DB_URL_LOCAL = f"postgresql+psycopg2://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
         return self
 
     def get_test_database_url(self) -> str:

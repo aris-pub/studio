@@ -201,4 +201,23 @@ export default [
       ],
     },
   },
+
+  // E2E test files - enforce fixture usage for test isolation
+  {
+    files: ["src/tests/e2e/**/*.spec.js"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@playwright/test",
+              message:
+                'E2E tests must import from "./fixtures.js" (or "../fixtures.js") to ensure route interception and test isolation. This prevents tests from polluting the PostgreSQL dev database.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

@@ -20,7 +20,16 @@ migrate:
 # Stop development containers
 stop:
     @echo "Stopping containers for $(basename $(pwd))..."
-    docker compose -p $(basename $(pwd)) -f docker/docker-compose.dev.yml down
+    docker compose --env-file .env -p $(basename $(pwd)) -f docker/docker-compose.dev.yml down
+    @echo "Cleaning up any orphaned containers on dev ports..."
+    @docker ps --filter "publish=8001" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${BACKEND_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${FRONTEND_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${SITE_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${STORYBOOK_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${MULTIPLAYER_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @docker ps --filter "publish=${DB_PORT}" --format "{{{{.ID}}" | xargs -r docker stop 2>/dev/null || true
+    @echo "All containers stopped"
 
 # View logs for development containers
 logs:
@@ -45,10 +54,23 @@ test-collab browser="" reporter="line":
     #!/usr/bin/env bash
     cd frontend
     if [ -n "{{browser}}" ]; then
-        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
+        FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
     else
-        TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
+        FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
     fi
+
+# Run E2E content tests (files, versions, rendering)
+test-e2e-content:
+    cd frontend && FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/content/ --grep "@auth" --reporter=line
+
+# Run E2E interface tests (account, navigation, settings)
+test-e2e-interface:
+    cd frontend && FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/interface/ --grep "@auth" --reporter=line
+
+# Run all E2E auth tests (content + interface)
+test-e2e:
+    just test-e2e-content
+    just test-e2e-interface
 
 # Run all linters
 lint:

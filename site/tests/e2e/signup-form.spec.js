@@ -2,7 +2,7 @@
  * @file E2E tests for the signup form on the landing page
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/api-intercept.js";
 
 test.describe("Signup Form", () => {
   test.beforeEach(async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe("Signup Form", () => {
     // Mock the API call
     await page.route("**/signup/", async (route) => {
       const request = route.request();
-      const requestBody = JSON.parse(await request.postData());
+      const requestBody = JSON.parse(request.postData());
 
       // Verify request structure
       expect(requestBody).toHaveProperty("email", "fulldata@example.com");

@@ -176,57 +176,54 @@
       <span class="title">Profile</span>
     </template>
 
-    <div class="profile-layout">
-      <!-- Hero Section: Profile Overview -->
-      <div class="hero-section">
-        <div class="profile-hero">
-          <div class="avatar-container">
-            <div
-              class="avatar"
-              :style="{
-                backgroundImage: previewUrl ? `url(${previewUrl})` : 'none',
-              }"
-            >
-              <div v-if="!previewUrl" class="avatar-placeholder">
-                <Icon name="User" size="32" />
-              </div>
-              <Button
-                kind="tertiary"
-                :icon="isUploadingAvatar ? 'Loader2' : 'Camera'"
-                class="avatar-upload"
-                size="sm"
-                :disabled="isUploadingAvatar"
-                @click="onUpload"
-              />
-              <input
-                ref="fileInputRef"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="onFileSelected"
-              />
+    <!-- Hero Section: Profile Overview -->
+    <div class="hero-section">
+      <div class="profile-hero">
+        <div class="avatar-container">
+          <div
+            class="avatar"
+            :style="{
+              backgroundImage: previewUrl ? `url(${previewUrl})` : 'none',
+            }"
+          >
+            <div v-if="!previewUrl" class="avatar-placeholder">
+              <Icon name="User" size="32" />
             </div>
+            <Button
+              kind="tertiary"
+              :icon="isUploadingAvatar ? 'Loader2' : 'Camera'"
+              class="avatar-upload"
+              size="sm"
+              :disabled="isUploadingAvatar"
+              @click="onUpload"
+            />
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="onFileSelected"
+            />
           </div>
-          <div class="profile-info">
-            <h1 class="user-name">{{ user.name }}</h1>
-            <p class="user-email">{{ user.email }}</p>
-            <div class="user-meta">
-              <span class="member-since">
-                <Icon name="Calendar" size="14" />
-                Member since {{ new Date(user.created_at).toLocaleDateString() }}
-              </span>
-            </div>
+        </div>
+        <div class="profile-info">
+          <h1 class="user-name">{{ user.name }}</h1>
+          <p class="user-email">{{ user.email }}</p>
+          <div class="user-meta">
+            <span class="member-since">
+              <Icon name="Calendar" size="14" />
+              Member since {{ new Date(user.created_at).toLocaleDateString() }}
+            </span>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Profile Information Form -->
-      <div class="content-section">
-        <div class="section-header">
-          <h2>Personal Information</h2>
-          <p>Update your basic profile information</p>
-        </div>
+    <!-- Profile Information Form -->
+    <Section>
+      <template #title>Personal Information</template>
 
+      <template #content>
         <div class="form-group">
           <InputText
             v-model="newName"
@@ -272,12 +269,12 @@
             {{ isSaving ? "Saving..." : "Save Changes" }}
           </Button>
         </div>
+      </template>
+    </Section>
 
-        <div v-if="hasUnsavedProfileChanges" class="status-message warning">
-          <Icon name="AlertCircle" size="16" />
-          <span>You have unsaved changes</span>
-        </div>
-      </div>
+    <div v-if="hasUnsavedProfileChanges" class="status-message warning">
+      <Icon name="AlertCircle" size="16" />
+      <span>You have unsaved changes</span>
     </div>
   </Pane>
 </template>
@@ -289,20 +286,13 @@
     font-weight: var(--weight-medium);
   }
 
-  /* Profile Layout Container */
-  .profile-layout {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
   /* Hero Section */
   .hero-section {
-    background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+    background: linear-gradient(135deg, var(--information-50) 0%, var(--information-100) 100%);
     margin: 0 0 24px 0;
     border-radius: 16px;
     padding: 32px;
-    border: var(--border-thin) solid var(--primary-200);
+    border: var(--border-thin) solid var(--information-200);
   }
 
   .profile-hero {
@@ -388,52 +378,17 @@
     color: var(--gray-500);
   }
 
-  /* Content Section */
-  .content-section {
-    background: var(--surface-primary);
-    border-radius: 16px;
-    border: var(--border-thin) solid var(--gray-200);
-    box-shadow: none;
-    padding: 24px;
-    transition: box-shadow 0.2s ease;
-  }
-
-  .content-section:hover {
-    box-shadow: var(--shadow-soft);
-  }
-
-  .section-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: var(--border-thin) solid var(--gray-200);
-  }
-
-  .section-header h2 {
-    font-size: 20px;
-    font-weight: var(--weight-semi);
-    color: var(--gray-900);
-    margin: 0 0 4px 0;
-  }
-
-  .section-header p {
-    font-size: 14px;
-    color: var(--gray-600);
-    margin: 0;
-  }
-
   /* Form Styling */
   .form-group {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin-bottom: 24px;
   }
 
   .form-actions {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 24px;
     padding-top: 20px;
     border-top: var(--border-thin) solid var(--gray-200);
   }

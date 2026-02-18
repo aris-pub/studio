@@ -98,10 +98,6 @@ async def reset_test_user():
                 text("DELETE FROM file_settings WHERE user_id = :user_id"), {"user_id": user_id}
             )
 
-            # Reset file ID sequence to ensure file ID 1 is used
-            print("🔍 [RESET-USER-DEBUG] Resetting file ID sequence...")
-            await session.execute(text("ALTER SEQUENCE files_id_seq RESTART WITH 1"))
-
             # Update user with fresh password hash
             print("🔍 [RESET-USER-DEBUG] Hashing password...")
             password_hash = hash_password(TEST_USER_PASSWORD)

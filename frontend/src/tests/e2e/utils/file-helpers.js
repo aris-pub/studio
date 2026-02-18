@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import { MobileHelpers } from "./mobile-helpers.js";
 import { getTimeouts } from "./timeout-constants.js";
+import { getBackendURL } from "./test-config.js";
 
 export class FileHelpers {
   constructor(page) {
@@ -48,7 +49,6 @@ export class FileHelpers {
           debugInfo = `URL: ${url}, Title: ${title}, ReadyState: ${readyState}, Error: ${error.message}`;
 
           // Try page reload as fallback
-          console.log("Attempting page reload due to files container not found");
           await this.page.reload();
           await this.page.waitForLoadState("domcontentloaded");
 
@@ -72,14 +72,10 @@ export class FileHelpers {
       }
     }
 
-    // Wait for files to actually render instead of fixed timeout
-    await this.page.waitForFunction(
-      () => {
-        const container = document.querySelector('[data-testid="files-container"]');
-        return container && container.children.length > 0;
-      },
-      { timeout: timeouts.contentLoad }
-    );
+    // Wait for files container to exist (may be empty for new users)
+    await this.page.waitForSelector('[data-testid="files-container"]', {
+      timeout: timeouts.contentLoad,
+    });
   }
 
   /**
@@ -150,9 +146,8 @@ export class FileHelpers {
   async navigateToHome() {
     // Use standard navigation for all browsers
     try {
-      await this.page.goto("/");
+      await this.page.goto("/", { waitUntil: "commit" });
     } catch (error) {
-      console.log("Navigation error:", error.message);
       if (this.page.isClosed()) {
         throw new Error("Browser closed during navigation - cannot recover");
       }
@@ -218,7 +213,6 @@ export class FileHelpers {
         classes.includes("focused"))
     ) {
       // File appears to be in a selected/interactive state
-      console.log(`File ${fileId} selected with classes: ${classes}`);
     } else {
       // If no selection state is detected, fail the test
       throw new Error(
@@ -269,28 +263,21 @@ export class FileHelpers {
   }
 
   /**
-   * Delete a file with confirmation
+   * Delete a file via API
    */
   async deleteFile(fileId) {
-    // Ensure file is deselected so FileMenu is visible
-    await this.ensureFileDeselected(fileId);
+    const accessToken = await this.page.evaluate(() => localStorage.getItem("accessToken"));
 
-    await this.openFileMenu(fileId);
+    // Use E2E-specific API URL for direct backend calls
+    const baseURL = getBackendURL();
 
-    // Click delete option
-    await this.page.locator('[data-testid="file-menu-delete"]').click();
+    const response = await this.page.request.delete(`${baseURL}/files/${fileId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
-    // Wait for confirmation modal to appear
-    await expect(this.page.locator('[data-testid="confirmation-modal"]')).toBeVisible();
-
-    // Confirm deletion using the specific test ID
-    await this.page.locator('[data-testid="confirm-button"]').click();
-
-    // Wait for modal to disappear
-    await expect(this.page.locator('[data-testid="confirmation-modal"]')).not.toBeVisible();
-
-    // Wait for file list to update
-    await this.waitForFilesLoaded();
+    if (!response.ok()) {
+      throw new Error(`Failed to delete file ${fileId}: ${response.status()}`);
+    }
   }
 
   /**

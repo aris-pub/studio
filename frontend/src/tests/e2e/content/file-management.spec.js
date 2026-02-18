@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 
-// @auth
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { FileHelpers } from "./utils/file-helpers.js";
+// @auth @auth-content
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { FileHelpers } from "../utils/file-helpers.js";
 
 test.describe("File Management Tests @auth @desktop-only", () => {
   let authHelpers;

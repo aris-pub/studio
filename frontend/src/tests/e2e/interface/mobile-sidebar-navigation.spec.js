@@ -1,8 +1,8 @@
-import { test, expect, devices } from "@playwright/test";
+import { test, expect, devices } from "../fixtures.js";
 
-// @auth @auth-flows
-import { MobileHelpers } from "./utils/mobile-helpers.js";
-import { AuthHelpers } from "./utils/auth-helpers.js";
+// @auth @auth-interface
+import { MobileHelpers } from "../utils/mobile-helpers.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
 test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
   let mobileHelpers;
@@ -259,7 +259,6 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
       await mobileHelpers.clickElement(accountProfileItem);
 
       // Debug before navigation wait
-      console.log("[Test] About to wait for navigation to account/profile");
       await mobileHelpers.debugLoadState();
 
       await mobileHelpers.waitForURLPattern(/\/account\/profile/);
@@ -291,7 +290,6 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
       );
       await mobileHelpers.clickElement(settingsItem);
 
-      console.log("[Test] About to wait for navigation to settings");
       await mobileHelpers.debugLoadState();
 
       await mobileHelpers.waitForURLPattern(/\/settings/);
@@ -358,7 +356,6 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
       );
       await mobileHelpers.clickElement(homeItem);
 
-      console.log("[Test] About to wait for navigation to home");
       await mobileHelpers.debugLoadState();
 
       await mobileHelpers.waitForURLPattern(/^\/$/);

@@ -2,7 +2,7 @@
  * @file Minimal E2E tests for RSM section on current landing page
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/api-intercept.js";
 
 test.describe.skip("RSM Section", () => {
   test.beforeEach(async ({ page }) => {

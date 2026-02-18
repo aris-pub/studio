@@ -1,6 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { TEST_CREDENTIALS } from "./setup/test-data.js";
+// @auth @auth-content
+import { test, expect } from "../fixtures.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TEST_CREDENTIALS } from "../setup/test-data.js";
+import { getBackendURL } from "../utils/test-config.js";
 
 /**
  * MathJax Duplication Bug Regression Test
@@ -38,10 +40,7 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   let testUserId;
 
   test.beforeEach(async ({ page }) => {
-    baseURL = process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("VITE_API_BASE_URL environment variable is required");
-    }
+    baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
     // Wait for any pending requests from post-login navigation to complete
@@ -116,10 +115,6 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
         mathJaxScripts: document.querySelectorAll('script[id="MathJax-script"]').length,
       }));
 
-      console.log("Init state:", JSON.stringify(initState));
-      console.log("Onload init messages:", consoleLogs.length);
-      console.log("Page errors:", errors);
-
       // CRITICAL: onload should only initialize ONCE (catches infinite import loop)
       // If this fails with a high number, the bug has regressed
       expect(consoleLogs.length).toBeLessThanOrEqual(1);
@@ -176,8 +171,6 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
         };
       });
 
-      console.log("Render check:", JSON.stringify(renderCheck));
-
       // Raw LaTeX should NEVER be visible in rendered output
       expect(renderCheck.hasRawInlineDelimiters).toBe(false);
       expect(renderCheck.hasRawBlockDelimiters).toBe(false);
@@ -198,15 +191,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
   test.beforeEach(async ({ page }) => {
     // Get API base URL (required - no fallback)
-    baseURL = process.env.VITE_API_BASE_URL;
-    if (!baseURL) {
-      throw new Error("VITE_API_BASE_URL environment variable is required");
-    }
+    baseURL = getBackendURL();
 
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
-    // Wait for any pending requests from post-login navigation to complete
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForSelector('[data-testid="files-container"]', { timeout: 5000 });
 
     // Get access token from localStorage after login
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
@@ -214,11 +203,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     // Get user ID for file creation
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
-  });
-
-  test.afterEach(async ({ page }) => {
-    // Wait for pending requests to complete before next test starts
-    await page.waitForLoadState("networkidle").catch(() => {});
   });
 
   /**
@@ -297,7 +281,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     await page.evaluate(() => delete window.__mjxStabilityCheck);
   }
 
-  test("block math equations should not duplicate when editing source", async ({
+  test("block math equations should not duplicate when editing source @flaky", async ({
     page,
     request,
   }) => {
@@ -334,9 +318,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         block: document.querySelectorAll("div.mathblock > .hr-content-zone > mjx-container").length,
       }));
 
-      console.log(`Initial inline MathJax containers: ${initialCounts.inline}`);
-      console.log(`Initial block MathJax containers: ${initialCounts.block}`);
-
       // EXPECTED: 2 inline (span.math) + 2 block (div.mathblock)
       expect(initialCounts.inline).toBe(2);
       expect(initialCounts.block).toBe(2);
@@ -351,7 +332,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       // Wait for CodeMirror editor to load
       await page.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Get current content and modify it
@@ -367,7 +352,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           "# Test Document for MathJax Bug EDIT1"
         );
         view.dispatch({
-          changes: { from: 0, to: doc.length, insert: newText }
+          changes: { from: 0, to: doc.length, insert: newText },
         });
       });
 
@@ -421,8 +406,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         };
       });
 
-      console.log("After first edit:", JSON.stringify(afterFirstEdit));
-
       // On mobile, switch back to source editor for second edit
       if (isMobile) {
         await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
@@ -430,7 +413,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           timeout: 5000,
         });
         await page.waitForSelector(".cm-editor", { timeout: 5000 });
-        await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+        await page.waitForFunction(
+          () => typeof window.__cmView !== "undefined",
+          {},
+          { timeout: 5000 }
+        );
       }
 
       // Get current content and make second edit
@@ -443,7 +430,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         const text = doc.toString();
         const newText = text.replace("EDIT1", "EDIT1 EDIT2");
         view.dispatch({
-          changes: { from: 0, to: doc.length, insert: newText }
+          changes: { from: 0, to: doc.length, insert: newText },
         });
       });
 
@@ -492,8 +479,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         };
       });
 
-      console.log("After second edit:", JSON.stringify(afterSecondEdit));
-
       // Raw LaTeX should never be visible
       expect(afterFirstEdit.hasRawInlineLatex).toBe(false);
       expect(afterFirstEdit.hasRawBlockLatex).toBe(false);
@@ -521,7 +506,10 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     }
   });
 
-  test("MathJax script tags should not multiply on re-renders", async ({ page, request }) => {
+  test("MathJax script tags should not multiply on re-renders @flaky", async ({
+    page,
+    request,
+  }) => {
     const fileId = await createTestFileWithMath(request);
 
     try {
@@ -537,8 +525,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
 
-      console.log(`Initial MathJax script count: ${initialScriptCount}`);
-
       // Open editor
       await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
 
@@ -548,7 +534,11 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       // Wait for CodeMirror editor to load
       await page.waitForSelector(".cm-editor", { timeout: 5000 });
-      await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Make 2 edits and wait for each to sync (2 is sufficient to verify no duplication)
@@ -565,7 +555,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
           const view = window.__cmView;
           const doc = view.state.doc;
           view.dispatch({
-            changes: { from: 0, to: doc.length, insert: content }
+            changes: { from: 0, to: doc.length, insert: content },
           });
         }, newContent);
 
@@ -594,8 +584,6 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       const finalScriptCount = await page.evaluate(() => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
-
-      console.log(`Final MathJax script count after 2 edits: ${finalScriptCount}`);
 
       // Script count should remain 1
       expect(finalScriptCount).toBe(1);

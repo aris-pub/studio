@@ -1,14 +1,17 @@
 #!/bin/bash
 set -e
 
-# Wait for database to be ready
-echo "Waiting for database to be ready..."
-until pg_isready -h postgres -p 5432 -U postgres; do
-  echo "Database is unavailable - sleeping"
-  sleep 1
-done
-
-echo "Database is ready!"
+# Wait for database to be ready (skip for SQLite in TEST env)
+if [ "$ENV" != "TEST" ]; then
+  echo "Waiting for database to be ready..."
+  until pg_isready -h postgres -p 5432 -U postgres; do
+    echo "Database is unavailable - sleeping"
+    sleep 1
+  done
+  echo "Database is ready!"
+else
+  echo "Using SQLite - skipping PostgreSQL wait"
+fi
 
 # Build RSM from local source for Linux (dev server only, not tests)
 #
@@ -35,9 +38,15 @@ fi
 echo "Running database migrations..."
 uv run alembic upgrade head
 
-# Reset test user to known state (matches CI setup)
-echo "Setting up test user..."
-uv run python scripts/reset_test_user.py || echo "Warning: Could not reset test user (may not be an issue in production)"
+# Reset test user to known state (TEST and CI environments)
+# This script deletes all test user data including files and versions!
+# Runs in TEST (local E2E with SQLite) and CI (automated testing)
+if [ "$ENV" = "TEST" ] || [ "$ENV" = "CI" ]; then
+    echo "Test environment detected - resetting test user to known state..."
+    uv run python scripts/reset_test_user.py
+else
+    echo "Skipping test user reset (only runs in TEST/CI environments)"
+fi
 
 # Start the application
 echo "Starting FastAPI application..."

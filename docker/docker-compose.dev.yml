@@ -1,16 +1,16 @@
 # Common configuration for all services
-x-common-env: &common-env
-  env_file: ../.env
+# Note: .env is loaded via docker compose --env-file flag (see start-dev.sh)
+# This provides variable substitution (${VAR}) in this file.
+# Each service explicitly lists its environment variables below.
 
 services:
   backend:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile.dev
       target: dev
     ports:
-      - "${BACKEND_PORT}:8000"
+      - "${BACKEND_PORT:?BACKEND_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
@@ -29,35 +29,95 @@ services:
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=collab
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    
+
+  backend-test:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile.dev
+      target: dev
+    ports:
+      - "${BACKEND_TEST_PORT:?BACKEND_TEST_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
+    volumes:
+      - ..:/workspace/studio
+      - ../../rsm:/workspace/rsm
+      - backend_test_venv:/workspace/studio/backend/.venv
+      - rsm_test_venv:/workspace/rsm/.venv
+    working_dir: /workspace/studio/backend
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
+      - ENV=TEST
+      - DB_URL_LOCAL=sqlite+aiosqlite:///./test_e2e.db
+      - ALEMBIC_DB_URL_LOCAL=sqlite+pysqlite:///./test_e2e.db
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - COPILOT_PROVIDER=${COPILOT_PROVIDER}
+      - MULTIPLAYER_HOST=collab
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - YJS_DEBOUNCE_MS=2000
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - FRONTEND_TEST_PORT=${FRONTEND_TEST_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
+    command: uvicorn main:app --host 0.0.0.0 --port ${BACKEND_CONTAINER_PORT} --reload
+    restart: unless-stopped
+
   frontend:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile.dev
       target: dev
     ports:
-      - "${FRONTEND_PORT}:5173"
+      - "${FRONTEND_PORT:?FRONTEND_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
     volumes:
       - ../frontend:/app
       - /app/node_modules  # Anonymous volume - no races, each container gets its own
     environment:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+      - VITE_ENV=${ENV:-local}
+    command: npm run dev -- --host 0.0.0.0
+
+  frontend-test:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile.dev
+      target: dev
+    ports:
+      - "${FRONTEND_TEST_PORT:?FRONTEND_TEST_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules_test  # Separate node_modules for test frontend
+    environment:
+      - BACKEND_PORT=${BACKEND_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_TEST_PORT}
+      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+      - VITE_ENV=test
+      - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
     command: npm run dev -- --host 0.0.0.0
 
   collab:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/multi-player/Dockerfile.dev
       target: dev
     ports:
-      - "${MULTIPLAYER_PORT}:1234"
+      - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:${MULTIPLAYER_PORT}"
     volumes:
       - ../multi-player:/app
       - /app/node_modules  # Anonymous volume - no races, each container gets its own
@@ -67,13 +127,12 @@ services:
     restart: unless-stopped
 
   storybook:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile.dev
       target: dev
     ports:
-      - "${STORYBOOK_PORT}:${STORYBOOK_PORT}"
+      - "${STORYBOOK_PORT:?STORYBOOK_PORT is required}:${STORYBOOK_PORT}"
     volumes:
       - ../frontend:/app
       - /app/node_modules  # Anonymous volume - no races
@@ -82,13 +141,12 @@ services:
     command: npm run storybook -- --host 0.0.0.0 --no-open
     
   site:
-    <<: *common-env
     build:
       context: ..
       dockerfile: docker/site/Dockerfile.dev
       target: dev
     ports:
-      - "${SITE_PORT}:3000"
+      - "${SITE_PORT:?SITE_PORT is required}:${SITE_CONTAINER_PORT:?SITE_CONTAINER_PORT is required}"
     volumes:
       - ../site:/app
       - ../brand:/brand
@@ -99,10 +157,9 @@ services:
     command: npm run dev
     
   postgres:
-    <<: *common-env
     image: postgres:16
     ports:
-      - "${DB_PORT}:5432"
+      - "${DB_PORT:?DB_PORT is required}:${DB_CONTAINER_PORT:?DB_CONTAINER_PORT is required}"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -119,5 +176,7 @@ services:
 
 volumes:
   backend_venv:
+  backend_test_venv:
+  rsm_test_venv:
   site_node_modules:
   postgres_data:

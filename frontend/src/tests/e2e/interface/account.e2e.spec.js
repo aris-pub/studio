@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 
-// @auth
-import { AuthHelpers } from "./utils/auth-helpers.js";
+// @auth @auth-interface
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
 test.describe("Account View E2E Tests @auth @desktop-only", () => {
   let authHelpers;
@@ -23,7 +23,7 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
     // Set up file chooser listener BEFORE clicking to avoid Firefox page closure
     // (Firefox treats file pickers as modals that trigger window close events)
     // See: https://github.com/microsoft/playwright/issues/22928
-    const fileChooserPromise = page.waitForEvent('filechooser');
+    const fileChooserPromise = page.waitForEvent("filechooser");
     await uploadButton.click();
 
     // Wait for file chooser to open

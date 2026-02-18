@@ -377,3 +377,23 @@ End of document.
 
             # Verify the response is reasonably large (indicates file was loaded)
             assert len(rendered_html) > 50000  # Should be quite large due to included content
+
+
+async def test_render_structured_has_no_theme_toggle(client: AsyncClient):
+    """Test that structured format rendering does NOT include theme toggle button.
+
+    Regression test: The theme toggle button should be disabled in Studio rendering
+    to avoid conflicts with the app's own theme management.
+    """
+    response = await client.post("/render", json={"source": "# Test\n\nHello world", "format": "structured"})
+    assert response.status_code == 200
+
+    result = response.json()
+
+    # Structured format returns {head, body, init_script}
+    assert isinstance(result, dict)
+    assert "body" in result
+
+    # Verify theme toggle button does NOT exist in the rendered output
+    assert "rsm-theme-toggle" not in result["body"]
+    assert "theme-toggle" not in result["body"]

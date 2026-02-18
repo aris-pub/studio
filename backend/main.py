@@ -28,6 +28,7 @@ from aris.routes import (
     user_public_router,
     user_router,
     user_settings_router,
+    versions_router,
 )
 
 
@@ -275,6 +276,12 @@ if os.getenv('FRONTEND_PORT'):
         f"http://127.0.0.1:{int(os.getenv('FRONTEND_PORT', '5173')) + 2}",  # 127.0.0.1 variant
     ])
 
+if os.getenv('FRONTEND_TEST_PORT'):
+    origins.extend([
+        f"http://localhost:{os.getenv('FRONTEND_TEST_PORT')}",  # E2E test frontend
+        f"http://127.0.0.1:{os.getenv('FRONTEND_TEST_PORT')}",  # 127.0.0.1 variant
+    ])
+
 if os.getenv('SITE_PORT'):
     origins.extend([
         f"http://localhost:{os.getenv('SITE_PORT')}",  # local Nuxt app
@@ -303,6 +310,7 @@ app.include_router(user_router, tags=["users"])
 app.include_router(user_public_router, tags=["users"])
 app.include_router(file_router, tags=["files"])
 app.include_router(permissions_router, prefix="/files", tags=["permissions"])
+app.include_router(versions_router, tags=["versions"])
 app.include_router(tag_router, tags=["tags"])
 app.include_router(file_assets_router, tags=["file-assets"])
 app.include_router(file_settings_router, tags=["file-settings"])
@@ -316,12 +324,15 @@ logger.info("All routers registered successfully")
 @app.on_event("startup")
 async def startup_collaboration_manager():
     """Initialize CollaborationManager for real-time collaboration."""
-    # Disable in PROD, STAGING, CI, and test environments
-    env = os.getenv("ENV", "").upper()
-    if env in ("PROD", "STAGING", "CI") or os.getenv("PYTEST_CURRENT_TEST"):
-        logger.info(f"CollaborationManager disabled in {env or 'test'} environment")
+    # Disable for pytest unit tests only
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        logger.info("CollaborationManager disabled during pytest")
         return
 
+    # Enable CollaborationManager in all environments (production-ready, no longer POC)
+    # Separate multiplayer servers ensure backend-1 and backend-test don't conflict:
+    # - backend-1 connects to collab:1234
+    # - backend-test connects to collab-test:1235
     try:
         get_collaboration_manager()
         logger.info("CollaborationManager initialized and ready")
@@ -369,6 +380,22 @@ app.mount(
     "/static",
     StaticFiles(directory=find_rsm_static_dir()),
     name="static",
+)
+
+# Mount braiid CSS directory
+def find_braiid_dir():
+    """Find braiid directory in RSM package."""
+    import rsm
+    rsm_module_path = Path(rsm.__file__).parent.parent
+    braiid_dir = rsm_module_path / "braiid"
+    if braiid_dir.exists():
+        return str(braiid_dir)
+    raise RuntimeError(f"Braiid directory not found at {braiid_dir}")
+
+app.mount(
+    "/braiid",
+    StaticFiles(directory=find_braiid_dir()),
+    name="braiid",
 )
 
 # Mount styles (only if directory exists)

@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { TIMEOUTS } from "./utils/timeout-constants.js";
+import { test, expect } from "../fixtures.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TIMEOUTS } from "../utils/timeout-constants.js";
 
-// @auth
+// @auth @auth-interface
 test.describe("Account Password Change Integration E2E Tests @auth", () => {
   let authHelpers;
 
@@ -12,24 +12,16 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test.skip("successful password change with backend validation", async ({ page }) => {
-    console.log("[Test] Starting successful password change test");
-
-    // Log current auth state
+    // Verify auth state
     const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const user = await page.evaluate(() => localStorage.getItem("user"));
-    console.log("[Test] Auth state at start:", {
-      hasAccessToken: !!accessToken,
-      hasUser: !!user,
-      accessTokenLength: accessToken?.length,
-    });
+    expect(accessToken).toBeTruthy();
+    expect(user).toBeTruthy();
 
     await page.goto("/account/security");
-    console.log("[Test] Navigated to security page");
 
     // Wait for password section to be visible
-    console.log("[Test] Waiting for password section");
     await expect(page.locator("h2:has-text('Password')")).toBeVisible();
-    console.log("[Test] Password section is visible");
 
     // Fill in password change form
     const currentPasswordInput = page
@@ -58,9 +50,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     const updateButton = page.locator('button:has-text("Update Password")');
     await expect(updateButton).toBeVisible();
     await expect(updateButton).toBeEnabled();
-    console.log("[Test] Update button is visible and enabled");
 
-    console.log("[Test] Clicking update button and waiting for API response");
     const [response] = await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -69,32 +59,21 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
       updateButton.click(),
     ]);
 
-    console.log("[Test] Password change response received:", {
-      status: response.status(),
-      statusText: response.statusText(),
-      url: response.url(),
-    });
+    expect(response.status()).toBe(200);
 
     // Check current URL after API call
     const currentUrl = page.url();
-    console.log("[Test] Current URL after password change:", currentUrl);
 
     // Check auth state after API call
     const accessTokenAfter = await page.evaluate(() => localStorage.getItem("accessToken"));
     const userAfter = await page.evaluate(() => localStorage.getItem("user"));
-    console.log("[Test] Auth state after password change:", {
-      hasAccessToken: !!accessTokenAfter,
-      hasUser: !!userAfter,
-      accessTokenLength: accessTokenAfter?.length,
-      currentUrl,
-    });
+    expect(accessTokenAfter).toBeTruthy();
+    expect(userAfter).toBeTruthy();
 
     // Should show success message
-    console.log("[Test] Looking for success toast message");
     await expect(
       page.locator(".toast").filter({ hasText: "Password changed successfully" })
     ).toBeVisible({ timeout: 5000 });
-    console.log("[Test] Success message found");
 
     // Wait a moment for form reset to complete
     await page.waitForTimeout(TIMEOUTS.ANIMATION);
@@ -221,40 +200,25 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     const updateButton = page.locator('button:has-text("Update Password")');
     const cancelButton = page.locator('button:has-text("Cancel")');
 
-    console.log("[Test] Starting form validation test");
-
     // Initially buttons should be disabled (no changes)
-    console.log("[Test] Checking initial button states");
     await expect(updateButton).toBeDisabled();
     await expect(cancelButton).toBeDisabled();
-    console.log("[Test] Initial button states verified - both disabled");
 
     // Start typing - buttons should become enabled
-    console.log('[Test] Filling current password field with "test"');
     await currentPasswordInput.fill("test");
 
-    console.log("[Test] Checking buttons become enabled after typing");
     await expect(updateButton).toBeEnabled();
     await expect(cancelButton).toBeEnabled();
-    console.log("[Test] Buttons are now enabled");
 
     // Check unsaved changes warning appears
-    console.log("[Test] Checking for unsaved changes warning");
     await expect(page.locator(".status-message.warning")).toContainText("unsaved password changes");
-    console.log("[Test] Unsaved changes warning is visible");
 
     // Get current values before cancel
     const currentValueBefore = await currentPasswordInput.inputValue();
     const newValueBefore = await newPasswordInput.inputValue();
     const confirmValueBefore = await confirmPasswordInput.inputValue();
-    console.log("[Test] Values before cancel:", {
-      current: currentValueBefore,
-      new: newValueBefore,
-      confirm: confirmValueBefore,
-    });
 
     // Cancel should reset form
-    console.log("[Test] Clicking cancel button");
     await cancelButton.click();
 
     // Wait a moment for the form to reset
@@ -264,23 +228,14 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     const currentValueAfter = await currentPasswordInput.inputValue();
     const newValueAfter = await newPasswordInput.inputValue();
     const confirmValueAfter = await confirmPasswordInput.inputValue();
-    console.log("[Test] Values after cancel:", {
-      current: currentValueAfter,
-      new: newValueAfter,
-      confirm: confirmValueAfter,
-    });
 
-    console.log("[Test] Expecting form fields to be empty");
     await expect(currentPasswordInput).toHaveValue("");
     await expect(newPasswordInput).toHaveValue("");
     await expect(confirmPasswordInput).toHaveValue("");
-    console.log("[Test] Form fields are empty");
 
     // Buttons should be disabled again
-    console.log("[Test] Checking buttons are disabled again");
     await expect(updateButton).toBeDisabled();
     await expect(cancelButton).toBeDisabled();
-    console.log("[Test] Buttons are disabled again");
   });
 
   test.skip("password change loading state", async ({ page }) => {

@@ -69,6 +69,11 @@
     textClass: { type: [String, Object, Array], default: "" },
 
     /**
+     * Placeholder text shown when value is empty (both in display and input modes)
+     */
+    placeholder: { type: String, default: "" },
+
+    /**
      * Whether clicking the text should activate edit mode
      * Set to false for programmatic activation only
      */
@@ -202,19 +207,21 @@
       ref="textRef"
       type="button"
       class="editable"
-      :class="textClass"
+      :class="[textClass, { 'editable-empty': !text }]"
       role="button"
       tabindex="0"
       @click="() => editOnClick && startEditing()"
       @keydown.enter.prevent="startEditing()"
       @keydown.space.prevent="startEditing()"
     >
-      {{ text }}
+      <template v-if="text">{{ text }}</template>
+      <span v-else class="placeholder-text">{{ props.placeholder }}</span>
     </div>
     <input
       v-else
       ref="inputRef"
       v-model="inputValue"
+      :placeholder="props.placeholder"
       :class="[inputClass, isEditing ? 'editing' : '']"
       :style="props.preserveWidth ? { width: currentInputWidth + 'px' } : {}"
       @blur="saveChanges"
@@ -256,5 +263,9 @@
   .editable:focus-visible {
     outline: var(--border-med) solid var(--border-action);
     outline-offset: var(--border-extrathin);
+  }
+  .placeholder-text {
+    color: var(--color-text-tertiary);
+    font-style: italic;
   }
 </style>

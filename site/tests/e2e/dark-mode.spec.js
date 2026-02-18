@@ -2,7 +2,7 @@
  * @file E2E tests for dark mode functionality
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/api-intercept.js";
 
 test.describe("Dark Mode", () => {
   test.beforeEach(async ({ page }) => {

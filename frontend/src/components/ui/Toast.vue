@@ -1,6 +1,7 @@
 <script setup>
   import { ref, onMounted, onUnmounted } from "vue";
   import ButtonClose from "@/components/base/ButtonClose.vue";
+  import Icon from "@/components/base/Icon.vue";
 
   const props = defineProps({
     message: { type: String, required: true },

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 // @auth-flows
 import { AuthHelpers } from "./utils/auth-helpers.js";
@@ -108,14 +108,12 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Test demo route specifically since it's a public page
 
     // Add logging to see what happens
-    page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
 
     // Navigate directly to demo page
     await page.goto("/demo", { waitUntil: "domcontentloaded" });
 
     // Check current URL before assertions
     const currentUrl = page.url();
-    console.log("Current URL after navigation:", currentUrl);
 
     // Should stay on demo page
     await expect(page).toHaveURL("/demo");

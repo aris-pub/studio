@@ -49,20 +49,30 @@ class CollaborationManager:
             True if client started or already running, False on error.
         """
         if file_id in self.clients:
-            logger.debug(f"YDocClient already running for file {file_id}")
-            return True
+            task = self.tasks.get(file_id)
+            if task and not task.done():
+                logger.debug(f"YDocClient already running for file {file_id}")
+                return True
+            # Stale entry — task finished (e.g. received close code 4000), clean up and restart
+            logger.info(f"Removing stale YDocClient entry for file {file_id}, restarting")
+            self.clients.pop(file_id, None)
+            self.tasks.pop(file_id, None)
 
         try:
-            websocket_url = f"{self.websocket_base_url}/file-{file_id}"
+            # Use environment namespace to prevent conflicts between dev/test
+            env = os.getenv("ENV", "local").lower()
+            websocket_url = f"{self.websocket_base_url}/file-{file_id}-{env}"
             logger.info(f"Starting YDocClient for file {file_id} at {websocket_url}")
 
+            debounce_ms = int(os.getenv("YJS_DEBOUNCE_MS", "500"))
             client = YDocClient(
                 file_id=file_id,
                 websocket_url=websocket_url,
-                debounce_ms=500,
+                debounce_ms=debounce_ms,
             )
 
             task = asyncio.create_task(client.run())
+            task.add_done_callback(lambda t, fid=file_id: self._on_client_done(fid))  # type: ignore[misc]
             self.clients[file_id] = client
             self.tasks[file_id] = task
 
@@ -72,6 +82,12 @@ class CollaborationManager:
         except Exception as e:
             logger.error(f"Failed to start YDocClient for file {file_id}: {e}", exc_info=True)
             return False
+
+    def _on_client_done(self, file_id: int) -> None:
+        """Remove client from registry when its task completes for any reason."""
+        self.clients.pop(file_id, None)
+        self.tasks.pop(file_id, None)
+        logger.info(f"YDocClient task completed for file {file_id}, removed from registry")
 
     async def stop_client(self, file_id: int) -> bool:
         """
@@ -105,8 +121,8 @@ class CollaborationManager:
                 logger.warning(f"YDocClient for file {file_id} did not stop gracefully, cancelling")
                 task.cancel()
 
-            del self.clients[file_id]
-            del self.tasks[file_id]
+            self.clients.pop(file_id, None)
+            self.tasks.pop(file_id, None)
 
             logger.info(f"YDocClient stopped for file {file_id}")
             return True

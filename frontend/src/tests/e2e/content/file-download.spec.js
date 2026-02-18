@@ -1,18 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 import path from "path";
 import fs from "fs";
-import dotenv from "dotenv";
+import { getBackendURL } from "../utils/test-config.js";
 
-dotenv.config({ path: path.resolve("../../../.env") });
-const BACKEND_PORT = process.env.BACKEND_PORT;
+const backendURL = getBackendURL();
 
-if (!BACKEND_PORT) {
-  throw new Error("BACKEND_PORT must be set in .env");
-}
-
-// @auth
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { FileHelpers } from "./utils/file-helpers.js";
+// @auth @auth-content
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { FileHelpers } from "../utils/file-helpers.js";
 
 test.describe("File Download Tests @auth @desktop-only", () => {
   let authHelpers;
@@ -38,16 +33,16 @@ test.describe("File Download Tests @auth @desktop-only", () => {
         const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
 
         if (accessToken) {
-          const response = await request.delete(`http://localhost:${BACKEND_PORT}/files/${testFileId}`, {
+          const response = await request.delete(`${backendURL}/files/${testFileId}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
 
           if (!response.ok()) {
-            console.error(`Failed to delete file ${testFileId}: ${response.status()}`);
+            // Failed to delete test file
           }
         }
-      } catch (error) {
-        console.error(`Error during cleanup of file ${testFileId}:`, error);
+      } catch (_error) {
+        // Ignore cleanup errors
       }
     }
   });

@@ -2,9 +2,7 @@
   import { inject, useTemplateRef, onMounted } from "vue";
   import { File } from "@/models/File.js";
 
-  const props = defineProps({
-    file: { type: Object, default: () => {} },
-  });
+  const file = inject("file");
   const fileSettings = inject("fileSettings");
 
   const fileSettingsRef = useTemplateRef("file-settings-ref");
@@ -15,7 +13,7 @@
   const api = inject("api");
   const onSave = async (settingsObj) => {
     try {
-      await File.updateSettings(props.file, settingsObj, api);
+      await File.updateSettings(file.value, settingsObj, api);
     } catch (error) {
       console.error("Failed trying to updated file settings");
       console.error(error);

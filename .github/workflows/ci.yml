@@ -305,9 +305,12 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
+        # Source .env to get port variables
+        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
+
         echo "⏳ Polling for services to be ready (max 30s)..."
         for i in {1..30}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:3000 >/dev/null 2>&1; then
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
             echo "✅ Services ready after ${i}s"
             break
           fi
@@ -320,19 +323,16 @@ jobs:
         echo "🔍 Final health check..."
         curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
         curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
-        curl -f http://localhost:3000 || echo "⚠️  Site health check failed"
+        curl -f http://localhost:$SITE_PORT || echo "⚠️  Site health check failed"
 
         echo "✅ Docker services ready"
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run site E2E tests
       working-directory: site
@@ -389,7 +389,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
-        test-type: [auth, auth-flows, core]
+        test-type: [auth-content, auth-interface, auth-flows, core]
     runs-on: ubuntu-latest
     env:
       ENV: CI
@@ -487,13 +487,10 @@ jobs:
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run frontend E2E tests
       working-directory: frontend
@@ -503,24 +500,31 @@ jobs:
         # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        # Map test-type to grep pattern
+        # Map test-type to test path and grep pattern
         case "${{ matrix.test-type }}" in
-          auth)
-            PATTERN="@auth[^-]"
+          auth-content)
+            TEST_PATH="src/tests/e2e/content/"
+            PATTERN="@auth"
+            ;;
+          auth-interface)
+            TEST_PATH="src/tests/e2e/interface/"
+            PATTERN="@auth"
             ;;
           auth-flows)
+            TEST_PATH=""
             PATTERN="@auth-flows"
             ;;
           core)
+            TEST_PATH=""
             PATTERN="@core"
             ;;
         esac
 
         # Run tests
         if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test --grep "$PATTERN" --project=firefox --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
         else
-          npx playwright test --grep "$PATTERN" --project=chromium --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
         fi
 
     - name: Upload test results on failure
@@ -681,13 +685,10 @@ jobs:
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Running database migrations in Docker..."
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
 
-        echo "👤 Creating test user in Docker..."
-        docker compose --env-file .env exec -T backend uv run python scripts/reset_test_user.py
-
-        echo "✅ Database setup complete"
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run single-tab Y.js E2E tests
       working-directory: frontend

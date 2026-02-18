@@ -24,17 +24,6 @@ export const TEST_CREDENTIALS = {
   invalid: TEST_USERS.INVALID_USER,
 };
 
-// Log test credentials being used (but mask password)
-console.log("[TestData] Test credentials configuration:", {
-  email: TEST_CREDENTIALS.valid.email,
-  password: "***",
-  passwordLength: TEST_CREDENTIALS.valid.password.length,
-  fromEnv: {
-    email: !!process.env.TEST_USER_EMAIL,
-    password: !!process.env.TEST_USER_PASSWORD,
-  },
-});
-
 // File fixtures for testing
 export const TEST_FILES = {
   SAMPLE_RSM: {

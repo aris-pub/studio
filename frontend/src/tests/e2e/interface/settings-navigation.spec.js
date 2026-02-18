@@ -1,6 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
-import { TEST_CREDENTIALS } from "./setup/test-data.js";
+// @auth @auth-interface
+import { test, expect } from "../fixtures.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TEST_CREDENTIALS } from "../setup/test-data.js";
 
 test.describe("Settings Navigation @auth @desktop-only", () => {
   let authHelpers;
@@ -9,8 +10,7 @@ test.describe("Settings Navigation @auth @desktop-only", () => {
     // Set desktop viewport for desktop-only tests
     await page.setViewportSize({ width: 1024, height: 768 });
     authHelpers = new AuthHelpers(page);
-    await page.goto("/");
-    await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
+    await authHelpers.ensureLoggedIn();
   });
 
   test.afterEach(async () => {
@@ -160,8 +160,7 @@ test.describe("Settings Error Handling @auth @desktop-only", () => {
     // Set desktop viewport for desktop-only tests
     await page.setViewportSize({ width: 1024, height: 768 });
     authHelpers = new AuthHelpers(page);
-    await page.goto("/");
-    await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
+    await authHelpers.ensureLoggedIn();
   });
 
   test.afterEach(async () => {

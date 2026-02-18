@@ -28,6 +28,14 @@
     },
     { name: "Separator", state: false },
     {
+      name: "DrawerVersions",
+      icon: "Versions",
+      label: "versions",
+      key: "v",
+      state: false,
+      type: "drawer",
+    },
+    {
       name: "DrawerSettings",
       icon: "AdjustmentsHorizontal",
       label: "settings",
@@ -70,6 +78,18 @@
   const mobileMode = inject("mobileMode");
   const xsMode = inject("xsMode");
   const drawerOpen = inject("drawerOpen");
+
+  // Sync drawer button states with drawerOpen (fixes ESC key closing drawer but button staying active)
+  watch(drawerOpen, (isOpen) => {
+    if (!isOpen) {
+      // When drawer closes, deactivate all drawer buttons
+      items.forEach((item) => {
+        if (item.type === "drawer") {
+          item.state = false;
+        }
+      });
+    }
+  });
 
   // Computed button position to avoid drawer overlap
   const focusButtonLeft = computed(() => {

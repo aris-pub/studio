@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { MobileHelpers } from "./utils/mobile-helpers.js";
 import { getTimeouts } from "./utils/timeout-constants.js";
 

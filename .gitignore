@@ -117,3 +117,6 @@ dist
 test-results/
 playwright-report/
 .claude/skills
+
+# Beads (stealth mode - not in VC)
+.beads/

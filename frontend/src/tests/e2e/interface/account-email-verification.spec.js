@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { AuthHelpers } from "./utils/auth-helpers.js";
+import { test, expect } from "../fixtures.js";
+import { AuthHelpers } from "../utils/auth-helpers.js";
 
-// @auth
+// @auth @auth-interface
 test.describe("Account Email Verification E2E Tests @auth", () => {
   let authHelpers;
 
@@ -15,7 +15,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
     await page.goto("/account/security");
 
     // Wait for the page to load
-    await expect(page.locator("h2:has-text('Account Status')")).toBeVisible();
+    await expect(page.locator(".title:has-text('Account Status')")).toBeVisible();
 
     // Check for email verification status section
     const emailStatusItem = page.locator(".status-item").filter({ hasText: "Email" });

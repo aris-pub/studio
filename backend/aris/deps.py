@@ -22,6 +22,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, ConfigDict, EmailStr
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from . import crud
@@ -32,14 +33,27 @@ from .services.file_service import InMemoryFileService
 load_dotenv()
 
 
-ENGINE = create_async_engine(
-    settings.DB_URL_PROD if settings.ENV == "PROD" else settings.DB_URL_LOCAL,
-    future=True,
-    connect_args={
-        "statement_cache_size": 0,
-        "prepared_statement_name_func": lambda: "",
-    },
+# PostgreSQL-specific connect_args (not compatible with SQLite)
+_db_url = settings.DB_URL_PROD if settings.ENV == "PROD" else settings.DB_URL_LOCAL
+_connect_args = (
+    {"statement_cache_size": 0, "prepared_statement_name_func": lambda: ""}
+    if not _db_url.startswith("sqlite")
+    else {}
 )
+
+ENGINE = create_async_engine(
+    _db_url,
+    future=True,
+    connect_args=_connect_args,
+)
+
+if _db_url.startswith("sqlite"):
+    @event.listens_for(ENGINE.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 ArisSession = async_sessionmaker(ENGINE, expire_on_commit=False)
 
 
