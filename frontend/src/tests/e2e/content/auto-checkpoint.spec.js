@@ -125,11 +125,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     const versionItem = page
       .locator('[data-testid="version-item"][data-checkpoint-type="auto"]')
       .first();
-    // The EditableText placeholder "Auto-checkpoint" renders when version_name is null
-    const nameEl = versionItem.locator(".version-name");
-    const placeholder = versionItem.locator("[placeholder='Auto-checkpoint']");
 
-    // Either placeholder attribute or the text content shows the label
     const itemText = await versionItem.textContent();
     expect(itemText).toContain("Auto-checkpoint");
   });
