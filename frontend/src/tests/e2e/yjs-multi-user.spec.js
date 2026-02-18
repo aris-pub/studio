@@ -4,6 +4,12 @@
  * Tests that multiple different users can collaborate on the same file
  * with proper permission enforcement (OWNER/EDITOR/COMMENTER).
  *
+ * fileStore is populated once at login time. When a file is shared with an
+ * already-logged-in user, their store won't include it until they refresh.
+ * Tests simulate the correct user flow: collaborators open a fresh session
+ * (or refresh) after being granted access. A future notification system will
+ * push store updates in real time so a refresh is no longer required.
+ *
  * Tag: @auth
  *
  * Scope: studio-q5r (Multi-user collaboration with permissions)
@@ -101,9 +107,6 @@ test.describe("Multi-User Collaboration @auth", () => {
       ),
     ]);
 
-    // Login all users via HTTP only — no browser contexts yet.
-    // Browser contexts are created per-test AFTER addCollaborator so that
-    // fileStore.loadFiles() runs with the permission already in the database.
     [ownerAuth, editorAuth, commenterAuth] = await Promise.all([
       loginUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD),
       loginUser(request, TEST_USER2_EMAIL, TEST_USER2_PASSWORD),
@@ -117,6 +120,8 @@ test.describe("Multi-User Collaboration @auth", () => {
     const fileId = await createTestFile(request, ownerAuth.token, ownerAuth.userData.id);
     await addCollaborator(fileId, editorAuth.userData.id, "EDITOR", ownerAuth.token);
 
+    // Browser contexts created after addCollaborator — simulates the documented user flow
+    // where the collaborator opens a fresh session (or refreshes) after being granted access.
     const owner = await createAuthenticatedContext(browser, ownerAuth);
     const editor = await createAuthenticatedContext(browser, editorAuth);
 
@@ -202,8 +207,7 @@ test.describe("Multi-User Collaboration @auth", () => {
   test("should reject unauthorized user connection", async ({ browser, request }) => {
     test.setTimeout(60000);
 
-    // Create a file and intentionally do NOT grant editorAuth any permission.
-    // editorAuth's fileStore will not include this file, so WorkspaceView redirects to /404.
+    // No addCollaborator — editorAuth has no permission. WorkspaceView redirects to /404.
     const fileId = await createTestFile(request, ownerAuth.token, ownerAuth.userData.id);
 
     const owner = await createAuthenticatedContext(browser, ownerAuth);
