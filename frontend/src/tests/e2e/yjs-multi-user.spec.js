@@ -100,7 +100,7 @@ async function openFileInEditor(page, fileId) {
     }
   });
 
-  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+  await page.goto(`/file/${fileId}`, { waitUntil: "domcontentloaded" });
 
   // Wait for Vue to mount and authenticate the route
   const container = await page

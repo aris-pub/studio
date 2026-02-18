@@ -79,7 +79,7 @@ export async function createAuthenticatedContext(browser, { token, refreshToken,
 // ─── Editor helpers ───────────────────────────────────────────────────────────
 
 export async function openFileInEditor(page, fileId) {
-  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+  await page.goto(`/file/${fileId}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
 
   const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();

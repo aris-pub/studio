@@ -11,7 +11,7 @@ import { getBackendURL } from "./utils/test-config.js";
 const backendURL = getBackendURL();
 
 async function openFileInEditor(page, fileId) {
-  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+  await page.goto(`/file/${fileId}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
   await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   await page.waitForSelector(".cm-editor", { timeout: 5000 });

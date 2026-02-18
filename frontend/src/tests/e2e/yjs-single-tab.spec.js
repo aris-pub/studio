@@ -26,22 +26,17 @@ import {
 
 test.describe("Y.js Single User, Single Tab @collab", () => {
   let auth;
-  let sharedFileId;
 
   test.beforeAll(async ({ request }) => {
     auth = await loginUser(request);
-    sharedFileId = await createTestFile(request, auth.token, auth.userData.id);
-  });
-
-  test.afterAll(async ({ request }) => {
-    await deleteTestFile(request, auth.token, sharedFileId);
   });
 
   test.describe("Basic Editing - No Duplication", () => {
-    test("should not duplicate keystrokes when typing", async ({ browser }) => {
+    test("should not duplicate keystrokes when typing", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const { context, page } = await createAuthenticatedContext(browser, auth);
       try {
-        await openFileInEditor(page, sharedFileId);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         // Type HELLO character by character
@@ -64,13 +59,15 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
       } finally {
         await cleanupYjs(page);
         await context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
 
-    test("should handle rapid typing without duplication", async ({ browser }) => {
+    test("should handle rapid typing without duplication", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const { context, page } = await createAuthenticatedContext(browser, auth);
       try {
-        await openFileInEditor(page, sharedFileId);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         await insertText(page, "The quick brown fox jumps over the lazy dog");
@@ -84,13 +81,15 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
       } finally {
         await cleanupYjs(page);
         await context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
 
-    test("should handle delete operations correctly", async ({ browser }) => {
+    test("should handle delete operations correctly", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const { context, page } = await createAuthenticatedContext(browser, auth);
       try {
-        await openFileInEditor(page, sharedFileId);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         await insertText(page, "Hello World");
@@ -117,15 +116,17 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
       } finally {
         await cleanupYjs(page);
         await context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
 
   test.describe("Performance", () => {
-    test("should handle large document without lag", async ({ browser }) => {
+    test("should handle large document without lag", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const { context, page } = await createAuthenticatedContext(browser, auth);
       try {
-        await openFileInEditor(page, sharedFileId);
+        await openFileInEditor(page, fileId);
         await clearEditor(page);
 
         const largeText = "Line of text\n".repeat(100);
@@ -143,6 +144,7 @@ test.describe("Y.js Single User, Single Tab @collab", () => {
       } finally {
         await cleanupYjs(page);
         await context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
