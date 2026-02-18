@@ -1,5 +1,6 @@
 """Aris backend: FastApi app."""
 
+import asyncio
 import importlib
 import os
 import sys
@@ -350,6 +351,56 @@ async def shutdown_collaboration_manager():
         logger.info("CollaborationManager shutdown complete")
     except Exception as e:
         logger.error(f"Error during CollaborationManager shutdown: {e}", exc_info=True)
+
+
+_gc_task: asyncio.Task | None = None
+
+
+@app.on_event("startup")
+async def startup_checkpoint_gc():
+    """Start the background task that garbage-collects old auto-checkpoints."""
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return
+
+    global _gc_task
+    _gc_task = asyncio.create_task(_run_checkpoint_gc())
+
+
+@app.on_event("shutdown")
+async def shutdown_checkpoint_gc():
+    """Stop the checkpoint GC background task."""
+    global _gc_task
+    if _gc_task and not _gc_task.done():
+        _gc_task.cancel()
+        try:
+            await _gc_task
+        except asyncio.CancelledError:
+            pass
+
+
+async def _run_checkpoint_gc():
+    """Soft-delete auto-checkpoints older than the retention window, once per day."""
+    from datetime import datetime, timedelta, timezone
+
+    from aris.crud.versions import delete_auto_checkpoints_older_than
+    from aris.deps import ArisSession
+
+    GC_INTERVAL_SECS = 24 * 60 * 60      # run daily
+    RETENTION_DAYS = 7
+
+    try:
+        while True:
+            await asyncio.sleep(GC_INTERVAL_SECS)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
+            try:
+                async with ArisSession() as session:
+                    deleted = await delete_auto_checkpoints_older_than(cutoff, db=session)
+                if deleted:
+                    logger.info(f"Checkpoint GC: soft-deleted {deleted} old auto-checkpoints")
+            except Exception as e:
+                logger.error(f"Checkpoint GC error: {e}", exc_info=True)
+    except asyncio.CancelledError:
+        pass
 
 
 @app.middleware("http")

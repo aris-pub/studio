@@ -1,6 +1,6 @@
 <script setup>
   import { ref, inject, onMounted, computed, nextTick, watch } from "vue";
-  import { IconFileText } from "@tabler/icons-vue";
+  import { IconFileText, IconHistory } from "@tabler/icons-vue";
   import Button from "@/components/base/Button.vue";
   import EditableText from "@/components/forms/EditableText.vue";
   import Toast from "@/components/ui/Toast.vue";
@@ -256,16 +256,25 @@
             v-for="version in versions"
             :key="version.id"
             class="version-item"
+            :class="{ 'version-item--auto': version.checkpoint_type === 'auto' }"
             :data-testid="'version-item'"
             :data-version-id="version.id"
+            :data-checkpoint-type="version.checkpoint_type"
             @click="previewVersion(version)"
           >
             <div class="version-info">
               <div class="version-header">
+                <IconHistory
+                  v-if="version.checkpoint_type === 'auto'"
+                  class="version-type-icon version-type-icon--auto"
+                  :size="14"
+                />
                 <EditableText
                   :ref="(el) => (editableRefs[version.id] = el)"
                   v-model="version.version_name"
-                  placeholder="Unnamed version"
+                  :placeholder="
+                    version.checkpoint_type === 'auto' ? 'Auto-checkpoint' : 'Unnamed version'
+                  "
                   text-class="version-name"
                   :edit-on-click="false"
                   @save="handleSaveName(version)"
@@ -412,6 +421,25 @@
     content: "•";
     margin-right: 8px;
     color: var(--color-text-tertiary);
+  }
+
+  .version-item--auto {
+    opacity: 0.75;
+  }
+
+  .version-item--auto:hover {
+    opacity: 1;
+  }
+
+  .version-type-icon--auto {
+    color: var(--color-text-tertiary);
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+
+  .version-header {
+    display: flex;
+    align-items: center;
   }
 
   /* Transition animations */

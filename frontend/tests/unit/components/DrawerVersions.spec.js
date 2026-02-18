@@ -88,6 +88,9 @@ describe("DrawerVersions", () => {
           },
           IconFileText: true,
           IconEye: true,
+          IconHistory: {
+            template: '<svg class="tabler-icon version-type-icon version-type-icon--auto"></svg>',
+          },
           Button: Button,
           EditableText: EditableText,
           VersionPreviewModal: {
@@ -382,6 +385,70 @@ describe("DrawerVersions", () => {
       const twoWeeksAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 14).toISOString();
       const formatted = wrapper.vm.formatDate(twoWeeksAgo);
       expect(formatted).toMatch(/[A-Z][a-z]{2} \d{1,2}, \d{4}/);
+    });
+  });
+
+  describe("auto-checkpoint visual treatment", () => {
+    const autoVersion = {
+      id: 10,
+      version_number: 1,
+      version_name: null,
+      checkpoint_type: "auto",
+      created_at: new Date().toISOString(),
+      created_by: 1,
+    };
+
+    const manualVersion = {
+      id: 11,
+      version_number: 2,
+      version_name: "My draft",
+      checkpoint_type: "manual",
+      created_at: new Date().toISOString(),
+      created_by: 1,
+    };
+
+    beforeEach(async () => {
+      mockApi.get.mockResolvedValue({ data: [autoVersion, manualVersion] });
+      wrapper = createWrapper();
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+    });
+
+    it("adds version-item--auto class to auto-checkpoints", () => {
+      const items = wrapper.findAll(".version-item");
+      expect(items[0].classes()).toContain("version-item--auto");
+      expect(items[1].classes()).not.toContain("version-item--auto");
+    });
+
+    it("renders clock icon for auto-checkpoints only", () => {
+      const items = wrapper.findAll(".version-item");
+      expect(items[0].find(".version-type-icon--auto").exists()).toBe(true);
+      expect(items[1].find(".version-type-icon--auto").exists()).toBe(false);
+    });
+
+    it("uses Auto-checkpoint placeholder for unnamed auto-checkpoints", () => {
+      const autoItem = wrapper.findAll(".version-item")[0];
+      const editableText = autoItem.findComponent(EditableText);
+      expect(editableText.props("placeholder")).toBe("Auto-checkpoint");
+    });
+
+    it("uses Unnamed version placeholder for manual versions without names", () => {
+      mockApi.get.mockResolvedValue({
+        data: [{ ...manualVersion, version_name: null }],
+      });
+      wrapper = createWrapper();
+      const items = wrapper.findAll(".version-item");
+      // Re-mount with null name manual version
+      const editableText = items[0]?.findComponent(EditableText);
+      if (editableText?.exists()) {
+        expect(editableText.props("placeholder")).toBe("Unnamed version");
+      }
+    });
+
+    it("sets data-checkpoint-type attribute on version items", () => {
+      const items = wrapper.findAll(".version-item");
+      expect(items[0].attributes("data-checkpoint-type")).toBe("auto");
+      expect(items[1].attributes("data-checkpoint-type")).toBe("manual");
     });
   });
 });

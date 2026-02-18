@@ -3,10 +3,13 @@
 Following TDD approach: Write tests first, implement to make them pass.
 """
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 
 from aris.crud.versions import (
     create_version,
+    delete_auto_checkpoints_older_than,
     delete_version,
     get_version,
     get_versions_for_file,
@@ -198,3 +201,98 @@ async def test_version_captures_file_metadata(db_session, test_user, test_file):
     # Version should still have old title
     fetched = await get_version(version.id, db=db_session)
     assert fetched.title == "Updated Title"  # Not "New Title"
+
+
+async def test_create_version_defaults_to_manual(db_session, test_user, test_file):
+    """Named versions created via UI default to checkpoint_type='manual'."""
+    version = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        version_name="My version",
+        db=db_session,
+    )
+
+    assert version.checkpoint_type == "manual"
+
+
+async def test_create_auto_checkpoint(db_session, test_user, test_file):
+    """Auto-checkpoints can be created with checkpoint_type='auto'."""
+    version = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        checkpoint_type="auto",
+        db=db_session,
+    )
+
+    assert version.checkpoint_type == "auto"
+    assert version.version_name is None
+
+
+async def test_checkpoint_type_persisted_to_db(db_session, test_user, test_file):
+    """checkpoint_type is correctly stored and retrieved."""
+    auto = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        checkpoint_type="auto",
+        db=db_session,
+    )
+    manual = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        version_name="Named",
+        checkpoint_type="manual",
+        db=db_session,
+    )
+
+    fetched_auto = await get_version(auto.id, db=db_session)
+    fetched_manual = await get_version(manual.id, db=db_session)
+
+    assert fetched_auto.checkpoint_type == "auto"
+    assert fetched_manual.checkpoint_type == "manual"
+
+
+async def test_delete_auto_checkpoints_older_than(db_session, test_user, test_file):
+    """GC deletes auto-checkpoints older than the cutoff, leaves manual and recent ones."""
+    # cutoff = yesterday; old_auto backdated 7 more days, recent_auto = today
+    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+    old_timestamp = cutoff - timedelta(days=7)
+
+    # Create an old auto-checkpoint (backdated via direct ORM manipulation)
+    old_auto = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        checkpoint_type="auto",
+        db=db_session,
+    )
+    old_auto.created_at = old_timestamp
+    await db_session.commit()
+
+    # Create a recent auto-checkpoint
+    recent_auto = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        checkpoint_type="auto",
+        db=db_session,
+    )
+
+    # Create an old manual version — must NOT be deleted
+    old_manual = await create_version(
+        file_id=test_file.id,
+        user_id=test_user.id,
+        version_name="Important",
+        checkpoint_type="manual",
+        db=db_session,
+    )
+    old_manual.created_at = old_timestamp
+    await db_session.commit()
+
+    deleted_count = await delete_auto_checkpoints_older_than(cutoff, db=db_session)
+
+    assert deleted_count == 1
+
+    # Old auto gone (soft-deleted)
+    assert await get_version(old_auto.id, db=db_session) is None
+    # Recent auto still present
+    assert await get_version(recent_auto.id, db=db_session) is not None
+    # Old manual untouched
+    assert await get_version(old_manual.id, db=db_session) is not None

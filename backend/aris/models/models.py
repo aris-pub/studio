@@ -417,6 +417,7 @@ class FileVersion(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    checkpoint_type = Column(String(10), nullable=False, default='manual')
 
     file = relationship("File", back_populates="versions")
     creator = relationship("User")

@@ -14,10 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aris.models import File, FileVersion
 
 
+CHECKPOINT_TYPE_MANUAL = "manual"
+CHECKPOINT_TYPE_AUTO = "auto"
+
+
 async def create_version(
     file_id: int,
     user_id: int,
     version_name: Optional[str] = None,
+    checkpoint_type: str = CHECKPOINT_TYPE_MANUAL,
     db: AsyncSession = None,
 ) -> FileVersion:
     """Create a new version snapshot of a file.
@@ -33,6 +38,8 @@ async def create_version(
         ID of the user creating this version.
     version_name : str, optional
         User-provided name for this version (e.g., "Before review").
+    checkpoint_type : str
+        Either CHECKPOINT_TYPE_MANUAL ('manual') or CHECKPOINT_TYPE_AUTO ('auto').
     db : AsyncSession
         Database session.
 
@@ -64,6 +71,7 @@ async def create_version(
         title=file.title,
         abstract=file.abstract,
         created_by=user_id,
+        checkpoint_type=checkpoint_type,
     )
 
     db.add(version)
@@ -218,3 +226,41 @@ async def soft_delete_versions_for_file(
         version.deleted_at = deleted_at
 
     # Commit is handled by the caller (delete_file_in_database)
+
+
+async def delete_auto_checkpoints_older_than(
+    cutoff: datetime,
+    db: AsyncSession,
+) -> int:
+    """Soft-delete auto-checkpoints created before the cutoff datetime.
+
+    Manual versions are never touched. Returns the number of checkpoints deleted.
+
+    Parameters
+    ----------
+    cutoff : datetime
+        Checkpoints created before this timestamp will be soft-deleted.
+    db : AsyncSession
+        Database session.
+
+    Returns
+    -------
+    int
+        Number of auto-checkpoints soft-deleted.
+
+    """
+    result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.checkpoint_type == CHECKPOINT_TYPE_AUTO,
+            FileVersion.created_at < cutoff,
+            FileVersion.deleted_at.is_(None),
+        )
+    )
+    old_checkpoints = list(result.scalars().all())
+
+    deleted_at = datetime.now(timezone.utc)
+    for checkpoint in old_checkpoints:
+        checkpoint.deleted_at = deleted_at
+
+    await db.commit()
+    return len(old_checkpoints)

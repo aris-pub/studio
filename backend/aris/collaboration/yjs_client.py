@@ -6,6 +6,7 @@ Uses pycrdt's native sync protocol which is compatible with JavaScript y-websock
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from pycrdt import Doc, Text, TextEvent, create_sync_message, handle_sync_message
@@ -18,6 +19,14 @@ from aris.deps import ArisSession
 
 # Collaboration-specific logger
 logger = logging.getLogger("aris.collaboration")
+
+# ---------------------------------------------------------------------------
+# Auto-checkpoint heuristic constants
+# ---------------------------------------------------------------------------
+CHECKPOINT_IDLE_TIMEOUT_SECS: float = 5 * 60       # idle pause before snapshotting
+CHECKPOINT_MIN_EDIT_EVENTS: int = 15                # minimum edits to warrant a checkpoint
+CHECKPOINT_MIN_INTERVAL_SECS: float = 15 * 60      # minimum time between checkpoints
+CHECKPOINT_SAFETY_NET_SECS: float = 2 * 60 * 60    # force checkpoint if edits go this long
 
 
 class YDocClient:
@@ -32,10 +41,16 @@ class YDocClient:
         file_id: int,
         websocket_url: str,
         debounce_ms: int = 500,
+        checkpoint_idle_timeout_secs: float = CHECKPOINT_IDLE_TIMEOUT_SECS,
+        checkpoint_min_interval_secs: float = CHECKPOINT_MIN_INTERVAL_SECS,
+        checkpoint_safety_net_secs: float = CHECKPOINT_SAFETY_NET_SECS,
     ):
         self.file_id = file_id
         self.websocket_url = websocket_url
         self.debounce_ms = debounce_ms
+        self.checkpoint_idle_timeout_secs = checkpoint_idle_timeout_secs
+        self.checkpoint_min_interval_secs = checkpoint_min_interval_secs
+        self.checkpoint_safety_net_secs = checkpoint_safety_net_secs
 
         # Y.js state
         self.doc: Optional[Doc] = None
@@ -49,6 +64,12 @@ class YDocClient:
         # Reconnection state
         self._reconnect_attempt = 0
         self._max_reconnect_delay = 60
+
+        # Checkpoint state
+        self._edit_count_since_checkpoint: int = 0
+        self._last_checkpoint_at: Optional[datetime] = None
+        self._idle_timer_task: Optional[asyncio.Task] = None
+        self._safety_net_task: Optional[asyncio.Task] = None
 
         logger.info(f"YDocClient initialized for file {file_id}")
 
@@ -228,6 +249,103 @@ class YDocClient:
 
         self._save_task = asyncio.create_task(self._debounced_save())
 
+        self._record_edit_for_checkpoint()
+
+    def _record_edit_for_checkpoint(self):
+        """Increment edit counter and (re)start the idle timer and safety net."""
+        self._edit_count_since_checkpoint += 1
+        self._restart_idle_timer()
+
+        if self._safety_net_task is None or self._safety_net_task.done():
+            self._safety_net_task = asyncio.create_task(self._safety_net_loop())
+
+    def _restart_idle_timer(self):
+        if self._idle_timer_task and not self._idle_timer_task.done():
+            self._idle_timer_task.cancel()
+        self._idle_timer_task = asyncio.create_task(self._idle_timer())
+
+    async def _idle_timer(self):
+        try:
+            await asyncio.sleep(self.checkpoint_idle_timeout_secs)
+            await self._maybe_create_checkpoint()
+        except asyncio.CancelledError:
+            pass
+
+    async def _safety_net_loop(self):
+        """Periodically checkpoint if edits have accumulated without a pause."""
+        try:
+            while not self._shutdown:
+                await asyncio.sleep(self.checkpoint_safety_net_secs)
+                if self._edit_count_since_checkpoint > 0:
+                    await self._maybe_create_checkpoint(force=True)
+        except asyncio.CancelledError:
+            pass
+
+    async def _maybe_create_checkpoint(self, force: bool = False) -> None:
+        """Create a checkpoint if heuristic conditions are satisfied.
+
+        Parameters
+        ----------
+        force : bool
+            When True (safety net path), bypass the minimum edit count check
+            but still require at least one edit and respect the min interval.
+        """
+        now = datetime.now(timezone.utc)
+
+        if self._last_checkpoint_at is not None:
+            elapsed = (now - self._last_checkpoint_at).total_seconds()
+            if elapsed < self.checkpoint_min_interval_secs:
+                return
+
+        if self._edit_count_since_checkpoint == 0:
+            return
+
+        if not force and self._edit_count_since_checkpoint < CHECKPOINT_MIN_EDIT_EVENTS:
+            return
+
+        # Reset counters before the async call so concurrent timer firings
+        # (idle + safety net) cannot both satisfy the conditions.
+        self._last_checkpoint_at = now
+        self._edit_count_since_checkpoint = 0
+
+        await self._create_checkpoint()
+
+    async def _create_checkpoint(self) -> None:
+        """Look up the file owner and create an auto-checkpoint in the database."""
+        from aris.crud.versions import CHECKPOINT_TYPE_AUTO, create_version
+
+        try:
+            async with ArisSession() as session:
+                result = await session.execute(
+                    sql_text("SELECT owner_id FROM files WHERE id = :file_id"),
+                    {"file_id": self.file_id},
+                )
+                row = result.fetchone()
+                if not row:
+                    logger.warning(f"Cannot checkpoint file {self.file_id}: file not found")
+                    return
+                owner_id = row[0]
+
+            async with ArisSession() as session:
+                await create_version(
+                    file_id=self.file_id,
+                    user_id=owner_id,
+                    checkpoint_type=CHECKPOINT_TYPE_AUTO,
+                    db=session,
+                )
+
+            logger.info(f"Auto-checkpoint created for file {self.file_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to create auto-checkpoint for file {self.file_id}: {e}", exc_info=True)
+
+    def _cancel_checkpoint_tasks(self) -> None:
+        """Cancel both checkpoint background tasks."""
+        if self._idle_timer_task and not self._idle_timer_task.done():
+            self._idle_timer_task.cancel()
+        if self._safety_net_task and not self._safety_net_task.done():
+            self._safety_net_task.cancel()
+
     async def _debounced_save(self):
         """Wait for debounce period, then save to database."""
         try:
@@ -268,6 +386,8 @@ class YDocClient:
         """Gracefully shutdown the client."""
         logger.info(f"Shutdown requested for file {self.file_id}")
         self._shutdown = True
+
+        self._cancel_checkpoint_tasks()
 
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()

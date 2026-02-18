@@ -33,6 +33,7 @@ class VersionCreate(BaseModel):
 
     version_name: Optional[str] = None
     description: Optional[str] = None
+    checkpoint_type: str = "manual"
 
 
 class VersionRename(BaseModel):
@@ -55,6 +56,7 @@ class VersionOut(BaseModel):
     created_by: int
     created_at: datetime
     creator_name: Optional[str] = None
+    checkpoint_type: str = "manual"
 
 
 class VersionPreviewOut(BaseModel):
@@ -87,6 +89,7 @@ async def create_named_version(
         file_id=file_id,
         user_id=user.id,
         version_name=version_data.version_name,
+        checkpoint_type=version_data.checkpoint_type,
         db=db,
     )
 
@@ -100,6 +103,7 @@ async def create_named_version(
         created_by=version.created_by,
         created_at=version.created_at,
         creator_name=user.name,
+        checkpoint_type=version.checkpoint_type,
     )
 
 
@@ -126,6 +130,7 @@ async def list_versions(
             abstract=v.abstract,
             created_by=v.created_by,
             created_at=v.created_at,
+            checkpoint_type=v.checkpoint_type,
         )
         for v in versions
     ]
@@ -187,6 +192,7 @@ async def update_version(
         abstract=updated_version.abstract,
         created_by=updated_version.created_by,
         created_at=updated_version.created_at,
+        checkpoint_type=updated_version.checkpoint_type,
     )
 
 
