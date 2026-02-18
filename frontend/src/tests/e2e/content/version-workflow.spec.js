@@ -214,7 +214,7 @@ test.describe("Version Workflow @auth", () => {
 
     // Close modal
     await page.click('[data-testid="close-preview-modal"]');
-    await expect(modal).not.toBeVisible();
+    await page.waitForSelector('[data-testid="version-preview-modal"]', { state: "detached" });
 
     // Open modal second time - THIS IS THE REGRESSION TEST
     await versionInfo.click();
@@ -227,6 +227,7 @@ test.describe("Version Workflow @auth", () => {
 
     // Close and open a third time to be sure
     await page.click('[data-testid="close-preview-modal"]');
+    await page.waitForSelector('[data-testid="version-preview-modal"]', { state: "detached" });
     await versionInfo.click();
     await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
     await expect(modal).toBeVisible();
@@ -253,7 +254,7 @@ test.describe("Version Workflow @auth", () => {
 
     // Close modal using X button
     await page.click('[data-testid="close-preview-modal"]');
-    await expect(modal).not.toBeVisible();
+    await page.waitForSelector('[data-testid="version-preview-modal"]', { state: "detached" });
 
     // THIS IS THE BUG TEST: Try to reopen modal
     await versionInfo.click();

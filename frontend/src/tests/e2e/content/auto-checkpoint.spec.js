@@ -154,6 +154,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
+    await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
 
