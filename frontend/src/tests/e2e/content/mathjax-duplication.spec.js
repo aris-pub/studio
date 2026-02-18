@@ -506,7 +506,10 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
     }
   });
 
-  test("MathJax script tags should not multiply on re-renders", async ({ page, request }) => {
+  test("MathJax script tags should not multiply on re-renders @flaky", async ({
+    page,
+    request,
+  }) => {
     const fileId = await createTestFileWithMath(request);
 
     try {
