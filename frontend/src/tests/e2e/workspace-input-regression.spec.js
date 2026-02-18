@@ -15,7 +15,7 @@ import { TIMEOUTS } from "./utils/timeout-constants.js";
  * 4. Global keyboard listeners don't block input events
  */
 
-test.describe("Input Regression Tests @regression @desktop-only", () => {
+test.describe("Input Regression Tests @core @desktop-only", () => {
   test("basic input functionality works without global interference", async ({ page }) => {
     // Navigate to demo page (always available)
     await page.goto("/demo/content", { waitUntil: "domcontentloaded" });

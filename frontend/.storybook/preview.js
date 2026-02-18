@@ -16,7 +16,7 @@ rsmLink.href = `${API_BASE_URL}/static/rsm.css`;
 document.head.appendChild(rsmLink);
 
 // Load styles CSS from backend (accessible from browser)
-const styles = ["variables.css", "typography.css", "layout.css", "components.css"];
+const styles = ["typography.css", "layout.css", "components.css"];
 styles.forEach((filename) => {
   const link = document.createElement("link");
   link.rel = "stylesheet";

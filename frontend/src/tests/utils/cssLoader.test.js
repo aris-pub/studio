@@ -47,12 +47,12 @@ describe("cssLoader", () => {
     it("loads all design asset CSS files", async () => {
       const promise = loadDesignAssets(mockApi);
 
-      // Should create 4 link elements for the 4 CSS files
+      // Should create 3 link elements for the 3 CSS files
       const links = document.querySelectorAll('link[rel="stylesheet"]');
-      expect(links.length).toBe(4);
+      expect(links.length).toBe(3);
 
       // Verify all expected files are loaded
-      const expectedFiles = ["typography.css", "components.css", "layout.css", "variables.css"];
+      const expectedFiles = ["typography.css", "components.css", "layout.css"];
       expectedFiles.forEach((filename, index) => {
         expect(links[index].href).toBe(
           `${import.meta.env.VITE_API_BASE_URL}/styles/css/${filename}`

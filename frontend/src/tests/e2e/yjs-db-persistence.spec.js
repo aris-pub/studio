@@ -4,7 +4,7 @@
  * Tests that Y.js edits are persisted to PostgreSQL files.source and restored on reconnect.
  * Verifies backend-as-client architecture saves changes to database.
  *
- * Tag: @auth
+ * Tag: @collab
  *
  * Scope: DB persistence for Y.js collaboration
  */
@@ -51,7 +51,7 @@ async function waitForDbContent(fileId, token, matcher, { timeout = 8000 } = {})
   );
 }
 
-test.describe("Y.js Database Persistence @auth", () => {
+test.describe("Y.js Database Persistence @collab", () => {
   let auth;
 
   test.beforeAll(async ({ request }) => {

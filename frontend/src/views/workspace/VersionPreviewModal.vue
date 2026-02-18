@@ -2,7 +2,6 @@
   import { ref, inject, onMounted } from "vue";
   import { IconX } from "@tabler/icons-vue";
   import Button from "@/components/base/Button.vue";
-  import { useVersionRestore } from "@/composables/useVersionRestore";
 
   const props = defineProps({
     version: { type: Object, required: true },
@@ -19,18 +18,6 @@
   const contentError = ref(null);
   const isRestoring = ref(false);
   const showConfirmation = ref(false);
-
-  // Only initialize restore functionality if user is owner and Y.js is available
-  let restoreVersion = null;
-  if (props.isOwner) {
-    try {
-      const versionRestore = useVersionRestore(props.fileId);
-      restoreVersion = versionRestore.restoreVersion;
-    } catch (err) {
-      console.warn("Y.js not available for version restore:", err);
-      // Restore functionality will be disabled
-    }
-  }
 
   // Fetch version content for preview
   async function fetchVersionContent() {
@@ -53,23 +40,26 @@
     showConfirmation.value = true;
   }
 
-  // Confirm and execute restore
+  // Confirm and execute restore via Y.js (window.__cmView is the live CodeMirror/Y.js binding)
   async function confirmRestore() {
-    if (!restoreVersion) {
-      alert("Restore functionality is not available. Y.js editor must be active.");
+    const view = window.__cmView;
+    if (!view) {
+      alert("Editor not available. Please open the source editor and try again.");
+      return;
+    }
+
+    if (!versionContent.value) {
+      alert("Version content not loaded. Please wait and try again.");
       return;
     }
 
     isRestoring.value = true;
 
     try {
-      const success = await restoreVersion(props.version.id);
-
-      if (success) {
-        // Show success message and emit restored event
-        emit("restored");
-        // Toast notification will be handled by parent
-      }
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: versionContent.value },
+      });
+      emit("restored");
     } catch (err) {
       console.error("Failed to restore version:", err);
       alert("Failed to restore version. Please try again.");
@@ -179,7 +169,7 @@
       <!-- Footer -->
       <div class="modal-footer">
         <!-- Confirmation State -->
-        <div v-if="showConfirmation" class="confirmation">
+        <div v-if="showConfirmation" class="confirmation" data-testid="restore-confirm-dialog">
           <p class="confirmation-message">
             ⚠️ Restore this version? This will replace the current content.
           </p>

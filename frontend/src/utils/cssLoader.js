@@ -38,7 +38,7 @@ export function loadCSS(api, filename) {
 }
 
 export function loadDesignAssets(api) {
-  const cssFiles = ["typography.css", "components.css", "layout.css", "variables.css"];
+  const cssFiles = ["typography.css", "components.css", "layout.css"];
 
   return Promise.all(cssFiles.map((filename) => loadCSS(api, filename)));
 }

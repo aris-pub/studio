@@ -10,7 +10,7 @@
  * (or refresh) after being granted access. A future notification system will
  * push store updates in real time so a refresh is no longer required.
  *
- * Tag: @auth
+ * Tag: @collab
  *
  * Scope: studio-q5r (Multi-user collaboration with permissions)
  */
@@ -86,7 +86,7 @@ async function addCollaborator(fileId, userId, role, token) {
   return await response.json();
 }
 
-test.describe("Multi-User Collaboration @auth", () => {
+test.describe("Multi-User Collaboration @collab", () => {
   let ownerAuth, editorAuth, commenterAuth;
 
   test.beforeAll(async ({ request }) => {
