@@ -25,25 +25,20 @@ import {
 
 test.describe("Y.js Single User, Multiple Tabs @collab", () => {
   let auth;
-  let sharedFileId;
 
   test.beforeAll(async ({ request }) => {
     auth = await loginUser(request);
-    sharedFileId = await createTestFile(request, auth.token, auth.userData.id);
-  });
-
-  test.afterAll(async ({ request }) => {
-    await deleteTestFile(request, auth.token, sharedFileId);
   });
 
   test.describe("Two Tabs - Bidirectional Sync", () => {
-    test("should sync text from Tab A to Tab B", async ({ browser }) => {
+    test("should sync text from Tab A to Tab B", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -63,16 +58,18 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
 
-    test("should sync text from Tab B to Tab A @flaky", async ({ browser }) => {
+    test("should sync text from Tab B to Tab A", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabB.page);
         await tabA.page.waitForFunction(
@@ -92,16 +89,18 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
 
-    test("should handle bidirectional edits correctly @flaky", async ({ browser }) => {
+    test("should handle bidirectional edits correctly", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -129,21 +128,23 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
 
   test.describe("Three Tabs - Multi-Party Sync", () => {
-    test("should sync between three tabs simultaneously", async ({ browser }) => {
+    test("should sync between three tabs simultaneously", async ({ browser, request }) => {
       test.setTimeout(30000);
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
       const tabC = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
-        await openFileInEditor(tabC.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
+        await openFileInEditor(tabC.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -209,18 +210,23 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await tabA.context.close();
         await tabB.context.close();
         await tabC.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
 
   test.describe("Concurrent Edits", () => {
-    test("should handle simultaneous edits at different positions @flaky", async ({ browser }) => {
+    test("should handle simultaneous edits at different positions @flaky", async ({
+      browser,
+      request,
+    }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -257,16 +263,18 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
 
-    test("should handle conflicting edits at same position", async ({ browser }) => {
+    test("should handle conflicting edits at same position", async ({ browser, request }) => {
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -306,19 +314,21 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
 
   test.describe("Reconnection Handling", () => {
-    test("should sync after disconnect and reconnect", async ({ browser }) => {
+    test("should sync after disconnect and reconnect", async ({ browser, request }) => {
       test.setTimeout(30000); // 3 sequential openFileInEditor calls: initial open × 2 + reconnect
+      const fileId = await createTestFile(request, auth.token, auth.userData.id);
       const tabA = await createAuthenticatedContext(browser, auth);
       const tabB = await createAuthenticatedContext(browser, auth);
 
       try {
-        await openFileInEditor(tabA.page, sharedFileId);
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabA.page, fileId);
+        await openFileInEditor(tabB.page, fileId);
 
         await clearEditor(tabA.page);
         await tabB.page.waitForFunction(
@@ -336,7 +346,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await insertText(tabA.page, "\nDuring disconnect");
 
         // Reconnect
-        await openFileInEditor(tabB.page, sharedFileId);
+        await openFileInEditor(tabB.page, fileId);
 
         const contentB = await getEditorContent(tabB.page);
         expect(contentB).toContain("Before disconnect");
@@ -346,6 +356,7 @@ test.describe("Y.js Single User, Multiple Tabs @collab", () => {
         await cleanupYjs(tabB.page);
         await tabA.context.close();
         await tabB.context.close();
+        await deleteTestFile(request, auth.token, fileId);
       }
     });
   });
