@@ -395,6 +395,22 @@ async def second_authenticated_user(client: AsyncClient):
     }
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def cleanup_collaboration_manager():
+    """Shut down any YDocClient instances after each test.
+
+    Tests that hit file routes trigger start_client(), which spawns asyncio tasks
+    that retry WebSocket connections indefinitely. Without this, they become orphan
+    tasks that keep running after the test suite finishes.
+    """
+    yield
+    import aris.collaboration.manager as collab_module
+    mgr = collab_module._collaboration_manager
+    if mgr is not None and mgr.clients:
+        await mgr.shutdown_all()
+        collab_module._collaboration_manager = None
+
+
 class TestDataFactory:
     """Factory class for creating consistent test data across test files."""
 

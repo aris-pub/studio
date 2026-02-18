@@ -41,6 +41,7 @@
 
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
+  const activeCollabFileId = ref(null);
   const view = ref(null);
   const ydoc = ref(null);
   const ytext = ref(null);
@@ -112,6 +113,11 @@
       ydoc.value = null;
     }
 
+    if (activeCollabFileId.value) {
+      api.post(`/files/${activeCollabFileId.value}/collab/stop`).catch(() => {});
+      activeCollabFileId.value = null;
+    }
+
     ytext.value = null;
     awareness.value = null;
     isConnected.value = false;
@@ -150,6 +156,10 @@
       provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value);
       awareness.value = provider.value.awareness;
       awareness.value.setLocalStateField("user", userInfo.value);
+
+      // Tell the backend to start its Y.js client for this file
+      activeCollabFileId.value = fileId;
+      api.post(`/files/${fileId}/collab/start`).catch(() => {});
 
       // Log WebSocket errors only
       provider.value.ws?.addEventListener("error", (error) => {

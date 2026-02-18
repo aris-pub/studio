@@ -219,16 +219,6 @@ async def get_file(
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Start Y.js collaboration client for this file (if not already running)
-    try:
-        manager = get_collaboration_manager()
-        await manager.start_client(file_id)
-    except Exception as e:
-        # Log error but don't fail the request - collaboration is optional
-        import logging
-        logger = logging.getLogger("aris.routes.file")
-        logger.warning(f"Failed to start collaboration client for file {file_id}: {e}")
-
     # Get extracted title
     title = await file_service.get_file_title(file_id)
 
@@ -242,6 +232,50 @@ async def get_file(
         "status": doc.status.value,
         "created_at": doc.created_at,
     }
+
+
+@router.post("/{file_id}/collab/start")
+async def collab_start(
+    file_id: int,
+    user_role: FileRole = Depends(require_edit),
+    file_service: InMemoryFileService = Depends(get_file_service),
+    db: AsyncSession = Depends(get_db),
+):
+    """Signal that the collaborative editor has opened for this file.
+
+    Called by the frontend when the CodeMirror editor mounts. Starts the backend
+    Y.js client so edits are persisted to the database.
+    """
+    await file_service.sync_from_database(db)
+    doc = await file_service.get_file(file_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    manager = get_collaboration_manager()
+    await manager.start_client(file_id)
+    return {"status": "ok"}
+
+
+@router.post("/{file_id}/collab/stop")
+async def collab_stop(
+    file_id: int,
+    user_role: FileRole = Depends(require_edit),
+    file_service: InMemoryFileService = Depends(get_file_service),
+    db: AsyncSession = Depends(get_db),
+):
+    """Signal that the collaborative editor has closed for this file.
+
+    Called by the frontend when the CodeMirror editor unmounts. Stops the backend
+    Y.js client cleanly after persisting any remaining changes.
+    """
+    await file_service.sync_from_database(db)
+    doc = await file_service.get_file(file_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    manager = get_collaboration_manager()
+    await manager.stop_client(file_id)
+    return {"status": "ok"}
 
 
 @router.put("/{file_id}")

@@ -15,7 +15,7 @@ support, planned Pandoc integration for import/export.
 contributions accepted. Part of the Aris Program, supported by community donations and
 academic grants.
 
-See more at [](https://aris.pub).
+See more at [aris.pub](https://aris.pub).
 
 
 ## Getting Started
