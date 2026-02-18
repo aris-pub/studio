@@ -483,14 +483,13 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
     asset_content = base64.b64encode(chart_html.encode()).decode()
 
     asset_response = await client.post(
-        "/assets",
+        f"/files/{file_id}/assets",
         headers=headers,
         json={
             "filename": "scatter-chart.html",
             "mime_type": "text/html",
             "content": asset_content,
             "content_encoding": "base64",
-            "file_id": file_id,
         },
     )
     assert asset_response.status_code == 200

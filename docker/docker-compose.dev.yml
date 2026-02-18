@@ -126,7 +126,12 @@ services:
       - HOST=0.0.0.0
     restart: unless-stopped
 
+  # Storybook is deprecated — we never used it in practice.
+  # Code and infrastructure are kept in case we revisit, but the service is
+  # excluded from `just dev` via the "storybook" profile. To start it manually:
+  #   docker compose --profile storybook up storybook
   storybook:
+    profiles: ["storybook"]
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile.dev

@@ -19,7 +19,6 @@ from aris.logging_config import get_logger, setup_logging
 from aris.routes import (
     auth_router,
     copilot_router,
-    file_assets_router,
     file_router,
     file_settings_router,
     permissions_router,
@@ -313,7 +312,6 @@ app.include_router(file_router, tags=["files"])
 app.include_router(permissions_router, prefix="/files", tags=["permissions"])
 app.include_router(versions_router, tags=["versions"])
 app.include_router(tag_router, tags=["tags"])
-app.include_router(file_assets_router, tags=["file-assets"])
 app.include_router(file_settings_router, tags=["file-settings"])
 app.include_router(user_settings_router, tags=["user-settings"])
 app.include_router(render_router, tags=["render"])

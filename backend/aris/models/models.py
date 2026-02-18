@@ -506,8 +506,10 @@ class FileAsset(Base):
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
+    # owner_id is attribution only; SET NULL ensures assets survive when the
+    # uploader leaves a file or their account is deleted.
     owner_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     file_id = Column(
         Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False

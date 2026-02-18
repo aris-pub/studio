@@ -1,21 +1,25 @@
-# backend/tests/test_routes/test_assets.py
+"""Tests for file-scoped asset routes: /files/{file_id}/assets."""
+
 import base64
-from datetime import datetime, timezone
 
 import pytest
 from httpx import AsyncClient
 
 
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture
 async def test_file(client: AsyncClient, authenticated_user):
-    """Create a test file to associate assets with."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
     response = await client.post(
         "/files",
         headers=headers,
         json={
-            "title": "Test Document",
-            "abstract": "A test document for assets",
+            "title": "Asset Test Doc",
+            "abstract": "",
             "owner_id": authenticated_user["user_id"],
             "source": "test content",
         },
@@ -25,8 +29,6 @@ async def test_file(client: AsyncClient, authenticated_user):
 
 @pytest.fixture
 def valid_base64_image():
-    """Return a valid base64 encoded image (1x1 PNG)."""
-    # Minimal 1x1 PNG image
     png_bytes = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
     )
@@ -35,479 +37,248 @@ def valid_base64_image():
 
 @pytest.fixture
 def valid_base64_text():
-    """Return a valid base64 encoded text."""
     return base64.b64encode(b"Hello, World!").decode()
 
 
-async def test_upload_asset_without_auth(client: AsyncClient):
-    """Test that asset upload requires authentication."""
-    response = await client.post(
-        "/assets",
-        json={
-            "filename": "test.txt",
-            "mime_type": "text/plain",
-            "content": "SGVsbG8gV29ybGQ=",
-            "file_id": 1,
-        },
-    )
+# ---------------------------------------------------------------------------
+# GET /files/{file_id}/assets
+# ---------------------------------------------------------------------------
+
+
+async def test_list_assets_requires_auth(client: AsyncClient, test_file):
+    response = await client.get(f"/files/{test_file['id']}/assets")
     assert response.status_code == 401
 
 
-async def test_upload_asset_valid_image(
-    client: AsyncClient, authenticated_user, test_file, valid_base64_image
-):
-    """Test uploading a valid image asset."""
+async def test_list_assets_empty(client: AsyncClient, authenticated_user, test_file):
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["filename"] == "test.png"
-    assert data["mime_type"] == "image/png"
-    assert data["content"] == valid_base64_image
-    assert data["file_id"] == test_file["id"]
-    assert "id" in data
-    assert "uploaded_at" in data
-    assert data["deleted_at"] is None
-
-
-async def test_upload_asset_valid_text(
-    client: AsyncClient, authenticated_user, test_file, valid_base64_text
-):
-    """Test uploading a valid text asset."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "test.txt",
-            "mime_type": "text/plain",
-            "content": valid_base64_text,
-            "file_id": test_file["id"],
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["filename"] == "test.txt"
-    assert data["mime_type"] == "text/plain"
-    assert data["content"] == valid_base64_text
-
-
-async def test_upload_asset_invalid_base64_image(
-    client: AsyncClient, authenticated_user, test_file
-):
-    """Test uploading an image asset with invalid base64 content."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": "not-valid-base64!@#",
-            "content_encoding": "base64",
-            "file_id": test_file["id"],
-        },
-    )
-    assert response.status_code == 422
-    # The error message might be from base64 decode or your validator
-    response_text = str(response.json())
-    assert (
-        "Invalid base64-encoded string" in response_text
-        or "Invalid base64 content for image MIME type" in response_text
-        or "Incorrect padding" in response_text
-    )
-
-
-async def test_list_assets_without_auth(client: AsyncClient):
-    """Test that listing assets requires authentication."""
-    response = await client.get("/assets")
-    assert response.status_code == 401
-
-
-async def test_list_assets_empty(client: AsyncClient, authenticated_user):
-    """Test listing assets when user has no assets."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.get("/assets", headers=headers)
+    response = await client.get(f"/files/{test_file['id']}/assets", headers=headers)
     assert response.status_code == 200
     assert response.json() == []
 
 
-async def test_list_assets_with_data(
+async def test_list_assets_returns_all_file_assets(
     client: AsyncClient, authenticated_user, test_file, valid_base64_image
 ):
-    """Test listing assets when user has assets."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
     await client.post(
-        "/assets",
+        f"/files/{test_file['id']}/assets",
         headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
+        json={"filename": "a.png", "mime_type": "image/png", "content": valid_base64_image},
+    )
+    response = await client.get(f"/files/{test_file['id']}/assets", headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["filename"] == "a.png"
+
+
+async def test_collaborator_can_list_assets(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image
+):
+    """Collaborator must see assets uploaded by the file owner (the core bug fix)."""
+    owner_headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    # Upload an asset as the owner
+    await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=owner_headers,
+        json={"filename": "shared.png", "mime_type": "image/png", "content": valid_base64_image},
     )
 
-    # List assets
-    response = await client.get("/assets", headers=headers)
+    # Create a collaborator and give them view permission
+    collab_response = await client.post(
+        "/register",
+        json={
+            "email": "collab@example.com",
+            "name": "Collaborator",
+            "initials": "C1",
+            "password": "pass1234",
+        },
+    )
+    collab_token = collab_response.json()["access_token"]
+    collab_id = collab_response.json()["user"]["id"]
+    collab_headers = {"Authorization": f"Bearer {collab_token}"}
+
+    await client.post(
+        f"/files/{test_file['id']}/permissions",
+        headers=owner_headers,
+        json={"user_id": collab_id, "role": "COMMENTER"},
+    )
+
+    response = await client.get(f"/files/{test_file['id']}/assets", headers=collab_headers)
     assert response.status_code == 200
     assets = response.json()
     assert len(assets) == 1
-    assert assets[0]["filename"] == "test.png"
-    assert assets[0]["deleted_at"] is None
+    assert assets[0]["filename"] == "shared.png"
 
 
-async def test_get_asset_without_auth(client: AsyncClient):
-    """Test that getting an asset requires authentication."""
-    response = await client.get("/assets/1")
+# ---------------------------------------------------------------------------
+# POST /files/{file_id}/assets
+# ---------------------------------------------------------------------------
+
+
+async def test_upload_asset_requires_auth(client: AsyncClient, test_file, valid_base64_image):
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        json={"filename": "a.png", "mime_type": "image/png", "content": valid_base64_image},
+    )
     assert response.status_code == 401
 
 
-async def test_get_asset_not_found(client: AsyncClient, authenticated_user):
-    """Test getting a non-existent asset."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.get("/assets/999", headers=headers)
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Asset not found"
-
-
-async def test_get_asset_success(
+async def test_upload_asset_success(
     client: AsyncClient, authenticated_user, test_file, valid_base64_image
 ):
-    """Test successfully getting an asset."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
         headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
+        json={"filename": "img.png", "mime_type": "image/png", "content": valid_base64_image},
     )
-    asset_id = create_response.json()["id"]
-
-    # Get the asset
-    response = await client.get(f"/assets/{asset_id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == asset_id
-    assert data["filename"] == "test.png"
-    assert data["content"] == valid_base64_image
+    assert data["filename"] == "img.png"
+    assert data["file_id"] == test_file["id"]
+    assert data["deleted_at"] is None
 
 
-async def test_get_asset_different_user(client: AsyncClient, test_file, valid_base64_image):
-    """Test that users can't access other users' assets."""
-    # Create first user and asset
-    user1_response = await client.post(
-        "/register",
-        json={
-            "email": "user1@example.com",
-            "name": "User One",
-            "initials": "U1",
-            "password": "testpass123",
-        },
-    )
-    user1_headers = {"Authorization": f"Bearer {user1_response.json()['access_token']}"}
-
-    create_response = await client.post(
-        "/assets",
-        headers=user1_headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    asset_id = create_response.json()["id"]
-
-    # Create second user
-    user2_response = await client.post(
-        "/register",
-        json={
-            "email": "user2@example.com",
-            "name": "User Two",
-            "initials": "U2",
-            "password": "testpass123",
-        },
-    )
-    user2_headers = {"Authorization": f"Bearer {user2_response.json()['access_token']}"}
-
-    # Try to access asset as second user
-    response = await client.get(f"/assets/{asset_id}", headers=user2_headers)
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Asset not found"
-
-
-async def test_update_asset_without_auth(client: AsyncClient):
-    """Test that updating an asset requires authentication."""
-    response = await client.put("/assets/1", json={"filename": "new_name.txt"})
-    assert response.status_code == 401
-
-
-async def test_update_asset_not_found(client: AsyncClient, authenticated_user):
-    """Test updating a non-existent asset."""
+async def test_upload_asset_invalid_base64(client: AsyncClient, authenticated_user, test_file):
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.put("/assets/999", headers=headers, json={"filename": "new_name.txt"})
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Asset not found"
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "bad.png",
+            "mime_type": "image/png",
+            "content": "not-valid-base64!@#",
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 422
+
+
+async def test_upload_asset_viewer_forbidden(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image
+):
+    """Viewers must not be able to upload assets (requires edit permission)."""
+    owner_headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    viewer_response = await client.post(
+        "/register",
+        json={"email": "viewer@example.com", "name": "Viewer", "initials": "V1", "password": "pass1234"},
+    )
+    viewer_token = viewer_response.json()["access_token"]
+    viewer_id = viewer_response.json()["user"]["id"]
+    viewer_headers = {"Authorization": f"Bearer {viewer_token}"}
+
+    await client.post(
+        f"/files/{test_file['id']}/permissions",
+        headers=owner_headers,
+        json={"user_id": viewer_id, "role": "COMMENTER"},
+    )
+
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=viewer_headers,
+        json={"filename": "a.png", "mime_type": "image/png", "content": valid_base64_image},
+    )
+    assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# PUT /files/{file_id}/assets/{asset_id}
+# ---------------------------------------------------------------------------
 
 
 async def test_update_asset_filename(
     client: AsyncClient, authenticated_user, test_file, valid_base64_image
 ):
-    """Test updating an asset's filename."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
+    create_resp = await client.post(
+        f"/files/{test_file['id']}/assets",
         headers=headers,
-        json={
-            "filename": "original.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
+        json={"filename": "original.png", "mime_type": "image/png", "content": valid_base64_image},
     )
-    asset_id = create_response.json()["id"]
+    asset_id = create_resp.json()["id"]
 
-    # Update filename
     response = await client.put(
-        f"/assets/{asset_id}", headers=headers, json={"filename": "updated.png"}
+        f"/files/{test_file['id']}/assets/{asset_id}",
+        headers=headers,
+        json={"filename": "renamed.png"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["filename"] == "updated.png"
-    assert data["content"] == valid_base64_image  # Content unchanged
+    assert response.json()["filename"] == "renamed.png"
 
 
-async def test_update_asset_content(
-    client: AsyncClient, authenticated_user, test_file, valid_base64_image, valid_base64_text
-):
-    """Test updating an asset's content."""
+async def test_update_asset_not_found(client: AsyncClient, authenticated_user, test_file):
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    asset_id = create_response.json()["id"]
-
-    # Update content
     response = await client.put(
-        f"/assets/{asset_id}", headers=headers, json={"content": valid_base64_text}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["content"] == valid_base64_text
-    assert data["filename"] == "test.png"  # Filename unchanged
-
-
-async def test_update_asset_soft_delete(
-    client: AsyncClient, authenticated_user, test_file, valid_base64_image
-):
-    """Test soft deleting an asset via update."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
+        f"/files/{test_file['id']}/assets/999999",
         headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
+        json={"filename": "x.png"},
     )
-    asset_id = create_response.json()["id"]
+    assert response.status_code == 404
 
-    # Soft delete via update
-    delete_time = datetime.now(timezone.utc).isoformat()
+
+async def test_update_asset_requires_auth(client: AsyncClient, test_file):
     response = await client.put(
-        f"/assets/{asset_id}", headers=headers, json={"deleted_at": delete_time}
+        f"/files/{test_file['id']}/assets/1",
+        json={"filename": "x.png"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["deleted_at"] is not None
-
-
-async def test_update_asset_invalid_base64_content(
-    client: AsyncClient, authenticated_user, test_file, valid_base64_image
-):
-    """Test updating an asset with invalid base64 content."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    asset_id = create_response.json()["id"]
-
-    # Try to update with invalid base64
-    response = await client.put(
-        f"/assets/{asset_id}", headers=headers, json={"content": "not-valid-base64!@#"}
-    )
-    assert response.status_code == 422
-
-
-async def test_delete_asset_without_auth(client: AsyncClient):
-    """Test that deleting an asset requires authentication."""
-    response = await client.delete("/assets/1")
     assert response.status_code == 401
 
 
-async def test_delete_asset_not_found(client: AsyncClient, authenticated_user):
-    """Test deleting a non-existent asset."""
-    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-    response = await client.delete("/assets/999", headers=headers)
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Asset not found"
+# ---------------------------------------------------------------------------
+# DELETE /files/{file_id}/assets/{asset_id}
+# ---------------------------------------------------------------------------
 
 
 async def test_delete_asset_success(
     client: AsyncClient, authenticated_user, test_file, valid_base64_image
 ):
-    """Test successfully soft deleting an asset."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
-
-    # Create an asset
-    create_response = await client.post(
-        "/assets",
+    create_resp = await client.post(
+        f"/files/{test_file['id']}/assets",
         headers=headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
+        json={"filename": "del.png", "mime_type": "image/png", "content": valid_base64_image},
     )
-    asset_id = create_response.json()["id"]
+    asset_id = create_resp.json()["id"]
 
-    # Delete the asset
-    response = await client.delete(f"/assets/{asset_id}", headers=headers)
+    response = await client.delete(
+        f"/files/{test_file['id']}/assets/{asset_id}", headers=headers
+    )
     assert response.status_code == 200
-    assert response.json()["message"] == f"Asset {asset_id} soft deleted"
 
-    # Verify asset is no longer accessible
-    get_response = await client.get(f"/assets/{asset_id}", headers=headers)
-    assert get_response.status_code == 404
-
-    # Verify asset doesn't appear in list
-    list_response = await client.get("/assets", headers=headers)
-    assert len(list_response.json()) == 0
+    # Should not appear in the list
+    list_resp = await client.get(f"/files/{test_file['id']}/assets", headers=headers)
+    assert len(list_resp.json()) == 0
 
 
-async def test_delete_asset_different_user(client: AsyncClient, test_file, valid_base64_image):
-    """Test that users can't delete other users' assets."""
-    # Create first user and asset
-    user1_response = await client.post(
-        "/register",
-        json={
-            "email": "user1@example.com",
-            "name": "User One",
-            "initials": "U1",
-            "password": "testpass123",
-        },
-    )
-    user1_headers = {"Authorization": f"Bearer {user1_response.json()['access_token']}"}
-
-    create_response = await client.post(
-        "/assets",
-        headers=user1_headers,
-        json={
-            "filename": "test.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    asset_id = create_response.json()["id"]
-
-    # Create second user
-    user2_response = await client.post(
-        "/register",
-        json={
-            "email": "user2@example.com",
-            "name": "User Two",
-            "initials": "U2",
-            "password": "testpass123",
-        },
-    )
-    user2_headers = {"Authorization": f"Bearer {user2_response.json()['access_token']}"}
-
-    # Try to delete asset as second user
-    response = await client.delete(f"/assets/{asset_id}", headers=user2_headers)
+async def test_delete_asset_not_found(client: AsyncClient, authenticated_user, test_file):
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.delete(f"/files/{test_file['id']}/assets/999999", headers=headers)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Asset not found"
 
 
-async def test_list_assets_excludes_deleted(
+async def test_delete_asset_requires_auth(client: AsyncClient, test_file):
+    response = await client.delete(f"/files/{test_file['id']}/assets/1")
+    assert response.status_code == 401
+
+
+async def test_list_excludes_deleted_assets(
     client: AsyncClient, authenticated_user, test_file, valid_base64_image
 ):
-    """Test that listing assets excludes soft-deleted assets."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    for name in ("keep.png", "delete.png"):
+        await client.post(
+            f"/files/{test_file['id']}/assets",
+            headers=headers,
+            json={"filename": name, "mime_type": "image/png", "content": valid_base64_image},
+        )
 
-    # Create two assets
-    await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "asset1.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
+    assets = (await client.get(f"/files/{test_file['id']}/assets", headers=headers)).json()
+    to_delete_id = next(a["id"] for a in assets if a["filename"] == "delete.png")
+    await client.delete(f"/files/{test_file['id']}/assets/{to_delete_id}", headers=headers)
 
-    create_response2 = await client.post(
-        "/assets",
-        headers=headers,
-        json={
-            "filename": "asset2.png",
-            "mime_type": "image/png",
-            "content": valid_base64_image,
-            "file_id": test_file["id"],
-        },
-    )
-    asset2_id = create_response2.json()["id"]
-
-    # Delete the second asset
-    await client.delete(f"/assets/{asset2_id}", headers=headers)
-
-    # List assets should only return the first one
-    response = await client.get("/assets", headers=headers)
-    assert response.status_code == 200
-    assets = response.json()
-    assert len(assets) == 1
-    assert assets[0]["filename"] == "asset1.png"
+    remaining = (await client.get(f"/files/{test_file['id']}/assets", headers=headers)).json()
+    assert len(remaining) == 1
+    assert remaining[0]["filename"] == "keep.png"

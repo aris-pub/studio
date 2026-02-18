@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, Response
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db, get_file_service
 from ..authorization import require_edit, require_manage, require_view
 from ..collaboration import get_collaboration_manager
+from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..models import FileAsset
 from ..models.models import FileRole
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
-from .file_assets import FileAssetOut
 
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(current_user)])
@@ -555,50 +555,100 @@ async def get_file_section(
 
 
 
+class _AssetBody(BaseModel):
+    """Request body for uploading a file asset (file_id comes from the URL path)."""
+
+    filename: str
+    mime_type: str
+    content: str
+    content_encoding: str = "plain"
+
+    @field_validator("content_encoding")
+    @classmethod
+    def _validate_encoding(cls, v: str) -> str:
+        if v not in ("plain", "base64"):
+            raise ValueError("content_encoding must be 'plain' or 'base64'")
+        return v
+
+    @model_validator(mode="after")
+    def _validate_base64_content(self) -> "_AssetBody":
+        import base64 as _b64
+        import binascii
+        if self.content_encoding == "base64":
+            try:
+                _b64.b64decode(self.content)
+            except (TypeError, binascii.Error):
+                raise ValueError("Invalid base64-encoded string")
+        return self
+
+
 @router.get("/{file_id}/assets", response_model=list[FileAssetOut])
 async def get_assets_for_file(
     file_id: int,
     user_role: FileRole = Depends(require_view),
     db: AsyncSession = Depends(get_db),
-    user=Depends(current_user),
 ):
-    """Retrieve all assets associated with a file.
-
-    Parameters
-    ----------
-    file_id : int
-        The unique identifier of the file whose assets to retrieve.
-    user_role : FileRole
-        User's role for permission checking (injected by require_view).
-    db : AsyncSession
-        SQLAlchemy async database session dependency.
-    user : User
-        Current authenticated user dependency.
-
-    Returns
-    -------
-    list of FileAssetOut
-        List of file assets owned by the user for the specified file.
-
-    Raises
-    ------
-    HTTPException
-        403 error if user lacks VIEW permission.
-
-    Notes
-    -----
-    Requires authentication and VIEW permission. Only returns assets owned by the current user.
-    Excludes soft-deleted assets.
-    """
+    """List all non-deleted assets for a file. Any viewer (including collaborators) can list."""
     result = await db.execute(
         select(FileAsset).where(
             FileAsset.file_id == file_id,
-            FileAsset.owner_id == user.id,
             FileAsset.deleted_at.is_(None),
         )
     )
-    assets = result.scalars().all()
-    return assets
+    return result.scalars().all()
+
+
+@router.post("/{file_id}/assets", response_model=FileAssetOut)
+async def create_asset_for_file(
+    file_id: int,
+    payload: _AssetBody,
+    user_role: FileRole = Depends(require_edit),
+    db: AsyncSession = Depends(get_db),
+    user: UserRead = Depends(current_user),
+):
+    """Upload a new asset to a file. Requires edit permission."""
+    asset = await FileAssetDB.create_asset(
+        FileAssetCreate(
+            filename=payload.filename,
+            mime_type=payload.mime_type,
+            content=payload.content,
+            content_encoding=payload.content_encoding,
+            file_id=file_id,
+        ),
+        user.id,
+        db,
+    )
+    return asset
+
+
+@router.put("/{file_id}/assets/{asset_id}", response_model=FileAssetOut)
+async def update_asset_for_file(
+    file_id: int,
+    asset_id: int,
+    payload: FileAssetUpdate,
+    user_role: FileRole = Depends(require_edit),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an asset's filename or content. Requires edit permission."""
+    asset = await db.get(FileAsset, asset_id)
+    if not asset or asset.file_id != file_id or asset.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return await FileAssetDB.update_asset(asset, payload, db)
+
+
+@router.delete("/{file_id}/assets/{asset_id}")
+async def delete_asset_for_file(
+    file_id: int,
+    asset_id: int,
+    user_role: FileRole = Depends(require_edit),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete an asset. Requires edit permission."""
+    asset = await db.get(FileAsset, asset_id)
+    if not asset or asset.file_id != file_id or asset.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    await FileAssetDB.soft_delete_asset(asset, db)
+    return {"message": f"Asset {asset_id} deleted"}
 
 
 @router.get("/{file_id}/download")
