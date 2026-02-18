@@ -260,19 +260,16 @@ async def collab_start(
 async def collab_stop(
     file_id: int,
     user_role: FileRole = Depends(require_edit),
-    file_service: InMemoryFileService = Depends(get_file_service),
-    db: AsyncSession = Depends(get_db),
 ):
     """Signal that the collaborative editor has closed for this file.
 
     Called by the frontend when the CodeMirror editor unmounts. Stops the backend
     Y.js client cleanly after persisting any remaining changes.
-    """
-    await file_service.sync_from_database(db)
-    doc = await file_service.get_file(file_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="File not found")
 
+    No file existence check: the file may have already been deleted (e.g. in tests
+    the finally block deletes the file before the browser context closes), and we
+    still need to stop the Y.js client in that case.
+    """
     manager = get_collaboration_manager()
     await manager.stop_client(file_id)
     return {"status": "ok"}

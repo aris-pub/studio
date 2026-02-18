@@ -79,12 +79,12 @@ export class MobileHelpers {
       await expect(locator).toBeVisible({ timeout });
     } catch (error) {
       // Debug element state
-      const elementInfo = await this.debugElementState(locator);
+      const _elementInfo = await this.debugElementState(locator);
 
       // Take screenshot for debugging
       try {
         await this.page.screenshot({ path: `debug/debug-element-visibility-${Date.now()}.png` });
-      } catch (screenshotError) {
+      } catch (_screenshotError) {
         // Ignore screenshot errors
       }
 
@@ -139,7 +139,7 @@ export class MobileHelpers {
       try {
         await locator.scrollIntoViewIfNeeded();
         await this.page.waitForTimeout(100); // Brief delay for scroll completion
-      } catch (scrollError) {
+      } catch (_scrollError) {
         // Continue with click even if scroll fails
       }
     }
@@ -164,7 +164,7 @@ export class MobileHelpers {
       try {
         await locator.scrollIntoViewIfNeeded();
         await this.page.waitForTimeout(100); // Brief delay for scroll completion
-      } catch (scrollError) {
+      } catch (_scrollError) {
         // Continue with force click even if scroll fails
       }
     }
@@ -184,7 +184,7 @@ export class MobileHelpers {
       // Take screenshot for debugging
       try {
         await this.page.screenshot({ path: `debug-navigation-timeout-${Date.now()}.png` });
-      } catch (screenshotError) {
+      } catch (_screenshotError) {
         // Ignore screenshot errors
       }
 
@@ -262,13 +262,13 @@ export class MobileHelpers {
    * Debug load state and log intermediate checkpoints
    */
   async debugLoadState() {
-    const url = this.page.url();
+    const _url = this.page.url();
 
     // Check document ready state
-    const readyState = await this.page.evaluate(() => document.readyState);
+    const _readyState = await this.page.evaluate(() => document.readyState);
 
     // Check for pending requests
-    const pendingRequests = await this.page.evaluate(() => {
+    const _pendingRequests = await this.page.evaluate(() => {
       // Check for common loading indicators
       const loadingElements = document.querySelectorAll("[data-loading], .loading, .spinner");
       const vueLoadingComponents = document.querySelectorAll("[data-v-loading]");
@@ -282,7 +282,7 @@ export class MobileHelpers {
     });
 
     // Check for Vue.js app mount state
-    const vueAppState = await this.page.evaluate(() => {
+    const _vueAppState = await this.page.evaluate(() => {
       const app = document.querySelector("#app");
       return {
         appExists: !!app,

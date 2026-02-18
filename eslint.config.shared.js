@@ -12,7 +12,8 @@ export const baseRules = {
   // Code quality
   "no-unused-vars": ["error", {
     "argsIgnorePattern": "^_",
-    "varsIgnorePattern": "^_"
+    "varsIgnorePattern": "^_",
+    "caughtErrorsIgnorePattern": "^_"
   }],
   "no-undef": "error",
   "eqeqeq": ["error", "always"],

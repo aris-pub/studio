@@ -23,7 +23,7 @@ export async function setupSharedAuth(page) {
   // Save auth state for potential reuse
   try {
     await authHelpers.saveAuthState(AUTH_STATE_PATH);
-  } catch (error) {
+  } catch (_error) {
     // Ignore save errors - not critical
   }
 

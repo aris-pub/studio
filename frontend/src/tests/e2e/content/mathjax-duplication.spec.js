@@ -1,7 +1,6 @@
 // @auth @auth-content
 import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
-import { TEST_CREDENTIALS } from "../setup/test-data.js";
 import { getBackendURL } from "../utils/test-config.js";
 
 /**
@@ -369,7 +368,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
 
       // Get current content and modify it
-      const currentContent = await page.evaluate(() => window.__cmView.state.doc.toString());
+      const _currentContent = await page.evaluate(() => window.__cmView.state.doc.toString());
 
       // Edit content via CodeMirror dispatch
       await page.evaluate(() => {
@@ -449,7 +448,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
       }
 
       // Get current content and make second edit
-      const currentContent2 = await page.evaluate(() => window.__cmView.state.doc.toString());
+      const _currentContent2 = await page.evaluate(() => window.__cmView.state.doc.toString());
 
       // Make another edit via CodeMirror dispatch
       await page.evaluate(() => {
@@ -546,7 +545,7 @@ test.describe("MathJax Duplication Bug @auth @desktop-only", () => {
 
       await page.waitForFunction(() => typeof window.MathJax !== "undefined", { timeout: 5000 });
 
-      const initialScriptCount = await page.evaluate(() => {
+      const _initialScriptCount = await page.evaluate(() => {
         return document.querySelectorAll('script[id="MathJax-script"]').length;
       });
 

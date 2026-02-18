@@ -1,7 +1,6 @@
 // @auth @auth-interface
 import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
-import { TEST_CREDENTIALS } from "../setup/test-data.js";
 
 test.describe("Settings Navigation @auth @desktop-only", () => {
   let authHelpers;

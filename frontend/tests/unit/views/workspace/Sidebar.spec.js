@@ -75,8 +75,6 @@ describe("Sidebar", () => {
       // Get the items array from component instance
       const items = wrapper.vm.items;
       const versionsItem = items.find((item) => item.name === "DrawerVersions");
-      const settingsItem = items.find((item) => item.name === "DrawerSettings");
-
       // Simulate opening versions drawer by clicking button
       versionsItem.state = true;
       drawerOpen.value = true; // Drawer opens

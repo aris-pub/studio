@@ -62,7 +62,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     expect(response.status()).toBe(200);
 
     // Check current URL after API call
-    const currentUrl = page.url();
+    const _currentUrl = page.url();
 
     // Check auth state after API call
     const accessTokenAfter = await page.evaluate(() => localStorage.getItem("accessToken"));
@@ -214,9 +214,9 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await expect(page.locator(".status-message.warning")).toContainText("unsaved password changes");
 
     // Get current values before cancel
-    const currentValueBefore = await currentPasswordInput.inputValue();
-    const newValueBefore = await newPasswordInput.inputValue();
-    const confirmValueBefore = await confirmPasswordInput.inputValue();
+    const _currentValueBefore = await currentPasswordInput.inputValue();
+    const _newValueBefore = await newPasswordInput.inputValue();
+    const _confirmValueBefore = await confirmPasswordInput.inputValue();
 
     // Cancel should reset form
     await cancelButton.click();
@@ -225,9 +225,9 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await page.waitForTimeout(TIMEOUTS.ANIMATION);
 
     // Check values after cancel
-    const currentValueAfter = await currentPasswordInput.inputValue();
-    const newValueAfter = await newPasswordInput.inputValue();
-    const confirmValueAfter = await confirmPasswordInput.inputValue();
+    const _currentValueAfter = await currentPasswordInput.inputValue();
+    const _newValueAfter = await newPasswordInput.inputValue();
+    const _confirmValueAfter = await confirmPasswordInput.inputValue();
 
     await expect(currentPasswordInput).toHaveValue("");
     await expect(newPasswordInput).toHaveValue("");

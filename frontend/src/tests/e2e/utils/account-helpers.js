@@ -53,8 +53,10 @@ export class AccountHelpers {
     if (buttonCount === 0) {
       // Check email verification status
       const statusIndicator = emailSection.locator(".status-indicator");
-      const isVerified = await statusIndicator.evaluate((el) => el.classList.contains("verified"));
-      const isUnverified = await statusIndicator.evaluate((el) => el.classList.contains("warning"));
+      const _isVerified = await statusIndicator.evaluate((el) => el.classList.contains("verified"));
+      const _isUnverified = await statusIndicator.evaluate((el) =>
+        el.classList.contains("warning")
+      );
 
       throw new Error("Send verification button not found in .verification-actions");
     }
@@ -76,7 +78,7 @@ export class AccountHelpers {
     let responseData = {};
     try {
       responseData = await response.json();
-    } catch (error) {
+    } catch (_error) {
       // Ignore JSON parse errors
     }
 
@@ -130,7 +132,7 @@ export class AccountHelpers {
     let responseData = {};
     try {
       responseData = await response.json();
-    } catch (error) {
+    } catch (_error) {
       // Ignore JSON parse errors
     }
 

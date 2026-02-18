@@ -110,7 +110,7 @@ export class AuthHelpers {
       );
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -143,7 +143,7 @@ export class AuthHelpers {
     await this.page.context().storageState({ path: storageStatePath });
   }
 
-  async loadAuthState(storageStatePath) {
+  async loadAuthState(_storageStatePath) {
     // Note: Storage state is loaded at context creation time
   }
 
@@ -196,12 +196,11 @@ export class AuthHelpers {
     }
 
     // Verify we have authentication tokens
-    let finalAccessToken, finalUser, finalRefreshToken;
+    let finalAccessToken, finalUser;
     try {
       finalAccessToken = await this.page.evaluate(() => localStorage.getItem("accessToken"));
       finalUser = await this.page.evaluate(() => localStorage.getItem("user"));
-      finalRefreshToken = await this.page.evaluate(() => localStorage.getItem("refreshToken"));
-    } catch (error) {
+    } catch (_error) {
       throw new Error("Failed to access localStorage for token verification");
     }
 
@@ -253,7 +252,7 @@ export class AuthHelpers {
       });
 
       return tokens;
-    } catch (error) {
+    } catch (_error) {
       return { accessToken: null, refreshToken: null, user: null };
     }
   }

@@ -113,7 +113,7 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     await page.goto("/demo", { waitUntil: "domcontentloaded" });
 
     // Check current URL before assertions
-    const currentUrl = page.url();
+    const _currentUrl = page.url();
 
     // Should stay on demo page
     await expect(page).toHaveURL("/demo");

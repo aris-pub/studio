@@ -1,4 +1,4 @@
-import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
 

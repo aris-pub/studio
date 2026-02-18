@@ -9,7 +9,7 @@
  * 4. Owner-only permission
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures.js";
 
 test.describe("Version Restore Tests @auth @version-restore", () => {
   let fileId;
@@ -98,7 +98,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     expect(restoredContent).not.toContain("Modified Content");
   });
 
-  test("non-owner cannot restore version", async ({ page, context }) => {
+  test("non-owner cannot restore version", async ({ page: _page, context: _context }) => {
     // TODO: This test requires creating a second user and sharing file
     // For now, skip - will implement after permission system is hooked up
     test.skip();
