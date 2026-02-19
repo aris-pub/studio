@@ -64,7 +64,7 @@
     if (!fileId) return {};
 
     // Prefer file from store (has full metadata including tags, selection state)
-    if (files?.length > 0) {
+    if (Object.values(files ?? {}).length > 0) {
       const found = Object.values(files).find((f) => f.id === fileId);
       if (found) return found;
     }
@@ -91,7 +91,7 @@
       // 4. Not currently loading
       // 5. FileStore has at least some files (not empty due to API failure)
       // 6. File with that ID was not found
-      const hasFiles = fileStore?.value?.files?.length > 0;
+      const hasFiles = Object.values(fileStore?.value?.files ?? {}).length > 0;
       if (routeFileId && isLoaded && !hasError && !isLoading && hasFiles && fileId === undefined) {
         router.push({ name: "NotFound" });
       }

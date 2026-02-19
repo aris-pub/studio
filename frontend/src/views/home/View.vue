@@ -43,7 +43,7 @@
 
   // Trigger file/tag loading when navigating to home via SPA (store exists but not yet loaded)
   watchEffect(() => {
-    if (fileStore.value && !fileStore.value.filesLoaded.value) {
+    if (fileStore.value && !fileStore.value.filesLoaded?.value) {
       fileStore.value.loadFiles();
       fileStore.value.loadTags();
     }

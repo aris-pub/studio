@@ -17,6 +17,9 @@ describe("HomeView", () => {
           fileStore: {
             value: {
               getRecentFiles: vi.fn(() => []),
+              loadFiles: vi.fn(),
+              loadTags: vi.fn(),
+              filesLoaded: { value: true },
             },
           },
         },
