@@ -8,6 +8,9 @@ import Button from "@/components/base/Button.vue";
 const pushMock = vi.fn();
 vi.mock("vue-router", () => ({ useRouter: () => ({ push: pushMock }) }));
 
+const toastInfoMock = vi.hoisted(() => vi.fn());
+vi.mock("@/utils/toast", () => ({ toast: { info: toastInfoMock } }));
+
 describe("RegisterView", () => {
   let wrapper;
   const user = ref(null);
@@ -15,6 +18,7 @@ describe("RegisterView", () => {
 
   beforeEach(() => {
     pushMock.mockClear();
+    toastInfoMock.mockClear();
     api.post.mockReset();
     user.value = null;
     localStorage.clear();
@@ -61,5 +65,34 @@ describe("RegisterView", () => {
     expect(JSON.parse(localStorage.getItem("user"))).toEqual(registeredUser);
     expect(user.value).toEqual(registeredUser);
     expect(pushMock).toHaveBeenCalledWith("/");
+  });
+
+  it("shows verification nudge toast after successful registration", async () => {
+    const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
+    api.post.mockResolvedValue({ data: { accessToken: "tok", user: registeredUser } });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secret");
+    await inputs[3].setValue("secret");
+    await wrapper.vm.onRegister();
+    expect(toastInfoMock).toHaveBeenCalledOnce();
+    const [message, options] = toastInfoMock.mock.calls[0];
+    expect(message).toBe("Check your inbox");
+    expect(options.description).toContain("bob@test.com");
+    expect(options.duration).toBe(0);
+    expect(options.dismissible).toBe(true);
+  });
+
+  it("does not show toast when registration fails", async () => {
+    api.post.mockRejectedValue({ response: { data: { message: "Email already registered." } } });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secret");
+    await inputs[3].setValue("secret");
+    await wrapper.vm.onRegister();
+    expect(toastInfoMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

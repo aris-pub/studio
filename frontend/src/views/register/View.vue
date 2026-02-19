@@ -1,6 +1,7 @@
 <script setup>
   import { ref, inject, onMounted } from "vue";
   import { useRouter } from "vue-router";
+  import { toast } from "@/utils/toast";
 
   const router = useRouter();
   const name = ref("");
@@ -43,6 +44,11 @@
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("user", JSON.stringify(registeredUser));
       user.value = registeredUser;
+      toast.info("Check your inbox", {
+        description: `We sent a verification link to ${email.value}. The link expires in 24 hours.`,
+        duration: 0,
+        dismissible: true,
+      });
       router.push("/");
     } catch (err) {
       if (err.response?.data?.message) {

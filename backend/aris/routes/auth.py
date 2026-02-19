@@ -1,12 +1,16 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user, get_db, jwt
+from ..config import settings
 from ..logging_config import get_logger
 from ..models import User
 from ..security import hash_password, verify_password
+from ..services.email import get_email_service
 
 
 logger = get_logger(__name__)
@@ -202,6 +206,20 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     new_user = await crud.create_user(
         user_data.name, user_data.initials, user_data.email, password_hash, db
     )
+
+    token = new_user.generate_verification_token()
+    new_user.email_verification_sent_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(new_user)
+
+    email_service = get_email_service()
+    if email_service:
+        await email_service.send_verification_email(
+            to_email=new_user.email,
+            name=new_user.name,
+            token=token,
+            frontend_url=settings.FRONTEND_URL,
+        )
 
     logger.info(f"Successfully registered new user with id: {new_user.id}")
     access_token = jwt.create_access_token(data={"sub": str(new_user.id)})

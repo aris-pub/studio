@@ -10,9 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .. import crud, current_user, get_db
+from ..config import settings
 from ..exceptions import bad_request_exception, not_found_exception
 from ..models import ProfilePicture, User
 from ..security import hash_password, verify_password
+from ..services.email import get_email_service
 
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(current_user)])
@@ -196,13 +198,19 @@ async def send_verification_email(
     if user.email_verified:
         raise HTTPException(status_code=400, detail="Email is already verified")
     
-    # Generate verification token
-    user.generate_verification_token()
+    token = user.generate_verification_token()
     user.email_verification_sent_at = datetime.now(UTC)
     await db.commit()
-    
-    # TODO: In production, send actual email with verification link
-    # For now, just return success message
+
+    email_service = get_email_service()
+    if email_service:
+        await email_service.send_verification_email(
+            to_email=user.email,
+            name=user.name,
+            token=token,
+            frontend_url=settings.FRONTEND_URL,
+        )
+
     return {"message": "Verification email sent successfully"}
 
 

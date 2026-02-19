@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { toast } from "@/utils/toast.js";
 // Conditionally stub view components during unit testing to avoid .vue imports
 // E2E tests need real components, so only stub for unit tests (vitest)
 const isUnitTest = import.meta.env.TEST && import.meta.env.VITEST;
@@ -21,6 +20,7 @@ const SettingsNotificationsView = isUnitTest
   ? {}
   : () => import("@/views/settings/NotificationsView.vue");
 const NotFoundView = isUnitTest ? {} : () => import("@/views/notfound/View.vue");
+const VerifyEmailView = isUnitTest ? {} : () => import("@/views/verify-email/View.vue");
 
 const routes = [
   { path: "/login", component: LoginView },
@@ -28,54 +28,7 @@ const routes = [
   { path: "/", component: HomeView },
   { path: "/file/:file_id", component: WorkspaceView },
   { path: "/demo", component: DemoView },
-  {
-    path: "/verify-email/:token",
-    name: "EmailVerification",
-    beforeEnter: async (to, from, next) => {
-      const token = to.params.token;
-
-      try {
-        // Import axios here to avoid issues during testing
-        const axios = (await import("axios")).default;
-
-        // Create API instance with base URL
-        const api = axios.create({
-          baseURL: import.meta.env.VITE_API_BASE_URL,
-        });
-
-        await api.post(`/users/verify-email/${token}`);
-
-        // Update user in localStorage if exists
-        const userStr = localStorage.getItem("user");
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          user.email_verified = true;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-
-        toast.success("Email verified successfully!", {
-          description: "Your email address has been verified.",
-        });
-
-        next("/account/security");
-      } catch (error) {
-        console.error("Email verification failed", error);
-
-        let errorMessage = "Verification failed. Please try again.";
-        if (error.response?.status === 400) {
-          errorMessage = "Email is already verified";
-        } else if (error.response?.status === 404) {
-          errorMessage = "Invalid or expired verification link";
-        }
-
-        toast.error("Email verification failed", {
-          description: errorMessage,
-        });
-
-        next("/account/security");
-      }
-    },
-  },
+  { path: "/verify-email/:token", name: "EmailVerification", component: VerifyEmailView },
   {
     path: "/account",
     component: AccountView,

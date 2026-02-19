@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
     """Admin email for notifications (signups, etc.)."""
 
+    FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
+    """Frontend base URL used for building email links."""
+
     ANTHROPIC_API_KEY: str = Field("", json_schema_extra={"env": "ANTHROPIC_API_KEY"})
     """Anthropic API key for AI copilot functionality."""
 
