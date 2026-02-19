@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { nextTick } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
 import Button from "@/components/base/Button.vue";
 import Icon from "@/components/base/Icon.vue";
