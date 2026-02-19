@@ -49,7 +49,9 @@ describe("RegisterView", () => {
 
   it("registers and redirects on successful register", async () => {
     const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
-    api.post.mockResolvedValue({ data: { accessToken: "tok", user: registeredUser } });
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
@@ -69,7 +71,9 @@ describe("RegisterView", () => {
 
   it("shows verification nudge toast after successful registration", async () => {
     const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
-    api.post.mockResolvedValue({ data: { accessToken: "tok", user: registeredUser } });
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
@@ -82,6 +86,25 @@ describe("RegisterView", () => {
     expect(options.description).toContain("bob@test.com");
     expect(options.duration).toBe(0);
     expect(options.dismissible).toBe(true);
+  });
+
+  it("stores accessToken from snake_case backend response key", async () => {
+    // Regression: register view previously destructured { accessToken } (camelCase) but the
+    // backend returns access_token (snake_case), causing localStorage to store "undefined"
+    // and the 401 interceptor to immediately redirect the newly-registered user to /login.
+    const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
+    api.post.mockResolvedValue({
+      data: { access_token: "real-tok", refresh_token: "real-refresh", user: registeredUser },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secret");
+    await inputs[3].setValue("secret");
+    await wrapper.vm.onRegister();
+    expect(localStorage.getItem("accessToken")).toBe("real-tok");
+    expect(localStorage.getItem("accessToken")).not.toBe("undefined");
+    expect(localStorage.getItem("refreshToken")).toBe("real-refresh");
   });
 
   it("does not show toast when registration fails", async () => {

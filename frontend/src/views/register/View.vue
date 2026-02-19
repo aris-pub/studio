@@ -40,8 +40,9 @@
         password: pwd.value,
       });
 
-      const { accessToken, user: registeredUser } = response.data;
-      localStorage.setItem("accessToken", accessToken);
+      const { access_token, refresh_token, user: registeredUser } = response.data;
+      localStorage.setItem("accessToken", access_token);
+      localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("user", JSON.stringify(registeredUser));
       user.value = registeredUser;
       toast.info("Check your inbox", {
