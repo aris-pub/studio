@@ -12,6 +12,11 @@ export class AuthHelpers {
 
   async login(email, password) {
     await this.page.goto("/login", { waitUntil: "commit" });
+    // "commit" fires before Vue mounts — wait for the login form to appear.
+    await this.page.waitForSelector('[data-testid="email-input"]', {
+      state: "visible",
+      timeout: 8000,
+    });
 
     await this.page.fill('[data-testid="email-input"]', email);
 
