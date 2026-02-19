@@ -4,15 +4,16 @@ import { AuthHelpers } from "../utils/auth-helpers.js";
 import { getBackendURL } from "../utils/test-config.js";
 
 /**
- * Tooltip MathJax Rendering Test
+ * Tooltip Math Rendering Test
  *
- * This test verifies that MathJax content inside tooltips is rendered correctly.
+ * This test verifies that math content inside tooltips is rendered correctly.
  * Tooltips are created when hovering over reference links (a.reference) and
  * display content cloned from the referenced element.
  *
- * The tooltip system calls MathJax.typeset() to render math in tooltip content,
- * which was causing a bug where it re-typeset the entire document instead of
- * just the tooltip content.
+ * RSM uses Temml as the primary renderer (synchronous, native MathML).
+ * The tooltip system calls onrender() on the tooltip content, which runs
+ * typesetMath() to render math — this should affect only the tooltip, not
+ * the main document.
  */
 
 // RSM source with a labeled math block and a reference to it
@@ -29,7 +30,7 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
 The quadratic formula :ref:eqn-quadratic:: is used to solve quadratic equations.
 `;
 
-test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
+test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
   let authHelpers;
   let baseURL;
   let accessToken;
@@ -39,7 +40,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
     baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
-    // Wait for any pending requests from post-login navigation to complete
     await page.waitForLoadState("networkidle").catch(() => {});
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
@@ -47,7 +47,6 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   });
 
   test.afterEach(async ({ page }) => {
-    // Wait for pending requests to complete before next test starts
     await page.waitForLoadState("networkidle").catch(() => {});
   });
 
@@ -73,30 +72,20 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
   }
 
   /**
-   * Wait for MathJax to finish processing (no .MathJax_Processing elements)
-   */
-  async function waitForMathJaxDone(page) {
-    await page.waitForFunction(() => !document.querySelector(".MathJax_Processing"), {
-      timeout: 5000,
-    });
-  }
-
-  /**
-   * Wait for tooltip to contain rendered MathJax
+   * Wait for tooltip to contain rendered math (native MathML from Temml)
    */
   async function waitForTooltipMath(page) {
     await page.waitForFunction(
       () => {
         const tooltip = document.querySelector(".tooltipster-base");
         if (!tooltip) return false;
-        // Tooltip has MathJax rendered when mjx-container exists inside it
-        return tooltip.querySelectorAll("mjx-container").length > 0;
+        return tooltip.querySelectorAll("math").length > 0;
       },
       { timeout: 5000 }
     );
   }
 
-  test("tooltip should render MathJax content when hovering over reference", async ({
+  test("tooltip should render math content when hovering over reference", async ({
     page,
     request,
   }) => {
@@ -105,87 +94,76 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
     try {
       await page.goto(`/file/${fileId}`);
 
-      // Wait for manuscript to load
       await expect(page.locator('[data-testid="manuscript-viewer"]')).toBeVisible({
         timeout: 10000,
       });
 
-      // Wait for MathJax to render the main content
-      await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+      // Wait for Temml to render math in the main content
+      await page.waitForFunction(() => document.querySelectorAll("math").length > 0, {
         timeout: 10000,
       });
 
-      // Get initial MathJax container count
       const initialState = await page.evaluate(() => ({
-        mjxCount: document.querySelectorAll("mjx-container").length,
-        nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
+        mathCount: document.querySelectorAll("math").length,
+        nestedMathCount: document.querySelectorAll("math math").length,
         referenceLinks: document.querySelectorAll("a.reference").length,
       }));
 
       expect(initialState.referenceLinks).toBeGreaterThan(0);
 
-      // Find the reference link and hover over it
       const referenceLink = page.locator("a.reference").first();
       await expect(referenceLink).toBeVisible({ timeout: 5000 });
 
       await referenceLink.hover();
 
-      // Wait for tooltip to appear with rendered math
       await page.waitForSelector(".tooltipster-base", { timeout: 5000 });
       await waitForTooltipMath(page);
 
-      // Check the tooltip contains rendered math
       const tooltipState = await page.evaluate(() => {
         const tooltip = document.querySelector(".tooltipster-base");
         if (!tooltip) return { error: "no tooltip found" };
 
-        const tooltipMjx = tooltip.querySelectorAll("mjx-container").length;
+        const tooltipMath = tooltip.querySelectorAll("math").length;
         const tooltipText = tooltip.textContent || "";
         const hasRawLatex = tooltipText.includes("\\frac") || tooltipText.includes("\\sqrt");
 
-        const docMjx = document.querySelectorAll("mjx-container").length;
-        const nestedMjx = document.querySelectorAll("mjx-container mjx-container").length;
+        const docMath = document.querySelectorAll("math").length;
+        const nestedMath = document.querySelectorAll("math math").length;
 
         return {
           tooltipVisible: true,
-          tooltipMjxCount: tooltipMjx,
+          tooltipMathCount: tooltipMath,
           hasRawLatexInTooltip: hasRawLatex,
-          documentMjxCount: docMjx,
-          nestedMjxCount: nestedMjx,
+          documentMathCount: docMath,
+          nestedMathCount: nestedMath,
         };
       });
 
       expect(tooltipState.tooltipVisible).toBe(true);
-      expect(tooltipState.tooltipMjxCount).toBeGreaterThan(0);
+      expect(tooltipState.tooltipMathCount).toBeGreaterThan(0);
       expect(tooltipState.hasRawLatexInTooltip).toBe(false);
 
-      // No nested mjx-containers (the duplication bug)
-      expect(tooltipState.nestedMjxCount).toBe(0);
+      // No nested math elements (the duplication bug symptom)
+      expect(tooltipState.nestedMathCount).toBe(0);
 
-      // Move mouse away to close tooltip
       await page.mouse.move(0, 0);
 
-      // Wait for tooltip to close
       await page.waitForFunction(() => !document.querySelector(".tooltipster-base"), {
         timeout: 3000,
       });
 
-      // Final check
       const finalState = await page.evaluate(() => ({
-        mjxCount: document.querySelectorAll("mjx-container").length,
-        nestedMjxCount: document.querySelectorAll("mjx-container mjx-container").length,
+        mathCount: document.querySelectorAll("math").length,
+        nestedMathCount: document.querySelectorAll("math math").length,
       }));
 
-      expect(finalState.nestedMjxCount).toBe(0);
+      expect(finalState.nestedMathCount).toBe(0);
     } finally {
       await deleteTestFile(request, fileId);
     }
   });
 
-  test("showing tooltip should not duplicate MathJax in main document", async ({
-    page,
-    request,
-  }) => {
+  test("showing tooltip should not duplicate math in main document", async ({ page, request }) => {
     const fileId = await createTestFile(request, RSM_SOURCE_WITH_MATH_REFERENCE);
 
     try {
@@ -195,48 +173,40 @@ test.describe("Tooltip MathJax Rendering @auth @desktop-only", () => {
         timeout: 10000,
       });
 
-      // Wait for MathJax to render
-      await page.waitForFunction(() => document.querySelectorAll("mjx-container").length > 0, {
+      await page.waitForFunction(() => document.querySelectorAll("math").length > 0, {
         timeout: 10000,
       });
 
-      // Wait for MathJax to finish processing
-      await waitForMathJaxDone(page);
-
-      // Get the count of mjx-containers in the MAIN manuscript
       const beforeTooltip = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
         return {
-          manuscriptMjx: manuscript?.querySelectorAll("mjx-container").length || 0,
-          documentMjx: document.querySelectorAll("mjx-container").length,
+          manuscriptMath: manuscript?.querySelectorAll("math").length || 0,
+          documentMath: document.querySelectorAll("math").length,
         };
       });
 
-      // Hover over reference to trigger tooltip
       const referenceLink = page.locator("a.reference").first();
       await referenceLink.hover();
 
-      // Wait for tooltip with rendered math
       await page.waitForSelector(".tooltipster-base", { timeout: 5000 });
       await waitForTooltipMath(page);
 
-      // Check manuscript mjx count hasn't changed
       const afterTooltip = await page.evaluate(() => {
         const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
         const tooltip = document.querySelector(".tooltipster-base");
         return {
-          manuscriptMjx: manuscript?.querySelectorAll("mjx-container").length || 0,
-          tooltipMjx: tooltip?.querySelectorAll("mjx-container").length || 0,
-          documentMjx: document.querySelectorAll("mjx-container").length,
-          nestedMjx: document.querySelectorAll("mjx-container mjx-container").length,
+          manuscriptMath: manuscript?.querySelectorAll("math").length || 0,
+          tooltipMath: tooltip?.querySelectorAll("math").length || 0,
+          documentMath: document.querySelectorAll("math").length,
+          nestedMath: document.querySelectorAll("math math").length,
         };
       });
 
-      // Manuscript mjx count should NOT increase
-      expect(afterTooltip.manuscriptMjx).toBe(beforeTooltip.manuscriptMjx);
+      // Manuscript math count should NOT increase
+      expect(afterTooltip.manuscriptMath).toBe(beforeTooltip.manuscriptMath);
 
-      // No nested containers
-      expect(afterTooltip.nestedMjx).toBe(0);
+      // No nested math elements
+      expect(afterTooltip.nestedMath).toBe(0);
     } finally {
       await deleteTestFile(request, fileId);
     }
