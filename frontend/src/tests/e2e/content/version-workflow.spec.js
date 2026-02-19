@@ -37,6 +37,10 @@ test.describe("Version Workflow @auth", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Open versions drawer
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
 

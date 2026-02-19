@@ -67,8 +67,9 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Try to access account page without authentication
     await page.goto("/account");
 
-    // Should be redirected to login
-    await expect(page).toHaveURL("/login");
+    // /account has a route-level redirect to /account/profile, which triggers two guard
+    // invocations. waitForURL lets both redirects settle before asserting.
+    await page.waitForURL(/\/login/, { timeout: 5000 });
     await authHelpers.expectToBeOnLoginPage();
   });
 
