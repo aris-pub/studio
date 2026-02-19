@@ -12,6 +12,7 @@ export function createFileStore(api, user) {
   const files = ref([]);
   const numFiles = computed(() => files.value?.length || 0);
   const tags = ref([]);
+  const filesLoaded = ref(false);
 
   // Forward declare store for circular reference
   // eslint-disable-next-line prefer-const
@@ -49,6 +50,7 @@ export function createFileStore(api, user) {
           store
         );
       });
+      filesLoaded.value = true;
     } catch (error) {
       console.error("Error loading files:", error);
     }
@@ -261,6 +263,7 @@ export function createFileStore(api, user) {
     files,
     numFiles,
     tags,
+    filesLoaded,
     selectedFile,
     filteredFiles,
 

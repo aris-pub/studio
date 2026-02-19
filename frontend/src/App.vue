@@ -252,12 +252,16 @@
             storeType: typeof fileStore.value,
           });
 
-          logger.debug("Loading user files and tags");
-          await fileStore.value.loadFiles();
-          logger.debug("Files loaded", { filesCount: fileStore.value.files?.length || 0 });
+          // Only load files/tags on the home route — HomeView triggers loading
+          // for SPA navigation to / from other routes.
+          if (currentPath === "/") {
+            logger.debug("Loading user files and tags");
+            await fileStore.value.loadFiles();
+            logger.debug("Files loaded", { filesCount: fileStore.value.files?.length || 0 });
 
-          await fileStore.value.loadTags();
-          logger.debug("Tags loaded", { tagsCount: fileStore.value.tags?.length || 0 });
+            await fileStore.value.loadTags();
+            logger.debug("Tags loaded", { tagsCount: fileStore.value.tags?.length || 0 });
+          }
 
           logger.info("App initialization completed successfully", {
             userId: storedUser.id,

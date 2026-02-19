@@ -41,6 +41,14 @@
    * pane is inactive, its top edge peeks out by 8px. This hides it. */
   const previewTop = computed(() => (fileStore?.value?.selectedFile?.value?.id ? "0" : "8px"));
 
+  // Trigger file/tag loading when navigating to home via SPA (store exists but not yet loaded)
+  watchEffect(() => {
+    if (fileStore.value && !fileStore.value.filesLoaded.value) {
+      fileStore.value.loadFiles();
+      fileStore.value.loadTags();
+    }
+  });
+
   // Recent files as context sub-items for Home
   const recentFiles = ref(["", "", ""]);
   watchEffect(() => {

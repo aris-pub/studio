@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, reactive, computed, inject, provide, onMounted, watch } from "vue";
+  import { ref, reactive, computed, inject, provide, onMounted, watch, watchEffect } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { File } from "@/models/File.js";
@@ -9,6 +9,7 @@
 
   // Load and provide file
   const fileStore = inject("fileStore");
+  const api = inject("api");
   const route = useRoute();
 
   // Computed properties for different states
@@ -31,15 +32,45 @@
     );
   });
 
+  // Directly fetched file — used when fileStore.files is empty (e.g. hard refresh on workspace
+  // route, where the home-route bulk-load hasn't run).
+  const directFile = ref(null);
+  const directFileError = ref(false);
+
+  watchEffect(async () => {
+    const routeFileId = parseInt(route?.params?.file_id);
+    if (!routeFileId || !fileStore?.value) return;
+
+    // Only fetch directly when the store doesn't have any files loaded yet
+    if (fileStore.value.filesLoaded?.value) return;
+    if (directFile.value?.id === routeFileId) return;
+
+    try {
+      const response = await api.get(`/files/${routeFileId}`);
+      directFile.value = new File(
+        { ...response.data, ownerId: response.data.owner_id },
+        fileStore.value
+      );
+    } catch {
+      directFileError.value = true;
+    }
+  });
+
   const file = computed(() => {
     const files = fileStore?.value?.files;
     const fileId = parseInt(route?.params?.file_id);
 
     // Return empty object if we don't have the necessary data yet
-    if (!files || !fileId) return {};
+    if (!fileId) return {};
 
-    const found = Object.values(files).find((f) => f.id === fileId);
-    return found || {};
+    // Prefer file from store (has full metadata including tags, selection state)
+    if (files?.length > 0) {
+      const found = Object.values(files).find((f) => f.id === fileId);
+      if (found) return found;
+    }
+
+    // Fall back to directly fetched file for workspace-only navigation
+    return directFile.value?.id === fileId ? directFile.value : {};
   });
   provide("file", file);
 
@@ -68,7 +99,6 @@
     { immediate: true }
   );
 
-  const api = inject("api");
   const fileSettings = ref({});
   onMounted(async () => {
     const fromDb = await File.getSettings(file.value, api);
