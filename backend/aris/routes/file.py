@@ -231,6 +231,7 @@ async def get_file(
         "owner_id": doc.owner_id,
         "status": doc.status.value,
         "created_at": doc.created_at,
+        "role": user_role.value,
     }
 
 

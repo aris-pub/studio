@@ -60,13 +60,9 @@ test.describe("Auto-checkpoint UI @auth", () => {
     fileId = await fileHelpers.createNewFile();
 
     await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
 
     // Open the Versions drawer
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
     await page.waitForFunction(
@@ -92,11 +88,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -109,11 +101,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -129,11 +117,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -150,11 +134,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { versionName: "My draft", checkpointType: "manual" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -172,11 +152,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
 
@@ -198,11 +174,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -219,11 +191,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -244,11 +212,7 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await createVersion(page, fileId, { checkpointType: "auto" });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await page.waitForSelector('[data-testid="workspace-canvas"]', { state: "visible" });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
