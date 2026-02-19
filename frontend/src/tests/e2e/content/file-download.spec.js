@@ -51,7 +51,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     await fileHelpers.ensureFileDeselected(testFileId);
     await fileHelpers.openFileMenu(testFileId);
 
-    const downloadItem = page.locator('[data-testid="file-menu-download"]');
+    const downloadItem = page.locator('[data-testid="file-menu-download-html"]');
     await expect(downloadItem).toBeVisible();
   });
 
@@ -63,7 +63,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
 
     // Click download option
-    await page.locator('[data-testid="file-menu-download"]').click();
+    await page.locator('[data-testid="file-menu-download-html"]').click();
 
     // Wait for download to start
     const download = await downloadPromise;
@@ -91,7 +91,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     await fileHelpers.openFileMenu(testFileId);
 
     const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
-    await page.locator('[data-testid="file-menu-download"]').click();
+    await page.locator('[data-testid="file-menu-download-html"]').click();
     const download = await downloadPromise;
 
     const downloadPath = path.join("/tmp", `test-standalone-${Date.now()}.html`);
@@ -114,7 +114,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     await fileHelpers.openFileMenu(testFileId);
 
     const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
-    await page.locator('[data-testid="file-menu-download"]').click();
+    await page.locator('[data-testid="file-menu-download-html"]').click();
     const download = await downloadPromise;
 
     const downloadPath = path.join("/tmp", `test-complete-${Date.now()}.html`);
@@ -137,7 +137,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     await fileHelpers.openFileMenu(testFileId);
 
     const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
-    await page.locator('[data-testid="file-menu-download"]').click();
+    await page.locator('[data-testid="file-menu-download-html"]').click();
     const download = await downloadPromise;
 
     const downloadPath = path.join("/tmp", `test-jquery-${Date.now()}.html`);

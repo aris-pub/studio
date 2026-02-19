@@ -104,7 +104,7 @@ describe("FileMenu.vue - TDD ContextMenu Dots Variant", () => {
 
     // Look for the specific menu item testids from the component
     const shareItem = wrapper.find('[data-testid="file-menu-share"]');
-    const downloadItem = wrapper.find('[data-testid="file-menu-download"]');
+    const downloadItem = wrapper.find('[data-testid="file-menu-download-html"]');
     const renameItem = wrapper.find('[data-testid="file-menu-rename"]');
     const duplicateItem = wrapper.find('[data-testid="file-menu-duplicate"]');
     const deleteItem = wrapper.find('[data-testid="file-menu-delete"]');
@@ -219,7 +219,7 @@ describe("FileMenu.vue - TDD ContextMenu Dots Variant", () => {
     });
 
     // Test download button
-    const downloadItem = wrapper.find('[data-testid="file-menu-download"]');
+    const downloadItem = wrapper.find('[data-testid="file-menu-download-html"]');
     await downloadItem.trigger("click");
     expect(wrapper.emitted("download")).toBeTruthy();
   });
