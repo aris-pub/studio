@@ -62,9 +62,10 @@
    * @event rename - Emitted when rename action is clicked
    * @event duplicate - Emitted when duplicate action is clicked
    * @event delete - Emitted when delete action is clicked
-   * @event download - Emitted when download action is clicked
+   * @event download - Emitted when HTML download is clicked
+   * @event download-pdf - Emitted when PDF download is clicked
    */
-  const emit_ = defineEmits(["rename", "duplicate", "delete", "download"]);
+  const emit_ = defineEmits(["rename", "duplicate", "delete", "download", "download-pdf"]);
   const emit = (event) => {
     // Only try to toggle if the ref is available and has the toggle method
     if (menuRef.value && typeof menuRef.value.toggle === "function") {
@@ -101,9 +102,15 @@
       />
       <component
         :is="comp"
-        v-bind="childProps('Download', 'Download')"
-        data-testid="file-menu-download"
+        v-bind="childProps('FileTypeHtml', 'Download HTML')"
+        data-testid="file-menu-download-html"
         @click.stop="emit('download')"
+      />
+      <component
+        :is="comp"
+        v-bind="childProps('FileTypePdf', 'Download PDF')"
+        data-testid="file-menu-download-pdf"
+        @click.stop="emit('download-pdf')"
       />
       <Separator />
       <component

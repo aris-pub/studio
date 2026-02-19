@@ -1,5 +1,8 @@
 """Test file routes."""
 
+import shutil
+
+import pytest
 from httpx import AsyncClient
 
 
@@ -526,3 +529,57 @@ Here is the interactive chart:
     # Should NOT contain the error message
     assert "Unable to load HTML asset" not in response.text, \
         "Downloaded file should not show asset loading error"
+
+
+# PDF download endpoint tests
+
+async def test_download_pdf_without_auth(client: AsyncClient):
+    """Test that PDF download endpoint requires authentication."""
+    response = await client.get("/files/1/download/pdf")
+    assert response.status_code == 401
+
+
+async def test_download_pdf_permission_denied(client: AsyncClient, authenticated_user, second_authenticated_user):
+    """Test that users cannot download PDFs of files they don't own."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    headers_secondary = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Private PDF Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Private\n\nContent",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download/pdf", headers=headers_secondary)
+    assert response.status_code == 403
+
+
+@pytest.mark.skipif(not shutil.which("typst") or not shutil.which("pandoc"), reason="pandoc and typst required")
+async def test_download_pdf_success(client: AsyncClient, authenticated_user):
+    """Test successful PDF download."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "PDF Export Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# PDF Export Test\n\nThis document will become a PDF.",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/download/pdf", headers=headers)
+    assert response.status_code == 200
+    assert "application/pdf" in response.headers["content-type"]
+    assert "attachment; filename=" in response.headers["content-disposition"]
+    assert "PDF Export Test.pdf" in response.headers["content-disposition"]
+    assert response.content[:4] == b"%PDF"

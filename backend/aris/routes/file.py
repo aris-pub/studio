@@ -681,6 +681,83 @@ async def delete_asset_for_file(
     return {"message": f"Asset {asset_id} deleted"}
 
 
+@router.get("/{file_id}/download/pdf")
+async def download_file_pdf(
+    file_id: int,
+    user_role: FileRole = Depends(require_view),
+    file_service: InMemoryFileService = Depends(get_file_service),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download file as a PDF document via Typst.
+
+    Parameters
+    ----------
+    file_id : int
+        The unique identifier of the file to download.
+
+    Returns
+    -------
+    Response
+        PDF document with Content-Disposition attachment header.
+
+    Raises
+    ------
+    HTTPException
+        404 if file not found, 500 if PDF generation fails.
+    """
+    import asyncio
+    import os
+    import re
+    import subprocess
+    import tempfile
+
+    from rsm.app import pandoc_export as rsm_pandoc_export
+
+    await file_service.sync_from_database(db)
+    file_data = await file_service.get_file(file_id)
+    if not file_data or not file_data.source:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        typst_source = await asyncio.to_thread(
+            rsm_pandoc_export,
+            file_data.source,
+            to_format="typst",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RSM export failed: {e}")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        typ_path = os.path.join(tmpdir, "manuscript.typ")
+        pdf_path = os.path.join(tmpdir, "manuscript.pdf")
+        with open(typ_path, "w", encoding="utf-8") as f:
+            f.write(typst_source)
+        try:
+            await asyncio.to_thread(
+                subprocess.run,
+                ["typst", "compile", typ_path, pdf_path],
+                check=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise HTTPException(status_code=500, detail=f"PDF compilation failed: {e.stderr.decode()}")
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="typst not found; install typst")
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
+    title = await file_service.get_file_title(file_id)
+    if not title:
+        title = str(file_data.title) if file_data.title else "manuscript"
+    filename = re.sub(r'[<>:"/\\|?*]', '_', title) + ".pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.get("/{file_id}/download")
 async def download_file(
     file_id: int,

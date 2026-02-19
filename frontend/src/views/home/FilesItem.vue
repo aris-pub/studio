@@ -205,6 +205,24 @@
     }
   };
 
+  const onDownloadPdf = async () => {
+    if (!file.value?.id) return;
+
+    try {
+      const title = file.value.title || "manuscript";
+      const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";
+
+      const response = await api.get(`/files/${file.value.id}/download/pdf`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      downloadBlob(blob, filename);
+    } catch (error) {
+      console.error("PDF download failed:", error);
+    }
+  };
+
   // Confirmation modal handlers
   const handleDeleteConfirm = async () => {
     if (!showDeleteModal.value) return; // race condition protection
@@ -306,6 +324,7 @@
           @duplicate="onDuplicate"
           @delete="onDelete"
           @download="onDownload"
+          @download-pdf="onDownloadPdf"
         />
 
         <!-- Grid layout spacer to complete the row -->

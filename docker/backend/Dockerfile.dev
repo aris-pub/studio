@@ -7,8 +7,15 @@ RUN apt-get update && \
         postgresql-client \
         git \
         build-essential \
+        pandoc \
+        curl \
         && rm -rf /var/lib/apt/lists/* \
         && apt-get clean
+
+# Install typst (not in apt; download from GitHub releases)
+RUN TYPST_VERSION=$(curl -s https://api.github.com/repos/typst/typst/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') && \
+    curl -L "https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz" \
+    | tar -xJ --strip-components=1 -C /usr/local/bin "typst-x86_64-unknown-linux-musl/typst"
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
