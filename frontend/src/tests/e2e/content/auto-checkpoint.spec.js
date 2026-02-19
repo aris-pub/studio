@@ -63,6 +63,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Open the Versions drawer
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
     await page.waitForFunction(
@@ -89,6 +93,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -102,6 +110,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -118,6 +130,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -135,6 +151,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -153,6 +173,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
 
@@ -175,6 +199,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -192,6 +220,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });
@@ -213,6 +245,10 @@ test.describe("Auto-checkpoint UI @auth", () => {
 
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForSelector('[data-testid="workspace-sidebar"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("Versions") button');
 
     await page.waitForSelector('[data-testid="version-item"]', { state: "visible" });

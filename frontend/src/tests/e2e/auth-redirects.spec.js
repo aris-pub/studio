@@ -20,6 +20,10 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Note: Direct navigation to /register may still have issues with dev server caching
     // So we test via the register link which we know works
     await page.goto("/login");
+    await page.waitForSelector('[data-testid="register-link"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="register-link"]');
 
     // Should be on register page
@@ -98,6 +102,10 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Note: Direct navigation to /register may still redirect due to dev server caching
     // Test via register link instead
     await page.goto("/login");
+    await page.waitForSelector('[data-testid="register-link"]', {
+      state: "visible",
+      timeout: 5000,
+    });
     await page.click('[data-testid="register-link"]');
     await expect(page).toHaveURL("/register");
 
