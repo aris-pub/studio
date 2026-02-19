@@ -33,13 +33,14 @@ describe("FileMenu.vue", () => {
     });
 
     const items = wrapper.findAllComponents(ContextMenuItemStub);
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(6);
     expect(items[0].props()).toMatchObject({ icon: "Share3", caption: "Share" });
-    expect(items[1].props()).toMatchObject({ icon: "Download", caption: "Download" });
-    expect(items[2].props()).toMatchObject({ icon: "Edit", caption: "Rename" });
-    expect(items[3].props()).toMatchObject({ icon: "Copy", caption: "Duplicate" });
-    expect(items[4].props()).toMatchObject({ icon: "TrashX", caption: "Delete" });
-    expect(items[4].classes()).toContain("danger");
+    expect(items[1].props()).toMatchObject({ icon: "FileTypeHtml", caption: "Download HTML" });
+    expect(items[2].props()).toMatchObject({ icon: "FileTypePdf", caption: "Download PDF" });
+    expect(items[3].props()).toMatchObject({ icon: "Edit", caption: "Rename" });
+    expect(items[4].props()).toMatchObject({ icon: "Copy", caption: "Duplicate" });
+    expect(items[5].props()).toMatchObject({ icon: "TrashX", caption: "Delete" });
+    expect(items[5].classes()).toContain("danger");
   });
 
   it("emits rename, duplicate, delete and toggles context menu", async () => {
@@ -64,17 +65,17 @@ describe("FileMenu.vue", () => {
 
     const items = wrapper.findAllComponents(ContextMenuItemStub);
     // rename
-    await items[2].trigger("click");
+    await items[3].trigger("click");
     expect(toggle).toHaveBeenCalled();
     expect(wrapper.emitted("rename")).toBeTruthy();
 
     // duplicate
-    await items[3].trigger("click");
+    await items[4].trigger("click");
     expect(toggle).toHaveBeenCalledTimes(2);
     expect(wrapper.emitted("duplicate")).toBeTruthy();
 
     // delete
-    await items[4].trigger("click");
+    await items[5].trigger("click");
     expect(toggle).toHaveBeenCalledTimes(3);
     expect(wrapper.emitted("delete")).toBeTruthy();
   });

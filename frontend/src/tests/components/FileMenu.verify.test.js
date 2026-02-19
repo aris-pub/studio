@@ -76,7 +76,7 @@ describe("FileMenu.vue - Component Fix Verification", () => {
     });
 
     // Test rename event
-    const renameItem = wrapper.findAll(".context-menu-item-mock")[2]; // Third item should be rename
+    const renameItem = wrapper.findAll(".context-menu-item-mock")[3]; // Fourth item should be rename
     await renameItem.trigger("click");
 
     expect(wrapper.emitted()).toHaveProperty("rename");
