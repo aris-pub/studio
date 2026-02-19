@@ -286,7 +286,7 @@ describe("WorkspaceView File ID Matching Regression Tests", () => {
       expect(wrapper.vm.file).toEqual({});
     });
 
-    it("should handle zero as file ID (current bug: zero is treated as falsy)", () => {
+    it("should handle zero as file ID", () => {
       useRouteMock.mockReturnValue(createMockRoute("0"));
 
       const fileStore = {
@@ -305,14 +305,8 @@ describe("WorkspaceView File ID Matching Regression Tests", () => {
         },
       });
 
-      // CURRENT BUG: parseInt("0") returns 0, but !0 is true, so the function returns early
-      // This documents the current (buggy) behavior - should be fixed to properly handle file ID 0
-      expect(wrapper.vm.file).toEqual({});
-      expect(wrapper.vm.file.id).toBeUndefined();
-
-      // TODO: When fixed, this should be:
-      // expect(wrapper.vm.file.id).toBe(0);
-      // expect(wrapper.vm.file.title).toBe("File Zero");
+      expect(wrapper.vm.file.id).toBe(0);
+      expect(wrapper.vm.file.title).toBe("File Zero");
     });
   });
 

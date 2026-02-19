@@ -39,7 +39,7 @@
 
   watchEffect(async () => {
     const routeFileId = parseInt(route?.params?.file_id);
-    if (!routeFileId || !fileStore?.value) return;
+    if (isNaN(routeFileId) || !fileStore?.value) return;
 
     // Only fetch directly when the store doesn't have any files loaded yet
     if (fileStore.value.filesLoaded?.value) return;
@@ -61,7 +61,7 @@
     const fileId = parseInt(route?.params?.file_id);
 
     // Return empty object if we don't have the necessary data yet
-    if (!fileId) return {};
+    if (isNaN(fileId)) return {};
 
     // Prefer file from store (has full metadata including tags, selection state)
     if (Object.values(files ?? {}).length > 0) {
