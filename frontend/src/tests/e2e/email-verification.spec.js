@@ -1,16 +1,13 @@
 import { test, expect } from "./fixtures.js";
 import { AuthHelpers } from "./utils/auth-helpers.js";
-import { getBackendURL } from "./utils/test-config.js";
 import { getTimeouts } from "./utils/timeout-constants.js";
 
 // All tests are @auth-flows — registration and verification are auth entry-point flows
 test.describe("Email Verification Flow @auth-flows", () => {
   let authHelpers;
-  let backendURL;
 
   test.beforeEach(async ({ page }) => {
     authHelpers = new AuthHelpers(page);
-    backendURL = getBackendURL();
     await page.goto("/");
     await authHelpers.clearAuthState();
   });
