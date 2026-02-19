@@ -18,8 +18,10 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // regardless of whether they were trying to access a public page
 
     // Note: Direct navigation to /register may still have issues with dev server caching
-    // So we test via the register link which we know works
-    await page.goto("/login");
+    // So we test via the register link which we know works.
+    // Use explicit timeout to override the global navigationTimeout (3s locally, 8s CI) —
+    // the first test in a fresh browser can exceed these on cold start.
+    await page.goto("/login", { timeout: 10000 });
     await page.waitForSelector('[data-testid="register-link"]', {
       state: "visible",
       timeout: 5000,
