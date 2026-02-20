@@ -49,22 +49,17 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
     # Build tree-sitter-rsm Node.js bindings for Linux first
     echo "Building tree-sitter-rsm Node.js bindings for Linux..."
     cd /workspace/rsm/tree-sitter-rsm
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
-    fi
+    # Always run npm ci to ensure correct versions from package-lock.json
+    npm ci --quiet
     # Rebuild native bindings for current platform
     npm rebuild --quiet
 
     echo "Installing and building rsm-lsp server..."
     cd /workspace/rsm/packages/rsm-lsp
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
-        npm run build --quiet
-    else
-        echo "rsm-lsp dependencies already installed"
-        # Always rebuild TypeScript in case source changed
-        npm run build --quiet
-    fi
+    # Always run npm ci to ensure correct versions from package-lock.json
+    # This prevents stale dependencies from cached volumes/layers
+    npm ci --quiet
+    npm run build --quiet
     cd /workspace/studio/backend
 fi
 
