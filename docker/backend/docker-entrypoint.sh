@@ -50,17 +50,22 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
     echo "Building tree-sitter-rsm Node.js bindings for Linux..."
     cd /workspace/rsm/tree-sitter-rsm
     # Always run npm ci to ensure correct versions from package-lock.json
-    npm ci --quiet
+    echo "Running npm ci for tree-sitter-rsm..."
+    npm ci --foreground || { echo "ERROR: npm ci failed for tree-sitter-rsm"; exit 1; }
     # Rebuild native bindings for current platform
-    npm rebuild --quiet
+    echo "Rebuilding tree-sitter-rsm bindings..."
+    npm rebuild || { echo "ERROR: npm rebuild failed for tree-sitter-rsm"; exit 1; }
 
     echo "Installing and building rsm-lsp server..."
     cd /workspace/rsm/packages/rsm-lsp
     # Always run npm ci to ensure correct versions from package-lock.json
     # This prevents stale dependencies from cached volumes/layers
-    npm ci --quiet
-    npm run build --quiet
+    echo "Running npm ci for rsm-lsp..."
+    npm ci --foreground || { echo "ERROR: npm ci failed for rsm-lsp"; exit 1; }
+    echo "Building rsm-lsp TypeScript..."
+    npm run build || { echo "ERROR: npm run build failed for rsm-lsp"; exit 1; }
     cd /workspace/studio/backend
+    echo "RSM dependencies installation complete"
 fi
 
 # Run migrations
