@@ -49,23 +49,23 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
     # Build tree-sitter-rsm Node.js bindings for Linux first
     echo "Building tree-sitter-rsm Node.js bindings for Linux..."
     cd /workspace/rsm/tree-sitter-rsm
-    # Always run npm ci to ensure correct versions from package-lock.json
-    echo "Running npm ci for tree-sitter-rsm..."
-    npm ci --foreground || { echo "ERROR: npm ci failed for tree-sitter-rsm"; exit 1; }
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+    fi
     # Rebuild native bindings for current platform
-    echo "Rebuilding tree-sitter-rsm bindings..."
-    npm rebuild || { echo "ERROR: npm rebuild failed for tree-sitter-rsm"; exit 1; }
+    npm rebuild --quiet
 
     echo "Installing and building rsm-lsp server..."
     cd /workspace/rsm/packages/rsm-lsp
-    # Always run npm ci to ensure correct versions from package-lock.json
-    # This prevents stale dependencies from cached volumes/layers
-    echo "Running npm ci for rsm-lsp..."
-    npm ci --foreground || { echo "ERROR: npm ci failed for rsm-lsp"; exit 1; }
-    echo "Building rsm-lsp TypeScript..."
-    npm run build || { echo "ERROR: npm run build failed for rsm-lsp"; exit 1; }
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+        npm run build --quiet
+    else
+        echo "rsm-lsp dependencies already installed"
+        # Always rebuild TypeScript in case source changed
+        npm run build --quiet
+    fi
     cd /workspace/studio/backend
-    echo "RSM dependencies installation complete"
 fi
 
 # Run migrations
