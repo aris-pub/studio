@@ -196,6 +196,16 @@ async def check_supervisord_services() -> Dict[str, Any]:
     """
     start_time = time.time()
 
+    # Skip supervisord check in test environment
+    if os.environ.get("ENV") == "TEST":
+        response_time = round((time.time() - start_time) * 1000, 2)
+        logger.debug(f"Supervisord health check skipped (test mode) in {response_time}ms")
+        return {
+            "status": "skipped",
+            "response_time_ms": response_time,
+            "message": "Supervisord not configured (test environment)",
+        }
+
     # Check if we're running under supervisord (production/docker)
     health_check_script = "/usr/local/bin/health-check.sh"
     if not os.path.exists(health_check_script):
