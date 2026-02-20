@@ -54,6 +54,8 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
     fi
     # Rebuild native bindings for current platform
     npm rebuild --quiet
+    # Create prebuilds directory with compiled bindings (required by node-gyp-build)
+    npm run prebuildify --quiet
 
     echo "Installing and building rsm-lsp server..."
     cd /workspace/rsm/packages/rsm-lsp
