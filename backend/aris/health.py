@@ -4,6 +4,8 @@ This module provides comprehensive health monitoring for all critical
 and non-critical system components.
 """
 
+import asyncio
+import os
 import time
 from datetime import UTC, datetime
 from typing import Any, Dict
@@ -186,6 +188,63 @@ def check_environment_config() -> Dict[str, Any]:
     }
 
 
+async def check_supervisord_services() -> Dict[str, Any]:
+    """Check that all supervisord services are running.
+
+    Returns:
+        Dictionary with supervisord services health status
+    """
+    start_time = time.time()
+
+    # Check if we're running under supervisord (production/docker)
+    health_check_script = "/usr/local/bin/health-check.sh"
+    if not os.path.exists(health_check_script):
+        # Not running under supervisord (development mode)
+        response_time = round((time.time() - start_time) * 1000, 2)
+        logger.debug(f"Supervisord health check skipped (dev mode) in {response_time}ms")
+        return {
+            "status": "skipped",
+            "response_time_ms": response_time,
+            "message": "Supervisord not configured (development mode)",
+        }
+
+    try:
+        # Run the health check script
+        result = await asyncio.create_subprocess_exec(
+            health_check_script,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await result.communicate()
+
+        response_time = round((time.time() - start_time) * 1000, 2)
+
+        if result.returncode == 0:
+            logger.debug(f"Supervisord services health check passed in {response_time}ms")
+            return {
+                "status": "healthy",
+                "response_time_ms": response_time,
+                "message": "All services running (backend, multiplayer, lsp)",
+            }
+        else:
+            error_msg = stderr.decode().strip() if stderr else stdout.decode().strip()
+            logger.error(f"Supervisord services health check failed: {error_msg}")
+            return {
+                "status": "unhealthy",
+                "response_time_ms": response_time,
+                "message": f"Some services not running: {error_msg}",
+            }
+
+    except Exception as e:
+        response_time = round((time.time() - start_time) * 1000, 2)
+        logger.error(f"Supervisord health check error after {response_time}ms: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "response_time_ms": response_time,
+            "message": f"Health check error: {str(e)}",
+        }
+
+
 async def perform_health_check(db: AsyncSession) -> HealthResponse:
     """Perform comprehensive health check of all system components.
 
@@ -203,6 +262,7 @@ async def perform_health_check(db: AsyncSession) -> HealthResponse:
     email_health = await check_email_service_health()
     rsm_health = await check_rsm_rendering_health()
     config_health = check_environment_config()
+    services_health = await check_supervisord_services()
 
     # Calculate total response time
     total_response_time = round((time.time() - start_time) * 1000, 2)
@@ -217,10 +277,15 @@ async def perform_health_check(db: AsyncSession) -> HealthResponse:
         "email_service": email_health,
         "rsm_rendering": rsm_health,
         "environment_config": config_health,
+        "services": services_health,
     }
 
     # Determine overall status based on all checks
+    # Services check is critical in production, but skipped in dev
     critical_checks = [db_health, rsm_health, config_health]
+    if services_health["status"] != "skipped":
+        critical_checks.append(services_health)
+
     non_critical_checks = [email_health]  # Email can be disabled
 
     # Check if any critical systems are unhealthy

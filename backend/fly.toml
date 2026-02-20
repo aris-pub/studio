@@ -17,6 +17,17 @@ primary_region = 'fra'
   min_machines_running = 0
   processes = ['app']
 
+# WebSocket service for Y.js multiplayer (TCP passthrough)
+[[services]]
+  internal_port = 1234
+  protocol = "tcp"
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 1234
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'

@@ -11,10 +11,12 @@ services:
       target: dev
     ports:
       - "${BACKEND_PORT:?BACKEND_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
+      - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:1234"
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
       - backend_venv:/workspace/studio/backend/.venv
+      - /workspace/studio/multi-player/node_modules  # Prevent host/container conflicts
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
@@ -27,7 +29,7 @@ services:
       - ENV=${ENV:-LOCAL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
-      - MULTIPLAYER_HOST=collab
+      - MULTIPLAYER_HOST=localhost
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
       - FRONTEND_PORT=${FRONTEND_PORT}
       - SITE_PORT=${SITE_PORT}
@@ -44,11 +46,13 @@ services:
       target: dev
     ports:
       - "${BACKEND_TEST_PORT:?BACKEND_TEST_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
+      - "1235:1234"  # Different host port for test multiplayer to avoid conflict
     volumes:
       - ..:/workspace/studio
       - ../../rsm:/workspace/rsm
       - backend_test_venv:/workspace/studio/backend/.venv
       - rsm_test_venv:/workspace/rsm/.venv
+      - /workspace/studio/multi-player/node_modules_test  # Prevent host/container conflicts
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
@@ -61,14 +65,13 @@ services:
       - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
-      - MULTIPLAYER_HOST=collab
-      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - MULTIPLAYER_HOST=localhost
+      - MULTIPLAYER_PORT=1234
       - YJS_DEBOUNCE_MS=2000
       - FRONTEND_PORT=${FRONTEND_PORT}
       - FRONTEND_TEST_PORT=${FRONTEND_TEST_PORT}
       - SITE_PORT=${SITE_PORT}
       - STORYBOOK_PORT=${STORYBOOK_PORT}
-    command: uvicorn main:app --host 0.0.0.0 --port ${BACKEND_CONTAINER_PORT} --reload
     restart: unless-stopped
 
   frontend:
@@ -111,20 +114,22 @@ services:
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
     command: npm run dev -- --host 0.0.0.0
 
-  collab:
-    build:
-      context: ..
-      dockerfile: docker/multi-player/Dockerfile.dev
-      target: dev
-    ports:
-      - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:${MULTIPLAYER_PORT}"
-    volumes:
-      - ../multi-player:/app
-      - /app/node_modules  # Anonymous volume - no races, each container gets its own
-    environment:
-      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
-      - HOST=0.0.0.0
-    restart: unless-stopped
+  # collab service is now integrated into backend via supervisord
+  # This mirrors production deployment where all services run in a single container
+  # collab:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/multi-player/Dockerfile.dev
+  #     target: dev
+  #   ports:
+  #     - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:${MULTIPLAYER_PORT}"
+  #   volumes:
+  #     - ../multi-player:/app
+  #     - /app/node_modules  # Anonymous volume - no races, each container gets its own
+  #   environment:
+  #     - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+  #     - HOST=0.0.0.0
+  #   restart: unless-stopped
 
   # Storybook is deprecated — we never used it in practice.
   # Code and infrastructure are kept in case we revisit, but the service is

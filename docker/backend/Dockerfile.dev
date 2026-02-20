@@ -1,7 +1,7 @@
 # Multi-stage build for backend service
 FROM python:3.13-slim AS base
 
-# Install system dependencies
+# Install system dependencies and Node.js
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         postgresql-client \
@@ -9,8 +9,13 @@ RUN apt-get update && \
         build-essential \
         pandoc \
         curl \
-        && rm -rf /var/lib/apt/lists/* \
-        && apt-get clean
+        supervisor \
+        ca-certificates \
+        gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Install typst (not in apt; download from GitHub releases)
 RUN TYPST_VERSION=$(curl -s https://api.github.com/repos/typst/typst/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') && \
@@ -32,6 +37,11 @@ FROM base AS dev
 COPY docker/env-check.js ../docker/env-check.js
 COPY .env ../.env
 
+# Copy supervisord configuration and health check
+COPY docker/supervisord.dev.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/health-check.sh /usr/local/bin/health-check.sh
+RUN chmod +x /usr/local/bin/health-check.sh
+
 # Dependencies will be synced in entrypoint when /workspace/rsm is available
 
 # Set up environment
@@ -45,11 +55,11 @@ ENV PYTHONPATH="/workspace/studio/backend"
 COPY docker/backend/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Expose port
-EXPOSE 8000
+# Expose ports: 8000 (HTTP), 1234 (WebSocket)
+EXPOSE 8000 1234
 
 # Set entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Default development server command (can be overridden in docker-compose)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/workspace/studio/backend", "--reload-dir", "/workspace/rsm"]
+# Start supervisord (which manages backend, multiplayer, lsp)
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

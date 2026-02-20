@@ -34,6 +34,40 @@ if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
     cd /workspace/studio/backend && uv sync --all-groups --quiet
 fi
 
+# Install Node.js dependencies for multiplayer and rsm-lsp
+if [ -d "/workspace/studio/multi-player" ]; then
+    echo "Installing multiplayer server dependencies..."
+    cd /workspace/studio/multi-player
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+    else
+        echo "Multiplayer dependencies already installed"
+    fi
+fi
+
+if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
+    # Build tree-sitter-rsm Node.js bindings for Linux first
+    echo "Building tree-sitter-rsm Node.js bindings for Linux..."
+    cd /workspace/rsm/tree-sitter-rsm
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+    fi
+    # Rebuild native bindings for current platform
+    npm rebuild --quiet
+
+    echo "Installing and building rsm-lsp server..."
+    cd /workspace/rsm/packages/rsm-lsp
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+        npm run build --quiet
+    else
+        echo "rsm-lsp dependencies already installed"
+        # Always rebuild TypeScript in case source changed
+        npm run build --quiet
+    fi
+    cd /workspace/studio/backend
+fi
+
 # Run migrations
 echo "Running database migrations..."
 uv run alembic upgrade head
