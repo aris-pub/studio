@@ -65,6 +65,9 @@ services:
       - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COPILOT_PROVIDER=${COPILOT_PROVIDER}
+      - RESEND_API_KEY=your_resend_api_key_here  # Placeholder value disables email service
+      - FROM_EMAIL=noreply@test.local
+      - ADMIN_EMAIL=
       - MULTIPLAYER_HOST=localhost
       - MULTIPLAYER_PORT=1234
       - YJS_DEBOUNCE_MS=2000
