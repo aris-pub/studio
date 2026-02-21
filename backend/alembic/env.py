@@ -15,19 +15,21 @@ from alembic import context
 from aris.models import Base
 
 
-# Load the appropriate .env files based on environment
+# Load the appropriate .env files based on environment (skip in PROD)
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 
-# Load root .env first (for DB_PORT, DB_NAME, etc.)
-root_env_file = ROOT_DIR / ".env"
-if root_env_file.exists():
-    load_dotenv(root_env_file)
+# Only load .env files in LOCAL and CI environments, not PROD
+if os.getenv("ENV") != "PROD":
+    # Load root .env first (for DB_PORT, DB_NAME, etc.)
+    root_env_file = ROOT_DIR / ".env"
+    if root_env_file.exists():
+        load_dotenv(root_env_file)
 
-# Load backend .env second (for backend-specific settings, can override root)
-env_file = BASE_DIR / (".env.ci" if os.getenv("ENV") == "CI" else ".env")
-if env_file.exists():
-    load_dotenv(env_file, override=True)
+    # Load backend .env second (for backend-specific settings, can override root)
+    env_file = BASE_DIR / (".env.ci" if os.getenv("ENV") == "CI" else ".env")
+    if env_file.exists():
+        load_dotenv(env_file, override=True)
 
 config = context.config
 

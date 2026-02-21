@@ -36,6 +36,6 @@ __pycache__/
 .envrc
 
 # Exclude local environment files
-.env
-.env.local
-.env.*.local
+studio/backend/.env
+studio/backend/.env.local
+studio/backend/.env.*.local
