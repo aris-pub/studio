@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     ALEMBIC_DB_URL_LOCAL: str = Field(default="", json_schema_extra={"env": "ALEMBIC_DB_URL_LOCAL"})
     """Database URL for Alembic local development."""
 
-    ALEMBIC_DB_URL_PROD: str = Field(..., json_schema_extra={"env": "ALEMBIC_DB_URL_PROD"})
-    """Database URL for Alembic production environment."""
+    ALEMBIC_DB_URL_PROD: str = Field(default="", json_schema_extra={"env": "ALEMBIC_DB_URL_PROD"})
+    """Database URL for Alembic (optional in PROD, falls back to DB_URL_PROD with driver conversion)."""
 
     ENV: str = Field("LOCAL", json_schema_extra={"env": "ENV"})
     """Current environment ('LOCAL', 'PROD', etc.)."""
