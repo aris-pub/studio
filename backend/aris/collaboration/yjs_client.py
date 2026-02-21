@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from pycrdt import Doc, Text, TextEvent, create_sync_message, handle_sync_message
+from pycrdt import Doc, Text, create_sync_message, handle_sync_message
 from sqlalchemy import text as sql_text
 from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
@@ -118,6 +118,12 @@ class YDocClient:
             self.doc = Doc()
             self.text = self.doc.get("text", type=Text)
 
+            # Setup document-level observer IMMEDIATELY - before any sync operations.
+            # This ensures ALL updates (local and remote) trigger persistence,
+            # eliminating timing gaps. This is the official pycrdt-websocket pattern.
+            self.doc.observe(self._on_doc_change)
+            logger.debug(f"Document observer attached for file {self.file_id}")
+
             # Sync with room first — room state is authoritative.
             # This ensures we see any edits already in the room before deciding
             # whether to seed from the database, preventing CRDT duplication
@@ -130,14 +136,9 @@ class YDocClient:
             # via SyncStep2 above and must not insert stale DB content on top.
             if len(self.text) == 0:
                 await self._load_from_db()
-            else:
-                # Room had content when we connected. The observer is not set up yet,
-                # so SyncStep2 won't trigger _on_text_change. Persist now in case the
-                # room is ahead of what's stored (e.g. backend connected after edits).
-                await self._save_to_db()
 
-            # Setup observer for persistence
-            self.text.observe(self._on_text_change)
+            # Observer is already attached and will handle all subsequent changes.
+            # No need to manually persist here - the observer captured SyncStep2.
 
             # Handle incoming messages
             await self._message_loop(websocket)
@@ -246,8 +247,15 @@ class YDocClient:
                 logger.error(f"Failed to load content from DB for file {self.file_id}: {e}", exc_info=True)
                 raise
 
-    def _on_text_change(self, event: TextEvent):
-        """Observer callback for Y.Text changes."""
+    def _on_doc_change(self, event):
+        """Observer callback for document changes (local or remote).
+
+        Uses document-level observer (official pycrdt-websocket pattern) which
+        fires for ALL changes regardless of source - local edits, network sync,
+        or initial load. This eliminates timing gaps and ensures persistence
+        happens for all document updates.
+        """
+        logger.info(f"[DEBUG] Doc observer triggered for file {self.file_id}")
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()
 

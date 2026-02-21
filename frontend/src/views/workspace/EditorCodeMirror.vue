@@ -53,7 +53,7 @@
   const roomName = ref("");
 
   // WebSocket server URL
-  const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL);
+  const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");
 
   // User info for awareness
   const userInfo = computed(() => {

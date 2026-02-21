@@ -5,7 +5,7 @@ FROM node:20-slim AS node-builder
 WORKDIR /build
 
 # Build multiplayer server
-COPY multi-player/package*.json ./multi-player/
+COPY studio/multi-player/package*.json ./multi-player/
 RUN cd multi-player && npm ci --omit=dev
 
 # Build rsm-lsp server
@@ -13,7 +13,7 @@ COPY rsm/packages/rsm-lsp/package*.json ./rsm-lsp/
 COPY rsm/tree-sitter-rsm ./tree-sitter-rsm/
 RUN cd rsm-lsp && npm ci --omit=dev
 
-COPY multi-player/ ./multi-player/
+COPY studio/multi-player/ ./multi-player/
 COPY rsm/packages/rsm-lsp/ ./rsm-lsp/
 
 # Build rsm-lsp TypeScript
@@ -46,15 +46,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Copy backend dependencies
-COPY backend/ .
-COPY styles/ ./styles
+COPY studio/backend/ .
+COPY studio/styles/ ./styles
 
 # Remove local sources section from pyproject.toml for production build
-# This allows PROD to use PyPI while dev/CI use local rsm
-RUN sed -i '/^\[tool\.uv\.sources\]/,/^$/d' pyproject.toml
+# This allows PROD to use PyPI packages (rsm-lang 1.0.0, tree-sitter-rsm 1.0.0)
+RUN sed -i '/^\[tool\.uv\.sources\]/d; /^rsm-lang = /d' pyproject.toml
 
-# Install Python dependencies
-RUN uv sync --frozen --no-cache
+# Install Python dependencies (no --frozen since we removed local source)
+RUN uv sync --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy Node.js services from builder stage
@@ -63,8 +63,8 @@ COPY --from=node-builder /build/rsm-lsp /app/rsm-lsp
 COPY --from=node-builder /build/tree-sitter-rsm /app/tree-sitter-rsm
 
 # Copy supervisord configuration
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY docker/health-check.sh /usr/local/bin/health-check.sh
+COPY studio/docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY studio/docker/health-check.sh /usr/local/bin/health-check.sh
 RUN chmod +x /usr/local/bin/health-check.sh
 
 # Expose ports: 8080 (HTTP), 1234 (WebSocket)

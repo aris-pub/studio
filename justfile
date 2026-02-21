@@ -119,7 +119,7 @@ deploy:
 # Deploy only backend to Fly.io
 deploy-backend:
     @echo "🚀 Deploying backend to Fly.io..."
-    fly deploy --config backend/fly.toml
+    cd .. && fly deploy --config studio/backend/fly.toml --dockerfile studio/backend/Dockerfile
     @echo "✅ Backend deployed: https://aris-backend.fly.dev"
 
 # Push to GitHub to trigger Netlify deployments
@@ -142,3 +142,24 @@ status:
 env:
     @echo "Current environment configuration:"
     @if [ -f .env ]; then cat .env; else echo "No .env file found"; fi
+
+# Rebuild frontend-test with fresh environment variables
+# Use this when environment variables change and aren't propagating
+rebuild-frontend-test:
+    @echo "🔄 Rebuilding frontend-test with fresh environment..."
+    @echo "1. Stopping and removing container + volumes..."
+    docker compose -p $(basename $(pwd)) -f docker/docker-compose.dev.yml down frontend-test -v
+    @echo "2. Rebuilding image..."
+    docker compose -p $(basename $(pwd)) -f docker/docker-compose.dev.yml build frontend-test
+    @echo "3. Starting fresh container..."
+    docker compose -p $(basename $(pwd)) -f docker/docker-compose.dev.yml up -d frontend-test
+    @echo "4. Waiting for container to be ready..."
+    sleep 3
+    @echo "✅ Rebuild complete!"
+    @echo ""
+    @echo "⚠️  IMPORTANT: Hard refresh your browser (Cmd+Shift+R or Ctrl+Shift+R)"
+    @echo "    Or open DevTools > Network tab > Check 'Disable cache' > Refresh"
+    @echo ""
+    @echo "🔍 Verify the new environment variable:"
+    @echo "    docker exec docker-frontend-test-1 printenv | grep VITE"
+    @osascript -e "display notification \"Frontend-test rebuilt. Hard refresh your browser!\" with title \"Claude Code\""
