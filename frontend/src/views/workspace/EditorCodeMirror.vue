@@ -290,13 +290,10 @@
           : [];
 
         // Add LSP plugin extension if it was created successfully
-        // Note: client.plugin() already returns an array of extensions
-        // CRITICAL: Must unwrap Vue proxy or CodeMirror can't register the ViewPlugin!
-        const lspExtensions = lspPlugin ? toRaw(lspPlugin) : [];
+        // Note: client.plugin() returns a single Extension, not an array
+        const lspExtension = lspPlugin;
         if (lspPlugin) {
-          console.log(
-            "[EditorCodeMirror] ✅ Adding LSP plugin to editor (unwrapped from Vue proxy)"
-          );
+          console.log("[EditorCodeMirror] ✅ Adding LSP plugin to editor", lspPlugin);
         }
 
         const state = EditorState.create({
@@ -308,7 +305,7 @@
             yCollabExtension,
             transactionLogger,
             ...editableExtensions,
-            ...lspExtensions,
+            ...(lspExtension ? [lspExtension] : []),
             lintExtensions,
             EditorView.theme({
               "&": {
