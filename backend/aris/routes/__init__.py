@@ -3,6 +3,7 @@ from .copilot import router as copilot_router
 from .file import router as file_router
 from .file_annotations import router as file_annotations_router
 from .file_settings import router as file_settings_router
+from .lsp import router as lsp_router
 from .permissions import router as permissions_router
 from .render import router as render_router
 from .signup import router as signup_router
@@ -19,6 +20,7 @@ __all__ = [
     "file_annotations_router",
     "file_router",
     "file_settings_router",
+    "lsp_router",
     "permissions_router",
     "render_router",
     "signup_router",

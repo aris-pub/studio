@@ -26,6 +26,7 @@
   "dependencies": {
     "@codemirror/collab": "^6.1.1",
     "@codemirror/commands": "6.10.1",
+    "@codemirror/lsp-client": "^6.2.1",
     "@codemirror/state": "6.5.4",
     "@codemirror/view": "6.39.11",
     "@floating-ui/vue": "^1.1.6",

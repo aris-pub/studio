@@ -10,8 +10,8 @@ if ! command -v supervisorctl &> /dev/null; then
     exit 1
 fi
 
-# Get status of all programs
-STATUS=$(supervisorctl status 2>&1)
+# Get status of all programs (explicitly use config file)
+STATUS=$(supervisorctl -c /etc/supervisor/conf.d/supervisord.conf status 2>&1)
 
 # Check each service
 check_service() {

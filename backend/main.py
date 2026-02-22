@@ -21,6 +21,7 @@ from aris.routes import (
     copilot_router,
     file_router,
     file_settings_router,
+    lsp_router,
     permissions_router,
     render_router,
     signup_router,
@@ -109,6 +110,7 @@ app = FastAPI(
         # {"name": "render", "description": "Convert RSM markup to rendered HTML output"},  # DISABLED FOR NOW
         {"name": "signup", "description": "Early access signup and waitlist management"},
         {"name": "copilot", "description": "AI-powered writing assistant for scientific manuscripts"},
+        {"name": "lsp", "description": "Language Server Protocol integration for RSM editing"},
         {"name": "public", "description": "Public preprint access without authentication"},
         {"name": "health", "description": "System health and status monitoring"},
     ],
@@ -317,6 +319,7 @@ app.include_router(user_settings_router, tags=["user-settings"])
 app.include_router(render_router, tags=["render"])
 app.include_router(signup_router, tags=["signup"])
 app.include_router(copilot_router, tags=["copilot"])
+app.include_router(lsp_router, tags=["lsp"])
 logger.info("All routers registered successfully")
 
 

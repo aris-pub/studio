@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, computed, inject, watch, onBeforeUnmount } from "vue";
+  import { ref, computed, inject, watch, onBeforeUnmount, toRaw } from "vue";
   import {
     EditorView,
     keymap,
@@ -29,10 +29,13 @@
     closeBrackets,
     closeBracketsKeymap,
   } from "@codemirror/autocomplete";
-  import { lintKeymap } from "@codemirror/lint";
+  import { lintKeymap, lintGutter } from "@codemirror/lint";
   import { yCollab } from "y-codemirror.next";
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
+  import { useLSPClient } from "@/composables/useLSPClient";
+
+  console.log("[EditorCodeMirror] Component loaded - TIMESTAMP:", Date.now());
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -54,6 +57,14 @@
 
   // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");
+
+  // LSP client setup
+  const backendUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const lspServerUrl = backendUrl.replace(/^http/, "ws") + "/ws/lsp";
+  const lsp = useLSPClient({
+    serverUrl: lspServerUrl,
+    documentUri: computed(() => `file:///${file.value?.id || "untitled"}.rsm`),
+  });
 
   // User info for awareness
   const userInfo = computed(() => {
@@ -78,6 +89,9 @@
     keymap.of([...defaultKeymap]),
   ];
 
+  // Lint extensions (added separately to ensure they come after LSP plugin)
+  const lintExtensions = [lintGutter(), keymap.of(lintKeymap)];
+
   // Auto-compilation on Y.Doc changes
   let compileDebounceTimeout = null;
   let ytextObserverCleanup = null;
@@ -96,6 +110,11 @@
     if (ytextObserverCleanup) {
       ytextObserverCleanup();
       ytextObserverCleanup = null;
+    }
+
+    // Disconnect LSP client
+    if (lsp.isConnected.value) {
+      lsp.disconnect();
     }
 
     if (view.value) {
@@ -177,7 +196,7 @@
       });
 
       // Wait for initial sync before creating editor
-      provider.value.once("synced", () => {
+      provider.value.once("synced", async () => {
         const ytextLength = ytext.value.toString().length;
 
         // Initialize ONLY if completely empty
@@ -190,6 +209,16 @@
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
+        }
+
+        // Initialize LSP client and get plugin
+        console.log("[EditorCodeMirror] Connecting to LSP server...");
+        let lspPlugin = null;
+        try {
+          lspPlugin = await lsp.connect(); // Returns plugin extension
+          console.log("[EditorCodeMirror] ✅ LSP ready, creating editor with plugin");
+        } catch (err) {
+          console.warn("[EditorCodeMirror] ⚠️ LSP failed, creating editor without it:", err);
         }
 
         // Setup auto-compilation on Y.Doc changes
@@ -260,6 +289,16 @@
           ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
           : [];
 
+        // Add LSP plugin extension if it was created successfully
+        // Note: client.plugin() already returns an array of extensions
+        // CRITICAL: Must unwrap Vue proxy or CodeMirror can't register the ViewPlugin!
+        const lspExtensions = lspPlugin ? toRaw(lspPlugin) : [];
+        if (lspPlugin) {
+          console.log(
+            "[EditorCodeMirror] ✅ Adding LSP plugin to editor (unwrapped from Vue proxy)"
+          );
+        }
+
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
           // yCollab only handles incremental changes, not initial state
@@ -269,6 +308,8 @@
             yCollabExtension,
             transactionLogger,
             ...editableExtensions,
+            ...lspExtensions,
+            lintExtensions,
             EditorView.theme({
               "&": {
                 height: "100%",
@@ -329,6 +370,19 @@
     if (!isSynced.value) return "syncing";
     return "connected";
   });
+
+  // LSP status
+  const lspStatusText = computed(() => {
+    if (lsp.error.value) return "LSP: Error";
+    if (lsp.isConnected.value) return "LSP: Active";
+    return "LSP: Connecting...";
+  });
+
+  const lspStatusClass = computed(() => {
+    if (lsp.error.value) return "disconnected";
+    if (lsp.isConnected.value) return "connected";
+    return "syncing";
+  });
 </script>
 
 <template>
@@ -337,6 +391,10 @@
       <span class="status-indicator" :class="statusClass">
         <span class="status-dot"></span>
         {{ statusText }}
+      </span>
+      <span class="status-indicator" :class="lspStatusClass">
+        <span class="status-dot"></span>
+        {{ lspStatusText }}
       </span>
       <span class="room-info">Room: {{ roomName }}</span>
     </div>
