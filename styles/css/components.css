@@ -1,5 +1,9 @@
 /* Shared Component Styles - Aris Design System */
 
+:root {
+  --scrollbar-size: 8px;
+}
+
 /* Icon default styles */
 .tabler-icon {
   width: 20px;

@@ -34,6 +34,7 @@
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
   import { useLSPClient } from "@/composables/useLSPClient";
+  import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
 
   console.log("[EditorCodeMirror] Component loaded - TIMESTAMP:", Date.now());
 
@@ -296,6 +297,13 @@
           console.log("[EditorCodeMirror] ✅ Adding LSP plugin to editor", lspPlugin);
         }
 
+        // Add semantic tokens extension for syntax highlighting
+        const semanticTokens = semanticTokensExtension(
+          lsp.client,
+          computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
+        );
+        console.log("[EditorCodeMirror] ✅ Adding semantic tokens extension");
+
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
           // yCollab only handles incremental changes, not initial state
@@ -306,6 +314,7 @@
             transactionLogger,
             ...editableExtensions,
             ...(lspExtension ? [lspExtension] : []),
+            semanticTokens,
             lintExtensions,
             EditorView.theme({
               "&": {
@@ -339,6 +348,12 @@
             window.__provider = provider.value;
             window.EditorView = EditorView;
             window.__awareness = awareness.value;
+          }
+
+          // Request initial semantic tokens for syntax highlighting
+          if (lsp.client.value && view.value) {
+            const uri = `file:///${file.value?.id || "untitled"}.rsm`;
+            requestSemanticTokens(lsp.client, uri, view.value);
           }
 
           isSynced.value = true;
@@ -467,5 +482,68 @@
 
   .cm-container :deep(.cm-editor) {
     height: 100%;
+  }
+
+  /* Semantic token highlighting - using braiid color system */
+  .cm-container :deep(.tok-keyword) {
+    color: var(--primary-700, #0361a1);
+    font-weight: var(--weight-semi, 600);
+  }
+
+  .cm-container :deep(.tok-function) {
+    color: var(--purple-700, #7629c7);
+  }
+
+  .cm-container :deep(.tok-operator) {
+    color: var(--primary-600, #027ac7);
+  }
+
+  .cm-container :deep(.tok-namespace) {
+    /* Headings */
+    color: var(--primary-800, #075487);
+    font-weight: var(--weight-bold, 700);
+  }
+
+  .cm-container :deep(.tok-macro) {
+    /* Math blocks */
+    color: var(--purple-600, #8b3be2);
+  }
+
+  .cm-container :deep(.tok-string) {
+    color: var(--orange-700, #be4a10);
+  }
+
+  .cm-container :deep(.tok-comment) {
+    color: var(--gray-600, #8b9fad);
+    font-style: italic;
+  }
+
+  .cm-container :deep(.tok-property) {
+    color: var(--orange-800, #973a15);
+  }
+
+  .cm-container :deep(.tok-type) {
+    color: var(--primary-600, #027ac7);
+  }
+
+  .cm-container :deep(.tok-modifier) {
+    color: var(--purple-600, #8b3be2);
+  }
+
+  .cm-container :deep(.tok-enumMember) {
+    /* Constants */
+    color: var(--primary-700, #0361a1);
+  }
+
+  .cm-container :deep(.tok-number) {
+    color: var(--primary-600, #027ac7);
+  }
+
+  .cm-container :deep(.tok-variable) {
+    color: var(--text-body, #3c4952);
+  }
+
+  .cm-container :deep(.tok-parameter) {
+    color: var(--text-body, #3c4952);
   }
 </style>
