@@ -104,7 +104,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
     }
   });
 
-  test.skip("should clear diagnostic when syntax error is fixed @auth", async ({ browser }) => {
+  test("should clear diagnostic when syntax error is fixed @auth", async ({ browser }) => {
     test.skip(!lspAvailable, "LSP not available (requires DEV backend with supervisord)");
     const { context, page } = await createAuthenticatedContext(browser, auth);
 
@@ -145,14 +145,14 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         });
       });
 
-      // Wait for diagnostic to disappear after fix
+      // Wait for diagnostic to disappear after fix (needs LSP re-analysis time)
       await page.waitForFunction(
         () => {
           const markers = document.querySelectorAll(".cm-lint-marker-error");
           return markers.length === 0;
         },
         {},
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Verify no error markers remain
@@ -319,6 +319,226 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
 
       expect(lspStatus).toContain("LSP");
       expect(lspStatus).toContain("Active");
+    } finally {
+      await cleanupYjs(page);
+      await context.close();
+    }
+  });
+
+  test("REGRESSION: diagnostics update in real-time without page refresh @auth", async ({
+    browser,
+  }) => {
+    test.skip(!lspAvailable, "LSP not available (requires DEV backend with supervisord)");
+    const { context, page } = await createAuthenticatedContext(browser, auth);
+
+    try {
+      // Create file with valid content (minimal valid RSM)
+      const validFileId = await createTestFile(
+        page.request,
+        auth.token,
+        auth.userData.id,
+        "# Valid Document\n\nThis is valid content."
+      );
+
+      await openFileInEditor(page, validFileId);
+
+      // Wait for LSP to connect
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
+      await page.waitForFunction(
+        () => {
+          const indicators = document.querySelectorAll(".status-indicator");
+          return Array.from(indicators).some((el) => {
+            const text = el.textContent || "";
+            return text.includes("LSP") && text.includes("Active");
+          });
+        },
+        {},
+        { timeout: 10000 }
+      );
+
+      // Wait for initial analysis - file should have no errors
+      // But allow for any existing errors to clear first
+      await page.waitForTimeout(2000);
+      const initialErrors = await page.evaluate(() => {
+        return document.querySelectorAll(".cm-lint-marker-error").length;
+      });
+
+      // If there are any initial errors, that's fine - we'll just verify they increase
+      const baselineErrorCount = initialErrors;
+
+      // Type a syntax error by adding incomplete tag
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        view.dispatch({
+          changes: { from: doc.length, insert: "\n\n:the" },
+        });
+      });
+
+      // Wait for diagnostic to appear WITHOUT page refresh (500ms debounce + analysis time)
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 5000 });
+
+      // Verify error marker appeared (should be more than baseline)
+      const errorsAfterTyping = await page.evaluate(() => {
+        return document.querySelectorAll(".cm-lint-marker-error").length;
+      });
+      expect(errorsAfterTyping).toBeGreaterThan(baselineErrorCount);
+
+      // Fix the error by completing the tag
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const content = view.state.doc.toString();
+        const from = content.lastIndexOf(":the");
+        view.dispatch({
+          changes: { from, to: from + 4, insert: ":theorem:" },
+        });
+      });
+
+      // Wait for diagnostic to disappear WITHOUT page refresh (back to baseline)
+      await page.waitForFunction(
+        () => {
+          const markers = document.querySelectorAll(".cm-lint-marker-error").length;
+          return markers <= baselineErrorCount;
+        },
+        { baselineErrorCount },
+        { timeout: 5000 }
+      );
+
+      // Verify error cleared (back to baseline or less)
+      const errorsAfterFix = await page.evaluate(() => {
+        return document.querySelectorAll(".cm-lint-marker-error").length;
+      });
+      expect(errorsAfterFix).toBeLessThanOrEqual(baselineErrorCount);
+
+      // Cleanup test file
+      await deleteTestFile(page.request, auth.token, validFileId);
+    } finally {
+      await cleanupYjs(page);
+      await context.close();
+    }
+  });
+
+  test("REGRESSION: LSP plugin not wrapped in Vue Proxy @auth", async ({ browser }) => {
+    test.skip(!lspAvailable, "LSP not available (requires DEV backend with supervisord)");
+    const { context, page } = await createAuthenticatedContext(browser, auth);
+
+    try {
+      await openFileInEditor(page, fileId);
+
+      // Wait for editor and LSP to be ready
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
+      await page.waitForFunction(
+        () => {
+          const indicators = document.querySelectorAll(".status-indicator");
+          return Array.from(indicators).some((el) => {
+            const text = el.textContent || "";
+            return text.includes("LSP") && text.includes("Active");
+          });
+        },
+        {},
+        { timeout: 10000 }
+      );
+
+      // Check that LSP ViewPlugin is registered (not broken by Vue Proxy)
+      // This is verified by checking that document changes trigger LSP updates
+      const initialContent = await page.evaluate(() => window.__cmView.state.doc.toString());
+
+      // Add a syntax error
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        view.dispatch({
+          changes: { from: view.state.doc.length, insert: "\n:incomplete" },
+        });
+      });
+
+      // If ViewPlugin is working, diagnostics should appear within 1 second (500ms debounce + analysis)
+      // If broken (Vue Proxy bug), diagnostics would NEVER appear without page refresh
+      let diagnosticsAppeared = false;
+      try {
+        await page.waitForSelector(".cm-lint-marker-error", { timeout: 2000 });
+        diagnosticsAppeared = true;
+      } catch (e) {
+        // Timeout means ViewPlugin not working
+      }
+
+      expect(diagnosticsAppeared).toBe(true);
+
+      // Verify didChange was sent by checking diagnostics updated
+      const currentContent = await page.evaluate(() => window.__cmView.state.doc.toString());
+      expect(currentContent).not.toBe(initialContent);
+      expect(currentContent).toContain(":incomplete");
+    } finally {
+      await cleanupYjs(page);
+      await context.close();
+    }
+  });
+
+  test("REGRESSION: multiple rapid edits debounced correctly @auth", async ({ browser }) => {
+    test.skip(!lspAvailable, "LSP not available (requires DEV backend with supervisord)");
+    const { context, page } = await createAuthenticatedContext(browser, auth);
+
+    try {
+      await openFileInEditor(page, fileId);
+
+      // Wait for LSP
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: 5000 }
+      );
+      await page.waitForFunction(
+        () => {
+          const indicators = document.querySelectorAll(".status-indicator");
+          return Array.from(indicators).some((el) => {
+            const text = el.textContent || "";
+            return text.includes("LSP") && text.includes("Active");
+          });
+        },
+        {},
+        { timeout: 10000 }
+      );
+
+      // Make multiple rapid edits (simulating typing)
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        view.dispatch({ changes: { from: doc.length, insert: "\n:" } });
+      });
+      await page.waitForTimeout(100);
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        view.dispatch({ changes: { from: doc.length, insert: "t" } });
+      });
+      await page.waitForTimeout(100);
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        view.dispatch({ changes: { from: doc.length, insert: "h" } });
+      });
+      await page.waitForTimeout(100);
+      await page.evaluate(() => {
+        const view = window.__cmView;
+        const doc = view.state.doc;
+        view.dispatch({ changes: { from: doc.length, insert: "e" } });
+      });
+
+      // Debounced sync should wait 500ms after last edit, then send didChange
+      // Diagnostic should appear within 1.5s total (500ms debounce + analysis)
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 2000 });
+
+      const errors = await page.evaluate(() => {
+        return document.querySelectorAll(".cm-lint-marker-error").length;
+      });
+      expect(errors).toBeGreaterThan(0);
     } finally {
       await cleanupYjs(page);
       await context.close();
