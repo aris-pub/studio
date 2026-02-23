@@ -103,6 +103,7 @@ backend/static/design/
 
 # Docker
 .dockerignore
+.entrypoint-cache/
 
 # Deployment
 fly.toml.local

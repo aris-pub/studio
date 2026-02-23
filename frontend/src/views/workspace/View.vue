@@ -1,6 +1,7 @@
 <script setup>
   import { ref, reactive, computed, inject, provide, onMounted, watch, watchEffect } from "vue";
   import { useRoute, useRouter } from "vue-router";
+  import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { File } from "@/models/File.js";
   import Sidebar from "./Sidebar.vue";
@@ -106,10 +107,10 @@
   });
   provide("fileSettings", fileSettings);
 
-  // Panel component management
-  const showEditor = ref(false);
-  const showSearch = ref(false);
-  const showAICopilot = ref(false);
+  // Panel component management (persisted across refresh)
+  const showEditor = useLocalStorage("ws-panel-editor", false);
+  const showSearch = useLocalStorage("ws-panel-search", false);
+  const showAICopilot = useLocalStorage("ws-panel-copilot", false);
 
   // Chat state management - persists when panel is closed
   const chatMessages = ref([]);
@@ -146,8 +147,8 @@
   provide("drawerOpen", drawerOpen);
   const sidebarWidth = computed(() => (drawerOpen.value ? "364px" : "64px"));
 
-  // Focus Mode
-  const focusMode = ref(false);
+  // Focus Mode (persisted across refresh)
+  const focusMode = useLocalStorage("ws-panel-focus", false);
   provide("focusMode", focusMode);
 
   // Responsiveness
@@ -167,7 +168,11 @@
     data-testid="workspace-container"
     :class="{ focus: focusMode, mobile: mobileMode }"
   >
-    <Sidebar @show-component="showComponent" @hide-component="hideComponent" />
+    <Sidebar
+      :initial-panel-state="{ DockableEditor: showEditor, DockableSearch: showSearch }"
+      @show-component="showComponent"
+      @hide-component="hideComponent"
+    />
 
     <!-- Loading state -->
     <div v-if="isFileStoreLoading" class="state-message">

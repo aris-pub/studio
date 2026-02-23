@@ -138,7 +138,11 @@ export const semanticTokensField = StateField.define({
 
     // Map decorations through document changes
     if (tr.docChanged) {
-      return decorations.map(tr.changes);
+      try {
+        return decorations.map(tr.changes);
+      } catch {
+        return Decoration.none;
+      }
     }
 
     return decorations;
@@ -185,8 +189,10 @@ export async function requestSemanticTokens(lspClientRef, documentUri, view) {
     view.dispatch({
       effects: setTokensEffect.of(decorations),
     });
+    return true;
   } catch (error) {
     console.error("[SemanticTokens] Request failed:", error);
+    return false;
   }
 }
 

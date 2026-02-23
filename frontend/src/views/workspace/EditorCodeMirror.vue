@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, computed, inject, watch, onBeforeUnmount, toRaw } from "vue";
+  import { ref, shallowRef, computed, inject, watch, onBeforeUnmount } from "vue";
   import {
     EditorView,
     keymap,
@@ -30,11 +30,12 @@
     closeBracketsKeymap,
   } from "@codemirror/autocomplete";
   import { lintKeymap, lintGutter } from "@codemirror/lint";
-  import { yCollab } from "y-codemirror.next";
+  import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
   import { useLSPClient } from "@/composables/useLSPClient";
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
+  import { rsmKeymap } from "@/composables/useRSMCommands";
 
   console.log("[EditorCodeMirror] Component loaded - TIMESTAMP:", Date.now());
 
@@ -43,14 +44,20 @@
   const user = inject("user");
   const editSession = inject("editSession", null);
 
+  // Shared view and cursor refs from parent Editor.vue
+  const parentCmView = inject("cmView", null);
+  const parentCursorPos = inject("cursorPos", null);
+
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
   const activeCollabFileId = ref(null);
-  const view = ref(null);
-  const ydoc = ref(null);
-  const ytext = ref(null);
-  const provider = ref(null);
-  const awareness = ref(null);
+  // Y.js objects must use shallowRef — Vue's reactive Proxy breaks Y.js
+  // internal identity checks (UndoManager scope, findRootTypeKey, etc.)
+  const view = shallowRef(null);
+  const ydoc = shallowRef(null);
+  const ytext = shallowRef(null);
+  const provider = shallowRef(null);
+  const awareness = shallowRef(null);
   const isConnected = ref(false);
   const isSynced = ref(false);
   const isInitialized = ref(false);
@@ -80,14 +87,21 @@
     };
   });
 
-  // Minimal extension bundle to debug Y.js update conflict
-  // Start with absolute minimum, add features back once collaboration works
+  // Cursor position listener for status bar breadcrumbs
+  const cursorListener = EditorView.updateListener.of((update) => {
+    if (update.selectionSet && parentCursorPos) {
+      parentCursorPos.value = update.state.selection.main.head;
+    }
+  });
+
   const customSetup = [
     lineNumbers(),
     highlightSpecialChars(),
     drawSelection(),
     EditorState.allowMultipleSelections.of(true),
+    rsmKeymap,
     keymap.of([...defaultKeymap]),
+    cursorListener,
   ];
 
   // Lint extensions (added separately to ensure they come after LSP plugin)
@@ -117,6 +131,8 @@
     if (lsp.isConnected.value) {
       lsp.disconnect();
     }
+
+    if (parentCmView) parentCmView.value = null;
 
     if (view.value) {
       view.value.destroy();
@@ -311,6 +327,7 @@
           extensions: [
             customSetup,
             yCollabExtension,
+            keymap.of(yUndoManagerKeymap),
             transactionLogger,
             ...editableExtensions,
             ...(lspExtension ? [lspExtension] : []),
@@ -338,8 +355,11 @@
           parent: container,
         });
 
+        // Share view with sibling components (toolbar, status bar)
+        if (parentCmView) parentCmView.value = view.value;
+
         // Wait for editor to fully mount before marking as synced
-        setTimeout(() => {
+        setTimeout(async () => {
           // Expose view and Y.js instances globally for testing (dev, CI, test - not prod)
           if (!import.meta.env.PROD) {
             window.__cmView = view.value;
@@ -351,9 +371,18 @@
           }
 
           // Request initial semantic tokens for syntax highlighting
+          // Retry once if it fails — the LSP server may still be warming up
+          // (especially when the editor panel restores immediately from localStorage)
           if (lsp.client.value && view.value) {
             const uri = `file:///${file.value?.id || "untitled"}.rsm`;
-            requestSemanticTokens(lsp.client, uri, view.value);
+            const ok = await requestSemanticTokens(lsp.client, uri, view.value);
+            if (!ok) {
+              setTimeout(() => {
+                if (lsp.client.value && view.value) {
+                  requestSemanticTokens(lsp.client, uri, view.value);
+                }
+              }, 2000);
+            }
           }
 
           isSynced.value = true;
@@ -370,46 +399,44 @@
     cleanup();
   });
 
-  // Connection status indicator
-  const statusText = computed(() => {
-    if (!isConnected.value) return "Disconnected";
-    if (!isSynced.value) return "Syncing...";
-    return "Connected";
-  });
+  // Shared refs from parent Editor.vue (for status bar sibling)
+  const parentCollabConnected = inject("collabIsConnected", null);
+  const parentCollabSynced = inject("collabIsSynced", null);
+  const parentLspClient = inject("lspClient", null);
+  const parentDocumentUri = inject("documentUri", null);
 
-  const statusClass = computed(() => {
-    if (!isConnected.value) return "disconnected";
-    if (!isSynced.value) return "syncing";
-    return "connected";
-  });
-
-  // LSP status
-  const lspStatusText = computed(() => {
-    if (lsp.error.value) return "LSP: Error";
-    if (lsp.isConnected.value) return "LSP: Active";
-    return "LSP: Connecting...";
-  });
-
-  const lspStatusClass = computed(() => {
-    if (lsp.error.value) return "disconnected";
-    if (lsp.isConnected.value) return "connected";
-    return "syncing";
-  });
+  watch(
+    isConnected,
+    (v) => {
+      if (parentCollabConnected) parentCollabConnected.value = v;
+    },
+    { immediate: true }
+  );
+  watch(
+    isSynced,
+    (v) => {
+      if (parentCollabSynced) parentCollabSynced.value = v;
+    },
+    { immediate: true }
+  );
+  watch(
+    lsp.client,
+    (v) => {
+      if (parentLspClient) parentLspClient.value = v;
+    },
+    { immediate: true }
+  );
+  watch(
+    () => file.value?.id,
+    (id) => {
+      if (parentDocumentUri) parentDocumentUri.value = `file:///${id || "untitled"}.rsm`;
+    },
+    { immediate: true }
+  );
 </script>
 
 <template>
   <div class="editor-codemirror">
-    <div class="status-bar">
-      <span class="status-indicator" :class="statusClass">
-        <span class="status-dot"></span>
-        {{ statusText }}
-      </span>
-      <span class="status-indicator" :class="lspStatusClass">
-        <span class="status-dot"></span>
-        {{ lspStatusText }}
-      </span>
-      <span class="room-info">Room: {{ roomName }}</span>
-    </div>
     <div ref="editorContainer" class="cm-container"></div>
   </div>
 </template>
@@ -418,61 +445,9 @@
   .editor-codemirror {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     width: 100%;
-  }
-
-  .status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 12px;
-    font-size: 12px;
-    background: var(--surface-secondary, #f5f5f5);
-    border-bottom: 1px solid var(--border-primary, #e0e0e0);
-    color: var(--text-secondary, #666);
-  }
-
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-tertiary, #999);
-  }
-
-  .status-indicator.connected .status-dot {
-    background: var(--success, #22c55e);
-  }
-
-  .status-indicator.syncing .status-dot {
-    background: var(--warning, #f59e0b);
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  .status-indicator.disconnected .status-dot {
-    background: var(--error, #ef4444);
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  .room-info {
-    font-family: monospace;
-    font-size: 11px;
   }
 
   .cm-container {

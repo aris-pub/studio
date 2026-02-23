@@ -1,8 +1,18 @@
 <script setup>
-  import { ref, inject, useTemplateRef, provide, onMounted, onBeforeUnmount } from "vue";
+  import {
+    ref,
+    shallowRef,
+    inject,
+    useTemplateRef,
+    provide,
+    onMounted,
+    onBeforeUnmount,
+  } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useEditSession } from "@/composables/useEditSession.js";
   import EditorTopbar from "./EditorTopbar.vue";
+  import EditorToolbar from "./EditorToolbar.vue";
+  import EditorStatusBar from "./EditorStatusBar.vue";
   import EditorSource from "./EditorSource.vue";
   import EditorCodeMirror from "./EditorCodeMirror.vue";
   import EditorFiles from "./EditorFiles.vue";
@@ -40,6 +50,22 @@
       file.value.html = response.data;
     },
   });
+
+  // Shared CodeMirror view + cursor position for toolbar and status bar
+  const cmView = shallowRef(null);
+  const cursorPos = ref(0);
+  provide("cmView", cmView);
+  provide("cursorPos", cursorPos);
+
+  // Collab/LSP state from EditorCodeMirror (shared with status bar)
+  const collabIsConnected = ref(false);
+  const collabIsSynced = ref(false);
+  const lspClient = shallowRef(null);
+  const documentUri = ref("");
+  provide("collabIsConnected", collabIsConnected);
+  provide("collabIsSynced", collabIsSynced);
+  provide("lspClient", lspClient);
+  provide("documentUri", documentUri);
 
   // Provide editSession to child components
   provide("editSession", editSession);
@@ -139,11 +165,13 @@
   <div class="editor">
     <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" />
     <div class="content">
+      <EditorToolbar v-if="USE_CODEMIRROR && tabIndex === 0" />
       <!-- CodeMirror editor with Y.js real-time collaboration -->
       <EditorCodeMirror v-if="USE_CODEMIRROR && tabIndex === 0" v-model="file" />
       <!-- Original textarea editor (fallback) -->
       <EditorSource v-else-if="tabIndex === 0" ref="editor-source-ref" />
       <EditorFiles v-if="tabIndex === 1" v-model="file" />
+      <EditorStatusBar v-if="USE_CODEMIRROR && tabIndex === 0" :save-status="saveStatus" />
     </div>
   </div>
 </template>
@@ -160,6 +188,8 @@
 
   .content {
     height: calc(100% - 16px);
+    display: flex;
+    flex-direction: column;
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 0 8px 8px 8px;
   }

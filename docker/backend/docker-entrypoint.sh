@@ -26,12 +26,23 @@ fi
 #   2. Sync backend dependencies (which includes rsm-lang)
 #
 # Tests run locally on macOS (not in Docker), so no binary conflicts.
-if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
-    echo "Building tree-sitter-rsm for Linux from local source..."
-    cd /workspace/rsm && uv sync --quiet
+CACHE_DIR="/workspace/studio/.entrypoint-cache"
+mkdir -p "$CACHE_DIR"
 
-    echo "Syncing backend dependencies (includes local RSM)..."
-    cd /workspace/studio/backend && uv sync --all-groups --quiet
+if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
+    # Python deps: only re-sync when lockfiles change
+    RSM_LOCK_HASH=$(md5sum /workspace/rsm/uv.lock 2>/dev/null | cut -d' ' -f1)
+    BACKEND_LOCK_HASH=$(md5sum /workspace/studio/backend/uv.lock 2>/dev/null | cut -d' ' -f1)
+    COMBINED_HASH="${RSM_LOCK_HASH}-${BACKEND_LOCK_HASH}"
+
+    if [ "$(cat "$CACHE_DIR/python-deps" 2>/dev/null)" != "$COMBINED_HASH" ]; then
+        echo "Syncing Python dependencies..."
+        cd /workspace/rsm && uv sync --quiet
+        cd /workspace/studio/backend && uv sync --all-groups --quiet
+        echo "$COMBINED_HASH" > "$CACHE_DIR/python-deps"
+    else
+        echo "Python dependencies up to date (cached)"
+    fi
 fi
 
 # Install Node.js dependencies for multiplayer and rsm-lsp
@@ -46,27 +57,42 @@ if [ -d "/workspace/studio/multi-player" ]; then
 fi
 
 if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
-    # Build tree-sitter-rsm Node.js bindings for Linux first
-    echo "Building tree-sitter-rsm Node.js bindings for Linux..."
-    cd /workspace/rsm/tree-sitter-rsm
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
-    fi
-    # Rebuild native bindings for current platform
-    npm rebuild --quiet
-    # Create prebuilds directory with compiled bindings (required by node-gyp-build)
-    npm run prebuildify --quiet
+    # tree-sitter-rsm native bindings: only rebuild when source changes
+    TS_RSM_DIR="/workspace/rsm/tree-sitter-rsm"
+    TS_SRC_HASH=$(md5sum "$TS_RSM_DIR/src/parser.c" "$TS_RSM_DIR/src/scanner.c" "$TS_RSM_DIR/bindings/node/binding.cc" 2>/dev/null | md5sum | cut -d' ' -f1)
+    ARCH=$(uname -m)
 
-    echo "Installing and building rsm-lsp server..."
-    cd /workspace/rsm/packages/rsm-lsp
+    cd "$TS_RSM_DIR"
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
         npm ci --quiet
-        npm run build --quiet
-    else
-        echo "rsm-lsp dependencies already installed"
-        # Always rebuild TypeScript in case source changed
-        npm run build --quiet
     fi
+
+    if [ "$(cat "$CACHE_DIR/tree-sitter-$ARCH" 2>/dev/null)" != "$TS_SRC_HASH" ]; then
+        echo "Building tree-sitter-rsm Node.js bindings for Linux..."
+        npm rebuild --quiet
+        npm run prebuildify --quiet
+        echo "$TS_SRC_HASH" > "$CACHE_DIR/tree-sitter-$ARCH"
+    else
+        echo "tree-sitter-rsm native bindings up to date (cached)"
+    fi
+
+    # rsm-lsp: only rebuild TypeScript when source changes
+    LSP_DIR="/workspace/rsm/packages/rsm-lsp"
+    LSP_SRC_HASH=$(find "$LSP_DIR/src" -name '*.ts' -exec md5sum {} + 2>/dev/null | sort | md5sum | cut -d' ' -f1)
+
+    cd "$LSP_DIR"
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        npm ci --quiet
+    fi
+
+    if [ "$(cat "$CACHE_DIR/rsm-lsp" 2>/dev/null)" != "$LSP_SRC_HASH" ]; then
+        echo "Building rsm-lsp server..."
+        npm run build --quiet
+        echo "$LSP_SRC_HASH" > "$CACHE_DIR/rsm-lsp"
+    else
+        echo "rsm-lsp build up to date (cached)"
+    fi
+
     cd /workspace/studio/backend
 fi
 

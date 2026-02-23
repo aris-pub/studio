@@ -9,13 +9,16 @@
 
   const router = useRouter();
   const emit = defineEmits(["showComponent", "hideComponent"]);
+  const props = defineProps({
+    initialPanelState: { type: Object, default: () => ({}) },
+  });
   const items = reactive([
     {
       name: "DockableEditor",
       icon: "Code",
       label: "source",
       key: "e",
-      state: false,
+      state: props.initialPanelState.DockableEditor ?? false,
       type: "toggle",
     },
     {
@@ -23,7 +26,7 @@
       icon: "Search",
       label: "search",
       key: "f",
-      state: false,
+      state: props.initialPanelState.DockableSearch ?? false,
       type: "toggle",
     },
     { name: "Separator", state: false },

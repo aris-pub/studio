@@ -5,6 +5,7 @@
     icon: { type: String, required: true },
     caption: { type: String, required: true },
     iconClass: { type: String, default: "" },
+    shortcut: { type: String, default: "" },
   });
 
   const closeMenu = inject("closeMenu");
@@ -21,6 +22,7 @@
   >
     <Icon :name="icon" class="cmi-icon" :class="iconClass" />
     <span class="cmi-caption">{{ caption }}</span>
+    <span v-if="shortcut" class="cmi-shortcut">{{ shortcut }}</span>
   </button>
 </template>
 
@@ -67,5 +69,13 @@
   }
   .item.focused {
     background-color: var(--surface-hover);
+  }
+
+  .cmi-shortcut {
+    margin-left: auto;
+    padding-left: 16px;
+    font-size: 11px;
+    color: var(--gray-600);
+    white-space: nowrap;
   }
 </style>

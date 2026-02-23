@@ -1,6 +1,8 @@
 <script setup>
+  import { computed, inject, toRaw } from "vue";
   import { IconCheck, IconClock, IconDeviceFloppy, IconX, IconMapPin } from "@tabler/icons-vue";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
+  import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 
   defineProps({
     saveStatus: {
@@ -10,30 +12,77 @@
     },
   });
 
+  const file = inject("file", null);
+  const cmView = inject("cmView", null);
+  const cursorPos = inject("cursorPos", null);
+  const lspClient = inject("lspClient", null);
+  const documentUri = inject("documentUri", null);
+  const collabIsConnected = inject("collabIsConnected", null);
+  const collabIsSynced = inject("collabIsSynced", null);
+
+  const { breadcrumbs } = useDocumentBreadcrumbs({
+    lspClient,
+    documentUri,
+    cursorPos,
+    cmView,
+  });
+
+  // Map LSP SymbolKind to RSM-friendly display names.
+  // Sections (kind 2/Module) use the heading text; others use the RSM type name.
+  const RSM_KIND_LABELS = {
+    5: "Theorem",
+    6: "Step",
+    12: "Proof",
+    14: "Figure",
+    18: "References",
+    19: "Example",
+    23: "Definition",
+  };
+
+  function crumbLabel(crumb) {
+    if (crumb.kind === 2 || crumb.kind === 3) return crumb.name;
+    return RSM_KIND_LABELS[crumb.kind] || crumb.name;
+  }
+
+  const displayCrumbs = computed(() => {
+    const root = { label: file?.value?.title || "Document", offset: 0 };
+    const path = breadcrumbs.value.map((c) => ({ label: crumbLabel(c), offset: c.offset ?? 0 }));
+    return [root, ...path];
+  });
+
+  function goToCrumb(crumb) {
+    const view = cmView?.value;
+    if (!view) return;
+    const raw = toRaw(view);
+    raw.dispatch({ selection: { anchor: crumb.offset } });
+    raw.focus();
+  }
+
+  const collabDotClass = computed(() => {
+    if (!collabIsConnected?.value) return "disconnected";
+    if (!collabIsSynced?.value) return "syncing";
+    return "connected";
+  });
+
   const { scrollElementRef, showLeftShadow, showRightShadow } = useScrollShadows();
 </script>
 
 <template>
   <div class="statusbar">
-    <div class="left">
-      <Button kind="tertiary" size="sm" icon="ArrowUpRight" text="Go to" />
-    </div>
     <div class="middle-container">
       <div ref="scrollElementRef" class="middle">
         <IconMapPin />
-        <span class="crumb">main.rsm</span>
-        <span class="crumb-sep">></span>
-        <span class="crumb">sec. 1.3.1</span>
-        <span class="crumb-sep">></span>
-        <span class="crumb">para.</span>
-        <span class="crumb-sep">></span>
-        <span class="crumb">span</span>
+        <template v-for="(crumb, i) in displayCrumbs" :key="i">
+          <span v-if="i > 0" class="crumb-sep">&gt;</span>
+          <span class="crumb" @click="goToCrumb(crumb)">{{ crumb.label }}</span>
+        </template>
       </div>
 
       <div class="shadow-overlay shadow-left" :class="{ active: showLeftShadow }"></div>
       <div class="shadow-overlay shadow-right" :class="{ active: showRightShadow }"></div>
     </div>
     <div class="right">
+      <span class="collab-dot" :class="collabDotClass"></span>
       <IconClock v-if="saveStatus === 'pending'" class="icon-pending" />
       <IconDeviceFloppy v-if="saveStatus === 'saving'" class="icon-saving" />
       <IconCheck
@@ -64,14 +113,6 @@
     color: var(--gray-800);
   }
 
-  .statusbar > .left > .button {
-    height: 100%;
-  }
-
-  .statusbar :deep(.btn-text) {
-    font-size: 11px !important;
-  }
-
   .middle-container {
     position: relative;
     width: 100%;
@@ -79,7 +120,7 @@
     padding-right: 8px;
   }
 
-  .statusbar > :is(.left, .middle) > :deep(svg) {
+  .statusbar > :is(.middle) > :deep(svg) {
     color: var(--gray-800);
   }
 
@@ -102,14 +143,13 @@
     flex-shrink: 0;
   }
 
-  .statusbar > .left {
-    flex: 1;
-  }
-
   .crumb {
     text-wrap: nowrap;
     flex-shrink: 0;
     height: 100%;
+    cursor: pointer;
+    padding-inline: 2px;
+    border-radius: 2px;
   }
 
   .crumb:hover {
@@ -120,17 +160,46 @@
     flex-shrink: 0;
   }
 
-  .statusbar > :is(.left, .right) {
-    flex: 0;
-  }
-
   .statusbar > .right {
+    flex: 0;
     padding-inline: 8px;
+    gap: 6px;
   }
 
   .statusbar > * > :deep(svg) {
     margin: 0;
     transition: color 0.3s ease;
+  }
+
+  .collab-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+
+  .collab-dot.connected {
+    background-color: var(--success-500);
+  }
+
+  .collab-dot.syncing {
+    background-color: var(--warning-500);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .collab-dot.disconnected {
+    background-color: var(--error-500);
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .icon-idle {
