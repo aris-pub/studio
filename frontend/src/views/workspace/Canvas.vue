@@ -22,12 +22,10 @@
   import DockableMinimap from "./DockableMinimap.vue";
   import DockableSearch from "./DockableSearch.vue";
   import DockableAnnotations from "./DockableAnnotations.vue";
-  import DockableChat from "./DockableChat.vue";
 
   const props = defineProps({
     showEditor: { type: Boolean, default: false },
     showSearch: { type: Boolean, default: false },
-    showAiCopilot: { type: Boolean, default: false },
   });
   const file = defineModel({ type: Object });
   defineOptions({ inheritAttrs: false });
@@ -178,9 +176,6 @@
   const annotations = inject("annotations", []);
   const hasAnnotations = computed(() => annotations && annotations.length > 0);
   const middleTopWidth = computed(() => `${columnSizes.middle.width + 8}px`);
-
-  // Chat functionality - controlled by sidebar
-  const showChat = computed(() => props.showAiCopilot);
 </script>
 
 <template>
@@ -204,13 +199,11 @@
           ref="inner-right-ref"
           data-testid="manuscript-container"
           class="inner right"
-          :class="{ 'no-annotations': !hasAnnotations, 'has-chat': showChat }"
+          :class="{ 'no-annotations': !hasAnnotations }"
         >
           <div ref="left-column-ref" class="left-column">
             <Dock class="dock left top"> </Dock>
-            <Dock class="dock left main">
-              <DockableChat v-if="showChat" :file-id="file.id" />
-            </Dock>
+            <Dock class="dock left main"> </Dock>
           </div>
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
@@ -352,14 +345,7 @@
     max-width: none; /* Remove any width constraints */
   }
 
-  /* When both chat and annotations are closed, middle column takes all space */
-  .inner.right.no-annotations:not(.has-chat) .middle-column {
-    flex: 1; /* Take all available space when no side panels */
-    max-width: none; /* Remove any width constraints */
-  }
-
   .inner.right .left-column {
-    /* Left column base styling - no width when empty */
     display: flex;
     flex-direction: column;
     flex: 0 0 0px;
@@ -370,13 +356,6 @@
     align-items: flex-start;
     padding: 16px;
     box-sizing: border-box;
-  }
-
-  .inner.right.has-chat .left-column {
-    /* Chat panel styling when docked */
-    flex: 0 0 350px; /* Fixed width for chat panel */
-    min-width: 300px; /* Minimum width to prevent collapse */
-    max-width: 400px; /* Maximum width to keep it reasonable */
   }
 
   .inner.right .right-column {

@@ -27,8 +27,6 @@ services:
       - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - DB_URL_LOCAL=postgresql+asyncpg://postgres:postgres@postgres:5432/${DB_NAME}
       - ENV=${ENV:-LOCAL}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - MULTIPLAYER_HOST=localhost
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
       - FRONTEND_PORT=${FRONTEND_PORT}
@@ -63,8 +61,6 @@ services:
       - ALEMBIC_DB_URL_LOCAL=sqlite+pysqlite:///./test_e2e.db
       - TEST_USER_EMAIL=${TEST_USER_EMAIL}
       - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - COPILOT_PROVIDER=${COPILOT_PROVIDER}
       - RESEND_API_KEY=your_resend_api_key_here  # Placeholder value disables email service
       - FROM_EMAIL=noreply@test.local
       - ADMIN_EMAIL=

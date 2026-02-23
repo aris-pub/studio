@@ -1,1 +1,0 @@
-"""Copilot service package."""

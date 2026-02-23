@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
-      COPILOT_PROVIDER: mock
 
     services:
       postgres:

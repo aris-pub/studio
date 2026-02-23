@@ -50,14 +50,6 @@ vi.mock("@/views/workspace/DockableAnnotations.vue", () => ({
   },
 }));
 
-vi.mock("@/views/workspace/DockableChat.vue", () => ({
-  default: {
-    name: "DockableChat",
-    template: '<div data-testid="dockable-chat-mock">DockableChat</div>',
-    props: ["fileId"],
-  },
-}));
-
 vi.mock("@/components/manuscript/ManuscriptWrapper.vue", () => ({
   default: {
     name: "ManuscriptWrapper",
@@ -122,7 +114,6 @@ describe("Canvas Layout", () => {
         modelValue: mockFile,
         showEditor: false,
         showSearch: false,
-        showAiCopilot: false,
         ...props,
       },
       global: {
@@ -656,95 +647,6 @@ describe("Canvas Layout", () => {
 
       // Should not rely solely on color for layout
       expect(wrapper.exists()).toBe(true);
-    });
-  });
-
-  describe("Chat Panel Layout Behavior", () => {
-    it("should show DockableChat in left column when showAiCopilot is true", async () => {
-      wrapper = createWrapper({ showAiCopilot: true });
-      await wrapper.vm.$nextTick();
-
-      const leftColumn = wrapper.find(".left-column");
-      const chatPanel = leftColumn.find('[data-testid="dockable-chat-mock"]');
-
-      expect(chatPanel.exists()).toBe(true);
-    });
-
-    it("should not show DockableChat when showAiCopilot is false", async () => {
-      wrapper = createWrapper({ showAiCopilot: false });
-      await wrapper.vm.$nextTick();
-
-      const leftColumn = wrapper.find(".left-column");
-      const chatPanel = leftColumn.find('[data-testid="dockable-chat-mock"]');
-
-      expect(chatPanel.exists()).toBe(false);
-    });
-
-    it("should give left column fixed width when chat is open", async () => {
-      wrapper = createWrapper({ showAiCopilot: true });
-      await wrapper.vm.$nextTick();
-
-      const innerRight = wrapper.find(".inner.right");
-
-      // When chat is open, the parent should have the has-chat class
-      expect(innerRight.classes()).toContain("has-chat");
-    });
-
-    it("should allow middle column to expand when chat is closed", async () => {
-      wrapper = createWrapper(
-        {
-          showAiCopilot: false,
-        },
-        {
-          annotations: reactive([]), // No annotations either
-        }
-      );
-      await wrapper.vm.$nextTick();
-
-      const innerRight = wrapper.find(".inner.right");
-
-      // When both chat and annotations are closed, inner should have proper classes
-      expect(innerRight.classes()).toContain("no-annotations");
-      expect(innerRight.classes()).not.toContain("has-chat");
-    });
-
-    it("should handle three-column layout when chat is open and annotations exist", async () => {
-      wrapper = createWrapper({
-        showAiCopilot: true,
-      });
-      await wrapper.vm.$nextTick();
-
-      const leftColumn = wrapper.find(".left-column");
-      const middleColumn = wrapper.find(".middle-column");
-      const rightColumn = wrapper.find(".right-column");
-      const chatPanel = leftColumn.find('[data-testid="dockable-chat-mock"]');
-      const annotationsPanel = rightColumn.find('[data-testid="dockable-annotations-mock"]');
-      const innerRight = wrapper.find(".inner.right");
-
-      // All three columns should be present
-      expect(leftColumn.exists()).toBe(true);
-      expect(middleColumn.exists()).toBe(true);
-      expect(rightColumn.exists()).toBe(true);
-      expect(chatPanel.exists()).toBe(true);
-      expect(annotationsPanel.exists()).toBe(true);
-
-      // Should have has-chat class but not no-annotations class
-      expect(innerRight.classes()).toContain("has-chat");
-      expect(innerRight.classes()).not.toContain("no-annotations");
-    });
-
-    it("should not show left column content when chat is closed", async () => {
-      wrapper = createWrapper({ showAiCopilot: false });
-      await wrapper.vm.$nextTick();
-
-      const leftColumn = wrapper.find(".left-column");
-      const innerRight = wrapper.find(".inner.right");
-
-      // Left column should exist but have no visible chat content
-      expect(leftColumn.exists()).toBe(true);
-
-      // Should not have has-chat class when chat is closed
-      expect(innerRight.classes()).not.toContain("has-chat");
     });
   });
 });

@@ -77,11 +77,6 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
     """Frontend base URL used for building email links."""
 
-    ANTHROPIC_API_KEY: str = Field("", json_schema_extra={"env": "ANTHROPIC_API_KEY"})
-    """Anthropic API key for AI copilot functionality."""
-
-    COPILOT_PROVIDER: str = Field("anthropic", json_schema_extra={"env": "COPILOT_PROVIDER"})
-    """AI provider for copilot functionality (anthropic, openai, etc.)."""
 
     model_config = SettingsConfigDict(
         extra="ignore",

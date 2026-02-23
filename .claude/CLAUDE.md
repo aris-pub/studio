@@ -93,14 +93,6 @@ just env       # Show environment configuration
 just notify "message"  # Send macOS notification
 ```
 
-## AI Copilot Setup
-```bash
-cp backend/.env.example backend/.env
-# Add ANTHROPIC_API_KEY — see backend/AI_SETUP.md
-```
-
-E2E tests use mock AI responses in CI to prevent charges.
-
 ## Environment Configuration
 
 All environment variables in `.env` are **REQUIRED**. The system crashes immediately if any are missing — no fallbacks.

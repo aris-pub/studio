@@ -42,8 +42,6 @@ except ImportError:
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Configure test environment to use mock provider for cost protection
-os.environ["COPILOT_PROVIDER"] = "mock"
 # Disable email service during tests to prevent real API calls
 os.environ["RESEND_API_KEY"] = ""
 

@@ -110,22 +110,12 @@
   // Panel component management (persisted across refresh)
   const showEditor = useLocalStorage("ws-panel-editor", false);
   const showSearch = useLocalStorage("ws-panel-search", false);
-  const showAICopilot = useLocalStorage("ws-panel-copilot", false);
-
-  // Chat state management - persists when panel is closed
-  const chatMessages = ref([]);
-  const chatIsLoading = ref(false);
-  provide("chatMessages", chatMessages);
-  provide("chatIsLoading", chatIsLoading);
   const showComponent = (compName) => {
     if (compName === "DockableEditor") {
       showEditor.value = true;
       return;
     } else if (compName === "DockableSearch") {
       showSearch.value = true;
-      return;
-    } else if (compName === "AICopilot") {
-      showAICopilot.value = true;
       return;
     }
   };
@@ -135,9 +125,6 @@
       return;
     } else if (compName === "DockableSearch") {
       showSearch.value = false;
-      return;
-    } else if (compName === "AICopilot") {
-      showAICopilot.value = false;
       return;
     }
   };
@@ -192,7 +179,6 @@
       data-testid="workspace-canvas"
       :show-editor="showEditor"
       :show-search="showSearch"
-      :show-ai-copilot="showAICopilot"
     />
 
     <!-- No file found state (after files loaded but target file not found) -->
