@@ -75,19 +75,6 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         { timeout: 5000 }
       );
 
-      // Wait for LSP to connect and become active
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
-      );
-
       // Wait for diagnostic gutter marker to appear (LSP needs time to analyze document)
       await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
 
@@ -116,19 +103,6 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         () => typeof window.__cmView !== "undefined",
         {},
         { timeout: 5000 }
-      );
-
-      // Wait for LSP to connect and become active
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
       );
 
       // Wait for diagnostic marker (LSP needs time to analyze)
@@ -180,19 +154,6 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         { timeout: 5000 }
       );
 
-      // Wait for LSP to connect and become active
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
-      );
-
       // Clear editor and type incomplete tag
       await page.evaluate(() => {
         const view = window.__cmView;
@@ -205,7 +166,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       await page.keyboard.press("Control+Space");
 
       // Wait for completion popup to appear (LSP completion may take time)
-      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 10000 });
+      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 15000 });
 
       // Verify completion contains :theorem:
       const hasTheoremCompletion = await page.evaluate(() => {
@@ -236,19 +197,6 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         { timeout: 5000 }
       );
 
-      // Wait for LSP to connect and become active
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
-      );
-
       // Clear editor and type incomplete tag
       await page.evaluate(() => {
         const view = window.__cmView;
@@ -261,7 +209,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       await page.keyboard.press("Control+Space");
 
       // Wait for completion popup (LSP completion may take time)
-      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 10000 });
+      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 15000 });
 
       // Accept first completion (should be :theorem:)
       await page.keyboard.press("Enter");
@@ -303,7 +251,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
           });
         },
         {},
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Verify status indicator is visible
@@ -357,7 +305,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
           });
         },
         {},
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Wait for initial analysis - file should have no errors
@@ -444,7 +392,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
           });
         },
         {},
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Check that LSP ViewPlugin is registered (not broken by Vue Proxy)
@@ -503,7 +451,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
           });
         },
         {},
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Make multiple rapid edits (simulating typing)

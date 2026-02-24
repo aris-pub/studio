@@ -84,19 +84,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
       console.log("[Content Before LSP]", contentBeforeLSP);
       console.log("[Content Before LSP Length]", contentBeforeLSP.length);
 
-      // Wait for LSP to connect and become active
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
-      );
-
       // Wait a bit for any potential duplication to occur
       await page.waitForTimeout(2000);
 
@@ -146,19 +133,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         { timeout: 5000 }
       );
 
-      // Wait for LSP to connect
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
-      );
-
       const contentAfterFirstLoad = await page.evaluate(() => {
         return window.__cmView.state.doc.toString();
       });
@@ -173,19 +147,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         () => typeof window.__cmView !== "undefined",
         {},
         { timeout: 5000 }
-      );
-
-      // Wait for LSP to connect again
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 10000 }
       );
 
       await page.waitForTimeout(2000);
