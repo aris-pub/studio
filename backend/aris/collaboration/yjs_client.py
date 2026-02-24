@@ -165,7 +165,9 @@ class YDocClient:
             payload = message[1:]
 
             if msg_type == 0:  # Sync message
-                reply = handle_sync_message(payload, self.doc)
+                # Wrap in transaction with origin to prevent observer from triggering persistence
+                with self.doc.transaction(origin=self.SYNC_ORIGIN):
+                    reply = handle_sync_message(payload, self.doc)
                 if reply:
                     await websocket.send(reply)
                     logger.debug(f"Sent sync reply for file {self.file_id}")
