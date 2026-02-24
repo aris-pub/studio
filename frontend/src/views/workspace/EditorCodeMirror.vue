@@ -217,11 +217,11 @@
         const ytextLength = ytext.value.toString().length;
 
         // DEBUG: Log Y.text content after sync (before any initialization)
-        console.log("[DEBUG] Y.text content AFTER Y.js sync (before LSP):", {
-          length: ytextLength,
-          content: ytext.value.toString(),
-          firstChars: ytext.value.toString().substring(0, 100),
-        });
+        const ytextAfterSync = ytext.value.toString();
+        console.log("[DEBUG] Y.text content AFTER Y.js sync (before LSP):");
+        console.log(`  Length: ${ytextLength}`);
+        console.log(`  Content: ${JSON.stringify(ytextAfterSync)}`);
+        console.log(`  First 100 chars: ${ytextAfterSync.substring(0, 100)}`);
 
         // Initialize ONLY if completely empty
         if (ytextLength === 0 && file.value?.source) {
@@ -231,10 +231,11 @@
           ydoc.value.transact(() => {
             ytext.value.insert(0, file.value.source);
           });
-          console.log("[DEBUG] Y.text content AFTER database initialization:", {
-            length: ytext.value.toString().length,
-            firstChars: ytext.value.toString().substring(0, 100),
-          });
+          const ytextAfterInit = ytext.value.toString();
+          console.log("[DEBUG] Y.text content AFTER database initialization:");
+          console.log(`  Length: ${ytextAfterInit.length}`);
+          console.log(`  Content: ${JSON.stringify(ytextAfterInit)}`);
+          console.log(`  First 100 chars: ${ytextAfterInit.substring(0, 100)}`);
         } else {
           console.log("[DEBUG] Y.text already has content, NOT initializing from database");
         }
@@ -244,11 +245,11 @@
         let lspPlugin = null;
         try {
           lspPlugin = await lsp.connect(); // Returns plugin extension
-          console.log("[DEBUG] ✅ LSP connected, Y.text content AFTER LSP connect:", {
-            length: ytext.value.toString().length,
-            content: ytext.value.toString(),
-            firstChars: ytext.value.toString().substring(0, 100),
-          });
+          const ytextAfterLSP = ytext.value.toString();
+          console.log("[DEBUG] ✅ LSP connected, Y.text content AFTER LSP connect:");
+          console.log(`  Length: ${ytextAfterLSP.length}`);
+          console.log(`  Content: ${JSON.stringify(ytextAfterLSP)}`);
+          console.log(`  First 100 chars: ${ytextAfterLSP.substring(0, 100)}`);
         } catch (err) {
           console.warn("[EditorCodeMirror] ⚠️ LSP failed, creating editor without it:", err);
         }
@@ -295,12 +296,11 @@
         const undoManager = new Y.UndoManager(ytext.value);
         const docContent = ytext.value.toString();
 
-        console.log("[DEBUG] Creating CodeMirror editor with content:", {
-          ytextLength: ytext.value.toString().length,
-          docContentLength: docContent.length,
-          docContent: docContent,
-          firstChars: docContent.substring(0, 100),
-        });
+        console.log("[DEBUG] Creating CodeMirror editor with content:");
+        console.log(`  ytext.length: ${ytext.value.toString().length}`);
+        console.log(`  docContent.length: ${docContent.length}`);
+        console.log(`  docContent: ${JSON.stringify(docContent)}`);
+        console.log(`  First 100 chars: ${docContent.substring(0, 100)}`);
 
         const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
         console.log("[EditorCodeMirror] ✅ yCollab extension created");
