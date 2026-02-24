@@ -320,8 +320,8 @@ jobs:
         docker compose --env-file .env ps
 
         echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
-        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+        curl -f http://localhost:8000/health
+        curl -f http://localhost:5173
         curl -f http://localhost:$SITE_PORT || echo "⚠️  Site health check failed"
 
         echo "✅ Docker services ready"
@@ -479,8 +479,8 @@ jobs:
         docker compose --env-file .env ps
 
         echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
-        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+        curl -f http://localhost:8000/health
+        curl -f http://localhost:5173
 
         echo "✅ Docker services ready"
 
@@ -677,8 +677,8 @@ jobs:
         docker compose --env-file .env ps
 
         echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health || echo "⚠️  Backend health check failed"
-        curl -f http://localhost:5173 || echo "⚠️  Frontend health check failed"
+        curl -f http://localhost:8000/health
+        curl -f http://localhost:5173
 
         echo "✅ Docker services ready"
 
