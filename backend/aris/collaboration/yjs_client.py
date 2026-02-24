@@ -52,6 +52,9 @@ class YDocClient:
         self.checkpoint_min_interval_secs = checkpoint_min_interval_secs
         self.checkpoint_safety_net_secs = checkpoint_safety_net_secs
 
+        # Transaction origin marker to distinguish sync operations from user edits
+        self.SYNC_ORIGIN = "backend-sync"
+
         # Y.js state
         self.doc: Optional[Doc] = None
         self.text: Optional[Text] = None
@@ -212,7 +215,10 @@ class YDocClient:
         payload = message[1:]
 
         if msg_type == 0:  # Sync message
-            reply = handle_sync_message(payload, self.doc)
+            # Wrap sync operations in transaction with origin marker to prevent
+            # observer from triggering persistence during sync message generation
+            with self.doc.transaction(origin=self.SYNC_ORIGIN):
+                reply = handle_sync_message(payload, self.doc)
             if reply:
                 # pycrdt's handle_sync_message() already returns properly formatted message
                 # No need to prepend message type - send directly
@@ -258,7 +264,15 @@ class YDocClient:
         fires for ALL changes regardless of source - local edits, network sync,
         or initial load. This eliminates timing gaps and ensures persistence
         happens for all document updates.
+
+        Skips persistence for sync operations (marked with SYNC_ORIGIN) to prevent
+        duplicate saves when backend generates SyncStep2 messages for reconnecting peers.
         """
+        # Skip persistence if change came from sync operations
+        if hasattr(event, 'transaction') and event.transaction.origin == self.SYNC_ORIGIN:
+            logger.debug(f"Skipping save for sync-origin change on file {self.file_id}")
+            return
+
         logger.info(f"[DEBUG] Doc observer triggered for file {self.file_id}")
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()
