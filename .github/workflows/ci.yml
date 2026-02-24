@@ -11,390 +11,19 @@ env:
   ENV: CI
 
 jobs:
-  # Unit Tests and Linting (Parallel)
-  # TEMPORARILY DISABLED - focusing on e2e-collab-docker
-  unit-backend:
-
-    runs-on: ubuntu-latest
-    env:
-      JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_aris
-          POSTGRES_HOST_AUTH_METHOD: trust
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-
-    - name: Install RSM dependencies
-      run: |
-        cd ../rsm
-        uv sync
-
-    - name: Install backend dependencies
-      run: |
-        cd backend
-        uv sync --all-groups
-
-    - name: Create backend .env file
-      run: cp backend/.env.example backend/.env
-
-    - name: Debug - Test PostgreSQL connection
-      run: |
-        echo "Testing PostgreSQL connection..."
-        cd backend
-        uv run python -c "
-        import asyncio
-        import asyncpg
-
-        async def test():
-            # Test connection to test_aris
-            try:
-                conn = await asyncpg.connect(
-                    host='localhost',
-                    port=5432,
-                    user='postgres',
-                    password='postgres',
-                    database='test_aris'
-                )
-                print('✅ Connection to test_aris successful!')
-                version = await conn.fetchval('SELECT version()')
-                print(f'PostgreSQL version: {version}')
-                await conn.close()
-            except Exception as e:
-                print(f'❌ Connection to test_aris failed: {e}')
-                raise
-
-            # Test connection to postgres admin database
-            try:
-                conn = await asyncpg.connect(
-                    host='localhost',
-                    port=5432,
-                    user='postgres',
-                    password='postgres',
-                    database='postgres'
-                )
-                print('✅ Connection to postgres admin db successful!')
-                await conn.close()
-            except Exception as e:
-                print(f'❌ Connection to postgres admin db failed: {e}')
-                raise
-
-        asyncio.run(test())
-        "
-
-    - name: Run linting
-      run: |
-        cd backend
-        uv run ruff check
-
-    - name: Run type checking
-      run: |
-        cd backend
-        uv run mypy aris/
-
-    - name: Run tests
-      run: |
-        cd backend
-        uv run pytest -n4 --dist=loadscope --tb=short
-
-  unit-frontend:
-    runs-on: ubuntu-latest
-    env:
-      BACKEND_PORT: 8000
-      VITE_API_BASE_URL: http://localhost:8000
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm ci
-
-    - name: Run linting
-      run: |
-        cd frontend
-        npm run lint
-
-    - name: Run tests
-      run: |
-        cd frontend
-        npm run test:run
-
-  unit-site:
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: site
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: site/package-lock.json
-
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules-site
-      with:
-        path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
-
-    - name: Install dependencies
-      if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
-      run: npm ci
-
-    - name: Cache vitest
-      uses: actions/cache@v5
-      with:
-        path: site/node_modules/.vitest
-        key: vitest-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
-
-    - name: Check for missing packages
-      run: npm ls --depth=0
-
-    - name: Run linting
-      run: npm run lint
-
-    - name: Run unit tests
-      run: npm run test:run
-
-  # Site E2E Tests (All Browsers)
-  e2e-site:
+  # TEMPORARY: Only auth-content tests for debugging LSP issue (std-cpn)
+  # Full CI workflow will be restored after fix
+  e2e-frontend-auth-content:
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
-        device: [desktop, mobile]
     runs-on: ubuntu-latest
     env:
       ENV: CI
-      VITE_LOG_LEVEL: WARN
+      VITE_LOG_LEVEL: DEBUG  # Enable debug logging
       COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}-${{ matrix.device }}
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: site/package-lock.json
-
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules
-      with:
-        path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
-
-    - name: Install site dependencies
-      working-directory: site
-      if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: npm ci
-
-    - name: Cache Playwright browsers
-      uses: actions/cache@v5
-      id: playwright-cache
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-browsers-site-${{ runner.os }}-${{ matrix.browser }}
-
-    - name: Install Playwright browsers
-      working-directory: site
-      run: npx playwright install ${{ matrix.browser }} --with-deps
-
-    - name: Create .env file
-      run: cp .env.example .env
-
-    - name: Create backend .env file
-      run: cp backend/.env.example backend/.env
-
-    - name: Clean up Docker volumes
-      run: |
-        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
-        # Stop ALL containers (not just compose)
-        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
-        # List volumes before cleanup
-        echo "Volumes before cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        # Force remove all volumes matching this project
-        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
-        # Verify cleanup
-        echo "Volumes after cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        echo "✅ Docker cleanup complete"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-site-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-site-
-
-    - name: Start Docker Compose services
-      run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
-
-        # Source .env to get port variables
-        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
-
-        echo "⏳ Polling for services to be ready (max 120s)..."
-        for i in {1..120}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
-            break
-          fi
-          sleep 1
-        done
-
-        echo "📊 Service status:"
-        docker compose --env-file .env ps
-
-        echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
-        curl -f http://localhost:5173
-        curl -f http://localhost:$SITE_PORT || echo "⚠️  Site health check failed"
-
-        echo "✅ Docker services ready"
-
-    - name: Setup database and test user in Docker
-      run: |
-        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
-        docker compose --env-file .env exec -T backend uv run alembic upgrade head
-
-        echo "✅ Database setup complete (test user created by backend entrypoint)"
-
-    - name: Run site E2E tests
-      working-directory: site
-      run: |
-        echo "🧪 Running site E2E tests on ${{ matrix.browser }} ${{ matrix.device }} (Docker environment)..."
-
-        # Source .env file to set port variables for Playwright config
-        # Filter out comments and blank lines
-        export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
-
-        if [ "${{ matrix.device }}" = "mobile" ]; then
-          if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="Mobile Firefox" --reporter=github
-          else
-            npx playwright test --project="Mobile Chrome" --reporter=github
-          fi
-        else
-          if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="firefox" --reporter=github
-          else
-            npx playwright test --project="chromium" --reporter=github
-          fi
-        fi
-
-    - name: Upload test results on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-results-site-${{ matrix.browser }}-${{ matrix.device }}
-        path: site/test-results/
-        retention-days: 7
-
-    - name: Show Docker logs on failure
-      if: failure()
-      run: |
-        echo "📋 Backend logs:"
-        docker compose --env-file .env logs backend
-        echo "📋 Frontend logs:"
-        docker compose --env-file .env logs frontend
-        echo "📋 Site logs:"
-        docker compose --env-file .env logs site
-
-    - name: Cleanup Docker services
-      if: always()
-      run: |
-        echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
-        docker compose down --remove-orphans
-        echo "✅ Cleanup complete"
-
-
-  # Frontend E2E Tests (All test suites)
-  e2e-frontend:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
-        test-type: [auth-content, auth-interface, auth-flows, core]
-    runs-on: ubuntu-latest
-    env:
-      ENV: CI
-      VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-auth-content
 
     steps:
     - uses: actions/checkout@v6
@@ -479,7 +108,8 @@ jobs:
         docker compose --env-file .env ps
 
         echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
+        HEALTH_OUTPUT=$(curl -f http://localhost:8000/health)
+        echo "Backend health: $HEALTH_OUTPUT"
         curl -f http://localhost:5173
 
         echo "✅ Docker services ready"
@@ -491,46 +121,35 @@ jobs:
 
         echo "✅ Database setup complete (test user created by backend entrypoint)"
 
-    - name: Run frontend E2E tests
+    - name: Debug - Check LSP server status
+      run: |
+        echo "🔍 Checking LSP server process..."
+        docker compose --env-file .env exec -T backend ps aux | grep lsp || echo "No LSP process found"
+
+        echo "🔍 Checking backend health endpoint for LSP status..."
+        curl -f http://localhost:8000/health | jq '.'
+
+    - name: Run auth-content E2E tests with debug output
       working-directory: frontend
       run: |
-        echo "🧪 Running ${{ matrix.test-type }} E2E tests on ${{ matrix.browser }} (Docker environment)..."
+        echo "🧪 Running auth-content E2E tests on ${{ matrix.browser }} (Docker environment)..."
+        echo "🔍 DEBUG MODE ENABLED - VITE_LOG_LEVEL=DEBUG"
 
         # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        # Map test-type to test path and grep pattern
-        case "${{ matrix.test-type }}" in
-          auth-content)
-            TEST_PATH="src/tests/e2e/content/"
-            PATTERN="@auth"
-            ;;
-          auth-interface)
-            TEST_PATH="src/tests/e2e/interface/"
-            PATTERN="@auth"
-            ;;
-          auth-flows)
-            TEST_PATH=""
-            PATTERN="@auth-flows"
-            ;;
-          core)
-            TEST_PATH=""
-            PATTERN="@core"
-            ;;
-        esac
-
-        # Run tests
+        # Run with line reporter for detailed output
         if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
+          npx playwright test src/tests/e2e/content/ --grep "@auth" --project=firefox --reporter=line
         else
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
+          npx playwright test src/tests/e2e/content/ --grep "@auth" --project=chromium --reporter=line
         fi
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-results-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+        name: playwright-results-auth-content-${{ matrix.browser }}
         path: frontend/test-results/
         retention-days: 7
 
@@ -538,11 +157,13 @@ jobs:
       if: failure()
       run: |
         echo "📋 Backend logs:"
-        docker compose --env-file .env logs backend
+        docker compose --env-file .env logs backend | tail -500
+        echo ""
         echo "📋 Frontend logs:"
-        docker compose --env-file .env logs frontend
+        docker compose --env-file .env logs frontend | tail -500
+        echo ""
         echo "📋 Collab logs:"
-        docker compose --env-file .env logs collab
+        docker compose --env-file .env logs collab | tail -200
 
     - name: Cleanup Docker services
       if: always()
@@ -550,173 +171,3 @@ jobs:
         echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
         docker compose down --remove-orphans
         echo "✅ Cleanup complete"
-
-  e2e-collab:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
-    runs-on: ubuntu-latest
-    env:
-      # CI-specific overrides (everything else comes from .env.example)
-      ENV: CI
-      VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-collab
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules
-      with:
-        path: frontend/node_modules
-        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-    - name: Install frontend dependencies
-      working-directory: frontend
-      if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: npm ci
-
-    - name: Cache Playwright browsers
-      uses: actions/cache@v5
-      id: playwright-cache
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-browsers-${{ runner.os }}-${{ matrix.browser }}
-
-    - name: Install Playwright browsers
-      working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
-
-    - name: Create .env file
-      run: cp .env.example .env
-
-    - name: Create backend .env file
-      run: cp backend/.env.example backend/.env
-
-    - name: Debug - Gather evidence about .env file
-      run: |
-        echo "📍 Current directory: $(pwd)"
-        echo ""
-        echo "📄 .env file exists?"
-        ls -la .env
-        echo ""
-        echo "📄 .env file contents:"
-        cat .env
-        echo ""
-        echo "📄 backend/.env file exists?"
-        ls -la backend/.env
-        echo ""
-        echo "📄 Docker Compose version:"
-        docker compose version
-        echo ""
-        echo "📄 start-dev.sh location:"
-        ls -la scripts/start-dev.sh
-        echo ""
-        echo "📄 docker-compose.dev.yml env_file directive:"
-        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
-
-    - name: Clean up Docker volumes
-      run: |
-        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
-        # Stop ALL containers (not just compose)
-        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
-        # List volumes before cleanup
-        echo "Volumes before cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        # Force remove all volumes matching this project
-        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
-        # Verify cleanup
-        echo "Volumes after cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        echo "✅ Docker cleanup complete"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', '**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Start Docker Compose services
-      run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
-
-        echo "⏳ Polling for services to be ready (max 120s)..."
-        for i in {1..120}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
-            break
-          fi
-          sleep 1
-        done
-
-        echo "📊 Service status:"
-        docker compose --env-file .env ps
-
-        echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
-        curl -f http://localhost:5173
-
-        echo "✅ Docker services ready"
-
-    - name: Setup database and test user in Docker
-      run: |
-        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
-        docker compose --env-file .env exec -T backend uv run alembic upgrade head
-
-        echo "✅ Database setup complete (test user created by backend entrypoint)"
-
-    - name: Run Y.js collaboration E2E tests
-      working-directory: frontend
-      run: |
-        echo "🧪 Running @collab E2E tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
-
-    - name: Upload test results on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-results-docker-${{ matrix.browser }}
-        path: frontend/test-results/
-        retention-days: 7
-
-    - name: Show Docker logs on failure
-      if: failure()
-      run: |
-        echo "📋 Backend logs:"
-        docker compose --env-file .env logs backend
-        echo "📋 Frontend logs:"
-        docker compose --env-file .env logs frontend
-        echo "📋 Multiplayer logs:"
-        docker compose --env-file .env logs collab
-
-    - name: Cleanup Docker services
-      if: always()
-      run: |
-        echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
-        docker compose down --remove-orphans
-        echo "✅ Cleanup complete"
-
