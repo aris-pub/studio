@@ -11,6 +11,7 @@
  */
 
 import { getBackendURL } from "./utils/test-config.js";
+import { getTimeouts } from "./utils/timeout-constants.js";
 
 const backendURL = getBackendURL();
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
@@ -79,20 +80,36 @@ export async function createAuthenticatedContext(browser, { token, refreshToken,
 // ─── Editor helpers ───────────────────────────────────────────────────────────
 
 export async function openFileInEditor(page, fileId) {
+  const timeouts = getTimeouts();
   await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
+  await page.waitForSelector('[data-testid="manuscript-container"]', {
+    timeout: timeouts.heavyOperation,
+  });
 
   const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();
   if (!editorAlreadyOpen) {
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
   }
-  await page.waitForSelector(".cm-editor", { timeout: 5000 });
-  await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
-  await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
+  await page.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
+  await page.waitForFunction(
+    () => typeof window.__cmView !== "undefined",
+    {},
+    { timeout: timeouts.heavyOperation }
+  );
+  await page.waitForFunction(
+    () => window.__provider?.synced === true,
+    {},
+    { timeout: timeouts.heavyOperation }
+  );
 }
 
 export async function clearEditor(page) {
-  await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
+  const timeouts = getTimeouts();
+  await page.waitForFunction(
+    () => typeof window.__cmView !== "undefined",
+    {},
+    { timeout: timeouts.heavyOperation }
+  );
   await page.evaluate(() => {
     const view = window.__cmView;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
@@ -100,13 +117,14 @@ export async function clearEditor(page) {
   await page.waitForFunction(
     () => window.__ytext.toString().length === 0 && window.__cmView.state.doc.length === 0,
     {},
-    { timeout: 5000 }
+    { timeout: timeouts.heavyOperation }
   );
 }
 
 // Insert text programmatically. Uses `includes` for Y.text check so it works
 // correctly in multi-tab scenarios where concurrent edits can change total length.
 export async function insertText(page, text) {
+  const timeouts = getTimeouts();
   const startLength = await page.evaluate(() => window.__cmView.state.doc.length);
   await page.evaluate((txt) => {
     const view = window.__cmView;
@@ -115,22 +133,23 @@ export async function insertText(page, text) {
   await page.waitForFunction(
     ({ expectedLength }) => window.__cmView.state.doc.length === expectedLength,
     { expectedLength: startLength + text.length },
-    { timeout: 5000 }
+    { timeout: timeouts.heavyOperation }
   );
   await page.waitForFunction((txt) => window.__ytext.toString().includes(txt), text, {
-    timeout: 5000,
+    timeout: timeouts.heavyOperation,
   });
 }
 
 // Type character-by-character via keyboard (for keystroke duplication tests).
 export async function typeInEditor(page, text) {
+  const timeouts = getTimeouts();
   const beforeLength = await page.evaluate(() => window.__cmView.state.doc.length);
   await page.click(".cm-content");
   await page.keyboard.type(text, { delay: 50 });
   await page.waitForFunction(
     ({ before, added }) => window.__cmView.state.doc.length === before + added,
     { before: beforeLength, added: text.length },
-    { timeout: 5000 }
+    { timeout: timeouts.heavyOperation }
   );
 }
 
@@ -145,13 +164,14 @@ export async function getYTextContent(page) {
 // Wait for a specific string to appear in the editor on `page`.
 // Uses waitForFunction (condition poll) not a fixed sleep.
 export async function waitForSync(page, expectedContent) {
+  const timeouts = getTimeouts();
   await page.waitForFunction(
     (content) => {
       const editorContent = window.__cmView?.state.doc.toString() || "";
       return editorContent.includes(content);
     },
     expectedContent,
-    { timeout: 5000 }
+    { timeout: timeouts.heavyOperation }
   );
 }
 

@@ -15,7 +15,7 @@ export class AuthHelpers {
     // "commit" fires before Vue mounts — wait for the login form to appear.
     await this.page.waitForSelector('[data-testid="email-input"]', {
       state: "visible",
-      timeout: 8000,
+      timeout: getTimeouts().contentLoad,
     });
 
     await this.page.fill('[data-testid="email-input"]', email);
@@ -30,7 +30,7 @@ export class AuthHelpers {
             response.url().includes("/login") && response.request().method() === "POST";
           return isLoginResponse;
         },
-        { timeout: 10000 }
+        { timeout: getTimeouts().apiResponse }
       ),
       this.page.click('[data-testid="login-button"]'),
     ]);

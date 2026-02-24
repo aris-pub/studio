@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { defineComponent, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 
@@ -12,10 +12,6 @@ describe("Abstract.vue", () => {
 
   afterAll(() => {
     console.error.mockRestore();
-  });
-
-  beforeEach(() => {
-    vi.resetModules();
   });
 
   it("renders loading state when file has no id", async () => {
