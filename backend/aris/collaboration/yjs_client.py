@@ -52,8 +52,8 @@ class YDocClient:
         self.checkpoint_min_interval_secs = checkpoint_min_interval_secs
         self.checkpoint_safety_net_secs = checkpoint_safety_net_secs
 
-        # Transaction origin marker to distinguish sync operations from user edits
-        self.SYNC_ORIGIN = "backend-sync"
+        # Flag to skip observer during sync operations (prevents duplicate saves)
+        self._in_sync_operation = False
 
         # Y.js state
         self.doc: Optional[Doc] = None
@@ -138,7 +138,12 @@ class YDocClient:
             # or room was reset). If the room already had content, we absorbed it
             # via SyncStep2 above and must not insert stale DB content on top.
             if len(self.text) == 0:
-                await self._load_from_db()
+                # Set flag to prevent observer from saving during DB load
+                self._in_sync_operation = True
+                try:
+                    await self._load_from_db()
+                finally:
+                    self._in_sync_operation = False
 
             # Observer is already attached and will handle all subsequent changes.
             # No need to manually persist here - the observer captured SyncStep2.
@@ -165,9 +170,13 @@ class YDocClient:
             payload = message[1:]
 
             if msg_type == 0:  # Sync message
-                # Wrap in transaction with origin to prevent observer from triggering persistence
-                with self.doc.transaction(origin=self.SYNC_ORIGIN):
+                # Set flag to prevent observer from triggering persistence during sync
+                self._in_sync_operation = True
+                try:
                     reply = handle_sync_message(payload, self.doc)
+                finally:
+                    self._in_sync_operation = False
+
                 if reply:
                     await websocket.send(reply)
                     logger.debug(f"Sent sync reply for file {self.file_id}")
@@ -217,10 +226,13 @@ class YDocClient:
         payload = message[1:]
 
         if msg_type == 0:  # Sync message
-            # Wrap sync operations in transaction with origin marker to prevent
-            # observer from triggering persistence during sync message generation
-            with self.doc.transaction(origin=self.SYNC_ORIGIN):
+            # Set flag to prevent observer from triggering persistence during sync
+            self._in_sync_operation = True
+            try:
                 reply = handle_sync_message(payload, self.doc)
+            finally:
+                self._in_sync_operation = False
+
             if reply:
                 # pycrdt's handle_sync_message() already returns properly formatted message
                 # No need to prepend message type - send directly
@@ -267,12 +279,12 @@ class YDocClient:
         or initial load. This eliminates timing gaps and ensures persistence
         happens for all document updates.
 
-        Skips persistence for sync operations (marked with SYNC_ORIGIN) to prevent
-        duplicate saves when backend generates SyncStep2 messages for reconnecting peers.
+        Skips persistence during sync operations to prevent duplicate saves when
+        backend generates SyncStep2 messages for reconnecting peers.
         """
-        # Skip persistence if change came from sync operations
-        if hasattr(event, 'transaction') and event.transaction.origin == self.SYNC_ORIGIN:
-            logger.debug(f"Skipping save for sync-origin change on file {self.file_id}")
+        # Skip persistence if we're currently processing a sync operation
+        if self._in_sync_operation:
+            logger.debug(f"Skipping save during sync operation for file {self.file_id}")
             return
 
         logger.info(f"[DEBUG] Doc observer triggered for file {self.file_id}")
