@@ -13,17 +13,14 @@ env:
 jobs:
   # TEMPORARY: Only auth-content tests for debugging LSP issue (std-cpn)
   # Full CI workflow will be restored after fix
-  e2e-frontend-auth-content:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
+  # Split into separate jobs for parallel execution and independent monitoring
+  e2e-frontend-auth-content-chromium:
     runs-on: ubuntu-latest
     env:
       ENV: CI
       VITE_LOG_LEVEL: DEBUG  # Enable debug logging
       COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-auth-content
+      COMPOSE_PROJECT_NAME: studio-e2e-frontend-chromium-auth-content
 
     steps:
     - uses: actions/checkout@v6
@@ -60,11 +57,11 @@ jobs:
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-browsers-frontend-${{ runner.os }}-${{ matrix.browser }}
+        key: playwright-browsers-frontend-${{ runner.os }}-chromium
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: npx playwright install chromium --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -132,24 +129,171 @@ jobs:
     - name: Run auth-content E2E tests with debug output
       working-directory: frontend
       run: |
-        echo "🧪 Running auth-content E2E tests on ${{ matrix.browser }} (Docker environment)..."
+        echo "🧪 Running auth-content E2E tests on chromium (Docker environment)..."
         echo "🔍 DEBUG MODE ENABLED - VITE_LOG_LEVEL=DEBUG"
 
         # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
         # Run with line reporter for detailed output
-        if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test src/tests/e2e/content/ --grep "@auth" --project=firefox --reporter=line
-        else
-          npx playwright test src/tests/e2e/content/ --grep "@auth" --project=chromium --reporter=line
-        fi
+        npx playwright test src/tests/e2e/content/ --grep "@auth" --project=chromium --reporter=line
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-results-auth-content-${{ matrix.browser }}
+        name: playwright-results-auth-content-chromium
+        path: frontend/test-results/
+        retention-days: 7
+
+    - name: Show Docker logs on failure
+      if: failure()
+      run: |
+        echo "📋 Backend logs:"
+        docker compose --env-file .env logs backend | tail -500
+        echo ""
+        echo "📋 Frontend logs:"
+        docker compose --env-file .env logs frontend | tail -500
+        echo ""
+        echo "📋 Collab logs:"
+        docker compose --env-file .env logs collab | tail -200
+
+    - name: Cleanup Docker services
+      if: always()
+      run: |
+        echo "🧹 Stopping containers for $COMPOSE_PROJECT_NAME..."
+        docker compose down --remove-orphans
+        echo "✅ Cleanup complete"
+
+  e2e-frontend-auth-content-firefox:
+    runs-on: ubuntu-latest
+    env:
+      ENV: CI
+      VITE_LOG_LEVEL: DEBUG  # Enable debug logging
+      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_PROJECT_NAME: studio-e2e-frontend-firefox-auth-content
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Cache node_modules
+      uses: actions/cache@v5
+      id: cache-node-modules
+      with:
+        path: frontend/node_modules
+        key: node-modules-frontend-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm ci
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v5
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-frontend-${{ runner.os }}-firefox
+
+    - name: Install Playwright browsers
+      working-directory: frontend
+      run: npx playwright install firefox --with-deps
+
+    - name: Create .env file
+      run: cp .env.example .env
+
+    - name: Create backend .env file
+      run: cp backend/.env.example backend/.env
+
+    - name: Clean up Docker volumes
+      run: |
+        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
+        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
+        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
+        echo "✅ Docker cleanup complete"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v5
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-frontend-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-frontend-
+
+    - name: Start Docker Compose services
+      run: |
+        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
+        ./scripts/start-dev.sh
+
+        echo "⏳ Polling for services to be ready (max 120s)..."
+        for i in {1..120}; do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
+            break
+          fi
+          sleep 1
+        done
+
+        echo "📊 Service status:"
+        docker compose --env-file .env ps
+
+        echo "🔍 Final health check..."
+        HEALTH_OUTPUT=$(curl -f http://localhost:8000/health)
+        echo "Backend health: $HEALTH_OUTPUT"
+        curl -f http://localhost:5173
+
+        echo "✅ Docker services ready"
+
+    - name: Setup database and test user in Docker
+      run: |
+        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
+        docker compose --env-file .env exec -T backend uv run alembic upgrade head
+
+        echo "✅ Database setup complete (test user created by backend entrypoint)"
+
+    - name: Debug - Check LSP server status
+      run: |
+        echo "🔍 Checking LSP server process..."
+        docker compose --env-file .env exec -T backend ps aux | grep lsp || echo "No LSP process found"
+
+        echo "🔍 Checking backend health endpoint for LSP status..."
+        curl -f http://localhost:8000/health | jq '.'
+
+    - name: Run auth-content E2E tests with debug output
+      working-directory: frontend
+      run: |
+        echo "🧪 Running auth-content E2E tests on firefox (Docker environment)..."
+        echo "🔍 DEBUG MODE ENABLED - VITE_LOG_LEVEL=DEBUG"
+
+        # Source .env file to set port variables for Playwright config
+        export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
+
+        # Run with line reporter for detailed output
+        npx playwright test src/tests/e2e/content/ --grep "@auth" --project=firefox --reporter=line
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-results-auth-content-firefox
         path: frontend/test-results/
         retention-days: 7
 
