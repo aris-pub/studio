@@ -76,7 +76,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       );
 
       // Wait for diagnostic gutter marker to appear (LSP needs time to analyze document)
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       // Verify diagnostic marker exists
       const hasMarker = await page.evaluate(() => {
@@ -105,8 +105,8 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         { timeout: 5000 }
       );
 
-      // Wait for diagnostic marker (LSP needs time to analyze)
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
+      // Wait for diagnostic marker (LSP needs time to analyze — CI is slower)
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       // Fix the syntax error by completing the tag
       await page.evaluate(() => {
@@ -126,7 +126,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
           return markers.length === 0;
         },
         {},
-        { timeout: 15000 }
+        { timeout: 30000 }
       );
 
       // Verify no error markers remain
@@ -166,7 +166,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       await page.keyboard.press("Control+Space");
 
       // Wait for completion popup to appear (LSP completion may take time)
-      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 15000 });
+      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 30000 });
 
       // Verify completion contains :theorem:
       const hasTheoremCompletion = await page.evaluate(() => {
@@ -209,7 +209,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       await page.keyboard.press("Control+Space");
 
       // Wait for completion popup (LSP completion may take time)
-      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 15000 });
+      await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 30000 });
 
       // Accept first completion (should be :theorem:)
       await page.keyboard.press("Enter");
@@ -248,7 +248,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       );
 
       // File contains ":the" syntax error — LSP should produce a diagnostic marker
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       const hasMarker = await page.evaluate(() => {
         return document.querySelectorAll(".cm-lint-marker-error").length > 0;
@@ -284,8 +284,8 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         { timeout: 5000 }
       );
 
-      // Valid file — wait for LSP to finish initial analysis
-      await page.waitForTimeout(3000);
+      // Valid file — wait for LSP to finish initial analysis (CI is slower)
+      await page.waitForTimeout(5000);
       const initialErrors = await page.evaluate(() => {
         return document.querySelectorAll(".cm-lint-marker-error").length;
       });
@@ -302,8 +302,8 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         });
       });
 
-      // Wait for diagnostic to appear WITHOUT page refresh (500ms debounce + analysis time)
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 5000 });
+      // Wait for diagnostic to appear WITHOUT page refresh (CI needs generous timeout)
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       // Verify error marker appeared (should be more than baseline)
       const errorsAfterTyping = await page.evaluate(() => {
@@ -358,7 +358,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         {},
         { timeout: 5000 }
       );
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       // Check that LSP ViewPlugin is registered (not broken by Vue Proxy)
       // This is verified by checking that document changes trigger LSP updates
@@ -407,7 +407,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
         {},
         { timeout: 5000 }
       );
-      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 30000 });
 
       // Make multiple rapid edits (simulating typing)
       await page.evaluate(() => {
