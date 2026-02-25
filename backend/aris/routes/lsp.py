@@ -132,10 +132,19 @@ class LSPProxy:
                     payload = buffer[:content_length].decode("utf-8")
                     buffer = buffer[content_length:]
 
+                    if not self.running:
+                        break
+
                     # Send to WebSocket
                     await self.websocket.send_text(payload)
                     logger.debug(f"← LSP server: {payload[:100]}...")
 
+        except RuntimeError as e:
+            if "websocket.close" in str(e) or "response already completed" in str(e):
+                logger.debug(f"WebSocket closed while sending LSP response: {e}")
+            else:
+                logger.error(f"stdout → WebSocket proxy error: {e}", exc_info=True)
+            self.running = False
         except Exception as e:
             logger.error(f"stdout → WebSocket proxy error: {e}", exc_info=True)
             self.running = False

@@ -21,18 +21,20 @@ import {
 } from "../yjs-helpers.js";
 
 test.describe("LSP Content Duplication Bug @auth", () => {
+  const initialContent =
+    "# Test Document\n\nThis is a test paragraph.\n\n:theorem:\nContent should not duplicate.\n:/theorem:";
+
   let auth;
   let fileId;
+  let reloadFileId;
   let lspAvailable = false;
 
   test.beforeAll(async ({ request }) => {
     auth = await loginUser(request);
 
-    // Create file with known content to check for duplication
-    const initialContent =
-      "# Test Document\n\nThis is a test paragraph.\n\n:theorem:\nContent should not duplicate.\n:/theorem:";
-
+    // Each test gets its own file to avoid shared Y.js room state
     fileId = await createTestFile(request, auth.token, auth.userData.id, initialContent);
+    reloadFileId = await createTestFile(request, auth.token, auth.userData.id, initialContent);
 
     // Check if LSP is available (only in DEV backend with supervisord)
     const devBackendPort = process.env.BACKEND_PORT || "8000";
@@ -56,6 +58,9 @@ test.describe("LSP Content Duplication Bug @auth", () => {
     if (fileId) {
       await deleteTestFile(request, auth.token, fileId);
     }
+    if (reloadFileId) {
+      await deleteTestFile(request, auth.token, reloadFileId);
+    }
   });
 
   test("should NOT duplicate content when LSP connects @auth", async ({ browser }) => {
@@ -63,10 +68,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
     const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
-      // Get initial content before opening in editor
-      const initialContent =
-        "# Test Document\n\nThis is a test paragraph.\n\n:theorem:\nContent should not duplicate.\n:/theorem:";
-
       await openFileInEditor(page, fileId);
 
       // Wait for editor to be ready
@@ -122,11 +123,8 @@ test.describe("LSP Content Duplication Bug @auth", () => {
     const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
-      const initialContent =
-        "# Test Document\n\nThis is a test paragraph.\n\n:theorem:\nContent should not duplicate.\n:/theorem:";
-
-      // First load
-      await openFileInEditor(page, fileId);
+      // Uses its own file (reloadFileId) to avoid shared Y.js room state with test above
+      await openFileInEditor(page, reloadFileId);
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
