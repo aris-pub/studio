@@ -226,10 +226,14 @@
               }
             };
             ytext.value.observe(observer);
+            // Generous timeout: backend seed typically takes 1-2s, but in CI
+            // (Docker networking + PostgreSQL) can take 3-5s. If the timeout is too
+            // short, the fallback fires while the backend's Y.js update is still in
+            // transit, causing duplicate content (two independent CRDT inserts).
             setTimeout(() => {
               ytext.value.unobserve(observer);
               resolve();
-            }, 2000);
+            }, 10000);
           });
 
           // Fallback: seed from frontend if backend didn't deliver in time
