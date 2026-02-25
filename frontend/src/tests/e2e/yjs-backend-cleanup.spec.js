@@ -5,19 +5,11 @@ import {
   createTestFile,
   deleteTestFile,
   createAuthenticatedContext,
+  openFileInEditor,
 } from "./yjs-helpers.js";
 import { getBackendURL } from "./utils/test-config.js";
 
 const backendURL = getBackendURL();
-
-async function openFileInEditor(page, fileId) {
-  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
-  await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 12000 });
-  await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-  await page.waitForSelector(".cm-editor", { timeout: 5000 });
-  await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
-  await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });
-}
 
 test.describe("Y.js Backend Client Cleanup @collab", () => {
   test("changes persist after user closes file (backend saves before cleanup)", async ({
