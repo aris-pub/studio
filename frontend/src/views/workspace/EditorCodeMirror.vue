@@ -216,6 +216,24 @@
       // Backend Y.js client is the sole authority for seeding Y.text from DB.
       // Frontend never inserts — content arrives via Y.js sync protocol.
       provider.value.once("synced", async () => {
+        // If text is empty but the file has content, wait for the backend
+        // client to seed via Y.js sync before creating the editor.
+        if (ytext.value.toString().length === 0 && file.value?.source) {
+          await new Promise((resolve) => {
+            const observer = () => {
+              if (ytext.value.toString().length > 0) {
+                ytext.value.unobserve(observer);
+                resolve();
+              }
+            };
+            ytext.value.observe(observer);
+            setTimeout(() => {
+              ytext.value.unobserve(observer);
+              resolve();
+            }, 5000);
+          });
+        }
+
         // Initialize LSP client and get plugin
         console.log("[EditorCodeMirror] Connecting to LSP server...");
         let lspPlugin = null;
