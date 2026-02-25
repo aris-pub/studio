@@ -356,7 +356,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: playwright-results-site-${{ matrix.browser }}-${{ matrix.device }}
         path: site/test-results/
@@ -526,7 +526,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: playwright-results-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
         path: frontend/test-results/
@@ -695,7 +695,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: playwright-results-docker-${{ matrix.browser }}
         path: frontend/test-results/
