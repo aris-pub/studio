@@ -226,12 +226,16 @@ class YDocClient:
         payload = message[1:]
 
         if msg_type == 0:  # Sync message
-            # Set flag to prevent observer from triggering persistence during sync
-            self._in_sync_operation = True
+            # Only suppress observer for SyncStep1/SyncStep2 handshake (sub-types 0, 1).
+            # Update messages (sub-type 2) are normal user edits and must trigger persistence.
+            is_handshake = payload and payload[0] in (0, 1)
+            if is_handshake:
+                self._in_sync_operation = True
             try:
                 reply = handle_sync_message(payload, self.doc)
             finally:
-                self._in_sync_operation = False
+                if is_handshake:
+                    self._in_sync_operation = False
 
             if reply:
                 # pycrdt's handle_sync_message() already returns properly formatted message

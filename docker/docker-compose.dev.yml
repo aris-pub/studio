@@ -108,7 +108,7 @@ services:
       - DB_NAME=${DB_NAME}
       - TEST_DB_NAME=${TEST_DB_NAME}
       - VITE_API_BASE_URL=http://localhost:${BACKEND_TEST_PORT}
-      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_TEST_URL}
       - VITE_ENV=test
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_TEST_PORT}
     command: npm run dev -- --host 0.0.0.0

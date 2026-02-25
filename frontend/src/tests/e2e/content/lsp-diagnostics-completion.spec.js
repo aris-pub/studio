@@ -234,39 +234,26 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
     }
   });
 
-  test("should show LSP status indicator in UI @auth", async ({ browser }) => {
+  test("should have LSP diagnostics active after editor loads @auth", async ({ browser }) => {
     test.skip(!lspAvailable, "LSP not available (requires DEV backend with supervisord)");
     const { context, page } = await createAuthenticatedContext(browser, auth);
 
     try {
       await openFileInEditor(page, fileId);
 
-      // Wait for LSP status indicator to show "Active"
       await page.waitForFunction(
-        () => {
-          const statusIndicators = document.querySelectorAll(".status-indicator");
-          return Array.from(statusIndicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
+        () => typeof window.__cmView !== "undefined",
         {},
-        { timeout: 15000 }
+        { timeout: 5000 }
       );
 
-      // Verify status indicator is visible
-      const lspStatus = await page.evaluate(() => {
-        const indicators = document.querySelectorAll(".status-indicator");
-        for (const indicator of indicators) {
-          if (indicator.textContent.includes("LSP")) {
-            return indicator.textContent;
-          }
-        }
-        return null;
-      });
+      // File contains ":the" syntax error — LSP should produce a diagnostic marker
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
 
-      expect(lspStatus).toContain("LSP");
-      expect(lspStatus).toContain("Active");
+      const hasMarker = await page.evaluate(() => {
+        return document.querySelectorAll(".cm-lint-marker-error").length > 0;
+      });
+      expect(hasMarker).toBe(true);
     } finally {
       await cleanupYjs(page);
       await context.close();
@@ -290,27 +277,15 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
 
       await openFileInEditor(page, validFileId);
 
-      // Wait for LSP to connect
+      // Wait for editor and LSP to initialize
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
         { timeout: 5000 }
       );
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 15000 }
-      );
 
-      // Wait for initial analysis - file should have no errors
-      // But allow for any existing errors to clear first
-      await page.waitForTimeout(2000);
+      // Valid file — wait for LSP to finish initial analysis
+      await page.waitForTimeout(3000);
       const initialErrors = await page.evaluate(() => {
         return document.querySelectorAll(".cm-lint-marker-error").length;
       });
@@ -377,23 +352,13 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
     try {
       await openFileInEditor(page, fileId);
 
-      // Wait for editor and LSP to be ready
+      // Wait for editor ready and LSP to produce diagnostics on error-containing file
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
         { timeout: 5000 }
       );
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 15000 }
-      );
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
 
       // Check that LSP ViewPlugin is registered (not broken by Vue Proxy)
       // This is verified by checking that document changes trigger LSP updates
@@ -413,7 +378,7 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
       try {
         await page.waitForSelector(".cm-lint-marker-error", { timeout: 2000 });
         diagnosticsAppeared = true;
-      } catch (e) {
+      } catch (_e) {
         // Timeout means ViewPlugin not working
       }
 
@@ -436,23 +401,13 @@ test.describe("LSP Diagnostics and Completion @auth", () => {
     try {
       await openFileInEditor(page, fileId);
 
-      // Wait for LSP
+      // Wait for editor ready and LSP to produce diagnostics on error-containing file
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
         { timeout: 5000 }
       );
-      await page.waitForFunction(
-        () => {
-          const indicators = document.querySelectorAll(".status-indicator");
-          return Array.from(indicators).some((el) => {
-            const text = el.textContent || "";
-            return text.includes("LSP") && text.includes("Active");
-          });
-        },
-        {},
-        { timeout: 15000 }
-      );
+      await page.waitForSelector(".cm-lint-marker-error", { timeout: 15000 });
 
       // Make multiple rapid edits (simulating typing)
       await page.evaluate(() => {
