@@ -54,14 +54,20 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
   });
 
   async function createTestFile(request, source) {
-    const createResponse = await request.post(`${baseURL}/files`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      data: { title: "Init Guard Test", owner_id: testUserId, source },
-    });
-    if (!createResponse.ok()) {
-      throw new Error(`File creation failed: ${createResponse.status()}`);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const createResponse = await request.post(`${baseURL}/files`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        data: { title: "Init Guard Test", owner_id: testUserId, source },
+      });
+      if (createResponse.ok()) {
+        return (await createResponse.json()).id;
+      }
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000));
+      } else {
+        throw new Error(`File creation failed: ${createResponse.status()}`);
+      }
     }
-    return (await createResponse.json()).id;
   }
 
   async function deleteTestFile(request, fileId) {
@@ -153,22 +159,27 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
   });
 
   async function createTestFileWithMath(request) {
-    const createResponse = await request.post(`${baseURL}/files`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      data: {
-        title: "Math Bug Test File",
-        owner_id: testUserId,
-        source: RSM_SOURCE_WITH_MATH,
-      },
-    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const createResponse = await request.post(`${baseURL}/files`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        data: {
+          title: "Math Bug Test File",
+          owner_id: testUserId,
+          source: RSM_SOURCE_WITH_MATH,
+        },
+      });
 
-    if (!createResponse.ok()) {
-      const errorText = await createResponse.text();
-      throw new Error(`File creation failed: ${createResponse.status()} - ${errorText}`);
+      if (createResponse.ok()) {
+        const fileData = await createResponse.json();
+        return fileData.id;
+      }
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000));
+      } else {
+        const errorText = await createResponse.text();
+        throw new Error(`File creation failed: ${createResponse.status()} - ${errorText}`);
+      }
     }
-
-    const fileData = await createResponse.json();
-    return fileData.id;
   }
 
   async function deleteTestFile(request, fileId) {

@@ -489,7 +489,7 @@ test.describe("Version Workflow @auth", () => {
   });
 
   test("renames different versions independently", async ({ page }) => {
-    // Create 2 versions
+    // Create 2 versions with a brief pause so the API can process each
     await page.click('[data-testid="save-version-button"]');
     await page.click('[data-testid="save-version-button"]');
 
@@ -498,18 +498,22 @@ test.describe("Version Workflow @auth", () => {
 
     // Rename first version (v2)
     const firstVersion = versionItems.nth(0);
+    const renameButton = page.locator('button:has-text("Rename")');
     await firstVersion.locator('[data-testid="trigger-button"]').click();
-    await page.waitForSelector('button:has-text("Rename")');
-    await page.click('button:has-text("Rename")');
+    await expect(renameButton).toBeVisible();
+    await renameButton.click();
     let editableInput = firstVersion.locator("input, textarea").first();
     await editableInput.fill("Latest Draft");
     await editableInput.press("Enter");
 
+    // Wait for rename to settle before opening next context menu
+    await expect(firstVersion).toContainText("Latest Draft");
+
     // Rename second version (v1)
     const secondVersion = versionItems.nth(1);
     await secondVersion.locator('[data-testid="trigger-button"]').click();
-    await page.waitForSelector('button:has-text("Rename")');
-    await page.click('button:has-text("Rename")');
+    await expect(renameButton).toBeVisible();
+    await renameButton.click();
     editableInput = secondVersion.locator("input, textarea").first();
     await editableInput.fill("Initial Draft");
     await editableInput.press("Enter");

@@ -51,14 +51,20 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
   });
 
   async function createTestFile(request, source) {
-    const createResponse = await request.post(`${baseURL}/files`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      data: { title: "Tooltip Math Test", owner_id: testUserId, source },
-    });
-    if (!createResponse.ok()) {
-      throw new Error(`File creation failed: ${createResponse.status()}`);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const createResponse = await request.post(`${baseURL}/files`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        data: { title: "Tooltip Math Test", owner_id: testUserId, source },
+      });
+      if (createResponse.ok()) {
+        return (await createResponse.json()).id;
+      }
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000));
+      } else {
+        throw new Error(`File creation failed: ${createResponse.status()}`);
+      }
     }
-    return (await createResponse.json()).id;
   }
 
   async function deleteTestFile(request, fileId) {
