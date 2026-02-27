@@ -40,14 +40,14 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
     baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForLoadState("load").catch(() => {});
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
   });
 
   test.afterEach(async ({ page }) => {
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForLoadState("load").catch(() => {});
   });
 
   async function createTestFile(request, source) {

@@ -68,19 +68,13 @@ test.describe("Login Flow Tests @auth-flows", () => {
     // Try to submit with empty fields
     await page.click('[data-testid="login-button"]');
 
-    // Wait for API call to complete
-    await page.waitForTimeout(2000);
-
-    // Should remain on login page (validation prevented successful login)
+    // Browser native validation or backend rejection keeps us on login
     await authHelpers.expectToBeOnLoginPage();
 
     // Try with only email filled
     await page.fill('[data-testid="email-input"]', "test@example.com");
     await page.fill('[data-testid="password-input"]', "");
     await page.click('[data-testid="login-button"]');
-
-    // Wait for API call to complete
-    await page.waitForTimeout(2000);
 
     // Should remain on login page (missing password)
     await authHelpers.expectToBeOnLoginPage();
@@ -140,25 +134,8 @@ test.describe("Login Flow Tests @auth-flows", () => {
     await page.fill('[data-testid="password-input"]', TEST_CREDENTIALS.valid.password);
     await page.press('[data-testid="password-input"]', "Enter");
 
-    // Wait for login to complete (either success or error)
-    await page.waitForTimeout(2000);
-
-    // Check if login was successful (redirected to home) or if error occurred
-    const currentUrl = page.url();
-    if (currentUrl.includes("/login")) {
-      // Still on login page - check if there's an error message
-      const errorVisible = await page.locator('[data-testid="login-error"]').isVisible();
-      if (errorVisible) {
-        // Test credentials failed - this is expected behavior for invalid credentials
-        await authHelpers.expectToBeOnLoginPage();
-      } else {
-        // Enter key didn't trigger login at all
-        throw new Error("Enter key press did not trigger login submission");
-      }
-    } else {
-      // Successfully redirected - verify we're logged in
-      await authHelpers.expectToBeLoggedIn();
-    }
+    // Enter key should submit the form and log in successfully
+    await authHelpers.expectToBeLoggedIn();
   });
 
   test("dev mode auto-fill - pre-filled credentials in development", async ({ page }) => {

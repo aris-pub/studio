@@ -129,16 +129,16 @@ class EmailService:
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Confirm your email — Aris Studio</title>
+                <title>Confirm your email — RSM Studio</title>
             </head>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #027AC7; margin: 0;">Aris Studio</h1>
+                    <h1 style="color: #027AC7; margin: 0;">RSM Studio</h1>
                 </div>
 
                 <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 30px; border-left: 4px solid #027AC7;">
                     <p style="font-size: 16px; margin: 0 0 20px 0;">Hi {name},</p>
-                    <p style="font-size: 16px; margin: 0 0 24px 0;">You registered for Aris Studio. Click below to confirm your email and you're done.</p>
+                    <p style="font-size: 16px; margin: 0 0 24px 0;">You registered for RSM Studio. Click below to confirm your email and you're done.</p>
 
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="{verification_link}" style="background: #027AC7; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Confirm my email</a>
@@ -162,7 +162,7 @@ class EmailService:
 
             text_content = f"""Hi {name},
 
-You registered for Aris Studio. Confirm your email by visiting the link below.
+You registered for RSM Studio. Confirm your email by visiting the link below.
 
 {verification_link}
 
@@ -172,9 +172,9 @@ The Aris Program — https://aris.pub
 """
 
             params = {
-                "from": f"Aris Studio <{self.config.from_email}>",
+                "from": f"RSM Studio <{self.config.from_email}>",
                 "to": [to_email],
-                "subject": "Confirm your email — Aris Studio",
+                "subject": "Confirm your email — RSM Studio",
                 "html": html_content,
                 "text": text_content,
             }
@@ -254,9 +254,16 @@ The Aris Program — https://aris.pub
 
 
 def get_email_service() -> Optional[EmailService]:
-    """Get configured email service instance."""
-    if not settings.RESEND_API_KEY or settings.RESEND_API_KEY == "your_resend_api_key_here":
-        logger.warning("Email service disabled: RESEND_API_KEY not configured")
+    """Get configured email service instance.
+
+    Returns None unless ENV is PROD or STAGING and a real RESEND_API_KEY is set.
+    """
+    if (
+        settings.ENV not in ("PROD", "STAGING")
+        or not settings.RESEND_API_KEY
+        or settings.RESEND_API_KEY == "your_resend_api_key_here"
+    ):
+        logger.info("Email service disabled: ENV=%s, key_set=%s", settings.ENV, bool(settings.RESEND_API_KEY))
         return None
 
     logger.info("Initializing email service with Resend")

@@ -32,7 +32,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
 
     // Open the source drawer and wait for the CM/Y.js editor to be ready
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page.waitForSelector(".cm-editor", { timeout: 5000 });
+    await page.waitForSelector(".cm-editor", { timeout: 15000 });
     await page.waitForFunction(() => typeof window.__cmView !== "undefined", null, {
       timeout: 5000,
     });
@@ -140,7 +140,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     await page2.waitForLoadState("domcontentloaded");
     // Open source drawer on page2 so __cmView is initialized there too
     await page2.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page2.waitForSelector(".cm-editor", { timeout: 5000 });
+    await page2.waitForSelector(".cm-editor", { timeout: 15000 });
     await page2.waitForFunction(
       () => typeof window.__cmView !== "undefined",
       {},

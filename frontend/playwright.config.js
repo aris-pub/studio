@@ -7,29 +7,19 @@ dotenv.config({ path: path.resolve("../.env") });
 
 // Get ports from environment - NO fallbacks, will crash if not set
 const FRONTEND_PORT = process.env.FRONTEND_PORT;
-const FRONTEND_TEST_PORT = process.env.FRONTEND_TEST_PORT;
 const BACKEND_PORT = process.env.BACKEND_PORT;
-const BACKEND_TEST_PORT = process.env.BACKEND_TEST_PORT;
 
-if (!FRONTEND_PORT || !FRONTEND_TEST_PORT || !BACKEND_PORT || !BACKEND_TEST_PORT) {
+if (!FRONTEND_PORT || !BACKEND_PORT) {
   console.error("❌ FATAL: Required environment variables not set");
   console.error(
     "   Missing:",
-    [
-      !FRONTEND_PORT && "FRONTEND_PORT",
-      !FRONTEND_TEST_PORT && "FRONTEND_TEST_PORT",
-      !BACKEND_PORT && "BACKEND_PORT",
-      !BACKEND_TEST_PORT && "BACKEND_TEST_PORT",
-    ]
+    [!FRONTEND_PORT && "FRONTEND_PORT", !BACKEND_PORT && "BACKEND_PORT"]
       .filter(Boolean)
       .join(", ")
   );
   console.error("   Ensure .env file exists at project root with all required variables");
   process.exit(1);
 }
-
-// E2E backend selection: Local uses backend-test, CI uses backend (production-like)
-const E2E_BACKEND_PORT = process.env.CI ? BACKEND_PORT : BACKEND_TEST_PORT;
 
 // Test user credentials (required for authentication)
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
@@ -65,13 +55,11 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? "github" : "line", // Use line reporter for minimal output; --quiet flag suppresses stdout
   /* Global timeout for each test */
-  timeout: 15000, // 15s timeout for both local and CI environments
+  timeout: 30000,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI
-      ? `http://localhost:${FRONTEND_PORT}`
-      : `http://localhost:${FRONTEND_TEST_PORT}`,
+    baseURL: `http://localhost:${FRONTEND_PORT}`,
     /* Always run in headless mode */
     headless: true,
     /* Collect trace only on failure, not retry */
@@ -80,14 +68,13 @@ export default defineConfig({
     screenshot: "only-on-failure",
     /* Disable video recording for faster execution */
     video: "off",
-    /* Environment-aware timeouts */
-    actionTimeout: process.env.CI ? 3000 : 1500, // CI: 3s for container latency, Local: 1.5s for quick actions
-    navigationTimeout: process.env.CI ? 8000 : 3000, // CI: 8s for Safari/WebKit, Local: 3s for content load
+    actionTimeout: 10000,
+    navigationTimeout: 15000,
   },
 
   /* Environment variables for test helpers (direct API calls, not browser requests) */
   env: {
-    E2E_API_BASE_URL: `http://localhost:${E2E_BACKEND_PORT}`,
+    E2E_API_BASE_URL: `http://localhost:${BACKEND_PORT}`,
     TEST_USER_EMAIL,
     TEST_USER_PASSWORD,
   },

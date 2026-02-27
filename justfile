@@ -54,18 +54,18 @@ test-collab browser="" reporter="line":
     #!/usr/bin/env bash
     cd frontend
     if [ -n "{{browser}}" ]; then
-        FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
+        npx playwright test --grep "@collab" --project={{browser}} --reporter={{reporter}} --workers=1
     else
-        FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
+        npx playwright test --grep "@collab" --reporter={{reporter}} --workers=1
     fi
 
 # Run E2E content tests (files, versions, rendering)
 test-e2e-content:
-    cd frontend && FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/content/ --grep "@auth" --reporter=line
+    cd frontend && npx playwright test src/tests/e2e/content/ --grep "@auth" --reporter=line
 
 # Run E2E interface tests (account, navigation, settings)
 test-e2e-interface:
-    cd frontend && FRONTEND_TEST_PORT="${FRONTEND_TEST_PORT}" BACKEND_TEST_PORT="${BACKEND_TEST_PORT}" TEST_USER_EMAIL="${TEST_USER_EMAIL}" TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" npx playwright test src/tests/e2e/interface/ --grep "@auth" --reporter=line
+    cd frontend && npx playwright test src/tests/e2e/interface/ --grep "@auth" --reporter=line
 
 # Run all E2E auth tests (content + interface)
 test-e2e:

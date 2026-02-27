@@ -5,8 +5,7 @@
  * - VITE_API_BASE_URL: Browser runtime config (frontend uses this)
  * - E2E_API_BASE_URL: Test-time backend URL (tests use this)
  *
- * Local dev: E2E_API_BASE_URL = http://localhost:8001 (backend-test, SQLite)
- * CI:        E2E_API_BASE_URL = http://localhost:8000 (backend, PostgreSQL)
+ * Both local and CI use the same backend (BACKEND_PORT, PostgreSQL).
  */
 
 /**
@@ -21,8 +20,7 @@ export function getBackendURL() {
   if (!url) {
     throw new Error(
       "E2E_API_BASE_URL or VITE_API_BASE_URL environment variable not set.\n" +
-        "Check playwright.config.js (sets E2E_API_BASE_URL) and global-setup.js.\n" +
-        "Local dev should use backend-test (port 8001), CI should use backend (port 8000)."
+        "Check playwright.config.js (sets E2E_API_BASE_URL) and global-setup.js."
     );
   }
 

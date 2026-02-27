@@ -116,7 +116,7 @@ test.describe("Compile Button Updates Preview @auth", () => {
     expect(initialContent).toContain("original text");
 
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page.waitForSelector(".cm-editor", { timeout: 5000 });
+    await page.waitForSelector(".cm-editor", { timeout: 15000 });
 
     await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 5000 });
     await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 5000 });

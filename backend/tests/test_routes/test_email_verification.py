@@ -30,8 +30,8 @@ def mock_resend(monkeypatch):
     Without this fixture the email service is disabled (RESEND_API_KEY is blank
     in conftest.py), so tests that want to assert emails are sent must use it.
     """
+    monkeypatch.setattr("aris.services.email.settings.ENV", "PROD")
     monkeypatch.setattr("aris.services.email.settings.RESEND_API_KEY", "test_key")
-    # Also patch the route-level import path so get_email_service sees the key
     monkeypatch.setattr("aris.routes.auth.settings.FRONTEND_URL", "https://studio.test")
     monkeypatch.setattr("aris.routes.user.settings.FRONTEND_URL", "https://studio.test")
     with patch("resend.Emails.send") as mock_send:
@@ -86,7 +86,7 @@ class TestRegistrationEmailVerification:
 
         mock_resend.assert_called_once()
         call_params = mock_resend.call_args[0][0]
-        assert call_params["subject"] == "Confirm your email — Aris Studio"
+        assert call_params["subject"] == "Confirm your email — RSM Studio"
         assert TestConstants.DEFAULT_USER_EMAIL in call_params["to"]
         assert "/verify-email/" in call_params["html"]
 

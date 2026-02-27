@@ -85,8 +85,8 @@ test.describe("LSP Content Duplication Bug @auth", () => {
       console.log("[Content Before LSP]", contentBeforeLSP);
       console.log("[Content Before LSP Length]", contentBeforeLSP.length);
 
-      // Wait a bit for any potential duplication to occur
-      await page.waitForTimeout(2000);
+      // Wait for Y.js sync to settle before checking for duplication
+      await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
       // Get content after LSP connects
       const contentAfterLSP = await page.evaluate(() => {
@@ -138,16 +138,17 @@ test.describe("LSP Content Duplication Bug @auth", () => {
       console.log("[Content After First Load]", contentAfterFirstLoad);
 
       // Reload the page
-      await page.reload({ waitUntil: "networkidle" });
+      await page.reload({ waitUntil: "commit" });
 
       // Wait for editor to be ready again
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
-        { timeout: 5000 }
+        { timeout: 15000 }
       );
 
-      await page.waitForTimeout(2000);
+      // Wait for Y.js sync to complete (content arrives via backend seeding)
+      await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
       const contentAfterReload = await page.evaluate(() => {
         return window.__cmView.state.doc.toString();

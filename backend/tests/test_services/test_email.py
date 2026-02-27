@@ -142,7 +142,8 @@ class TestGetEmailService:
 
     @patch('aris.services.email.settings')
     def test_get_email_service_with_valid_api_key(self, mock_settings, caplog):
-        """Test get_email_service returns service with valid API key."""
+        """Test get_email_service returns service with valid API key in PROD."""
+        mock_settings.ENV = "PROD"
         mock_settings.RESEND_API_KEY = "valid_key"
         mock_settings.FROM_EMAIL = "test@example.com"
         mock_settings.ADMIN_EMAIL = "admin@example.com"
@@ -157,27 +158,43 @@ class TestGetEmailService:
         assert "Initializing email service with Resend" in caplog.text
 
     @patch('aris.services.email.settings')
+    def test_get_email_service_disabled_in_non_prod(self, mock_settings, caplog):
+        """Test get_email_service returns None in non-PROD environments."""
+        mock_settings.ENV = "LOCAL"
+        mock_settings.RESEND_API_KEY = "valid_key"
+        mock_settings.FROM_EMAIL = "test@example.com"
+        mock_settings.ADMIN_EMAIL = "admin@example.com"
+
+        with caplog.at_level(logging.INFO):
+            service = get_email_service()
+
+        assert service is None
+        assert "Email service disabled" in caplog.text
+
+    @patch('aris.services.email.settings')
     def test_get_email_service_with_empty_api_key(self, mock_settings, caplog):
         """Test get_email_service returns None with empty API key."""
+        mock_settings.ENV = "PROD"
         mock_settings.RESEND_API_KEY = ""
         mock_settings.FROM_EMAIL = "test@example.com"
         mock_settings.ADMIN_EMAIL = "admin@example.com"
-        
-        with caplog.at_level(logging.WARNING):
+
+        with caplog.at_level(logging.INFO):
             service = get_email_service()
-        
+
         assert service is None
-        assert "Email service disabled: RESEND_API_KEY not configured" in caplog.text
+        assert "Email service disabled" in caplog.text
 
     @patch('aris.services.email.settings')
     def test_get_email_service_with_placeholder_api_key(self, mock_settings, caplog):
         """Test get_email_service returns None with placeholder API key."""
+        mock_settings.ENV = "PROD"
         mock_settings.RESEND_API_KEY = "your_resend_api_key_here"
         mock_settings.FROM_EMAIL = "test@example.com"
         mock_settings.ADMIN_EMAIL = "admin@example.com"
-        
-        with caplog.at_level(logging.WARNING):
+
+        with caplog.at_level(logging.INFO):
             service = get_email_service()
-        
+
         assert service is None
-        assert "Email service disabled: RESEND_API_KEY not configured" in caplog.text
+        assert "Email service disabled" in caplog.text

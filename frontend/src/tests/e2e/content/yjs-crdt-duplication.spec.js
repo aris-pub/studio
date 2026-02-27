@@ -47,14 +47,14 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
     baseURL = getBackendURL();
     authHelpers = new AuthHelpers(page);
     await authHelpers.ensureLoggedIn();
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForLoadState("load").catch(() => {});
     accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const userData = await page.evaluate(() => JSON.parse(localStorage.getItem("user")));
     testUserId = userData.id;
   });
 
   test.afterEach(async ({ page }) => {
-    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForLoadState("load").catch(() => {});
   });
 
   async function createTestFile(request, source) {
@@ -123,7 +123,7 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
       // Open source editor
       await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
       await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({ timeout: 5000 });
-      await page.waitForSelector(".cm-editor", { timeout: 5000 });
+      await page.waitForSelector(".cm-editor", { timeout: 15000 });
       await page.waitForFunction(
         () => typeof window.__cmView !== "undefined",
         {},
@@ -193,7 +193,7 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
         await expect(page.locator('[data-testid="workspace-editor"]')).toBeVisible({
           timeout: 5000,
         });
-        await page.waitForSelector(".cm-editor", { timeout: 5000 });
+        await page.waitForSelector(".cm-editor", { timeout: 15000 });
         await page.waitForFunction(
           () => typeof window.__cmView !== "undefined",
           {},

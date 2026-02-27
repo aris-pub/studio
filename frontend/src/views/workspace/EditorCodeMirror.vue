@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, shallowRef, computed, inject, watch, onBeforeUnmount } from "vue";
+  import { ref, shallowRef, computed, inject, watch, onBeforeUnmount, toRaw } from "vue";
   import {
     EditorView,
     keymap,
@@ -167,6 +167,7 @@
       delete window.__ytext;
       delete window.__provider;
       delete window.__awareness;
+      delete window.__lspClient;
     }
   };
 
@@ -218,6 +219,7 @@
         // Give it a brief window to deliver content before falling back to
         // frontend seeding (prevents dual-insertion duplication).
         if (ytext.value.toString().length === 0 && file.value?.source) {
+          const seedTimeout = 10000;
           await new Promise((resolve) => {
             const observer = () => {
               if (ytext.value.toString().length > 0) {
@@ -226,14 +228,10 @@
               }
             };
             ytext.value.observe(observer);
-            // Generous timeout: backend seed typically takes 1-2s, but in CI
-            // (Docker networking + PostgreSQL) can take 3-5s. If the timeout is too
-            // short, the fallback fires while the backend's Y.js update is still in
-            // transit, causing duplicate content (two independent CRDT inserts).
             setTimeout(() => {
               ytext.value.unobserve(observer);
               resolve();
-            }, 10000);
+            }, seedTimeout);
           });
 
           // Fallback: seed from frontend if backend didn't deliver in time
@@ -384,6 +382,7 @@
             window.__provider = provider.value;
             window.EditorView = EditorView;
             window.__awareness = awareness.value;
+            window.__lspClient = toRaw(lsp.client.value);
           }
 
           // Request initial semantic tokens for syntax highlighting

@@ -75,7 +75,7 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
 
     // /account has a route-level redirect to /account/profile, which triggers two guard
     // invocations. waitForURL lets both redirects settle before asserting.
-    await page.waitForURL(/\/login/, { timeout: 5000 });
+    await page.waitForURL(/\/login/, { timeout: 5000, waitUntil: "domcontentloaded" });
     await authHelpers.expectToBeOnLoginPage();
   });
 
@@ -85,7 +85,7 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
 
     // /settings has a route-level redirect to /settings/document, which triggers two guard
     // invocations. waitForURL lets both redirects settle before asserting.
-    await page.waitForURL(/\/login/, { timeout: 5000 });
+    await page.waitForURL(/\/login/, { timeout: 5000, waitUntil: "domcontentloaded" });
     await authHelpers.expectToBeOnLoginPage();
   });
 

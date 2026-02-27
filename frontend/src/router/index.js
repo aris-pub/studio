@@ -61,9 +61,10 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const publicPages = ["/login", "/register", "/demo"];
+  const publicPages = ["/login", "/register"];
   const isVerificationRoute = to.path.startsWith("/verify-email/");
-  const authRequired = !publicPages.includes(to.path) && !isVerificationRoute;
+  const isDemoRoute = to.path.startsWith("/demo");
+  const authRequired = !publicPages.includes(to.path) && !isVerificationRoute && !isDemoRoute;
 
   if (!authRequired) return next();
 

@@ -8,6 +8,7 @@ import {
   openFileInEditor,
 } from "./yjs-helpers.js";
 import { getBackendURL } from "./utils/test-config.js";
+import { getTimeouts } from "./utils/timeout-constants.js";
 
 const backendURL = getBackendURL();
 
@@ -16,6 +17,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
     browser,
     request,
   }) => {
+    test.setTimeout(45000); // 2x openFileInEditor + 2 poll loops + navigation
     const auth = await loginUser(request);
     const fileId = await createTestFile(request, auth.token, auth.userData.id);
     const { context, page } = await createAuthenticatedContext(browser, auth);
@@ -40,7 +42,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
             const data = await r.json();
             return (data.source ?? "").includes("Test Persistence");
           },
-          { timeout: 5000 }
+          { timeout: getTimeouts().heavyOperation }
         )
         .toBe(true);
 
@@ -58,7 +60,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
             const data = await r.json();
             return (data.source ?? "").includes("Test Persistence");
           },
-          { timeout: 5000 }
+          { timeout: getTimeouts().heavyOperation }
         )
         .toBe(true);
 
@@ -82,6 +84,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
   });
 
   test("changes persist across tab close and reopen", async ({ browser, request }) => {
+    test.setTimeout(45000); // 2x openFileInEditor + 2 poll loops + tab close/reopen
     const auth = await loginUser(request);
     const fileId = await createTestFile(request, auth.token, auth.userData.id);
     const { context, page } = await createAuthenticatedContext(browser, auth);
@@ -105,7 +108,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
             const data = await r.json();
             return (data.source ?? "").includes("Tab Close Test");
           },
-          { timeout: 5000 }
+          { timeout: getTimeouts().heavyOperation }
         )
         .toBe(true);
 
@@ -122,7 +125,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
             const data = await r.json();
             return (data.source ?? "").includes("Tab Close Test");
           },
-          { timeout: 5000 }
+          { timeout: getTimeouts().heavyOperation }
         )
         .toBe(true);
 

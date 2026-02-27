@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pycrdt import Doc, Text, create_sync_message, handle_sync_message
+from pycrdt._sync import YSyncMessageType, create_message
 from sqlalchemy import text as sql_text
 from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
@@ -140,13 +141,21 @@ class YDocClient:
             if len(self.text) == 0:
                 # Set flag to prevent observer from saving during DB load
                 self._in_sync_operation = True
+                state_before_load = self.doc.get_state()
                 try:
                     await self._load_from_db()
                 finally:
                     self._in_sync_operation = False
 
-            # Observer is already attached and will handle all subsequent changes.
-            # No need to manually persist here - the observer captured SyncStep2.
+                # Broadcast DB content to all connected clients via WebSocket.
+                # Without this, the frontend never receives the DB-loaded content
+                # and hangs waiting for the backend to seed the document.
+                if len(self.text) > 0:
+                    update = self.doc.get_update(state_before_load)
+                    update_msg = create_message(update, YSyncMessageType.SYNC_UPDATE)
+                    await websocket.send(update_msg)
+                    logger.info(f"Broadcast DB content to room for file {self.file_id} "
+                                f"({len(self.text)} chars)")
 
             # Handle incoming messages
             await self._message_loop(websocket)

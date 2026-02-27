@@ -8,8 +8,8 @@
 export const TIMEOUTS = {
   // Core timeout categories
   QUICK_ACTION: 1500, // Button clicks, form inputs, simple interactions
-  CONTENT_LOAD: 3000, // Component mounting, content rendering, API responses
-  HEAVY_OPERATION: 5000, // File operations, complex navigation, heavy computations
+  CONTENT_LOAD: 5000, // Component mounting, content rendering, API responses
+  HEAVY_OPERATION: 10000, // File operations, complex navigation, heavy computations
 
   // Specific operation timeouts
   NAVIGATION: 3000, // Page navigation and URL changes
