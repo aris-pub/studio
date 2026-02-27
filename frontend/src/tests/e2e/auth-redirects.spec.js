@@ -82,7 +82,7 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Try to access settings page without authentication
     await page.goto("/settings");
 
-    // /settings has a route-level redirect to /settings/document, which triggers two guard
+    // /settings has a route-level redirect to /settings/preferences, which triggers two guard
     // invocations. waitForURL lets both redirects settle before asserting.
     await page.waitForURL(/\/login/, { timeout: 5000, waitUntil: "domcontentloaded" });
     await authHelpers.expectToBeOnLoginPage();

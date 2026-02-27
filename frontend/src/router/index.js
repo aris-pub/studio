@@ -10,10 +10,9 @@ const DemoView = () => import("@/views/demo/View.vue");
 const AccountView = isUnitTest ? {} : () => import("@/views/account/View.vue");
 const SettingsView = isUnitTest ? {} : () => import("@/views/settings/View.vue");
 const SettingsDocumentView = isUnitTest ? {} : () => import("@/views/settings/DocumentView.vue");
-const SettingsBehaviorView = isUnitTest ? {} : () => import("@/views/settings/BehaviorView.vue");
-const SettingsNotificationsView = isUnitTest
+const SettingsPreferencesView = isUnitTest
   ? {}
-  : () => import("@/views/settings/NotificationsView.vue");
+  : () => import("@/views/settings/PreferencesView.vue");
 const NotFoundView = isUnitTest ? {} : () => import("@/views/notfound/View.vue");
 const VerifyEmailView = isUnitTest ? {} : () => import("@/views/verify-email/View.vue");
 
@@ -28,11 +27,10 @@ const routes = [
   {
     path: "/settings",
     component: SettingsView,
-    redirect: "/settings/document",
+    redirect: "/settings/preferences",
     children: [
       { path: "document", component: SettingsDocumentView },
-      { path: "behavior", component: SettingsBehaviorView },
-      { path: "notifications", component: SettingsNotificationsView },
+      { path: "preferences", component: SettingsPreferencesView },
     ],
   },
   // dedicated 404 route

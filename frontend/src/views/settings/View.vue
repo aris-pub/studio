@@ -1,11 +1,9 @@
 <script setup>
   import { computed } from "vue";
   import { useRoute } from "vue-router";
-  import { IconSettings } from "@tabler/icons-vue";
 
   const route = useRoute();
 
-  // Settings sections as context sub-items
   const contextSubItems = computed(() => [
     {
       icon: "FileText",
@@ -15,15 +13,9 @@
     },
     {
       icon: "Settings2",
-      text: "Behavior",
-      active: route?.path === "/settings/behavior",
-      route: "/settings/behavior",
-    },
-    {
-      icon: "Notification",
-      text: "Notifications",
-      active: route?.path === "/settings/notifications",
-      route: "/settings/notifications",
+      text: "Preferences",
+      active: route?.path === "/settings/preferences",
+      route: "/settings/preferences",
     },
   ]);
 </script>

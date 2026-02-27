@@ -432,28 +432,17 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
       await page.goto("/settings");
       await page.waitForLoadState("domcontentloaded");
 
-      // Open drawer and navigate to Behavior settings
+      // Open drawer and navigate to Preferences settings
       const hamburgerButton = page.locator('[data-testid="mobile-menu-button"]');
       await mobileHelpers.clickElement(hamburgerButton);
 
-      const behaviorItem = page.locator(
-        '.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Behavior"]'
+      const preferencesItem = page.locator(
+        '.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Preferences"]'
       );
-      await mobileHelpers.clickElement(behaviorItem);
+      await mobileHelpers.clickElement(preferencesItem);
 
-      await mobileHelpers.waitForURLPattern(/\/settings\/behavior/);
-      await expect(page).toHaveURL("/settings/behavior");
-
-      // Open drawer and navigate to Notifications settings
-      await mobileHelpers.clickElement(hamburgerButton);
-
-      const notificationsItem = page.locator(
-        '.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Notifications"]'
-      );
-      await mobileHelpers.clickElement(notificationsItem);
-
-      await mobileHelpers.waitForURLPattern(/\/settings\/notifications/);
-      await expect(page).toHaveURL("/settings/notifications");
+      await mobileHelpers.waitForURLPattern(/\/settings\/preferences/);
+      await expect(page).toHaveURL("/settings/preferences");
 
       await context.close();
     });

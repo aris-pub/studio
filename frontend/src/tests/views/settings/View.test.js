@@ -3,7 +3,7 @@ import { mount } from "@vue/test-utils";
 import SettingsView from "@/views/settings/View.vue";
 
 // Mock vue-router
-const mockRoute = { path: "/settings/document" };
+const mockRoute = { path: "/settings/preferences" };
 const mockRouter = { push: vi.fn() };
 vi.mock("vue-router", () => ({
   useRoute: () => mockRoute,
@@ -44,7 +44,7 @@ describe("SettingsView", () => {
     const baseLayout = wrapper.findComponent({ name: "BaseLayout" });
     const contextSubItems = baseLayout.props("contextSubItems");
 
-    expect(contextSubItems).toHaveLength(3);
+    expect(contextSubItems).toHaveLength(2);
     expect(contextSubItems[0]).toMatchObject({
       icon: "FileText",
       text: "File Display",
@@ -52,13 +52,8 @@ describe("SettingsView", () => {
     });
     expect(contextSubItems[1]).toMatchObject({
       icon: "Settings2",
-      text: "Behavior",
-      route: "/settings/behavior",
-    });
-    expect(contextSubItems[2]).toMatchObject({
-      icon: "Notification",
-      text: "Notifications",
-      route: "/settings/notifications",
+      text: "Preferences",
+      route: "/settings/preferences",
     });
   });
 
@@ -66,10 +61,8 @@ describe("SettingsView", () => {
     const baseLayout = wrapper.findComponent({ name: "BaseLayout" });
     const contextSubItems = baseLayout.props("contextSubItems");
 
-    // Since mockRoute.path is "/settings/document", File should be active
-    expect(contextSubItems[0].active).toBe(true); // File
-    expect(contextSubItems[1].active).toBe(false); // Behavior
-    expect(contextSubItems[2].active).toBe(false); // Notifications
+    expect(contextSubItems[0].active).toBe(false); // File Display
+    expect(contextSubItems[1].active).toBe(true); // Preferences
   });
 
   it("disables FAB in BaseLayout", () => {
@@ -83,8 +76,6 @@ describe("SettingsView", () => {
   });
 
   it("handles route object being undefined in tests", () => {
-    // Test that component doesn't crash when route is undefined
-    // This tests the route?.path optional chaining
     expect(() => {
       const baseLayout = wrapper.findComponent({ name: "BaseLayout" });
       baseLayout.props("contextSubItems");

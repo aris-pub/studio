@@ -1,20 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
-import BehaviorView from "@/views/settings/BehaviorView.vue";
+import PreferencesView from "@/views/settings/PreferencesView.vue";
 
-describe("BehaviorView", () => {
+describe("PreferencesView", () => {
   let wrapper;
   const mockApi = {
     get: vi.fn().mockResolvedValue({
       data: {
         autoSaveInterval: 30,
+        autoCompileDelay: 1000,
         focusModeAutoHide: true,
         sidebarAutoCollapse: false,
         drawerDefaultAnnotations: false,
         drawerDefaultMargins: false,
         drawerDefaultSettings: false,
+        notificationPreference: "in-app",
+        notificationMentions: true,
+        notificationComments: true,
+        notificationShares: true,
+        notificationSystem: true,
+        emailDigestFrequency: "weekly",
+        allowAnonymousFeedback: false,
         soundNotifications: true,
-        autoCompileDelay: 1000,
         mobileMenuBehavior: "standard",
       },
     }),
@@ -24,23 +31,29 @@ describe("BehaviorView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset mock implementations to default behavior
     mockApi.get.mockResolvedValue({
       data: {
         autoSaveInterval: 30,
+        autoCompileDelay: 1000,
         focusModeAutoHide: true,
         sidebarAutoCollapse: false,
         drawerDefaultAnnotations: false,
         drawerDefaultMargins: false,
         drawerDefaultSettings: false,
+        notificationPreference: "in-app",
+        notificationMentions: true,
+        notificationComments: true,
+        notificationShares: true,
+        notificationSystem: true,
+        emailDigestFrequency: "weekly",
+        allowAnonymousFeedback: false,
         soundNotifications: true,
-        autoCompileDelay: 1000,
         mobileMenuBehavior: "standard",
       },
     });
     mockApi.post.mockResolvedValue({});
 
-    wrapper = mount(BehaviorView, {
+    wrapper = mount(PreferencesView, {
       global: {
         provide: {
           api: mockApi,
@@ -53,6 +66,7 @@ describe("BehaviorView", () => {
           },
           Section: {
             name: "Section",
+            props: ["variant"],
             template:
               '<div data-testid="section"><slot name="title" /><slot name="content" /></div>',
           },
@@ -77,19 +91,18 @@ describe("BehaviorView", () => {
     });
 
     it("renders the header with title", () => {
-      expect(wrapper.text()).toContain("Behavior");
+      expect(wrapper.text()).toContain("Preferences");
     });
 
     it("renders all settings sections", () => {
       const sections = wrapper.findAll('[data-testid="section"]');
-      expect(sections.length).toBeGreaterThanOrEqual(5);
+      expect(sections.length).toBe(5);
 
-      // Check for expected section titles
       expect(wrapper.text()).toContain("Auto-save & Performance");
-      expect(wrapper.text()).toContain("Focus Mode");
-      expect(wrapper.text()).toContain("Interface Layout");
-      expect(wrapper.text()).toContain("Drawer Defaults");
-      expect(wrapper.text()).toContain("Audio & Mobile");
+      expect(wrapper.text()).toContain("Editor");
+      expect(wrapper.text()).toContain("Notifications");
+      expect(wrapper.text()).toContain("Interaction & Privacy");
+      expect(wrapper.text()).toContain("Mobile");
     });
   });
 
@@ -131,6 +144,18 @@ describe("BehaviorView", () => {
       expect(options[1].text()).toBe("Compact");
       expect(options[2].text()).toBe("Minimal");
     });
+
+    it("renders notification preference select", () => {
+      const select = wrapper.find("#notification-preference");
+      expect(select.exists()).toBe(true);
+      expect(select.element.value).toBe("in-app");
+    });
+
+    it("renders email digest frequency select", () => {
+      const select = wrapper.find("#email-digest");
+      expect(select.exists()).toBe(true);
+      expect(select.element.value).toBe("weekly");
+    });
   });
 
   describe("Checkbox Settings", () => {
@@ -159,6 +184,17 @@ describe("BehaviorView", () => {
     it("renders sound notifications checkbox", () => {
       expect(wrapper.text()).toContain("Enable sound notifications");
     });
+
+    it("renders notification type checkboxes", () => {
+      expect(wrapper.text()).toContain("Mentions");
+      expect(wrapper.text()).toContain("Comments");
+      expect(wrapper.text()).toContain("Shares and collaboration invites");
+      expect(wrapper.text()).toContain("System updates");
+    });
+
+    it("renders anonymous feedback checkbox", () => {
+      expect(wrapper.text()).toContain("Allow anonymous feedback and comments");
+    });
   });
 
   describe("Settings Loading", () => {
@@ -169,18 +205,19 @@ describe("BehaviorView", () => {
       expect(wrapper.vm.settings.autoSaveInterval).toBe(30);
       expect(wrapper.vm.settings.focusModeAutoHide).toBe(true);
       expect(wrapper.vm.settings.sidebarAutoCollapse).toBe(false);
+      expect(wrapper.vm.settings.notificationPreference).toBe("in-app");
     });
 
     it("handles settings load errors", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockApi.get.mockRejectedValue(new Error("Load failed"));
 
-      const errorWrapper = mount(BehaviorView, {
+      const errorWrapper = mount(PreferencesView, {
         global: {
           provide: { api: mockApi },
           components: {
             Pane: { template: "<div><slot /></div>" },
-            Section: { template: '<div><slot name="content" /></div>' },
+            Section: { props: ["variant"], template: '<div><slot name="content" /></div>' },
             Checkbox: { template: "<div />" },
           },
           stubs: {
@@ -211,7 +248,6 @@ describe("BehaviorView", () => {
     it("shows loading state during save", async () => {
       await wrapper.vm.$nextTick();
 
-      // Mock delayed save
       mockApi.post.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
       const saveButton = wrapper.find("[data-testid='save-settings-button']");
@@ -233,7 +269,6 @@ describe("BehaviorView", () => {
       expect(saveButton.text()).toBe("Saved!");
       expect(saveButton.classes()).toContain("saved");
 
-      // Should auto-reset after timeout
       setTimeout(() => {
         expect(wrapper.vm.saved).toBe(false);
       }, 2100);
@@ -279,6 +314,8 @@ describe("BehaviorView", () => {
       expect(wrapper.find('label[for="auto-save-interval"]').exists()).toBe(true);
       expect(wrapper.find('label[for="auto-compile-delay"]').exists()).toBe(true);
       expect(wrapper.find('label[for="mobile-menu-behavior"]').exists()).toBe(true);
+      expect(wrapper.find('label[for="notification-preference"]').exists()).toBe(true);
+      expect(wrapper.find('label[for="email-digest"]').exists()).toBe(true);
     });
 
     it("has descriptive text for settings", () => {
@@ -287,6 +324,9 @@ describe("BehaviorView", () => {
       );
       expect(wrapper.text()).toContain("Play audio feedback for actions and notifications");
       expect(wrapper.text()).toContain("Set the default open/closed state for workspace drawers");
+      expect(wrapper.text()).toContain(
+        "Choose how you want to receive notifications about activity on your content"
+      );
     });
   });
 
@@ -295,6 +335,8 @@ describe("BehaviorView", () => {
       expect(wrapper.vm.settings.autoSaveInterval).toBe(30);
       expect(wrapper.vm.settings.focusModeAutoHide).toBe(true);
       expect(wrapper.vm.settings.soundNotifications).toBe(true);
+      expect(wrapper.vm.settings.notificationPreference).toBe("in-app");
+      expect(wrapper.vm.settings.emailDigestFrequency).toBe("weekly");
       expect(wrapper.vm.loading).toBe(false);
       expect(wrapper.vm.saved).toBe(false);
     });

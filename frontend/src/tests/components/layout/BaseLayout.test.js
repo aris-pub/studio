@@ -4,9 +4,9 @@ import BaseLayout from "@/components/layout/BaseLayout.vue";
 
 // Mock vue-router
 const mockRoute = {
-  path: "/settings/document",
-  fullPath: "/settings/document",
-  name: "settings-document",
+  path: "/settings/preferences",
+  fullPath: "/settings/preferences",
+  name: "settings-preferences",
 };
 const mockRouter = { push: vi.fn() };
 vi.mock("vue-router", () => ({
@@ -31,21 +31,15 @@ describe("BaseLayout", () => {
   const mockContextSubItems = [
     {
       icon: "FileText",
-      text: "File",
-      active: true,
+      text: "File Display",
+      active: false,
       route: "/settings/document",
     },
     {
       icon: "Settings2",
-      text: "Behavior",
-      active: false,
-      route: "/settings/behavior",
-    },
-    {
-      icon: "Notification",
-      text: "Notifications",
-      active: false,
-      route: "/settings/notifications",
+      text: "Preferences",
+      active: true,
+      route: "/settings/preferences",
     },
   ];
 
@@ -174,11 +168,11 @@ describe("BaseLayout", () => {
       expect(subItemsContainer).toBeDefined();
 
       // Check sub-items structure
-      expect(subItemsContainer.subItems).toHaveLength(3);
+      expect(subItemsContainer.subItems).toHaveLength(2);
       expect(subItemsContainer.subItems[0]).toMatchObject({
         icon: "FileText",
-        text: "File",
-        active: true,
+        text: "File Display",
+        active: false,
         route: "/settings/document",
         isSubItem: true,
       });

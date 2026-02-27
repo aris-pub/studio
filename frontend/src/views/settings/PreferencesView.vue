@@ -6,13 +6,20 @@
 
   const settings = reactive({
     autoSaveInterval: 30,
+    autoCompileDelay: 1000,
     focusModeAutoHide: true,
     sidebarAutoCollapse: false,
     drawerDefaultAnnotations: false,
     drawerDefaultMargins: false,
     drawerDefaultSettings: false,
+    notificationPreference: "in-app",
+    notificationMentions: true,
+    notificationComments: true,
+    notificationShares: true,
+    notificationSystem: true,
+    emailDigestFrequency: "weekly",
+    allowAnonymousFeedback: false,
     soundNotifications: true,
-    autoCompileDelay: 1000,
     mobileMenuBehavior: "standard",
   });
 
@@ -50,9 +57,10 @@
   <Pane>
     <template #header>
       <IconSettings2 />
-      <h3>Behavior</h3>
+      <h3>Preferences</h3>
     </template>
-    <Section>
+
+    <Section variant="enhanced">
       <template #title>Auto-save & Performance</template>
       <template #content>
         <div class="setting-item">
@@ -77,8 +85,8 @@
       </template>
     </Section>
 
-    <Section>
-      <template #title>Focus Mode</template>
+    <Section variant="enhanced">
+      <template #title>Editor</template>
       <template #content>
         <div class="setting-item">
           <Checkbox id="focus-mode-auto-hide" v-model="settings.focusModeAutoHide">
@@ -88,24 +96,14 @@
             Automatically hide navigation and toolbars when entering focus mode
           </p>
         </div>
-      </template>
-    </Section>
 
-    <Section>
-      <template #title>Interface Layout</template>
-      <template #content>
         <div class="setting-item">
           <Checkbox id="sidebar-auto-collapse" v-model="settings.sidebarAutoCollapse">
             Auto-collapse sidebar
           </Checkbox>
           <p class="setting-description">Automatically collapse the sidebar when not in use</p>
         </div>
-      </template>
-    </Section>
 
-    <Section>
-      <template #title>Drawer Defaults</template>
-      <template #content>
         <p class="setting-description">Set the default open/closed state for workspace drawers</p>
 
         <div class="setting-item">
@@ -128,29 +126,75 @@
       </template>
     </Section>
 
-    <Section>
-      <template #title>Audio & Mobile</template>
+    <Section variant="enhanced">
+      <template #title>Notifications</template>
       <template #content>
         <div class="setting-item">
-          <Checkbox id="sound-notifications" v-model="settings.soundNotifications">
-            Enable sound notifications
+          <label for="notification-preference">Notification method</label>
+          <select id="notification-preference" v-model="settings.notificationPreference">
+            <option value="in-app">In-app only</option>
+            <option value="email">Email only</option>
+            <option value="both">Both in-app and email</option>
+          </select>
+          <p class="setting-description">
+            Choose how you want to receive notifications about activity on your content
+          </p>
+        </div>
+
+        <p class="setting-description">
+          Choose which types of activities you want to be notified about
+        </p>
+
+        <div class="setting-item">
+          <Checkbox id="notification-mentions" v-model="settings.notificationMentions">
+            Mentions
           </Checkbox>
-          <p class="setting-description">Play audio feedback for actions and notifications</p>
+          <p class="setting-description">When someone mentions you in a comment or annotation</p>
         </div>
 
         <div class="setting-item">
-          <label for="mobile-menu-behavior">Mobile menu behavior</label>
-          <select id="mobile-menu-behavior" v-model="settings.mobileMenuBehavior">
-            <option value="standard">Standard</option>
-            <option value="compact">Compact</option>
-            <option value="minimal">Minimal</option>
+          <Checkbox id="notification-comments" v-model="settings.notificationComments">
+            Comments
+          </Checkbox>
+          <p class="setting-description">
+            When someone comments on your content or in a shared workspace
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <Checkbox id="notification-shares" v-model="settings.notificationShares">
+            Shares and collaboration invites
+          </Checkbox>
+          <p class="setting-description">
+            When someone shares content with you or invites you to collaborate
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <Checkbox id="notification-system" v-model="settings.notificationSystem">
+            System updates
+          </Checkbox>
+          <p class="setting-description">
+            Important updates about new features, maintenance, and security notices
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <label for="email-digest">Email digest frequency</label>
+          <select id="email-digest" v-model="settings.emailDigestFrequency">
+            <option value="none">Never</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
           </select>
+          <p class="setting-description">
+            How often you'd like to receive summary emails about your account activity
+          </p>
         </div>
       </template>
     </Section>
 
-    <Section>
-      <template #title>Content Privacy</template>
+    <Section variant="enhanced">
+      <template #title>Interaction & Privacy</template>
       <template #content>
         <div class="setting-item">
           <Checkbox id="anonymous-feedback" v-model="settings.allowAnonymousFeedback">
@@ -159,6 +203,27 @@
           <p class="setting-description">
             Allow viewers to leave feedback on your public content without requiring them to sign in
           </p>
+        </div>
+
+        <div class="setting-item">
+          <Checkbox id="sound-notifications" v-model="settings.soundNotifications">
+            Enable sound notifications
+          </Checkbox>
+          <p class="setting-description">Play audio feedback for actions and notifications</p>
+        </div>
+      </template>
+    </Section>
+
+    <Section variant="enhanced">
+      <template #title>Mobile</template>
+      <template #content>
+        <div class="setting-item">
+          <label for="mobile-menu-behavior">Mobile menu behavior</label>
+          <select id="mobile-menu-behavior" v-model="settings.mobileMenuBehavior">
+            <option value="standard">Standard</option>
+            <option value="compact">Compact</option>
+            <option value="minimal">Minimal</option>
+          </select>
         </div>
       </template>
     </Section>
@@ -178,19 +243,16 @@
 </template>
 
 <style scoped>
-  :deep(.section) {
-    width: 100%;
-  }
-
   .setting-item {
     margin-bottom: 16px;
   }
 
   .setting-item label {
     display: block;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 4px;
+    font-weight: var(--weight-medium, 500);
+    color: var(--gray-900);
+    margin-bottom: 6px;
+    font-size: 14px;
   }
 
   .checkbox-wrapper {
@@ -210,23 +272,49 @@
   }
 
   .setting-description {
-    color: var(--text-secondary);
+    color: var(--gray-500);
     font-size: 13px;
     margin: 4px 0 0 0;
   }
 
   select {
-    padding: 8px 12px;
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: 6px;
-    background: var(--surface-page);
-    color: var(--text-primary);
+    width: 100%;
+    height: 40px;
+    padding: 8px 36px 8px 12px;
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 8px;
+    background-color: transparent;
+    color: var(--gray-900);
     font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: var(--transition-bg-color), var(--transition-bd-color);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+  }
+
+  select:hover {
+    border-color: var(--gray-400);
+    background-color: var(--gray-50);
   }
 
   select:focus {
-    outline: none;
-    border-color: var(--accent-500);
+    outline: var(--border-med) solid var(--border-action);
+    outline-offset: var(--border-extrathin);
+    border-color: var(--border-action);
+    background-color: var(--white);
+  }
+
+  select:disabled {
+    background-color: var(--surface-disabled);
+    color: var(--gray-400);
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 
   .settings-actions {

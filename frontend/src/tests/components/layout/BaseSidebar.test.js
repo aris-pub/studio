@@ -4,7 +4,7 @@ import { mount } from "@vue/test-utils";
 import BaseSidebar from "@/components/layout/BaseSidebar.vue";
 
 // Mock vue-router
-const mockRoute = { path: "/settings/document" };
+const mockRoute = { path: "/settings/preferences" };
 const mockRouter = { push: vi.fn() };
 vi.mock("vue-router", () => ({
   useRoute: () => mockRoute,
@@ -40,16 +40,16 @@ describe("BaseSidebar", () => {
       subItems: [
         {
           icon: "FileText",
-          text: "File",
-          active: true,
+          text: "File Display",
+          active: false,
           route: "/settings/document",
           isSubItem: true,
         },
         {
           icon: "Settings2",
-          text: "Behavior",
-          active: false,
-          route: "/settings/behavior",
+          text: "Preferences",
+          active: true,
+          route: "/settings/preferences",
           isSubItem: true,
         },
       ],
