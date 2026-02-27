@@ -82,9 +82,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         return window.__cmView.state.doc.toString();
       });
 
-      console.log("[Content Before LSP]", contentBeforeLSP);
-      console.log("[Content Before LSP Length]", contentBeforeLSP.length);
-
       // Wait for Y.js sync to settle before checking for duplication
       await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
@@ -92,9 +89,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
       const contentAfterLSP = await page.evaluate(() => {
         return window.__cmView.state.doc.toString();
       });
-
-      console.log("[Content After LSP]", contentAfterLSP);
-      console.log("[Content After LSP Length]", contentAfterLSP.length);
 
       // Check that content hasn't changed
       expect(contentAfterLSP).toBe(contentBeforeLSP);
@@ -104,13 +98,11 @@ test.describe("LSP Content Duplication Bug @auth", () => {
 
       // Check that content hasn't duplicated (length should not be 2x or 3x)
       const contentLengthRatio = contentAfterLSP.length / initialContent.length;
-      console.log("[Content Length Ratio]", contentLengthRatio);
       expect(contentLengthRatio).toBeLessThan(1.5); // Allow some variance but not 2x or 3x
 
       // Count occurrences of a unique string to verify no duplication
       const uniqueString = "Content should not duplicate.";
       const occurrences = (contentAfterLSP.match(new RegExp(uniqueString, "g")) || []).length;
-      console.log("[Occurrences of unique string]", occurrences);
       expect(occurrences).toBe(1); // Should appear exactly once
     } finally {
       await cleanupYjs(page);
@@ -135,8 +127,6 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         return window.__cmView.state.doc.toString();
       });
 
-      console.log("[Content After First Load]", contentAfterFirstLoad);
-
       // Reload the page
       await page.reload({ waitUntil: "commit" });
 
@@ -154,15 +144,12 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         return window.__cmView.state.doc.toString();
       });
 
-      console.log("[Content After Reload]", contentAfterReload);
-
       // Content should be the same after reload
       expect(contentAfterReload.trim()).toBe(initialContent.trim());
 
       // Count occurrences to verify no duplication happened on reload
       const uniqueString = "Content should not duplicate.";
       const occurrences = (contentAfterReload.match(new RegExp(uniqueString, "g")) || []).length;
-      console.log("[Occurrences after reload]", occurrences);
       expect(occurrences).toBe(1);
     } finally {
       await cleanupYjs(page);

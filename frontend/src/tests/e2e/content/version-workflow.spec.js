@@ -30,7 +30,6 @@ test.describe("Version Workflow @auth", () => {
 
     // Create a test file using FileHelpers
     fileId = await fileHelpers.createNewFile();
-    console.log(`[TEST] Created file with ID: ${fileId}`);
 
     // Navigate to the file
     await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
@@ -59,9 +58,7 @@ test.describe("Version Workflow @auth", () => {
 
   test.afterEach(async () => {
     if (fileId) {
-      console.log(`[TEST] Deleting file with ID: ${fileId}`);
       await fileHelpers.deleteFile(fileId);
-      console.log(`[TEST] File ${fileId} deleted successfully`);
     }
   });
 

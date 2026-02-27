@@ -37,8 +37,6 @@
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
 
-  console.log("[EditorCodeMirror] Component loaded - TIMESTAMP:", Date.now());
-
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
   const user = inject("user");
@@ -113,8 +111,6 @@
 
   // Cleanup function
   const cleanup = () => {
-    console.log("[EditorCodeMirror] Cleaning up");
-
     // Clear auto-compile debounce timer
     if (compileDebounceTimeout) {
       clearTimeout(compileDebounceTimeout);
@@ -183,8 +179,6 @@
       // Use environment namespace to prevent conflicts between dev/test
       const env = (import.meta.env.VITE_ENV || "local").toLowerCase();
       roomName.value = `file-${fileId}-${env}`;
-      console.log(`[EditorCodeMirror] Setting up collaboration for ${roomName.value}`);
-
       // Create Y.Doc and Y.Text
       ydoc.value = new Y.Doc();
       ytext.value = ydoc.value.getText("text");
@@ -243,13 +237,11 @@
         }
 
         // Initialize LSP client and get plugin
-        console.log("[EditorCodeMirror] Connecting to LSP server...");
         let lspPlugin = null;
         try {
-          lspPlugin = await lsp.connect(); // Returns plugin extension
-          console.log("[EditorCodeMirror] ✅ LSP ready, creating editor with plugin");
-        } catch (err) {
-          console.warn("[EditorCodeMirror] ⚠️ LSP failed, creating editor without it:", err);
+          lspPlugin = await lsp.connect();
+        } catch {
+          // LSP is optional — editor works without it
         }
 
         // Setup auto-compilation on Y.Doc changes
@@ -257,12 +249,6 @@
           const handleYtextChange = (event, transaction) => {
             // Ignore remote changes (only trigger compilation for local edits)
             if (transaction.local) {
-              if (import.meta.env.DEV) {
-                console.log(
-                  "[EditorCodeMirror] Local Y.Doc change detected, debouncing compilation"
-                );
-              }
-
               // Clear existing debounce timer
               if (compileDebounceTimeout) {
                 clearTimeout(compileDebounceTimeout);
@@ -270,9 +256,6 @@
 
               // Debounce compilation (2000ms to match editSession debounce)
               compileDebounceTimeout = setTimeout(async () => {
-                if (import.meta.env.DEV) {
-                  console.log("[EditorCodeMirror] Triggering auto-compilation");
-                }
                 await editSession.compile();
               }, 2000);
             }
@@ -285,34 +268,13 @@
             ytext.value.unobserve(handleYtextChange);
           };
 
-          if (import.meta.env.DEV) {
-            console.log("[EditorCodeMirror] Auto-compilation observer attached");
-          }
         }
 
         // Create editor with yCollab binding
         const undoManager = new Y.UndoManager(ytext.value);
         const docContent = ytext.value.toString();
 
-        console.log("[EditorCodeMirror] 🔧 Creating yCollab binding", {
-          ytextLength: ytext.value.toString().length,
-          docContentLength: docContent.length,
-        });
-
         const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
-        console.log("[EditorCodeMirror] ✅ yCollab extension created");
-
-        // Debug: Log all transactions to track CodeMirror changes
-        const transactionLogger = EditorState.transactionExtender.of((tr) => {
-          if (tr.docChanged) {
-            console.log("[EditorCodeMirror] 📝 Transaction detected", {
-              docChanged: tr.docChanged,
-              newLength: tr.newDoc.length,
-              origin: tr.annotation ? String(tr.annotation) : "no-annotation",
-            });
-          }
-          return null;
-        });
 
         // Determine if editor should be read-only based on user role
         const isReadOnly = file.value?.role === "COMMENTER";
@@ -323,16 +285,12 @@
         // Add LSP plugin extension if it was created successfully
         // Note: client.plugin() returns a single Extension, not an array
         const lspExtension = lspPlugin;
-        if (lspPlugin) {
-          console.log("[EditorCodeMirror] ✅ Adding LSP plugin to editor", lspPlugin);
-        }
 
         // Add semantic tokens extension for syntax highlighting
         const semanticTokens = semanticTokensExtension(
           lsp.client,
           computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
         );
-        console.log("[EditorCodeMirror] ✅ Adding semantic tokens extension");
 
         const state = EditorState.create({
           // CRITICAL: Initialize with Y.text content explicitly
@@ -342,7 +300,6 @@
             customSetup,
             yCollabExtension,
             keymap.of(yUndoManagerKeymap),
-            transactionLogger,
             ...editableExtensions,
             ...(lspExtension ? [lspExtension] : []),
             semanticTokens,
@@ -401,9 +358,6 @@
           }
 
           isSynced.value = true;
-          if (import.meta.env.DEV) {
-            console.log("[EditorCodeMirror] Component synced and ready");
-          }
         }, 100);
       });
     },
