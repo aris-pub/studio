@@ -17,6 +17,7 @@ services:
       - ../../rsm:/workspace/rsm
       - backend_venv:/workspace/studio/backend/.venv
       - /workspace/studio/multi-player/node_modules  # Prevent host/container conflicts
+      - /workspace/rsm/tree-sitter-rsm/node_modules  # Prevent host/container conflicts
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
@@ -51,6 +52,7 @@ services:
       - backend_test_venv:/workspace/studio/backend/.venv
       - rsm_test_venv:/workspace/rsm/.venv
       - /workspace/studio/multi-player/node_modules_test  # Prevent host/container conflicts
+      - /workspace/rsm/tree-sitter-rsm/node_modules  # Prevent host/container conflicts
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
