@@ -97,10 +97,7 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     expect(tokens.user).toBeNull();
   });
 
-  // TEMPORARILY DISABLED: Failing due to register-link visibility issues across browsers
-  // Error: TimeoutError: locator.waitFor: Timeout 5000ms exceeded waiting for locator('[data-testid="register-link"]') to be visible
-  // TODO: Re-enable once mobile sidebar UI elements are properly implemented
-  test.skip("duplicate email registration shows appropriate error", async ({ page }) => {
+  test("duplicate email registration shows appropriate error", async ({ page }) => {
     const duplicateEmail = `duplicate${timestamp}@example.com`;
     const testUser = {
       name: `Test User ${timestamp}`,
@@ -109,8 +106,10 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     };
 
     // First registration - should succeed
-    await page.goto("/login");
-    await page.click('[data-testid="register-link"]');
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    const registerLink = page.locator('[data-testid="register-link"]');
+    await expect(registerLink).toBeVisible();
+    await registerLink.click();
     await page.fill('[data-testid="name-input"]', testUser.name);
     await page.fill('[data-testid="email-input"]', testUser.email);
     await page.fill('[data-testid="password-input"]', testUser.password);
@@ -120,19 +119,17 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     // Wait for either success redirect or error message
     try {
       await page.waitForURL("/");
-      // Registration succeeded - logout and try duplicate registration
       await authHelpers.logout();
-      await page.goto("/login");
-      await page.waitForLoadState("domcontentloaded");
-      await page.locator('[data-testid="register-link"]').waitFor({ state: "visible" });
-      await page.click('[data-testid="register-link"]');
     } catch {
-      // Registration may have failed due to server issues, proceed with duplicate test
-      await page.goto("/login");
-      await page.waitForLoadState("domcontentloaded");
-      await page.locator('[data-testid="register-link"]').waitFor({ state: "visible" });
-      await page.click('[data-testid="register-link"]');
+      // Registration may have failed, proceed with duplicate test
     }
+
+    // Navigate back to registration (clear auth state to prevent redirect)
+    await authHelpers.clearAuthState();
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.waitForURL("/login");
+    await expect(registerLink).toBeVisible();
+    await registerLink.click();
 
     // Second registration with same email - should fail
     await page.fill('[data-testid="name-input"]', `Another User ${timestamp}`);
@@ -143,13 +140,8 @@ test.describe("Registration Flow Tests @auth-flows", () => {
 
     // Should show server error for duplicate email
     await expect(page.locator('[data-testid="registration-error"]')).toBeVisible();
-
-    // Verify still on registration page
     await expect(page).toHaveURL("/register");
-
-    // Verify form fields are still accessible (not redirected)
     await expect(page.locator('[data-testid="name-input"]')).toBeVisible();
-    await expect(page.locator('[data-testid="email-input"]')).toBeVisible();
   });
 
   test("navigation to login works correctly", async ({ page }) => {

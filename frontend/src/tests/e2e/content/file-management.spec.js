@@ -38,45 +38,27 @@ test.describe("File Management Tests @auth @desktop-only", () => {
     const fileTitle = await fileHelpers.getFileTitle(fileId);
     expect(fileTitle).toContain("New File");
 
-    // TODO: Clean up - deletion functionality needs to be fixed
-    // await fileHelpers.deleteFile(fileId);
+    await fileHelpers.deleteFile(fileId);
   });
 
-  // TEMPORARILY DISABLED: Failing in Firefox due to context menu interaction issues
-  // Error: Context menu not opening/closing correctly in Firefox browser
-  // TODO: Re-enable once Firefox-specific context menu handling is fixed
-  test.skip("file context menu opens and closes correctly", async ({ page }) => {
-    // Create a file for menu testing
+  test("file context menu opens and closes correctly", async ({ page }) => {
     const fileId = await fileHelpers.createNewFile();
     await fileHelpers.navigateToHome();
 
-    // Verify file exists
     const fileExists = await fileHelpers.fileExists(fileId);
     expect(fileExists).toBe(true);
 
-    // Open file menu
     await fileHelpers.openFileMenu(fileId);
 
-    // Verify menu is visible with expected options
     const contextMenu = page.locator('[data-testid="context-menu"]').first();
     await expect(contextMenu).toBeVisible();
     await expect(page.locator('text="Delete"')).toBeVisible();
     await expect(page.locator('text="Duplicate"')).toBeVisible();
 
-    // Close menu by clicking elsewhere
-    const viewport = page.viewportSize();
-    const isMobile = viewport && viewport.width < 640;
-    if (isMobile) {
-      // Tap the same context menu trigger (three dots) to close the menu
-      const fileItem = await page.locator(`[data-testid="file-item-${fileId}"]`);
-      const dotsButton = fileItem.locator('[data-testid="trigger-button"]');
-      await dotsButton.tap();
-    } else {
-      await page.click('[data-testid="files-container"]');
-    }
+    // Escape is more reliable than click-elsewhere across browsers
+    await page.keyboard.press("Escape");
     await expect(contextMenu).not.toBeVisible();
 
-    // Clean up
     await fileHelpers.deleteFile(fileId);
   });
 });

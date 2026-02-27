@@ -95,6 +95,8 @@ export function createFileStore(api, user) {
         files.value.splice(index, 1);
       }
     }
+
+    return success;
   };
 
   /**
