@@ -132,7 +132,7 @@
               data-testid="cta-primary"
               kind="primary"
               text="Go to account settings"
-              @click="router.push('/account/security')"
+              @click="router.push('/account')"
             />
             <Button
               data-testid="cta-secondary"

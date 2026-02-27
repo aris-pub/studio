@@ -73,8 +73,7 @@ test.describe("Authentication Redirect Tests @auth-flows", () => {
     // Try to access account page without authentication
     await page.goto("/account");
 
-    // /account has a route-level redirect to /account/profile, which triggers two guard
-    // invocations. waitForURL lets both redirects settle before asserting.
+    // waitForURL lets the auth guard redirect settle before asserting.
     await page.waitForURL(/\/login/, { timeout: 5000, waitUntil: "domcontentloaded" });
     await authHelpers.expectToBeOnLoginPage();
   });

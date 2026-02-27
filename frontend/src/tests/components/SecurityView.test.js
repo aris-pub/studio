@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { ref } from "vue";
-import SecurityView from "@/views/account/SecurityView.vue";
+import AccountView from "@/views/account/View.vue";
 import Button from "@/components/base/Button.vue";
 import { toast } from "@/utils/toast.js";
 
@@ -53,10 +53,17 @@ const MockPasswordStrength = {
 
 const MockSection = {
   name: "Section",
+  props: ["variant", "theme"],
   template: `<div class="mock-section">
     <div v-if="$slots.title" class="title"><slot name="title"></slot></div>
     <div class="content"><slot name="content"></slot></div>
   </div>`,
+};
+
+const MockBaseLayout = {
+  name: "BaseLayout",
+  props: ["fab", "contextSubItems"],
+  template: `<div class="mock-base-layout"><slot></slot></div>`,
 };
 
 describe("SecurityView Email Verification", () => {
@@ -68,6 +75,9 @@ describe("SecurityView Email Verification", () => {
   beforeEach(() => {
     mockApi = {
       post: vi.fn(),
+      get: vi.fn().mockRejectedValue(new Error("no avatar")),
+      put: vi.fn(),
+      delete: vi.fn(),
     };
 
     mockRefreshUser = vi.fn();
@@ -79,11 +89,14 @@ describe("SecurityView Email Verification", () => {
     it("shows verified status for verified users", async () => {
       mockUser = ref({
         id: 1,
+        name: "Test User",
+        initials: "TU",
         email: "test@example.com",
         email_verified: true,
+        created_at: "2024-01-01T00:00:00Z",
       });
 
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: mockUser,
@@ -97,6 +110,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });
@@ -113,11 +127,14 @@ describe("SecurityView Email Verification", () => {
     it("shows unverified status for unverified users", async () => {
       mockUser = ref({
         id: 1,
+        name: "Test User",
+        initials: "TU",
         email: "test@example.com",
         email_verified: false,
+        created_at: "2024-01-01T00:00:00Z",
       });
 
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: mockUser,
@@ -131,6 +148,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });
@@ -149,11 +167,14 @@ describe("SecurityView Email Verification", () => {
     beforeEach(() => {
       mockUser = ref({
         id: 1,
+        name: "Test User",
+        initials: "TU",
         email: "test@example.com",
         email_verified: false,
+        created_at: "2024-01-01T00:00:00Z",
       });
 
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: mockUser,
@@ -167,6 +188,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });
@@ -324,11 +346,14 @@ describe("SecurityView Email Verification", () => {
     beforeEach(() => {
       mockUser = ref({
         id: 1,
+        name: "Test User",
+        initials: "TU",
         email: "test@example.com",
         email_verified: true,
+        created_at: "2024-01-01T00:00:00Z",
       });
 
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: mockUser,
@@ -342,6 +367,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });
@@ -374,11 +400,14 @@ describe("SecurityView Email Verification", () => {
     it("properly handles user context", () => {
       mockUser = ref({
         id: 1,
+        name: "Test User",
+        initials: "TU",
         email: "test@example.com",
         email_verified: false,
+        created_at: "2024-01-01T00:00:00Z",
       });
 
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: mockUser,
@@ -392,6 +421,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });
@@ -401,7 +431,7 @@ describe("SecurityView Email Verification", () => {
     });
 
     it("gracefully handles missing user context", () => {
-      wrapper = mount(SecurityView, {
+      wrapper = mount(AccountView, {
         global: {
           provide: {
             user: ref(null),
@@ -415,6 +445,7 @@ describe("SecurityView Email Verification", () => {
             Section: MockSection,
             InputText: MockInputText,
             PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
           },
         },
       });

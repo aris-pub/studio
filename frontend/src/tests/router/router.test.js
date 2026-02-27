@@ -40,7 +40,7 @@ describe("router configuration", () => {
   it("allows access to protected routes when token is present", async () => {
     localStorage.setItem("accessToken", "token");
     await router.push("/account");
-    expect(router.currentRoute.value.path).toBe("/account/profile");
+    expect(router.currentRoute.value.path).toBe("/account");
     await router.push("/");
     expect(router.currentRoute.value.path).toBe("/");
   });

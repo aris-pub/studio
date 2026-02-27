@@ -203,13 +203,13 @@ describe("VerifyEmailView", () => {
     expect(wrapper.find('[data-testid="cta-secondary"]').text()).toContain("home");
   });
 
-  it("navigates to /account/security when primary error CTA clicked", async () => {
+  it("navigates to /account when primary error CTA clicked", async () => {
     const err = { response: { status: 404 } };
     const wrapper = mountView(vi.fn().mockRejectedValue(err));
     await flushPromises();
 
     await wrapper.find('[data-testid="cta-primary"]').trigger("click");
-    expect(pushMock).toHaveBeenCalledWith("/account/security");
+    expect(pushMock).toHaveBeenCalledWith("/account");
   });
 
   it("navigates to / when secondary error CTA clicked", async () => {

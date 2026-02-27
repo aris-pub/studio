@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ref, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
-import AccountView from "@/views/account/ProfileView.vue";
+import AccountView from "@/views/account/View.vue";
 
 // Mock the toast module
 vi.mock("@/utils/toast.js", () => ({
@@ -26,10 +26,12 @@ describe("AccountView", () => {
   let api;
   let toast;
   const stubs = {
+    BaseLayout: { template: "<div><slot/></div>", props: ["fab"] },
     HomeLayout: { template: "<div><slot/></div>" },
     Pane: { template: "<div><slot/></div>" },
     Section: {
       template: '<div><slot name="title"/><slot name="content"/><slot name="footer"/></div>',
+      props: ["variant", "theme"],
     },
     IconUserCircle: true,
     InputText: { template: '<input v-bind="$attrs" />' },
@@ -65,6 +67,7 @@ describe("AccountView", () => {
           mobileMode: false,
           user,
           api,
+          refreshUser: vi.fn(),
         },
       },
     });
@@ -89,12 +92,15 @@ describe("AccountView", () => {
     wrapper.vm.newName = "Bob";
     wrapper.vm.newInitials = "BO";
     wrapper.vm.newEmail = "bob@example.com";
-    await wrapper.vm.onSave();
-    expect(api.put).toHaveBeenCalledWith("/users/1", {
-      name: "Bob",
-      initials: "BO",
-      email: "bob@example.com",
-    });
+    await wrapper.vm.onSaveProfile();
+    expect(api.put).toHaveBeenCalledWith(
+      "/users/1",
+      expect.objectContaining({
+        name: "Bob",
+        initials: "BO",
+        email: "bob@example.com",
+      })
+    );
     expect(user.value).toMatchObject(newData);
   });
 
@@ -192,7 +198,7 @@ describe("AccountView", () => {
       api.put.mockRejectedValue(new Error("API Error"));
 
       wrapper.vm.newName = "Failed Update";
-      await wrapper.vm.onSave();
+      await wrapper.vm.onSaveProfile();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to update user", expect.any(Error));
       // User state should remain unchanged after failed update
@@ -209,7 +215,7 @@ describe("AccountView", () => {
       api.put.mockRejectedValue(timeoutError);
 
       wrapper.vm.newName = "Timeout Test";
-      await wrapper.vm.onSave();
+      await wrapper.vm.onSaveProfile();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to update user", timeoutError);
 
@@ -225,7 +231,7 @@ describe("AccountView", () => {
       wrapper.vm.newName = "Malformed Response";
 
       // This should not crash, but the user object won't be updated
-      await wrapper.vm.onSave();
+      await wrapper.vm.onSaveProfile();
 
       // No error should be thrown, but user state remains unchanged
       expect(user.value.name).toBe("Alice"); // Original name
@@ -240,7 +246,7 @@ describe("AccountView", () => {
       api.put.mockRejectedValueOnce(new Error("First attempt failed"));
 
       wrapper.vm.newName = "Retry Test";
-      await wrapper.vm.onSave();
+      await wrapper.vm.onSaveProfile();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to update user", expect.any(Error));
 
@@ -248,7 +254,7 @@ describe("AccountView", () => {
       const successData = { ...user.value, name: "Retry Test" };
       api.put.mockResolvedValue({ data: successData });
 
-      await wrapper.vm.onSave();
+      await wrapper.vm.onSaveProfile();
 
       expect(user.value.name).toBe("Retry Test");
 
@@ -269,15 +275,17 @@ describe("AccountView", () => {
       wrapper.vm.newName = "Delayed Update";
 
       // Start the save operation
-      const savePromise = wrapper.vm.onSave();
+      const savePromise = wrapper.vm.onSaveProfile();
 
       // At this point, the operation should be in progress
-      // We can't test loading state since it's not implemented, but we can verify the operation is pending
-      expect(api.put).toHaveBeenCalledWith("/users/1", {
-        name: "Delayed Update",
-        initials: "AL",
-        email: "alice@example.com",
-      });
+      expect(api.put).toHaveBeenCalledWith(
+        "/users/1",
+        expect.objectContaining({
+          name: "Delayed Update",
+          initials: "AL",
+          email: "alice@example.com",
+        })
+      );
 
       // User should still have original name while operation is pending
       expect(user.value.name).toBe("Alice");
@@ -292,8 +300,6 @@ describe("AccountView", () => {
 
     it("handles concurrent avatar fetch on component mount", async () => {
       // We can test that the avatar fetch was initiated during component setup
-      // This tests the initial data loading behavior
-
       expect(api.get).toHaveBeenCalledWith("/users/1/avatar", {
         responseType: "blob",
       });
@@ -348,7 +354,7 @@ describe("AccountView", () => {
       wrapper.vm.newName = "Changed Name";
       wrapper.vm.newEmail = "changed@example.com";
 
-      await wrapper.vm.onDiscard();
+      await wrapper.vm.onDiscardProfile();
 
       expect(wrapper.vm.newName).toBeNull();
       expect(wrapper.vm.newEmail).toBeNull();
@@ -363,7 +369,7 @@ describe("AccountView", () => {
       wrapper.vm.newName = "Changed Name";
       const originalName = wrapper.vm.newName;
 
-      await wrapper.vm.onDiscard();
+      await wrapper.vm.onDiscardProfile();
 
       expect(wrapper.vm.newName).toBe(originalName);
       expect(toast.info).not.toHaveBeenCalled();
@@ -374,7 +380,7 @@ describe("AccountView", () => {
     it("does nothing when no unsaved changes exist", async () => {
       const confirmSpy = vi.spyOn(window, "confirm");
 
-      await wrapper.vm.onDiscard();
+      await wrapper.vm.onDiscardProfile();
 
       expect(confirmSpy).not.toHaveBeenCalled();
       expect(toast.info).not.toHaveBeenCalled();

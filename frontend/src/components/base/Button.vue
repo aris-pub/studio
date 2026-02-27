@@ -35,12 +35,12 @@
   const props = defineProps({
     /**
      * Visual style variant of the button
-     * @values 'primary', 'secondary', 'tertiary'
+     * @values 'primary', 'secondary', 'tertiary', 'danger'
      */
     kind: {
       type: String,
       required: true,
-      validator: (value) => ["primary", "secondary", "tertiary"].includes(value),
+      validator: (value) => ["primary", "secondary", "tertiary", "danger"].includes(value),
     },
 
     /**
@@ -362,8 +362,22 @@
   }
 
   button.danger {
-    background-color: var(--surface-danger);
-    border-color: var(--surface-danger);
-    color: var(--error-50);
+    background-color: var(--red-500);
+    border-color: var(--red-500);
+    color: white;
+
+    &:hover {
+      background-color: var(--red-600);
+      border-color: var(--red-600);
+    }
+
+    & .btn-icon {
+      color: white;
+    }
+  }
+
+  button.danger:active {
+    background-color: var(--red-700);
+    border-color: var(--red-700);
   }
 </style>

@@ -261,8 +261,8 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
       // Debug before navigation wait
       await mobileHelpers.debugLoadState();
 
-      await mobileHelpers.waitForURLPattern(/\/account\/profile/);
-      await expect(page).toHaveURL("/account/profile");
+      await mobileHelpers.waitForURLPattern(/\/account/);
+      await expect(page).toHaveURL("/account");
     });
 
     test("should navigate from home to settings via mobile drawer", async ({ browser }) => {

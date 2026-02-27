@@ -12,7 +12,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
 
   test("displays email verification status correctly", async ({ page }) => {
     // Navigate to security page
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Wait for the page to load
     await expect(page.locator(".title:has-text('Account Status')")).toBeVisible();
@@ -33,7 +33,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
 
   test("send verification email workflow for unverified users", async ({ page }) => {
     // Navigate to security page
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Look for email verification section
     const emailSection = page.locator(".status-item").filter({ hasText: "Email" });
@@ -81,7 +81,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
 
   test("handles verification errors gracefully", async ({ page }) => {
     // Navigate to security page
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Mock a network error for the verification request
     await page.route("**/send-verification", (route) => {
@@ -111,7 +111,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
 
   test("email verification status updates correctly", async ({ page }) => {
     // Navigate to security page
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Check initial email verification status
     const emailSection = page.locator(".status-item").filter({ hasText: "Email" });
@@ -144,7 +144,7 @@ test.describe("Account Email Verification E2E Tests @auth", () => {
   });
 
   test("verification button loading state", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     const sendButton = page.locator(".verification-actions button");
 

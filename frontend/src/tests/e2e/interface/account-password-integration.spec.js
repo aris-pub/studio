@@ -18,7 +18,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     expect(accessToken).toBeTruthy();
     expect(user).toBeTruthy();
 
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Wait for password section to be visible
     await expect(page.locator("h2:has-text('Password')")).toBeVisible();
@@ -88,7 +88,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test.skip("password change with wrong current password", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Fill in password change form with wrong current password
     const currentPasswordInput = page
@@ -123,7 +123,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test("password change with weak password rejection", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Fill in password change form with weak password
     const currentPasswordInput = page
@@ -153,7 +153,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test("password change validation for mismatched passwords", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Fill in password change form with mismatched passwords
     const currentPasswordInput = page
@@ -183,7 +183,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test("password change form validation and UX", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     const currentPasswordInput = page
       .locator(".input-text")
@@ -239,7 +239,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   });
 
   test.skip("password change loading state", async ({ page }) => {
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     // Mock slow response to test loading state
     await page.route("**/change-password", async (route) => {

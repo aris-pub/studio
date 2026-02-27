@@ -14,7 +14,7 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
 
   // No afterEach cleanup - keep auth state for all account tests
   test("avatar upload workflow", async ({ page }) => {
-    await page.goto("/account/profile");
+    await page.goto("/account");
 
     // Verify upload button is present
     const uploadButton = page.locator(".avatar-upload");
@@ -40,7 +40,7 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
   });
 
   test("upload error handling display", async ({ page }) => {
-    await page.goto("/account/profile");
+    await page.goto("/account");
 
     // Simulate an upload scenario that would trigger validation
     // In a real test environment, we'd mock the API to return errors
@@ -58,7 +58,7 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
 
   test.skip("navigation and UI responsiveness", async ({ page }) => {
     // Test profile page responsiveness
-    await page.goto("/account/profile");
+    await page.goto("/account");
 
     // Test responsive design elements
     await page.setViewportSize({ width: 375, height: 667 }); // Mobile size
@@ -75,7 +75,7 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
     await expect(page.locator(".user-email")).toBeVisible();
 
     // Test notifications page navigation and danger zone
-    await page.goto("/account/notifications");
+    await page.goto("/account");
 
     const dangerSection = page.locator(".danger-zone");
     await expect(dangerSection).toBeVisible();
@@ -85,14 +85,14 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
     await expect(deleteButton).toContainText("Delete Account");
 
     // Test security page navigation
-    await page.goto("/account/security");
+    await page.goto("/account");
 
     const passwordSection = page.locator('h2:has-text("Password")');
     await expect(passwordSection).toBeVisible();
   });
 
   test("affiliation field functionality", async ({ page }) => {
-    await page.goto("/account/profile");
+    await page.goto("/account");
 
     // Test affiliation field presence and interaction
     const affiliationInput = page

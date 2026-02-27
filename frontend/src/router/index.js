@@ -8,11 +8,6 @@ const HomeView = isUnitTest ? {} : () => import("@/views/home/View.vue");
 const WorkspaceView = isUnitTest ? {} : () => import("@/views/workspace/View.vue");
 const DemoView = () => import("@/views/demo/View.vue");
 const AccountView = isUnitTest ? {} : () => import("@/views/account/View.vue");
-const AccountProfileView = isUnitTest ? {} : () => import("@/views/account/ProfileView.vue");
-const AccountSecurityView = isUnitTest ? {} : () => import("@/views/account/SecurityView.vue");
-const AccountNotificationsView = isUnitTest
-  ? {}
-  : () => import("@/views/account/NotificationsView.vue");
 const SettingsView = isUnitTest ? {} : () => import("@/views/settings/View.vue");
 const SettingsDocumentView = isUnitTest ? {} : () => import("@/views/settings/DocumentView.vue");
 const SettingsBehaviorView = isUnitTest ? {} : () => import("@/views/settings/BehaviorView.vue");
@@ -29,16 +24,7 @@ const routes = [
   { path: "/file/:file_id", component: WorkspaceView },
   { path: "/demo", component: DemoView },
   { path: "/verify-email/:token", name: "EmailVerification", component: VerifyEmailView },
-  {
-    path: "/account",
-    component: AccountView,
-    redirect: "/account/profile",
-    children: [
-      { path: "profile", component: AccountProfileView },
-      { path: "security", component: AccountSecurityView },
-      { path: "notifications", component: AccountNotificationsView },
-    ],
-  },
+  { path: "/account", component: AccountView },
   {
     path: "/settings",
     component: SettingsView,

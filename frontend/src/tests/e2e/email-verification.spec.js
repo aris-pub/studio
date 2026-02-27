@@ -36,12 +36,12 @@ test.describe("Email Verification Flow @auth-flows", () => {
     await expect(page.locator('[data-testid="cta-secondary"]')).toContainText("home");
   });
 
-  test("navigates to /account/security from error state primary CTA @auth-flows", async ({
+  test("navigates to /account from error state primary CTA @auth-flows", async ({
     page,
   }) => {
     const timeouts = getTimeouts();
 
-    // Need to be authenticated so /account/security isn't immediately bounced to /login
+    // Need to be authenticated so /account isn't immediately bounced to /login
     await authHelpers.ensureLoggedIn();
     await page.goto("/verify-email/this-token-does-not-exist");
 
@@ -50,7 +50,7 @@ test.describe("Email Verification Flow @auth-flows", () => {
     });
 
     await page.click('[data-testid="cta-primary"]');
-    await expect(page).toHaveURL("/account/security", { timeout: timeouts.navigation });
+    await expect(page).toHaveURL("/account", { timeout: timeouts.navigation });
   });
 
   // ---------------------------------------------------------------------------
