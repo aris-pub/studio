@@ -305,10 +305,12 @@ jobs:
         # Source .env to get port variables
         export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 
-        echo "⏳ Polling for services to be ready (max 120s)..."
-        for i in {1..120}; do
+        echo "⏳ Polling for services to be ready (max 180s)..."
+        READY=false
+        for i in {1..180}; do
           if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
             echo "✅ Services ready after ${i}s"
+            READY=true
             break
           fi
           sleep 1
@@ -317,10 +319,11 @@ jobs:
         echo "📊 Service status:"
         docker compose --env-file .env ps
 
-        echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
-        curl -f http://localhost:5173
-        curl -f http://localhost:$SITE_PORT || echo "⚠️  Site health check failed"
+        if [ "$READY" != "true" ]; then
+          echo "❌ Services failed to start within 180s"
+          docker compose --env-file .env logs --tail=50
+          exit 1
+        fi
 
         echo "✅ Docker services ready"
 
@@ -464,10 +467,12 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
-        echo "⏳ Polling for services to be ready (max 120s)..."
-        for i in {1..120}; do
+        echo "⏳ Polling for services to be ready (max 180s)..."
+        READY=false
+        for i in {1..180}; do
           if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
             echo "✅ Services ready after ${i}s"
+            READY=true
             break
           fi
           sleep 1
@@ -476,9 +481,11 @@ jobs:
         echo "📊 Service status:"
         docker compose --env-file .env ps
 
-        echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
-        curl -f http://localhost:5173
+        if [ "$READY" != "true" ]; then
+          echo "❌ Services failed to start within 180s"
+          docker compose --env-file .env logs --tail=50
+          exit 1
+        fi
 
         echo "✅ Docker services ready"
 
@@ -662,10 +669,12 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
-        echo "⏳ Polling for services to be ready (max 120s)..."
-        for i in {1..120}; do
+        echo "⏳ Polling for services to be ready (max 180s)..."
+        READY=false
+        for i in {1..180}; do
           if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
             echo "✅ Services ready after ${i}s"
+            READY=true
             break
           fi
           sleep 1
@@ -674,9 +683,11 @@ jobs:
         echo "📊 Service status:"
         docker compose --env-file .env ps
 
-        echo "🔍 Final health check..."
-        curl -f http://localhost:8000/health
-        curl -f http://localhost:5173
+        if [ "$READY" != "true" ]; then
+          echo "❌ Services failed to start within 180s"
+          docker compose --env-file .env logs --tail=50
+          exit 1
+        fi
 
         echo "✅ Docker services ready"
 
