@@ -127,10 +127,10 @@ describe("FilesItem.vue - Bug: FileMenu Visibility Issue", () => {
     await nextTick();
 
     // Should have focused class
-    expect(itemRow.classes()).toContain("focused");
+    expect(itemRow.classes()).toContain("current");
   });
 
-  it("should not render FileMenu when file is selected", async () => {
+  it("should always render FileMenu even when file is selected", async () => {
     const selectedFile = ref({ ...mockFile.value, selected: true });
 
     const wrapper = await createAsyncWrapper({
@@ -139,9 +139,9 @@ describe("FilesItem.vue - Bug: FileMenu Visibility Issue", () => {
       },
     });
 
-    // FileMenu should not be rendered when file is selected
+    // FileMenu should always be rendered, including when file is selected
     const fileMenu = wrapper.find('[data-testid="file-menu"]');
-    expect(fileMenu.exists()).toBe(false);
+    expect(fileMenu.exists()).toBe(true);
   });
 
   it("should have correct CSS classes for hover states", async () => {

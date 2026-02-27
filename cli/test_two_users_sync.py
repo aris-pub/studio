@@ -12,14 +12,14 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from playwright.async_api import async_playwright
+from playwright.async_api import BrowserContext, Page, async_playwright
 
 # Load session from CLI session file
 session_path = Path.home() / '.studio' / 'session.json'
 with open(session_path) as f:
     SESSION = json.load(f)
 
-async def setup_user(context, page_name):
+async def setup_user(context: BrowserContext, page_name: str) -> Page:
     """Setup a user session and navigate to file 264"""
     page = await context.new_page()
 
@@ -47,14 +47,15 @@ async def setup_user(context, page_name):
     print(f"   {page_name}: Ready!")
     return page
 
-async def get_editor_content(page):
+async def get_editor_content(page: Page) -> str:
     """Get content from CodeMirror editor"""
-    return await page.evaluate("""() => {
+    result: str = await page.evaluate("""() => {
         const editor = document.querySelector('.cm-content');
         return editor ? editor.textContent : '';
     }""")
+    return result
 
-async def main():
+async def main() -> None:
     print("=" * 60)
     print("Testing Two Users Y.js Sync")
     print("=" * 60)

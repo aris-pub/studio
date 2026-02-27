@@ -12,7 +12,7 @@ Bug: Typing "HELLO" produces "HHEELLLLOO" (each character duplicated)
 from playwright.sync_api import sync_playwright
 import time
 
-def test_single_user_no_duplication():
+def test_single_user_no_duplication() -> None:
     """Test that single-user typing does not duplicate characters."""
 
     with sync_playwright() as p:
@@ -88,7 +88,7 @@ def test_single_user_no_duplication():
 
             # Check for duplication after each character
             if current_content != expected_so_far:
-                print(f"\n   ❌ DUPLICATION DETECTED!")
+                print("\n   ❌ DUPLICATION DETECTED!")
                 print(f"      Expected: '{expected_so_far}'")
                 print(f"      Got:      '{current_content}'")
                 print(f"      Character '{char}' was duplicated!")
@@ -97,7 +97,7 @@ def test_single_user_no_duplication():
         time.sleep(0.5)  # Wait for any async updates
         final_content = page.evaluate('window.__cmView.state.doc.toString()')
 
-        print(f"\n6. Final content check:")
+        print("\n6. Final content check:")
         print(f"   Expected: '{test_string}'")
         print(f"   Got:      '{final_content}'")
 

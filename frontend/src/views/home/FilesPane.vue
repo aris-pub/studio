@@ -24,6 +24,14 @@
     if (visibleFiles.value[newVal]) visibleFiles.value[newVal].focused = true;
   });
 
+  // Sync activeIndex when a file is clicked so j/k starts from that file
+  watch(
+    () => visibleFiles.value.findIndex((f) => f.selected),
+    (idx) => {
+      if (idx >= 0) activeIndex.value = idx;
+    }
+  );
+
   // Breakpoints
   const xsMode = inject("xsMode");
   const panePadding = computed(() => (xsMode.value ? "8px" : "16px"));

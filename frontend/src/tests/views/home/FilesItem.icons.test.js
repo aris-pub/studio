@@ -131,7 +131,7 @@ describe("FilesItem.vue - Icon Visibility and Colors", () => {
       await nextTick();
 
       const itemContainer = wrapper.find(".item");
-      expect(itemContainer.classes()).toContain("focused");
+      expect(itemContainer.classes()).toContain("current");
     });
   });
 
@@ -164,7 +164,7 @@ describe("FilesItem.vue - Icon Visibility and Colors", () => {
       await nextTick();
 
       const itemContainer = wrapper.find(".item");
-      expect(itemContainer.classes()).toContain("focused");
+      expect(itemContainer.classes()).toContain("current");
     });
 
     it("should have dark color when tag menu is open", async () => {

@@ -180,7 +180,7 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       const wrapper = await createWrapper();
 
       const item = wrapper.find(".item");
-      expect(item.classes()).not.toContain("active");
+      expect(item.classes()).not.toContain("current");
       expect(mockFile.value.selected).toBe(false);
 
       // Trigger selection by clicking the item (which calls select internally)
@@ -188,7 +188,7 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       expect(mockFileStore.value.selectFile).toHaveBeenCalledWith(mockFile.value);
     });
 
-    it("applies active class when file is selected", async () => {
+    it("applies current class when file is selected", async () => {
       // Set selected first, then create wrapper
       mockFile.value.selected = true;
       const wrapper = await createWrapper();
@@ -197,21 +197,21 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
 
       // Check that the template binding uses the correct conditions
       const item = wrapper.find(".item");
-      expect(item.classes()).toContain("active");
+      expect(item.classes()).toContain("current");
     });
 
-    it("removes active class when file is deselected", async () => {
+    it("removes current class when file is deselected", async () => {
       mockFile.value.selected = true;
       const wrapper = await createWrapper();
 
       const item = wrapper.find(".item");
-      expect(item.classes()).toContain("active");
+      expect(item.classes()).toContain("current");
 
       mockFile.value.selected = false;
       await nextTick();
 
-      // Check that active class is not in the main div element
-      expect(item.classes()).not.toContain("active");
+      // Check that current class is not in the main div element
+      expect(item.classes()).not.toContain("current");
     });
 
     it("maintains selection state across component updates", async () => {
@@ -219,13 +219,13 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       const wrapper = await createWrapper();
 
       const item = wrapper.find(".item");
-      expect(item.classes()).toContain("active");
+      expect(item.classes()).toContain("current");
 
       // Trigger component update
       await wrapper.setProps({ mode: "cards" });
       await nextTick();
 
-      expect(item.classes()).toContain("active");
+      expect(item.classes()).toContain("current");
     });
 
     it("handles rapid selection changes", async () => {
@@ -486,14 +486,14 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       await nextTick();
 
       expect(wrapper.findComponent(FilesItem).vm.file.focused).toBe(true);
-      expect(wrapper.html()).toContain("focused");
+      expect(wrapper.html()).toContain("current");
 
       mockFile.value.focused = false;
       await nextTick();
 
       expect(wrapper.findComponent(FilesItem).vm.file.focused).toBe(false);
-      // Check that focused class is not in the main div element
-      expect(wrapper.find(".item").classes()).not.toContain("focused");
+      // Check that current class is not in the main div element
+      expect(wrapper.find(".item").classes()).not.toContain("current");
     });
 
     it("combines multiple states correctly", async () => {
@@ -514,8 +514,7 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
 
       // Check that classes are applied to the main item element
       const itemClasses = wrapper.find(".item").classes();
-      expect(itemClasses).toContain("active");
-      expect(itemClasses).toContain("focused");
+      expect(itemClasses).toContain("current");
       expect(itemClasses).toContain("hovered");
     });
 
@@ -552,12 +551,12 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       expect(wrapper.html()).toContain("cards");
     });
 
-    it("hides file menu when file is selected", async () => {
+    it("shows file menu when file is selected", async () => {
       mockFile.value.selected = true;
       const wrapper = await createWrapper();
 
-      // FileMenu should not be rendered when file is selected
-      expect(wrapper.find('[data-testid="file-menu"]').exists()).toBe(false);
+      // FileMenu should always be rendered, including when file is selected
+      expect(wrapper.find('[data-testid="file-menu"]').exists()).toBe(true);
     });
 
     it("shows file menu when file is not selected", async () => {
@@ -628,12 +627,12 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       expect(mockOpenFile).toHaveBeenCalledWith(mockFile.value, expect.any(Object));
     });
 
-    it("prevents context menu when file is selected", async () => {
+    it("keeps context menu when file is selected", async () => {
       mockFile.value.selected = true;
       const wrapper = await createWrapper();
 
-      // FileMenu component should not exist
-      expect(wrapper.findComponent('[data-testid="file-menu"]').exists()).toBe(false);
+      // FileMenu should always be available
+      expect(wrapper.find('[data-testid="file-menu"]').exists()).toBe(true);
     });
 
     it("handles component unmounting during operations", async () => {

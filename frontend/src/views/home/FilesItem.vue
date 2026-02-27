@@ -254,6 +254,22 @@
     "When a file item is selected"
   );
 
+  // When keyboard nav is active (some file is focused), only the focused file
+  // gets the current highlight. Otherwise fall back to the selected file.
+  const keyboardNavActive = computed(
+    () => fileStore?.value?.files?.some((f) => f.focused) ?? false
+  );
+  const isCurrent = computed(() => {
+    if (file.value?.focused) return true;
+    if (keyboardNavActive.value) return false;
+    return !!file.value?.selected;
+  });
+
+  // When keyboard nav activates, clear any lingering hover highlight
+  watch(keyboardNavActive, (active) => {
+    if (active) hovered.value = false;
+  });
+
   // Watch file focus state to enable/disable keyboard shortcuts
   watch(
     () => file.value?.focused,
@@ -269,8 +285,7 @@
     @example
     // The component automatically applies appropriate CSS classes based on props and state:
     // - .list or .cards based on mode prop
-    // - .active when file.selected is true
-    // - .focused when file.focused is true
+    // - .current when file is focused or selected
     // - .hovered during mouse hover
   -->
   <div
@@ -281,12 +296,11 @@
     :class="{
       list: mode === 'list',
       cards: mode === 'cards',
-      active: file?.selected,
-      focused: file?.focused,
+      current: isCurrent,
       hovered: hovered,
       mobile: mobileMode,
     }"
-    @mouseenter="hovered = true"
+    @mouseenter="hovered = !keyboardNavActive"
     @mouseleave="hovered = false"
     @click="select"
     @dblclick="open"
@@ -318,7 +332,6 @@
           Emits rename, duplicate, and delete events handled by parent callbacks
         -->
         <FileMenu
-          v-if="!file.selected"
           ref="menu-ref"
           @rename="onRename"
           @duplicate="onDuplicate"
@@ -354,8 +367,9 @@
     color: var(--extra-dark);
     overflow-y: visible;
     transition: var(--transition-bg-color);
+    &:focus,
     &:focus-visible {
-      background-color: var(--surface-hover);
+      background-color: transparent;
       outline: none;
     }
   }
@@ -371,9 +385,12 @@
       overflow-y: hidden;
     }
 
-    &:hover,
-    &.focused > * {
+    &.hovered:not(.current) > * {
       background-color: var(--gray-75);
+    }
+
+    &.current > * {
+      background-color: var(--gray-100);
     }
 
     & > *:first-child {
@@ -403,37 +420,6 @@
     }
   }
 
-  .item.list.active {
-    & > :is(.mm-wrapper) {
-      display: none;
-    }
-
-    & > .file-title {
-      font-size: 18px;
-      font-weight: var(--weight-semi);
-      width: 100%;
-    }
-
-    & > .tag-row :deep(.cm-wrapper) {
-      visibility: visible;
-    }
-
-    & > * {
-      background-color: var(--surface-information);
-    }
-
-    & > *:first-child {
-      border-left: var(--border-med) solid var(--border-action);
-      border-top-left-radius: 4px;
-      border-bottom-left-radius: 4px;
-    }
-
-    & > *:last-child {
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
-    }
-  }
-
   .item.cards {
     border-radius: 16px;
     padding-block: 16px;
@@ -444,17 +430,15 @@
     display: flex;
     flex-direction: column;
 
-    &:hover {
+    &.hovered:not(.current) {
       border-color: var(--gray-400);
       box-shadow: var(--shadow-strong);
     }
 
-    &.active {
-      border-color: var(--border-action);
-      background-color: var(--surface-information);
-      box-shadow: var(--shadow-strong), var(--shadow-soft);
-      /* used to artificially thicken the border without causing layout jiggle */
-      outline: var(--border-extrathin) solid var(--border-action);
+    &.current {
+      border-color: var(--gray-400);
+      background-color: var(--gray-75);
+      box-shadow: var(--shadow-soft);
     }
 
     & > .card-header {
@@ -521,7 +505,7 @@
     transition: opacity 0.3s ease;
   }
 
-  :is(.item:hover, .item.focused, .item.hovered) :deep(.context-menu-trigger),
+  :is(.item:hover, .item.current, .item.hovered) :deep(.context-menu-trigger),
   .item.mobile :deep(.context-menu-trigger) {
     opacity: 1;
   }
@@ -531,8 +515,8 @@
     opacity: 1;
   }
 
-  /* MultiSelectTags icon color behavior - dark on hover, focus, or when menu is open */
-  :is(.item:hover, .item.focused, .item.hovered) :deep(.cm-btn svg),
+  /* MultiSelectTags icon color behavior - dark on hover, current, or when menu is open */
+  :is(.item:hover, .item.current, .item.hovered) :deep(.cm-btn svg),
   :deep(.cm-open .cm-btn svg) {
     color: var(--extra-dark);
   }
