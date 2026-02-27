@@ -160,35 +160,7 @@
 </template>
 
 <style scoped>
-  /*
-    Base icon styles - commented out to inherit from Tabler defaults.
-
-    TODO: Address this later - consider whether default sizing should be restored
-    for consistency across the application. The commented styles represent
-    standard Tabler icon dimensions and stroke properties.
-
-    Original styles:
-    - width: 24px
-    - height: 24px
-    - stroke-width: 1.75px
-    - stroke-linecap: round
-    - stroke-linejoin: round
-  */
-  .tabler-icon {
-    /* Tabler icon base styles - see TODO above */
-  }
-
-  /*
-    Error fallback icon styling hook.
-
-    The 'icon-error-fallback' class is automatically added when an invalid
-    icon name is provided and the AlertTriangle fallback is shown. This can
-    be used for:
-    - Testing: Easily identify when fallbacks are being used
-    - Styling: Apply different visual treatment to error states
-    - Debugging: Visually distinguish invalid icon usage
-  */
   .icon-error-fallback {
-    /* Add custom styling for fallback icons if needed */
+    color: var(--red-500);
   }
 </style>
