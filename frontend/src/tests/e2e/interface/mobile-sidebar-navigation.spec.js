@@ -406,11 +406,8 @@ test.describe("Mobile Sidebar Navigation UX @auth @mobile-only", () => {
         )
       );
       await mobileHelpers.expectToBeVisible(
-        page.locator('.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Behavior"]')
-      );
-      await mobileHelpers.expectToBeVisible(
         page.locator(
-          '.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Notifications"]'
+          '.sb-wrapper.drawer-open .sidebar-content [data-sidebar-subitem="Preferences"]'
         )
       );
 
