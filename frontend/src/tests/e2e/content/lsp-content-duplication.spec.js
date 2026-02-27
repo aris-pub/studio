@@ -126,6 +126,7 @@ test.describe("LSP Content Duplication Bug @auth", () => {
       const contentAfterFirstLoad = await page.evaluate(() => {
         return window.__cmView.state.doc.toString();
       });
+      expect(contentAfterFirstLoad.trim()).toBe(initialContent.trim());
 
       // Reload the page
       await page.reload({ waitUntil: "commit" });
