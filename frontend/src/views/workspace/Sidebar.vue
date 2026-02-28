@@ -46,6 +46,22 @@
       state: false,
       type: "drawer",
     },
+    {
+      name: "DrawerShare",
+      icon: "Users",
+      label: "share",
+      key: "s",
+      state: false,
+      type: "drawer",
+    },
+    {
+      name: "DrawerFile",
+      icon: "File",
+      label: "file",
+      key: "a",
+      state: false,
+      type: "drawer",
+    },
     { name: "Separator", state: false },
   ]);
 
@@ -81,6 +97,16 @@
   const mobileMode = inject("mobileMode");
   const xsMode = inject("xsMode");
   const drawerOpen = inject("drawerOpen");
+  const showSearch = inject("showSearch", null);
+
+  // Sync search toggle when showSearch changes externally (e.g. DockableSearch closing itself)
+  watch(
+    () => showSearch?.value,
+    (isOpen) => {
+      const searchItem = items.find((item) => item.name === "DockableSearch");
+      if (searchItem) searchItem.state = isOpen;
+    }
+  );
 
   // Sync drawer button states with drawerOpen (fixes ESC key closing drawer but button staying active)
   watch(drawerOpen, (isOpen) => {

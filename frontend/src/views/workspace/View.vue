@@ -110,6 +110,8 @@
   // Panel component management (persisted across refresh)
   const showEditor = useLocalStorage("ws-panel-editor", false);
   const showSearch = useLocalStorage("ws-panel-search", false);
+  provide("showSearch", showSearch);
+
   const showComponent = (compName) => {
     if (compName === "DockableEditor") {
       showEditor.value = true;

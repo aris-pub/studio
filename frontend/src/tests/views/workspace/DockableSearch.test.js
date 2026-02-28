@@ -10,6 +10,11 @@ const SearchBarStub = defineComponent({
   props: {
     withButtons: { type: Boolean },
     placeholder: { type: String },
+    hintText: { type: String, default: "" },
+    buttonsDisabled: { type: Boolean, default: false },
+    size: { type: String, default: "default" },
+    showIcon: { type: Boolean },
+    buttonClose: { type: Boolean },
   },
   emits: ["submit", "next", "prev", "cancel"],
   setup(_, { expose, slots }) {
@@ -24,19 +29,13 @@ describe("DockableSearch.vue", () => {
     {
       mark: {
         scrollIntoView: vi.fn(),
-        classList: {
-          remove: vi.fn(),
-          add: vi.fn(),
-        },
+        classList: { remove: vi.fn(), add: vi.fn() },
       },
     },
     {
       mark: {
         scrollIntoView: vi.fn(),
-        classList: {
-          remove: vi.fn(),
-          add: vi.fn(),
-        },
+        classList: { remove: vi.fn(), add: vi.fn() },
       },
     },
   ];
@@ -56,296 +55,147 @@ describe("DockableSearch.vue", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not display match count before search", () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "" });
-    const wrapper = mount(DockableSearch, {
+  const createWrapper = (overrides = {}) => {
+    const showSearch = overrides.showSearch ?? ref(true);
+    const manuscriptRef = overrides.manuscriptRef ?? ref({ $el: {} });
+    const file = overrides.file ?? ref({ source: "" });
+    return mount(DockableSearch, {
       global: {
-        provide: { manuscriptRef, file },
+        provide: { manuscriptRef, file, showSearch },
         stubs: { SearchBar: SearchBarStub, ButtonClose: true },
       },
     });
-    expect(wrapper.find(".match-count").exists()).toBe(false);
+  };
+
+  it("does not pass hintText before search", () => {
+    const wrapper = createWrapper();
+    const searchBar = wrapper.findComponent(SearchBarStub);
+    expect(searchBar.props("hintText")).toBe("");
   });
 
-  it("performs search and navigates through matches correctly", async () => {
+  it("performs search and shows match count via hintText", async () => {
     const manuscriptRef = ref({ $el: {} });
     const file = ref({ source: "dummy source" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
+    const wrapper = createWrapper({ manuscriptRef, file });
     const query = "term";
+
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", query);
     await nextTick();
+
     expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(manuscriptRef.value.$el, query.trim());
     expect(HSM.highlightSearchMatchesSource).toHaveBeenCalledWith(file.value.source, query.trim());
-    const countLabel = wrapper.find(".match-count").text();
-    expect(countLabel).toBe(`1/${stubMatches.length} document matches`);
+
+    const searchBar = wrapper.findComponent(SearchBarStub);
+    expect(searchBar.props("hintText")).toBe(`1 of ${stubMatches.length}`);
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("next");
     await nextTick();
     expect(stubMatches[1].mark.scrollIntoView).toHaveBeenCalled();
-    expect(wrapper.find(".match-count").text()).toBe(`2/${stubMatches.length} document matches`);
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe(
+      `2 of ${stubMatches.length}`
+    );
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("prev");
     await nextTick();
     expect(stubMatches[0].mark.scrollIntoView).toHaveBeenCalled();
-    expect(wrapper.find(".match-count").text()).toBe(`1/${stubMatches.length} document matches`);
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe(
+      `1 of ${stubMatches.length}`
+    );
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("cancel");
     await nextTick();
     expect(HSM.clearHighlights).toHaveBeenCalledWith(manuscriptRef.value.$el);
-    expect(wrapper.find(".match-count").exists()).toBe(false);
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe("");
   });
 
-  it("hides advanced search toggle button when feature is disabled", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: {
-          SearchBar: SearchBarStub,
-          ButtonClose: true,
-          Button: { template: "<button class='test-button'><slot/></button>" },
-          SelectBox: { template: "<div/>", props: ["modelValue", "options"] },
-          InputText: { template: "<input/>", props: ["modelValue"] },
-        },
-      },
-    });
-
-    // Should start in simple mode
-    expect(wrapper.classes()).toContain("simple");
-    expect(wrapper.classes()).not.toContain("advanced");
-
-    // Advanced search toggle button should not be visible
-    expect(wrapper.find(".test-button").exists()).toBe(false);
-  });
-
-  it("shows advanced search toggle when feature is enabled", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: {
-          SearchBar: SearchBarStub,
-          ButtonClose: true,
-          Button: { template: "<button class='test-button'><slot/></button>" },
-          SelectBox: { template: "<div/>", props: ["modelValue", "options"] },
-          InputText: { template: "<input/>", props: ["modelValue"] },
-        },
-      },
-    });
-
-    // Enable advanced search feature
-    wrapper.vm.enableAdvancedSearch = true;
-    await nextTick();
-
-    // Advanced search toggle button should now be visible
-    expect(wrapper.find(".test-button").exists()).toBe(true);
-
-    // Can switch to advanced mode
-    wrapper.vm.advanced = true;
-    await nextTick();
-    expect(wrapper.classes()).toContain("advanced");
-    expect(wrapper.classes()).not.toContain("simple");
-  });
-
-  it("handles advanced search scope selection", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test source content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: {
-          SearchBar: SearchBarStub,
-          ButtonClose: true,
-          Button: { template: "<button><slot/></button>" },
-          SelectBox: {
-            template: "<select/>",
-            props: ["modelValue", "options"],
-            emits: ["update:modelValue"],
-          },
-          InputText: { template: "<input/>", props: ["modelValue"] },
-        },
-      },
-    });
-
-    // Enable advanced search feature and switch to advanced mode
-    wrapper.vm.enableAdvancedSearch = true;
-    wrapper.vm.advanced = true;
-    await nextTick();
-
-    // Test scope options are available in advanced mode
-    expect(wrapper.classes()).toContain("advanced");
-  });
-
-  it("handles advanced search mode selection", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: {
-          SearchBar: SearchBarStub,
-          ButtonClose: true,
-          Button: { template: "<button><slot/></button>" },
-          SelectBox: {
-            template: "<select/>",
-            props: ["modelValue", "options"],
-          },
-          InputText: { template: "<input/>", props: ["modelValue"] },
-        },
-      },
-    });
-
-    // Enable advanced search feature and switch to advanced mode
-    wrapper.vm.enableAdvancedSearch = true;
-    wrapper.vm.advanced = true;
-    await nextTick();
-
-    // Test that advanced mode is active
-    expect(wrapper.classes()).toContain("advanced");
-  });
-
-  it("shows replace input when replace mode is selected", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: {
-          SearchBar: SearchBarStub,
-          ButtonClose: true,
-          Button: { template: "<button><slot/></button>" },
-          SelectBox: {
-            template: "<select/>",
-            props: ["modelValue", "options"],
-          },
-          InputText: {
-            template: '<input class="replace-input"/>',
-            props: ["modelValue"],
-          },
-        },
-      },
-    });
-
-    // Enable advanced search feature, switch to advanced mode and replace mode
-    wrapper.vm.enableAdvancedSearch = true;
-    wrapper.vm.advanced = true;
-    wrapper.vm.selectMode = "replace";
-    await nextTick();
-
-    // Should be in advanced mode
-    expect(wrapper.classes()).toContain("advanced");
-  });
-
-  it("handles empty search strings gracefully", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
-
-    // Submit empty search
-    await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "");
-    await nextTick();
-
-    // Should not perform search
-    expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
-    expect(wrapper.find(".match-count").exists()).toBe(false);
-  });
-
-  it("handles whitespace-only search strings", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
-
-    // Submit whitespace-only search
-    await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "   \t  \n  ");
-    await nextTick();
-
-    // Should not perform search
-    expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
-    expect(wrapper.find(".match-count").exists()).toBe(false);
-  });
-
-  it("handles navigation with no matches", async () => {
-    // Temporarily override the mock to return no matches
-    vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]); // No matches
-
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "no matching content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
+  it("shows 'No matches' via hintText when search finds nothing", async () => {
+    vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+    const wrapper = createWrapper({ file: ref({ source: "no matching content" }) });
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "nomatch");
     await nextTick();
 
-    // The component should not show match count when there are no matches
-    const matchCountElement = wrapper.find(".match-count");
-    // For no matches, the component should either not show the element or show "0 matches"
-    if (matchCountElement.exists()) {
-      const text = matchCountElement.text();
-      expect(text === "" || text.includes("0") || text.includes("matches")).toBe(true);
-    }
+    const searchBar = wrapper.findComponent(SearchBarStub);
+    expect(searchBar.props("hintText")).toBe("No matches");
+    expect(searchBar.props("buttonsDisabled")).toBe(true);
+  });
 
-    // Component should exist and be stable
-    expect(wrapper.exists()).toBe(true);
+  it("close button sets showSearch to false", async () => {
+    const showSearch = ref(true);
+    const wrapper = createWrapper({ showSearch });
 
-    // Navigation should do nothing with no matches (but not throw errors)
-    await wrapper.findComponent(SearchBarStub).vm.$emit("next");
+    wrapper.vm.closePanel();
     await nextTick();
 
+    expect(showSearch.value).toBe(false);
+  });
+
+  it("cancel event on empty search closes panel", async () => {
+    const showSearch = ref(true);
+    const wrapper = createWrapper({ showSearch });
+
+    await wrapper.findComponent(SearchBarStub).vm.$emit("cancel");
+    await nextTick();
+
+    expect(showSearch.value).toBe(false);
+  });
+
+  it("handles empty search strings gracefully", async () => {
+    const wrapper = createWrapper({ file: ref({ source: "test content" }) });
+
+    await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "");
+    await nextTick();
+
+    expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe("");
+  });
+
+  it("handles whitespace-only search strings", async () => {
+    const wrapper = createWrapper({ file: ref({ source: "test content" }) });
+
+    await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "   \t  \n  ");
+    await nextTick();
+
+    expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe("");
+  });
+
+  it("handles navigation with no matches", async () => {
+    vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+    const wrapper = createWrapper({ file: ref({ source: "no matching content" }) });
+
+    await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "nomatch");
+    await nextTick();
+
+    expect(wrapper.exists()).toBe(true);
+
+    await wrapper.findComponent(SearchBarStub).vm.$emit("next");
+    await nextTick();
     await wrapper.findComponent(SearchBarStub).vm.$emit("prev");
     await nextTick();
 
-    // Should not throw errors
     expect(wrapper.exists()).toBe(true);
   });
 
   it("handles circular navigation through matches", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
+    const wrapper = createWrapper({ file: ref({ source: "content" }) });
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "test");
     await nextTick();
 
-    // Navigate to last match (should wrap from first)
     await wrapper.findComponent(SearchBarStub).vm.$emit("prev");
     await nextTick();
-
     expect(stubMatches[1].mark.scrollIntoView).toHaveBeenCalled();
-    expect(wrapper.find(".match-count").text()).toBe(`2/${stubMatches.length} document matches`);
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe(
+      `2 of ${stubMatches.length}`
+    );
 
-    // Navigate forward from last (should wrap to first)
     await wrapper.findComponent(SearchBarStub).vm.$emit("next");
     await nextTick();
-
     expect(stubMatches[0].mark.scrollIntoView).toHaveBeenCalled();
-    expect(wrapper.find(".match-count").text()).toBe(`1/${stubMatches.length} document matches`);
+    expect(wrapper.findComponent(SearchBarStub).props("hintText")).toBe(
+      `1 of ${stubMatches.length}`
+    );
   });
 
   it("focuses search input on mount", async () => {
@@ -358,12 +208,13 @@ describe("DockableSearch.vue", () => {
       },
     });
 
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "" });
-
     mount(DockableSearch, {
       global: {
-        provide: { manuscriptRef, file },
+        provide: {
+          manuscriptRef: ref({ $el: {} }),
+          file: ref({ source: "" }),
+          showSearch: ref(true),
+        },
         stubs: { SearchBar: SearchBarWithFocus, ButtonClose: true },
       },
     });
@@ -373,16 +224,11 @@ describe("DockableSearch.vue", () => {
   });
 
   it("handles manuscript ref not being available", async () => {
-    const manuscriptRef = ref(null); // No manuscript ref
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
+    const wrapper = createWrapper({
+      manuscriptRef: ref(null),
+      file: ref({ source: "test content" }),
     });
 
-    // Should not crash when no manuscript ref
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "test");
     await nextTick();
 
@@ -391,26 +237,17 @@ describe("DockableSearch.vue", () => {
   });
 
   it("updates current match highlighting during navigation", async () => {
-    const manuscriptRef = ref({ $el: {} });
-    const file = ref({ source: "test content" });
-    const wrapper = mount(DockableSearch, {
-      global: {
-        provide: { manuscriptRef, file },
-        stubs: { SearchBar: SearchBarStub, ButtonClose: true },
-      },
-    });
+    const wrapper = createWrapper({ file: ref({ source: "test content" }) });
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", "test");
     await nextTick();
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("next");
     await nextTick();
-
     expect(HSM.updateCurrentMatch).toHaveBeenCalledWith(stubMatches, 1);
 
     await wrapper.findComponent(SearchBarStub).vm.$emit("prev");
     await nextTick();
-
     expect(HSM.updateCurrentMatch).toHaveBeenCalledWith(stubMatches, 0);
   });
 });

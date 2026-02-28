@@ -71,6 +71,14 @@
      * Whether navigation buttons are disabled
      */
     buttonsDisabled: { type: Boolean, default: false },
+    /**
+     * Size variant: "default" (48px) or "compact" (36px)
+     */
+    size: {
+      type: String,
+      default: "default",
+      validator: (v) => ["default", "compact"].includes(v),
+    },
   });
 
   /**
@@ -116,7 +124,12 @@
 </script>
 
 <template>
-  <div class="s-wrapper text-caption" data-testid="search-bar" @click.stop="focusInput">
+  <div
+    class="s-wrapper text-caption"
+    :class="{ compact: size === 'compact' }"
+    data-testid="search-bar"
+    @click.stop="focusInput"
+  >
     <IconSearch v-if="showIcon" />
 
     <input
@@ -198,6 +211,17 @@
 
     &:hover {
       cursor: text;
+    }
+
+    &.compact {
+      height: 36px;
+      border-radius: 8px;
+      padding-inline: 6px 8px;
+
+      & > .tabler-icon {
+        width: 20px;
+        height: 20px;
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { nextTick } from "vue";
+import { ref, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import Sidebar from "@/views/workspace/Sidebar.vue";
 import * as KSMod from "@/composables/useKeyboardShortcuts.js";
@@ -30,6 +30,7 @@ describe("Workspace Sidebar", () => {
           mobileMode: false,
           xsMode: false,
           drawerOpen: { value: false },
+          showSearch: provide.showSearch ?? ref(false),
           ...provide,
         },
         stubs: {
@@ -113,10 +114,12 @@ describe("Workspace Sidebar", () => {
       const items = wrapper.vm.items;
 
       const drawerItems = items.filter((item) => item.type === "drawer");
-      expect(drawerItems).toHaveLength(2);
+      expect(drawerItems).toHaveLength(4);
 
       const drawerNames = drawerItems.map((item) => item.name);
       expect(drawerNames).toContain("DrawerSettings");
+      expect(drawerNames).toContain("DrawerShare");
+      expect(drawerNames).toContain("DrawerFile");
     });
 
     it("includes separators in items", () => {
@@ -322,6 +325,26 @@ describe("Workspace Sidebar", () => {
       // SidebarMenu component handles the actual focus mode button rendering
       const sidebarMenu = wrapper.findComponent({ name: "SidebarMenu" });
       expect(sidebarMenu.exists()).toBe(true);
+    });
+  });
+
+  describe("showSearch sync", () => {
+    it("syncs sidebar toggle when injected showSearch changes externally", async () => {
+      const showSearch = ref(false);
+      const wrapper = createWrapper({ showSearch });
+
+      const searchItem = wrapper.vm.items.find((item) => item.name === "DockableSearch");
+      expect(searchItem.state).toBe(false);
+
+      // External code sets showSearch to true
+      showSearch.value = true;
+      await nextTick();
+      expect(searchItem.state).toBe(true);
+
+      // External code sets showSearch to false (e.g. DockableSearch closing itself)
+      showSearch.value = false;
+      await nextTick();
+      expect(searchItem.state).toBe(false);
     });
   });
 

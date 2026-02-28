@@ -459,4 +459,10 @@
     line-height: v-bind(fileSettings.lineHeight) !important;
     padding-inline: v-bind(fileSettings.marginWidth) !important;
   }
+
+  .outer-topbar {
+    display: flex;
+    justify-content: flex-end;
+    padding-inline: 16px;
+  }
 </style>

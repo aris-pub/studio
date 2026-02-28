@@ -1,5 +1,5 @@
-export const highlightClass = "search-result";
-export const currentHighlightClass = "search-result-current";
+export const highlightClass = "aris-search-highlight";
+export const currentHighlightClass = "aris-search-highlight--current";
 
 export function clearHighlights(rootEl) {
   const marks = rootEl.querySelectorAll(`mark.${highlightClass}, mark.${currentHighlightClass}`);
