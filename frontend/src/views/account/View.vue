@@ -858,8 +858,6 @@
     border-bottom-color: var(--red-200) !important;
   }
 
-
-
   .delete-confirm {
     display: flex;
     flex-direction: column;
@@ -878,7 +876,6 @@
     display: flex;
     gap: 12px;
   }
-
 
   /* Loading states */
   :deep(.tabler-icon-loader-2) {

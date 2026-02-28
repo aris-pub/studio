@@ -36,9 +36,7 @@ test.describe("Email Verification Flow @auth-flows", () => {
     await expect(page.locator('[data-testid="cta-secondary"]')).toContainText("home");
   });
 
-  test("navigates to /account from error state primary CTA @auth-flows", async ({
-    page,
-  }) => {
+  test("navigates to /account from error state primary CTA @auth-flows", async ({ page }) => {
     const timeouts = getTimeouts();
 
     // Need to be authenticated so /account isn't immediately bounced to /login

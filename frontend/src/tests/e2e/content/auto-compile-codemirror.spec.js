@@ -131,7 +131,11 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
     // Open CodeMirror editor
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
     await page.waitForSelector(".cm-editor", { timeout: 15000 });
-    await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 15000 });
+    await page.waitForFunction(
+      () => typeof window.__cmView !== "undefined",
+      {},
+      { timeout: 15000 }
+    );
     await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
     // Edit content via CodeMirror
@@ -187,7 +191,11 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
     // Open CodeMirror editor
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
     await page.waitForSelector(".cm-editor", { timeout: 15000 });
-    await page.waitForFunction(() => typeof window.__cmView !== "undefined", {}, { timeout: 15000 });
+    await page.waitForFunction(
+      () => typeof window.__cmView !== "undefined",
+      {},
+      { timeout: 15000 }
+    );
     await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
     // Track compilation count

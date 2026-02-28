@@ -24,9 +24,7 @@ test.describe("Settings Navigation @auth @desktop-only", () => {
     // Should show settings sub-items in sidebar
     await expect(page.locator(".sub-items-container")).toBeVisible();
     await expect(page.locator(".sub-items-container").locator('text="File Display"')).toBeVisible();
-    await expect(
-      page.locator(".sub-items-container").locator('text="Preferences"')
-    ).toBeVisible();
+    await expect(page.locator(".sub-items-container").locator('text="Preferences"')).toBeVisible();
   });
 
   test.skip("should navigate between settings sub-sections", async ({ page }) => {

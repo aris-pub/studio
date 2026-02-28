@@ -267,7 +267,6 @@
           ytextObserverCleanup = () => {
             ytext.value.unobserve(handleYtextChange);
           };
-
         }
 
         // Create editor with yCollab binding
