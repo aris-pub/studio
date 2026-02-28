@@ -88,7 +88,7 @@
    * @event next - Emitted when navigating to next result (Enter or next button)
    * @event prev - Emitted when navigating to previous result (Shift+Enter or prev button)
    */
-  const emit = defineEmits(["submit", "cancel", "next", "prev"]);
+  const emit = defineEmits(["submit", "cancel", "next", "prev", "close"]);
   const searchText = ref("");
   const inputRef = useTemplateRef("inputRef");
   const isSearching = ref(false);
@@ -99,7 +99,7 @@
       searchText.value = "";
       emit("cancel");
     } else {
-      inputRef.value?.blur();
+      emit("cancel");
     }
   };
 
@@ -169,7 +169,7 @@
       <slot name="buttons" />
     </div>
 
-    <ButtonClose v-if="buttonClose" />
+    <ButtonClose v-if="buttonClose" @close="emit('close')" />
   </div>
 </template>
 

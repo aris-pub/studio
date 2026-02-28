@@ -461,8 +461,9 @@
   }
 
   .outer-topbar {
-    display: flex;
-    justify-content: flex-end;
-    padding-inline: 16px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
   }
 </style>

@@ -1,7 +1,6 @@
 <script setup>
   import { ref, computed, reactive, watch, inject, onMounted, useTemplateRef } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-  import useClosable from "@/composables/useClosable.js";
   import {
     highlightSearchMatches,
     highlightSearchMatchesSource,
@@ -120,13 +119,6 @@
   onMounted(() => searchBar.value?.focusInput());
   useKeyboardShortcuts({ "/": () => searchBar.value?.focusInput() });
 
-  useClosable({
-    onClose: closePanel,
-    closeOnEsc: false,
-    closeOnOutsideClick: false,
-    closeOnCloseButton: true,
-  });
-
   defineExpose({ closePanel });
 </script>
 
@@ -145,13 +137,14 @@
       @next="onNext"
       @prev="onPrev"
       @cancel="onSearchBarCancel"
+      @close="closePanel"
     />
   </div>
 </template>
 
 <style scoped>
   .dockable-search {
-    width: 288px;
+    width: 360px;
     box-shadow: var(--shadow-soft);
   }
 
@@ -169,7 +162,7 @@
 
 <style>
   .aris-search-highlight {
-    background-color: var(--secondary-200);
+    background-color: var(--yellow-300);
   }
 
   .aris-search-highlight--current {
