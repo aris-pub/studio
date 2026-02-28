@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Set
 
 import rsm
 from bs4 import BeautifulSoup
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,12 +64,52 @@ class InMemoryFileService(FileServiceInterface):
                 if not file_data.is_deleted()
             ]
     
-    async def create_file(self, data: FileCreateData) -> FileData:
-        """Create a new file."""
+    async def create_file(self, data: FileCreateData, db: AsyncSession = None) -> FileData:
+        """Create a new file.
+
+        When *db* is provided the row is inserted into the database first so
+        the autoincrement primary key assigns the ID.  When *db* is ``None``
+        (unit-tests / no-DB fallback) the in-memory ``_next_id`` counter is
+        used instead.
+        """
         async with self._lock:
             now = datetime.now(UTC)
-            
-            # Create new file with auto-incrementing ID
+
+            if db is not None:
+                db_file = DbFile(
+                    title=data.title,
+                    abstract=data.abstract,
+                    source=data.source,
+                    owner_id=data.owner_id,
+                    status=data.status,
+                    created_at=now,
+                    last_edited_at=now,
+                )
+                db.add(db_file)
+                await db.flush()
+
+                file_data = FileData(
+                    id=db_file.id,
+                    title=data.title,
+                    abstract=data.abstract,
+                    source=data.source,
+                    owner_id=data.owner_id,
+                    status=data.status,
+                    created_at=now,
+                    last_edited_at=now,
+                    deleted_at=None,
+                )
+
+                self._files[db_file.id] = file_data
+                if data.owner_id not in self._user_files:
+                    self._user_files[data.owner_id] = set()
+                self._user_files[data.owner_id].add(db_file.id)
+
+                await db.commit()
+                logger.debug(f"Created file {file_data.id} for user {data.owner_id} (DB-assigned ID)")
+                return file_data
+
+            # Fallback: in-memory only (tests / no DB)
             file_data = FileData(
                 id=self._next_id,
                 title=data.title,
@@ -79,20 +119,15 @@ class InMemoryFileService(FileServiceInterface):
                 status=data.status,
                 created_at=now,
                 last_edited_at=now,
-                deleted_at=None
+                deleted_at=None,
             )
-            
-            # Store in memory
+
             self._files[self._next_id] = file_data
-            
-            # Update user index
             if data.owner_id not in self._user_files:
                 self._user_files[data.owner_id] = set()
             self._user_files[data.owner_id].add(self._next_id)
-            
-            # Increment ID for next file
             self._next_id += 1
-            
+
             logger.debug(f"Created file {file_data.id} for user {data.owner_id}")
             return file_data
     
@@ -137,25 +172,22 @@ class InMemoryFileService(FileServiceInterface):
             logger.debug(f"Soft deleted file {file_id}")
             return True
     
-    async def duplicate_file(self, file_id: int) -> Optional[FileData]:
+    async def duplicate_file(self, file_id: int, db: AsyncSession = None) -> Optional[FileData]:
         """Create a duplicate of an existing file."""
-        # First, check if original exists (without holding lock for create_file call)
         async with self._lock:
             original = self._files.get(file_id)
             if not original or original.is_deleted():
                 return None
-            
-            # Create duplicate data
+
             duplicate_data = FileCreateData(
                 title=f"{original.title} (copy)",
                 abstract=original.abstract,
                 source=original.source,
                 owner_id=original.owner_id,
-                status=original.status
+                status=original.status,
             )
-        
-        # Call create_file without holding the lock to avoid deadlock
-        return await self.create_file(duplicate_data)
+
+        return await self.create_file(duplicate_data, db=db)
     
     async def get_file_content_structured(self, file_id: int, db: Optional[AsyncSession] = None) -> Optional[dict]:
         """Get structured content for a file's RSM content.
@@ -353,11 +385,6 @@ class InMemoryFileService(FileServiceInterface):
             result: Result[Any] = await db.execute(select(DbFile).where(DbFile.deleted_at.is_(None)))
             db_files = result.scalars().all()
 
-            # Get max ID from all files (including deleted) to avoid ID reuse
-            max_id_result: Result[Any] = await db.execute(select(func.max(DbFile.id)))
-            max_id = max_id_result.scalar() or 0
-
-            # Convert database files to in-memory format
             for db_file in db_files:
                 file_data = FileData(
                     id=db_file.id,
@@ -377,9 +404,6 @@ class InMemoryFileService(FileServiceInterface):
                 if db_file.owner_id not in self._user_files:
                     self._user_files[db_file.owner_id] = set()
                 self._user_files[db_file.owner_id].add(db_file.id)
-            
-            # Set next ID to be one greater than max existing ID
-            self._next_id = max_id + 1
             
             logger.debug(f"Loaded {len(db_files)} files from database")
     

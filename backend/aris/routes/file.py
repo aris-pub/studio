@@ -158,11 +158,7 @@ async def create_file(
         owner_id=doc.owner_id
     )
     
-    # Create in memory
-    result = await file_service.create_file(create_data)
-
-    # Save to database
-    await file_service.save_file_to_database(result.id, db)
+    result = await file_service.create_file(create_data, db=db)
 
     # Create OWNER permission for the file creator
     await create_permission(
@@ -248,8 +244,7 @@ async def import_file(
         source=rsm_source,
         owner_id=user.id,
     )
-    result = await file_service.create_file(create_data)
-    await file_service.save_file_to_database(result.id, db)
+    result = await file_service.create_file(create_data, db=db)
     await create_permission(
         file_id=result.id,
         user_id=user.id,
@@ -523,13 +518,9 @@ async def duplicate_file(
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
     
-    # Duplicate in memory
-    new_doc = await file_service.duplicate_file(file_id)
+    new_doc = await file_service.duplicate_file(file_id, db=db)
     if not new_doc:
         raise HTTPException(status_code=404, detail="File not found")
-    
-    # Save to database
-    await file_service.save_file_to_database(new_doc.id, db)
 
     # Create OWNER permission for the duplicating user
     await create_permission(

@@ -52,12 +52,14 @@ class FileServiceInterface(ABC):
         pass
     
     @abstractmethod
-    async def create_file(self, data: FileCreateData) -> FileData:
+    async def create_file(self, data: FileCreateData, db=None) -> FileData:
         """Create a new file.
-        
+
         Args:
             data: File creation data
-            
+            db: Optional database session. When provided, the database assigns
+                the ID via autoincrement instead of the in-memory counter.
+
         Returns:
             Created FileData object with assigned ID
         """
@@ -89,12 +91,13 @@ class FileServiceInterface(ABC):
         pass
     
     @abstractmethod
-    async def duplicate_file(self, file_id: int) -> Optional[FileData]:
+    async def duplicate_file(self, file_id: int, db=None) -> Optional[FileData]:
         """Create a duplicate of an existing file.
-        
+
         Args:
             file_id: Unique identifier of the file to duplicate
-            
+            db: Optional database session passed through to create_file
+
         Returns:
             New FileData object if original exists, None otherwise
         """

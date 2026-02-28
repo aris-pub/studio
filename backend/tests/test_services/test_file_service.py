@@ -1,6 +1,7 @@
 """Tests for file service models and functionality."""
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -737,3 +738,81 @@ class TestInMemoryFileServiceAssetIntegration:
         # Should still render but without asset resolution
         assert html is not None
         assert "missing-image.png" in html  # Original path should remain (no resolution)
+
+
+class TestCreateFileWithDatabase:
+    """Test create_file when a database session is provided."""
+
+    @pytest.fixture
+    def file_service(self):
+        return InMemoryFileService()
+
+    @pytest.fixture
+    def sample_create_data(self):
+        return FileCreateData(
+            title="DB File",
+            abstract="abstract",
+            source="\nDB content\n",
+            owner_id=42,
+            status=FileStatus.DRAFT,
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_file_with_db_uses_autoincrement(self, file_service, sample_create_data):
+        """When a DB session is provided, the ID comes from the database, not _next_id."""
+        await file_service.initialize()
+
+        mock_db = AsyncMock()
+
+        def fake_add(obj):
+            obj.id = 99
+        mock_db.add = MagicMock(side_effect=fake_add)
+
+        result = await file_service.create_file(sample_create_data, db=mock_db)
+
+        assert result.id == 99
+        assert result.title == "DB File"
+        assert result.owner_id == 42
+
+        mock_db.add.assert_called_once()
+        mock_db.flush.assert_awaited_once()
+        mock_db.commit.assert_awaited_once()
+
+        # Verify file is stored in memory with the DB-assigned ID
+        stored = await file_service.get_file(99)
+        assert stored is not None
+        assert stored.id == 99
+
+        # _next_id should be untouched (still 1)
+        assert file_service._next_id == 1
+
+    @pytest.mark.asyncio
+    async def test_create_file_without_db_uses_next_id(self, file_service, sample_create_data):
+        """When no DB session is provided, the in-memory counter assigns the ID."""
+        await file_service.initialize()
+
+        result = await file_service.create_file(sample_create_data)
+
+        assert result.id == 1
+        assert file_service._next_id == 2
+
+    @pytest.mark.asyncio
+    async def test_duplicate_file_with_db(self, file_service, sample_create_data):
+        """duplicate_file passes db through to create_file for DB-assigned IDs."""
+        await file_service.initialize()
+
+        # Create original in-memory
+        original = await file_service.create_file(sample_create_data)
+
+        mock_db = AsyncMock()
+
+        def fake_add(obj):
+            obj.id = 200
+        mock_db.add = MagicMock(side_effect=fake_add)
+
+        dup = await file_service.duplicate_file(original.id, db=mock_db)
+
+        assert dup is not None
+        assert dup.id == 200
+        assert dup.title == f"{original.title} (copy)"
+        mock_db.flush.assert_awaited_once()
