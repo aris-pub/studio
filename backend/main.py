@@ -18,6 +18,7 @@ from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
 from aris.routes import (
     auth_router,
+    feedback_router,
     file_router,
     file_settings_router,
     lsp_router,
@@ -305,6 +306,7 @@ app.add_middleware(
 
 # Include routers with proper tags
 logger.info("Registering API routers")
+app.include_router(feedback_router, tags=["feedback"])
 app.include_router(auth_router, tags=["authentication"])
 app.include_router(user_router, tags=["users"])
 app.include_router(user_public_router, tags=["users"])

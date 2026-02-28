@@ -253,6 +253,63 @@ The Aris Program — https://aris.pub
             return False
 
 
+    async def send_feedback_notification(
+        self,
+        user_email: str,
+        user_name: str,
+        message: str,
+    ) -> bool:
+        """Send admin notification about user feedback."""
+        if not self.config.admin_email:
+            logger.debug("Admin notifications disabled: ADMIN_EMAIL not configured")
+            return False
+
+        logger.info(f"Sending feedback notification from {user_email}")
+        try:
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>New Feedback</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #027AC7;">New Feedback</h2>
+
+                <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <p><strong>From:</strong> {user_name} ({user_email})</p>
+                    <p><strong>Message:</strong></p>
+                    <blockquote style="border-left: 3px solid #027AC7; padding-left: 16px; margin: 12px 0; color: #374151;">{message}</blockquote>
+                </div>
+            </body>
+            </html>
+            """
+
+            text_content = f"""New Feedback
+
+From: {user_name} ({user_email})
+
+Message:
+{message}
+"""
+
+            params = {
+                "from": f"RSM Studio Notifications <{self.config.from_email}>",
+                "to": [self.config.admin_email],
+                "subject": f"Feedback from {user_name}",
+                "html": html_content,
+                "text": text_content,
+            }
+
+            resend.Emails.send(params)  # type: ignore
+            logger.info(f"Feedback notification sent for {user_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send feedback notification: {str(e)}")
+            return False
+
+
 def get_email_service() -> Optional[EmailService]:
     """Get configured email service instance.
 

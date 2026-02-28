@@ -850,3 +850,27 @@ class FilePermission(Base):
     file = relationship("File", back_populates="permissions")
     user = relationship("User", foreign_keys=[user_id], back_populates="file_permissions")
     grantor = relationship("User", foreign_keys=[granted_by])
+
+
+class Feedback(Base):
+    """User-submitted feedback message.
+
+    Attributes
+    ----------
+    id : int
+        Primary key.
+    user_id : int
+        Foreign key to User who submitted the feedback.
+    message : str
+        Feedback message text.
+    created_at : datetime
+        Timestamp of submission.
+
+    """
+
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

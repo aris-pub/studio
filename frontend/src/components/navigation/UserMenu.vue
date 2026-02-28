@@ -62,9 +62,11 @@
 
   const goTo = (page) => navigateTo(`/${page}`);
 
+  const showFeedback = ref(false);
+
   const handleFeedback = () => {
-    // TODO: Implement feedback functionality
     close();
+    showFeedback.value = true;
   };
 
   const handleHelp = () => {
@@ -105,7 +107,7 @@
 
       <!-- Actions Section -->
       <ContextMenuItem icon="HelpCircle" caption="Help" @click="handleHelp" />
-      <ContextMenuItem icon="MessageSquare" caption="Feedback" @click="handleFeedback" />
+      <ContextMenuItem icon="MessageChatbot" caption="Feedback" @click="handleFeedback" />
       <ContextMenuItem icon="Keyboard" caption="Shortcuts" />
       <Separator />
 
@@ -167,6 +169,8 @@
         </nav>
       </div>
     </div>
+
+    <FeedbackModal :show="showFeedback" @close="showFeedback = false" />
   </div>
 </template>
 
