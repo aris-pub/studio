@@ -19,6 +19,7 @@ from aris.logging_config import get_logger, setup_logging
 from aris.routes import (
     auth_router,
     feedback_router,
+    file_annotations_router,
     file_router,
     file_settings_router,
     lsp_router,
@@ -319,6 +320,7 @@ app.include_router(user_settings_router, tags=["user-settings"])
 app.include_router(render_router, tags=["render"])
 app.include_router(signup_router, tags=["signup"])
 app.include_router(lsp_router, tags=["lsp"])
+app.include_router(file_annotations_router, tags=["annotations"])
 logger.info("All routers registered successfully")
 
 

@@ -225,12 +225,14 @@
     max-height: calc(var(--toolbar-height) * 2 + 8px);
     border-radius: 0 8px 0 0;
     background-color: var(--surface-hover);
+    border-bottom: var(--border-extrathin) solid var(--border-primary);
     overflow: hidden;
   }
 
   .toolbar {
     display: flex;
     justify-content: flex-start;
+    align-items: center;
     min-height: var(--toolbar-height);
     max-height: calc(var(--toolbar-height) * 2 + 8px);
     padding: 4px;
@@ -282,8 +284,14 @@
     text-transform: none;
   }
 
+  .toolbar > .cm-wrapper :deep(.btn-toggle) {
+    height: 32px;
+    padding-block: 0;
+  }
+
   .toolbar > .cm-wrapper {
-    align-content: center;
+    display: flex;
+    align-items: center;
   }
 
   .toolbar > .cm-wrapper :deep(> button) {

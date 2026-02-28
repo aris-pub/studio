@@ -82,14 +82,13 @@ describe("SearchBar.vue", () => {
     expect(input.element.value).toBe("");
   });
 
-  it("blurs input when pressing escape and not searching", async () => {
+  it("emits cancel when pressing escape and not searching", async () => {
     const wrapper = mount(SearchBar, {
       global: { stubs: { IconSearch: IconSearchStub } },
     });
     const input = wrapper.find("input");
-    input.element.blur = vi.fn();
     await input.trigger("keyup.escape");
-    expect(input.element.blur).toHaveBeenCalled();
+    expect(wrapper.emitted().cancel).toBeTruthy();
   });
 
   it("renders navigation buttons when withButtons is true and emits events on click", async () => {

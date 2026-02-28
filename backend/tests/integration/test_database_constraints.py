@@ -93,23 +93,25 @@ class TestDatabaseConstraints:
 
     async def test_annotation_constraints(self, db_session: AsyncSession, test_user, test_file):
         """Test annotation model constraints."""
-        from aris.models.models import AnnotationType
-        
-        # Test creating annotation with valid data
+        from aris.models.models import AnnotationVisibility
+
         annotation = Annotation(
             file_id=test_file.id,
-            type=AnnotationType.COMMENT
+            owner_id=test_user.id,
+            color="green",
+            anchor_data={"node_id": "3", "start_offset": 0, "end_offset": 15},
+            selected_text="constraint test",
         )
         db_session.add(annotation)
         await db_session.commit()
-        
-        # Verify annotation was created
+
         result = await db_session.execute(
             select(Annotation).where(Annotation.id == annotation.id)
         )
         created_annotation = result.scalars().first()
         assert created_annotation is not None
-        assert created_annotation.type == AnnotationType.COMMENT
+        assert created_annotation.visibility == AnnotationVisibility.PRIVATE
+        assert created_annotation.color == "green"
 
     async def test_tag_name_length_constraints(self, db_session: AsyncSession, test_user):
         """Test tag name length constraints."""

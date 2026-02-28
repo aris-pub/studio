@@ -6,3 +6,19 @@ html, body {
   height: 100%;
   width: 100%;
 }
+
+/* Annotation highlight marks */
+mark[data-annotation-id] {
+  background-color: var(--purple-200);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+mark[data-annotation-id]:hover {
+  box-shadow: 0 0 0 1px var(--gray-600);
+}
+
+mark[data-annotation-id].active {
+  box-shadow: 0 0 0 2px var(--blue-500);
+}

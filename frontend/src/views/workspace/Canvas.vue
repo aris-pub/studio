@@ -6,6 +6,7 @@
     watch,
     watchEffect,
     inject,
+    isRef,
     provide,
     useTemplateRef,
     nextTick,
@@ -173,8 +174,11 @@
   const mobileMode = inject("mobileMode");
   const focusMode = inject("focusMode");
   const drawerOpen = inject("drawerOpen");
-  const annotations = inject("annotations", []);
-  const hasAnnotations = computed(() => annotations && annotations.length > 0);
+  const annotations = inject("annotations", ref([]));
+  const hasAnnotations = computed(() => {
+    const list = isRef(annotations) ? annotations.value : annotations;
+    return list && list.length > 0;
+  });
   const middleTopWidth = computed(() => `${columnSizes.middle.width + 8}px`);
 </script>
 
@@ -306,6 +310,7 @@
       padding-bottom: 16px;
       display: flex;
       height: 100vh;
+      outline: none;
     }
   }
 
@@ -329,14 +334,13 @@
   }
 
   .inner.right .middle-column {
-    /* Use flex instead of fixed width to allow proper space distribution */
-    /* between left, middle, and right columns in three-column layout */
-    /* Give middle column (manuscript) the majority of space */
-    flex: 4; /* Increase flex ratio to give middle column even more space */
-    min-width: 0; /* Allow flex shrinking when needed */
+    flex: 4;
+    min-width: 0;
     height: 100vh;
     overflow-y: auto;
     scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray-400) transparent;
   }
 
   /* When no annotations are present, middle column should expand to full width */

@@ -1,8 +1,9 @@
 <script setup>
-  import { ref, reactive, computed, inject, provide, onMounted, watch, watchEffect } from "vue";
+  import { ref, computed, inject, provide, onMounted, watch, watchEffect } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
+  import { useAnnotations } from "@/composables/useAnnotations.js";
   import { File } from "@/models/File.js";
   import Sidebar from "./Sidebar.vue";
   import Canvas from "./Canvas.vue";
@@ -75,8 +76,37 @@
   });
   provide("file", file);
 
-  const annotations = reactive([]);
+  const fileId = computed(() => file.value?.id);
+  const {
+    annotations,
+    loading: annotationsLoading,
+    fetchAnnotations,
+    createAnnotation,
+    updateAnnotation,
+    deleteAnnotation,
+    addNote,
+    updateNote,
+    deleteNote,
+  } = useAnnotations(fileId, api);
+
+  const activeAnnotationId = ref(null);
+
+  const annotationActions = {
+    createAnnotation,
+    updateAnnotation,
+    deleteAnnotation,
+    addNote,
+    updateNote,
+    deleteNote,
+  };
+
   provide("annotations", annotations);
+  provide("annotationActions", annotationActions);
+  provide("activeAnnotationId", activeAnnotationId);
+
+  watch(fileId, (id) => {
+    if (id) fetchAnnotations();
+  }, { immediate: true });
 
   // Only redirect to 404 when fileStore is loaded but file is not found
   const router = useRouter();

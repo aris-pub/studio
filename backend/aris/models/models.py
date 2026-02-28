@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Table,
     Text,
@@ -183,6 +184,9 @@ class User(Base):
             kwargs["avatar_color"] = AvatarColor.BLUE
         super().__init__(**kwargs)
 
+    owned_annotations = relationship(
+        "Annotation", back_populates="owner", cascade="all, delete-orphan"
+    )
     annotation_messages = relationship(
         "AnnotationMessage", back_populates="owner", cascade="all, delete-orphan"
     )
@@ -686,9 +690,9 @@ class FileSettings(Base):
     user = relationship("User", back_populates="file_settings")
 
 
-class AnnotationType(str, enum.Enum):
-    NOTE = "note"
-    COMMENT = "comment"
+class AnnotationVisibility(str, enum.Enum):
+    PRIVATE = "private"
+    SHARED = "shared"
 
 
 class Annotation(Base):
@@ -696,7 +700,13 @@ class Annotation(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     file_id = Column(Integer, ForeignKey("files.id"), nullable=False)
-    type: Column[AnnotationType] = Column(Enum(AnnotationType), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    color = Column(String, nullable=False, default="purple")
+    visibility = Column(
+        Enum(AnnotationVisibility), nullable=False, default=AnnotationVisibility.PRIVATE
+    )
+    anchor_data = Column(JSON, nullable=False)
+    selected_text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -704,6 +714,7 @@ class Annotation(Base):
         "AnnotationMessage", back_populates="annotation", cascade="all, delete-orphan"
     )
     file = relationship("File", back_populates="annotations")
+    owner = relationship("User", back_populates="owned_annotations")
 
 
 class AnnotationMessage(Base):

@@ -1,10 +1,17 @@
 <script setup>
-  import { computed, inject, toRaw } from "vue";
-  import { IconCheck, IconClock, IconDeviceFloppy, IconX, IconMapPin } from "@tabler/icons-vue";
+  import { computed, ref, inject, toRaw, useTemplateRef, watch } from "vue";
+  import {
+    IconClock,
+    IconDeviceFloppy,
+    IconCheck,
+    IconExclamationCircle,
+    IconWifiOff,
+    IconMapPin,
+  } from "@tabler/icons-vue";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
   import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 
-  defineProps({
+  const props = defineProps({
     saveStatus: {
       type: String,
       default: "idle",
@@ -58,10 +65,51 @@
     raw.focus();
   }
 
-  const collabDotClass = computed(() => {
-    if (!collabIsConnected?.value) return "disconnected";
-    if (!collabIsSynced?.value) return "syncing";
-    return "connected";
+  // --- Status indicators: "nothing when normal" ---
+  // Only show when something is non-normal. "Saved" flashes briefly then disappears.
+
+  const showSavedFlash = ref(false);
+  let savedTimer = null;
+  watch(
+    () => props.saveStatus,
+    (status) => {
+      if (status === "saved") {
+        showSavedFlash.value = true;
+        clearTimeout(savedTimer);
+        savedTimer = setTimeout(() => (showSavedFlash.value = false), 2000);
+      } else {
+        showSavedFlash.value = false;
+      }
+    }
+  );
+
+  const statusIndicator = computed(() => {
+    const connected = collabIsConnected?.value ?? true;
+    const synced = collabIsSynced?.value ?? true;
+
+    if (!connected) return { label: "Offline", icon: "wifi-off", cls: "status-error" };
+    if (!synced) return { label: "Syncing\u2026", icon: "clock", cls: "status-warning" };
+    if (props.saveStatus === "error") return { label: "Save failed", icon: "error", cls: "status-error" };
+    if (props.saveStatus === "saving") return { label: "Saving\u2026", icon: "saving", cls: "status-saving" };
+    if (props.saveStatus === "pending") return { label: "Unsaved", icon: "clock", cls: "status-warning" };
+    if (showSavedFlash.value) return { label: "Saved", icon: "check", cls: "status-saved" };
+    return null;
+  });
+
+  // Tooltip anchor
+  const statusRef = useTemplateRef("status-indicator");
+
+  const statusTooltip = computed(() => {
+    const s = statusIndicator.value;
+    if (!s) return "";
+    const connected = collabIsConnected?.value ?? true;
+    if (!connected) return "Connection lost. Changes will sync when reconnected.";
+    if (!(collabIsSynced?.value ?? true)) return "Syncing changes with collaborators\u2026";
+    if (props.saveStatus === "error") return "Failed to save. Will retry automatically.";
+    if (props.saveStatus === "saving") return "Saving changes\u2026";
+    if (props.saveStatus === "pending") return "You have unsaved changes.";
+    if (showSavedFlash.value) return "All changes saved.";
+    return "";
   });
 
   const { scrollElementRef, showLeftShadow, showRightShadow } = useScrollShadows();
@@ -81,16 +129,15 @@
       <div class="shadow-overlay shadow-left" :class="{ active: showLeftShadow }"></div>
       <div class="shadow-overlay shadow-right" :class="{ active: showRightShadow }"></div>
     </div>
-    <div class="right">
-      <span class="collab-dot" :class="collabDotClass"></span>
-      <IconClock v-if="saveStatus === 'pending'" class="icon-pending" />
-      <IconDeviceFloppy v-if="saveStatus === 'saving'" class="icon-saving" />
-      <IconCheck
-        v-if="saveStatus === 'saved' || saveStatus === 'idle'"
-        :class="{ 'icon-idle': saveStatus === 'idle', 'icon-saved': saveStatus === 'saved' }"
-      />
-      <IconX v-if="saveStatus === 'error'" class="icon-error" />
+    <div v-if="statusIndicator" ref="status-indicator" class="right" :class="statusIndicator.cls">
+      <IconWifiOff v-if="statusIndicator.icon === 'wifi-off'" />
+      <IconClock v-else-if="statusIndicator.icon === 'clock'" />
+      <IconDeviceFloppy v-else-if="statusIndicator.icon === 'saving'" />
+      <IconCheck v-else-if="statusIndicator.icon === 'check'" />
+      <IconExclamationCircle v-else-if="statusIndicator.icon === 'error'" />
+      <span class="status-label">{{ statusIndicator.label }}</span>
     </div>
+    <Tooltip v-if="statusIndicator" :anchor="statusRef" :content="statusTooltip" placement="top-end" />
   </div>
 </template>
 
@@ -101,7 +148,7 @@
     display: flex;
     width: 100%;
     justify-content: space-between;
-    background-color: var(--gray-100);
+    background-color: var(--surface-hover);
     border-radius: 0 0 8px 8px;
   }
 
@@ -163,62 +210,45 @@
   .statusbar > .right {
     flex: 0;
     padding-inline: 8px;
-    gap: 6px;
+    gap: 4px;
+    white-space: nowrap;
+    cursor: default;
   }
 
-  .statusbar > * > :deep(svg) {
-    margin: 0;
-    transition: color 0.3s ease;
+  .statusbar > .right > :deep(svg) {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
-  .collab-dot {
-    width: 8px;
-    height: 8px;
-    min-width: 8px;
-    border-radius: 50%;
-    transition: background-color 0.3s ease;
+  .status-label {
+    font-weight: var(--weight-medium, 500);
   }
 
-  .collab-dot.connected {
-    background-color: var(--success-500);
+  .status-warning {
+    color: var(--warning-600);
   }
 
-  .collab-dot.syncing {
-    background-color: var(--warning-500);
-    animation: pulse 1.5s ease-in-out infinite;
+  .status-saving {
+    color: var(--primary-600);
   }
 
-  .collab-dot.disconnected {
-    background-color: var(--error-500);
+  .status-saved {
+    color: var(--success-600);
+    animation: fade-out 2s ease forwards;
   }
 
-  @keyframes pulse {
+  .status-error {
+    color: var(--error-600);
+  }
+
+  @keyframes fade-out {
     0%,
-    100% {
+    70% {
       opacity: 1;
     }
-    50% {
-      opacity: 0.5;
+    100% {
+      opacity: 0;
     }
-  }
-
-  .icon-idle {
-    opacity: 0.5;
-  }
-
-  .icon-pending {
-    color: var(--warning-500);
-  }
-
-  .icon-saving {
-    color: var(--primary-500);
-  }
-
-  .icon-saved {
-    color: var(--success-500);
-  }
-
-  .icon-error {
-    color: var(--error-500);
   }
 </style>

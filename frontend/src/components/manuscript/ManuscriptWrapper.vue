@@ -1,6 +1,7 @@
 <script setup>
-  import { ref, watch, computed, inject, onBeforeMount, useTemplateRef, nextTick } from "vue";
+  import { ref, watch, computed, inject, onBeforeMount, onMounted, onUnmounted, useTemplateRef, nextTick } from "vue";
   import Manuscript from "./Manuscript.vue";
+  import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
   import tooltipsterUrl from "tooltipster/dist/js/tooltipster.bundle.min.js?url";
 
@@ -109,6 +110,30 @@
 
   const manuscriptRef = useTemplateRef("manuscript-ref");
   defineExpose({ mountPoint: computed(() => manuscriptRef.value?.mountPoint) });
+
+  // Highlight rendering
+  const annotations = inject("annotations", ref([]));
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
+  const { applyHighlights, setupClickHandler } = useHighlightRenderer(
+    annotations,
+    { get value() { return selfRef.value; } },
+    activeAnnotationId,
+  );
+
+  let cleanupClickHandler = null;
+  onMounted(() => {
+    cleanupClickHandler = setupClickHandler();
+  });
+  onUnmounted(() => {
+    cleanupClickHandler?.();
+  });
+
+  // Re-apply highlights after manuscript renders
+  watch([onload, () => selfRef.value, () => props.htmlString], async () => {
+    await nextTick();
+    // Small delay to let RSM's onload finish rendering
+    setTimeout(applyHighlights, 100);
+  });
 </script>
 
 <template>

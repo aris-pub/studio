@@ -5,7 +5,7 @@ import random
 from aris.models.models import (
     Annotation,
     AnnotationMessage,
-    AnnotationType,
+    AnnotationVisibility,
     AvatarColor,
     File,
     FileSettings,
@@ -71,14 +71,22 @@ async def test_annotation_creation(db_session):
     await db_session.commit()
     await db_session.refresh(file)
 
-    annotation = Annotation(file_id=file.id, type=AnnotationType.NOTE)
+    annotation = Annotation(
+        file_id=file.id,
+        owner_id=user.id,
+        color="purple",
+        anchor_data={"node_id": "1", "start_offset": 0, "end_offset": 10},
+        selected_text="Test text",
+    )
     db_session.add(annotation)
     await db_session.commit()
     await db_session.refresh(annotation)
 
     assert annotation.id is not None
     assert annotation.file_id == file.id
-    assert annotation.type == AnnotationType.NOTE
+    assert annotation.owner_id == user.id
+    assert annotation.color == "purple"
+    assert annotation.visibility == AnnotationVisibility.PRIVATE
     assert annotation.created_at is not None
 
 
@@ -94,7 +102,13 @@ async def test_annotation_message_creation(db_session):
     await db_session.commit()
     await db_session.refresh(file)
 
-    annotation = Annotation(file_id=file.id, type=AnnotationType.NOTE)
+    annotation = Annotation(
+        file_id=file.id,
+        owner_id=user.id,
+        color="orange",
+        anchor_data={"node_id": "2", "start_offset": 5, "end_offset": 20},
+        selected_text="Sample text",
+    )
     db_session.add(annotation)
     await db_session.commit()
     await db_session.refresh(annotation)

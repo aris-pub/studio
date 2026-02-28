@@ -1,25 +1,29 @@
 <script setup>
-  import { inject } from "vue";
+  import { ref, computed, inject, isRef } from "vue";
   import Note from "@/components/annotations/Note.vue";
-  import Comment from "@/components/annotations/Comment.vue";
 
-  const annotations = inject("annotations");
+  const annotations = inject("annotations", ref([]));
+
+  const sortedAnnotations = computed(() => {
+    const list = isRef(annotations) ? annotations.value : annotations;
+    if (!list?.length) return [];
+    return [...list].sort(
+      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    );
+  });
 </script>
 
 <template>
   <div class="annotations">
-    <div v-for="ann in annotations" :key="ann.id">
-      <Note v-if="ann.type === 'note'" :annotation="ann" />
-      <Comment v-else-if="ann.type === 'comment'" :annotation="ann" />
-    </div>
+    <Note v-for="ann in sortedAnnotations" :key="ann.id" :annotation="ann" />
   </div>
 </template>
 
 <style scoped>
   .annotations {
-    padding: 16px;
+    padding-block: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 </style>

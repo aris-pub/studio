@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import EditorStatusBar from "@/views/workspace/EditorStatusBar.vue";
 
@@ -52,69 +52,83 @@ describe("EditorStatusBar", () => {
     wrapper.unmount();
   });
 
-  it("shows check icon when save status is idle", () => {
-    const wrapper = createWrapper({ saveStatus: "idle" });
-    expect(wrapper.find(".icon-idle").exists()).toBe(true);
+  it("shows nothing in the right section when idle and connected", () => {
+    const wrapper = createWrapper(
+      { saveStatus: "idle" },
+      { collabIsConnected: ref(true), collabIsSynced: ref(true) }
+    );
+    expect(wrapper.find(".right").exists()).toBe(false);
     wrapper.unmount();
   });
 
-  it("shows check icon when save status is saved", () => {
-    const wrapper = createWrapper({ saveStatus: "saved" });
-    expect(wrapper.find(".icon-saved").exists()).toBe(true);
+  it("shows 'Saved' briefly when save status transitions to saved", async () => {
+    const wrapper = createWrapper(
+      { saveStatus: "saving" },
+      { collabIsConnected: ref(true), collabIsSynced: ref(true) }
+    );
+    await wrapper.setProps({ saveStatus: "saved" });
+    await nextTick();
+    expect(wrapper.find(".status-saved").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Saved");
     wrapper.unmount();
   });
 
-  it("shows clock icon when save status is pending", () => {
-    const wrapper = createWrapper({ saveStatus: "pending" });
-    expect(wrapper.find(".icon-pending").exists()).toBe(true);
+  it("shows 'Unsaved' when save status is pending", () => {
+    const wrapper = createWrapper(
+      { saveStatus: "pending" },
+      { collabIsConnected: ref(true), collabIsSynced: ref(true) }
+    );
+    expect(wrapper.find(".status-warning").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Unsaved");
     wrapper.unmount();
   });
 
-  it("shows floppy icon when save status is saving", () => {
-    const wrapper = createWrapper({ saveStatus: "saving" });
-    expect(wrapper.find(".icon-saving").exists()).toBe(true);
+  it("shows 'Saving…' when save status is saving", () => {
+    const wrapper = createWrapper(
+      { saveStatus: "saving" },
+      { collabIsConnected: ref(true), collabIsSynced: ref(true) }
+    );
+    expect(wrapper.find(".status-saving").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Saving…");
     wrapper.unmount();
   });
 
-  it("shows X icon when save status is error", () => {
-    const wrapper = createWrapper({ saveStatus: "error" });
-    expect(wrapper.find(".icon-error").exists()).toBe(true);
+  it("shows 'Save failed' when save status is error", () => {
+    const wrapper = createWrapper(
+      { saveStatus: "error" },
+      { collabIsConnected: ref(true), collabIsSynced: ref(true) }
+    );
+    expect(wrapper.find(".status-error").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Save failed");
     wrapper.unmount();
   });
 
-  it("shows disconnected collab dot when not connected", () => {
+  it("shows 'Offline' when not connected", () => {
     const wrapper = createWrapper(
       {},
-      {
-        collabIsConnected: ref(false),
-        collabIsSynced: ref(false),
-      }
+      { collabIsConnected: ref(false), collabIsSynced: ref(false) }
     );
-    expect(wrapper.find(".collab-dot.disconnected").exists()).toBe(true);
+    expect(wrapper.find(".status-error").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Offline");
     wrapper.unmount();
   });
 
-  it("shows syncing collab dot when connected but not synced", () => {
+  it("shows 'Syncing…' when connected but not synced", () => {
     const wrapper = createWrapper(
       {},
-      {
-        collabIsConnected: ref(true),
-        collabIsSynced: ref(false),
-      }
+      { collabIsConnected: ref(true), collabIsSynced: ref(false) }
     );
-    expect(wrapper.find(".collab-dot.syncing").exists()).toBe(true);
+    expect(wrapper.find(".status-warning").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Syncing…");
     wrapper.unmount();
   });
 
-  it("shows connected collab dot when fully synced", () => {
+  it("connection status takes priority over save status", () => {
     const wrapper = createWrapper(
-      {},
-      {
-        collabIsConnected: ref(true),
-        collabIsSynced: ref(true),
-      }
+      { saveStatus: "saving" },
+      { collabIsConnected: ref(false), collabIsSynced: ref(false) }
     );
-    expect(wrapper.find(".collab-dot.connected").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Offline");
     wrapper.unmount();
   });
 

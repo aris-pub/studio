@@ -305,6 +305,7 @@
             ...(lspExtension ? [lspExtension] : []),
             semanticTokens,
             lintExtensions,
+            EditorView.lineWrapping,
             EditorView.theme({
               "&": {
                 height: "100%",
@@ -435,6 +436,27 @@
 
   .cm-container :deep(.cm-editor) {
     height: 100%;
+  }
+
+  .cm-container :deep(.cm-editor) {
+    outline: none !important;
+  }
+
+  .cm-container :deep(.cm-editor.cm-focused) {
+    outline: none !important;
+  }
+
+  .cm-container :deep(.cm-scroller) {
+    outline: none !important;
+  }
+
+  .cm-container :deep(.cm-gutters) {
+    background-color: var(--surface-hover);
+    border-right: none;
+  }
+
+  .cm-container :deep(.cm-cursor) {
+    border-left-color: var(--extra-dark);
   }
 
   /* Semantic token highlighting - using braiid color system */
