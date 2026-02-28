@@ -5,6 +5,8 @@
   import DrawerActivity from "./DrawerActivity.vue";
   import DrawerSettings from "./DrawerSettings.vue";
   import DrawerVersions from "./DrawerVersions.vue";
+  import DrawerShare from "./DrawerShare.vue";
+  import DrawerFile from "./DrawerFile.vue";
 
   const props = defineProps({ component: { type: String, required: true } });
   const active = inject("drawerOpen");
@@ -18,6 +20,8 @@
     DrawerActivity: DrawerActivity,
     DrawerSettings: DrawerSettings,
     DrawerVersions: DrawerVersions,
+    DrawerShare: DrawerShare,
+    DrawerFile: DrawerFile,
   };
 </script>
 
