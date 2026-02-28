@@ -16,6 +16,7 @@
   import EditorSource from "./EditorSource.vue";
   import EditorCodeMirror from "./EditorCodeMirror.vue";
   import EditorFiles from "./EditorFiles.vue";
+  import { IconLock } from "@tabler/icons-vue";
 
   const props = defineProps({});
   const file = defineModel({ type: Object, required: true });
@@ -29,6 +30,7 @@
   // EditSession for content management and syncing
   const api = inject("api");
   const user = inject("user");
+  const mobileMode = inject("mobileMode");
 
   const editSession = useEditSession(file.value.id, {
     implementation: "http",
@@ -165,13 +167,20 @@
   <div class="editor">
     <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" />
     <div class="content">
-      <EditorToolbar v-if="USE_CODEMIRROR && tabIndex === 0" />
+      <EditorToolbar v-if="USE_CODEMIRROR && tabIndex === 0 && !mobileMode" />
+      <div v-if="mobileMode && tabIndex === 0" class="mobile-readonly-banner">
+        <IconLock :size="14" aria-hidden="true" />
+        Read-only on mobile
+      </div>
       <!-- CodeMirror editor with Y.js real-time collaboration -->
       <EditorCodeMirror v-if="USE_CODEMIRROR && tabIndex === 0" v-model="file" />
       <!-- Original textarea editor (fallback) -->
       <EditorSource v-else-if="tabIndex === 0" ref="editor-source-ref" />
       <EditorFiles v-if="tabIndex === 1" v-model="file" />
-      <EditorStatusBar v-if="USE_CODEMIRROR && tabIndex === 0" :save-status="saveStatus" />
+      <EditorStatusBar
+        v-if="USE_CODEMIRROR && tabIndex === 0 && !mobileMode"
+        :save-status="saveStatus"
+      />
     </div>
   </div>
 </template>
@@ -192,5 +201,19 @@
     flex-direction: column;
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 0 8px 8px 8px;
+  }
+
+  .mobile-readonly-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--toolbar-height);
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: var(--weight-medium, 500);
+    color: var(--information-800, #075487);
+    background-color: var(--surface-hint, #bae3fd);
+    border-bottom: var(--border-extrathin) solid var(--information-300, #7dcdfc);
   }
 </style>

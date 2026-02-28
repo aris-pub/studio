@@ -12,7 +12,7 @@
     crosshairCursor,
     highlightActiveLine,
   } from "@codemirror/view";
-  import { EditorState } from "@codemirror/state";
+  import { EditorState, Compartment } from "@codemirror/state";
   import {
     defaultHighlightStyle,
     syntaxHighlighting,
@@ -41,6 +41,7 @@
   const api = inject("api");
   const user = inject("user");
   const editSession = inject("editSession", null);
+  const mobileMode = inject("mobileMode");
 
   // Shared view and cursor refs from parent Editor.vue
   const parentCmView = inject("cmView", null);
@@ -60,6 +61,7 @@
   const isSynced = ref(false);
   const isInitialized = ref(false);
   const roomName = ref("");
+  const readOnlyCompartment = new Compartment();
 
   // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");
@@ -275,11 +277,11 @@
 
         const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
 
-        // Determine if editor should be read-only based on user role
-        const isReadOnly = file.value?.role === "COMMENTER";
-        const editableExtensions = isReadOnly
+        const isReadOnly = file.value?.role === "COMMENTER" || mobileMode.value;
+        const roExts = isReadOnly
           ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
           : [];
+        const readOnlyExtension = readOnlyCompartment.of(roExts);
 
         // Add LSP plugin extension if it was created successfully
         // Note: client.plugin() returns a single Extension, not an array
@@ -299,7 +301,7 @@
             customSetup,
             yCollabExtension,
             keymap.of(yUndoManagerKeymap),
-            ...editableExtensions,
+            readOnlyExtension,
             ...(lspExtension ? [lspExtension] : []),
             semanticTokens,
             lintExtensions,
@@ -365,6 +367,14 @@
 
   onBeforeUnmount(() => {
     cleanup();
+  });
+
+  // Toggle read-only state when viewport crosses the mobile breakpoint
+  watch(mobileMode, (mobile) => {
+    if (!view.value) return;
+    const ro = file.value?.role === "COMMENTER" || mobile;
+    const exts = ro ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+    view.value.dispatch({ effects: readOnlyCompartment.reconfigure(exts) });
   });
 
   // Shared refs from parent Editor.vue (for status bar sibling)
