@@ -123,6 +123,7 @@ describe("FilesHeader.vue", () => {
       expect(mockShouldShowColumn).toHaveBeenCalledWith("Title", "list");
       expect(mockShouldShowColumn).toHaveBeenCalledWith("Tags", "list");
       expect(mockShouldShowColumn).toHaveBeenCalledWith("Spacer", "list");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Collaborators", "list");
       expect(mockShouldShowColumn).toHaveBeenCalledWith("Last edit", "list");
     });
 
@@ -155,6 +156,7 @@ describe("FilesHeader.vue", () => {
         Title: { sortable: true, filterable: false, sortKey: "title" },
         Tags: { sortable: false, filterable: true, sortKey: "" },
         Spacer: {},
+        Collaborators: { sortable: false, filterable: false, sortKey: "" },
         "Last edit": { sortable: true, filterable: false, sortKey: "last_edited_at" },
       });
     });
@@ -183,6 +185,7 @@ describe("FilesHeader.vue", () => {
       expect(wrapper.vm.columnState).toEqual({
         Title: null,
         Tags: null,
+        Collaborators: null,
         "Last edit": null,
       });
     });

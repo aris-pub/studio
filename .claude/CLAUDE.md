@@ -122,4 +122,3 @@ For CI/STAGING/PROD: set `ENV=CI/STAGING/PROD` and provide all vars directly in 
 - Stop using the word 'absolutely'
 
 ## AI Collaboration Guidelines
-- Never start the dev server yourself, always ask me to do it

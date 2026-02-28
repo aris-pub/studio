@@ -12,15 +12,14 @@
     Title: { sortable: true, filterable: false, sortKey: "title" },
     Tags: { sortable: false, filterable: true, sortKey: "" },
     Spacer: {},
+    Collaborators: { sortable: false, filterable: false, sortKey: "" },
     "Last edit": { sortable: true, filterable: false, sortKey: "last_edited_at" },
-    /* Owner: { sortable: false, filterable: false, sortKey: "owner_id" }, */
   };
   const columnState = reactive({
     Title: null,
-    /* Progress: null, */
     Tags: null,
+    Collaborators: null,
     "Last edit": null,
-    /* Owner: null */
   });
   const shouldShowColumn = inject("shouldShowColumn");
 

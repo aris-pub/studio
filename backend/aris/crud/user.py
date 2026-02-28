@@ -247,6 +247,36 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
             tags_list.append(file_tags)
         tags = dict(zip(docs, tags_list))
 
+    # Batch-load collaborators for all files in a single query
+    collaborators_by_file: dict[int, list[dict]] = {doc.id: [] for doc in docs}
+    if docs:
+        file_ids = [doc.id for doc in docs]
+        collab_stmt = (
+            select(
+                FilePermission.file_id,
+                User.id,
+                User.name,
+                User.email,
+                User.avatar_color,
+                FilePermission.role,
+            )
+            .join(User, FilePermission.user_id == User.id)
+            .where(
+                FilePermission.file_id.in_(file_ids),
+                FilePermission.deleted_at.is_(None),
+                FilePermission.user_id != user_id,
+            )
+        )
+        collab_result = await db.execute(collab_stmt)
+        for row in collab_result.all():
+            collaborators_by_file[row[0]].append({
+                "id": row[1],
+                "name": row[2],
+                "email": row[3],
+                "avatar_color": row[4].value if hasattr(row[4], "value") else row[4],
+                "role": row[5].value,
+            })
+
     return [
         {
             "id": doc.id,
@@ -255,6 +285,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
             "last_edited_at": doc.last_edited_at,
             "role": roles[doc].value,
             "tags": tags.get(doc, []),
+            "collaborators": collaborators_by_file.get(doc.id, []),
         }
         for doc in docs
     ]

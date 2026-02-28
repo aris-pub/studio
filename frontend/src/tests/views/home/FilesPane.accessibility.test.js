@@ -461,7 +461,7 @@ describe("FilesPane.vue - Accessibility Features", () => {
       const wrapper = createWrapper();
 
       expect(wrapper.vm.gridTemplateColumns).toBe(
-        "minmax(144px, 2fr) minmax(96px, 1.5fr) 8px 104px 16px 8px"
+        "minmax(144px, 2fr) minmax(96px, 1.5fr) 8px 108px 104px 16px 8px"
       );
 
       // Extra small mode should have different spacing

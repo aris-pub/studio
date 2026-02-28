@@ -43,6 +43,8 @@
   import { getLogger } from "@/utils/logger.js";
   import { downloadBlob } from "@/utils/download.js";
   import Date from "./FilesItemDate.vue";
+  import FilesItemCollaborators from "./FilesItemCollaborators.vue";
+  import FilesItemRole from "./FilesItemRole.vue";
   import ConfirmationModal from "@/components/ConfirmationModal.vue";
 
   const logger = getLogger("FilesItem");
@@ -310,18 +312,19 @@
 
       <!-- List mode layout: displays file information in a grid row format -->
       <template v-if="mode === 'list'">
-        <!-- Editable file title component -->
-        <FileTitle
-          ref="file-title-ref"
-          :file="file"
-          :class="mode === 'cards' ? 'text-label' : ''"
-        />
+        <div class="title-cell">
+          <FileTitle
+            ref="file-title-ref"
+            :file="file"
+          />
+          <FilesItemRole :role="file.role" />
+        </div>
 
-        <!-- Tags and spacer (hidden on extra small screens) -->
+        <!-- Tags, spacer, and collaborators (hidden on extra small screens) -->
         <template v-if="!xsMode">
           <TagRow :file="file" />
-          <!-- necessary because tags tend to overflow -->
           <div class="spacer"></div>
+          <FilesItemCollaborators :file="file" />
         </template>
 
         <!-- File modification date -->
@@ -399,6 +402,13 @@
 
     & > .dots {
       padding-inline: 0px;
+    }
+
+    & .title-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
     }
 
     & .file-title {

@@ -38,10 +38,11 @@
   const gridTemplateColumns = computed(() => {
     return xsMode.value
       ? "minmax(144px, 2fr) 104px 16px 8px"
-      : "minmax(144px, 2fr) minmax(96px, 1.5fr) 8px 104px 16px 8px";
+      : "minmax(144px, 2fr) minmax(96px, 1.5fr) 8px 108px 104px 16px 8px";
   });
   const shouldShowColumn = (columnName, mode) => {
-    if (["Spacer", "Tags"].includes(columnName) && xsMode.value) return false;
+    if (["Spacer", "Tags", "Collaborators"].includes(columnName) && xsMode.value)
+      return false;
     return true;
   };
   provide("shouldShowColumn", shouldShowColumn);
