@@ -28,17 +28,17 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
 
     // Start navigation - j should focus first item
     await page.keyboard.press("j");
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[0]).toHaveClass(/current/);
 
     // j again should move to second item
     await page.keyboard.press("j");
-    await expect(files[0]).not.toHaveClass(/focused/);
-    await expect(files[1]).toHaveClass(/focused/);
+    await expect(files[0]).not.toHaveClass(/current/);
+    await expect(files[1]).toHaveClass(/current/);
 
     // k should move back to first item
     await page.keyboard.press("k");
-    await expect(files[1]).not.toHaveClass(/focused/);
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[1]).not.toHaveClass(/current/);
+    await expect(files[0]).toHaveClass(/current/);
   });
 
   test("arrow key navigation works like j/k", async ({ page }) => {
@@ -48,15 +48,15 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
 
     // ArrowDown should focus first item
     await page.keyboard.press("ArrowDown");
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[0]).toHaveClass(/current/);
 
     // ArrowDown again should move to second
     await page.keyboard.press("ArrowDown");
-    await expect(files[1]).toHaveClass(/focused/);
+    await expect(files[1]).toHaveClass(/current/);
 
     // ArrowUp should move back
     await page.keyboard.press("ArrowUp");
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[0]).toHaveClass(/current/);
   });
 
   test("escape key clears focus", async ({ page }) => {
@@ -66,11 +66,11 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
 
     // Focus first item
     await page.keyboard.press("j");
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[0]).toHaveClass(/current/);
 
     // Escape should clear focus
     await page.keyboard.press("Escape");
-    await expect(files[0]).not.toHaveClass(/focused/);
+    await expect(files[0]).not.toHaveClass(/current/);
   });
 
   test("enter key opens focused file", async ({ page }) => {
@@ -158,7 +158,7 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
       // Focus second file
       await page.keyboard.press("j");
       await page.keyboard.press("j");
-      await expect(files[1]).toHaveClass(/focused/);
+      await expect(files[1]).toHaveClass(/current/);
 
       // Duplicate file via context menu
       await page.keyboard.press(".");
@@ -192,7 +192,7 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
     await page.keyboard.press("j");
 
     const files = await page.locator('[data-testid^="file-item-"]').all();
-    await expect(files[0]).toHaveClass(/focused/);
+    await expect(files[0]).toHaveClass(/current/);
 
     // Switch to cards mode
     await page.keyboard.press("v");
@@ -200,6 +200,6 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
 
     // Navigation should still work
     await page.keyboard.press("j");
-    await expect(files[1]).toHaveClass(/focused/);
+    await expect(files[1]).toHaveClass(/current/);
   });
 });
