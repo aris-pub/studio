@@ -238,8 +238,9 @@
   }
 
   .textarea-input.compact .textarea {
+    box-sizing: border-box;
     min-height: 32px;
-    padding: 8px 12px;
+    padding: 5px 12px;
     border-radius: 18px;
     font-size: 14px;
   }

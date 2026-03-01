@@ -93,10 +93,37 @@
     updateFloatingPosition();
   };
 
-  // Listen for when user finishes text selection
+  function getManuscriptWrapper() {
+    return document.querySelector(".manuscriptwrapper");
+  }
+
+  // Set data-selecting on mousedown so the CSS rule
+  // .manuscriptwrapper:not([data-selecting]) .hr:focus won't match.
+  // This runs before the browser's default focus action paints.
+  const handleMouseDown = () => {
+    const wrapper = getManuscriptWrapper();
+    if (wrapper) {
+      wrapper.dataset.selecting = "";
+    }
+  };
+
   const handleMouseUp = () => {
-    // Give time for DOM to update selection state
     setTimeout(() => {
+      const wrapper = getManuscriptWrapper();
+      const sel = window.getSelection();
+      const isDrag = sel && !sel.isCollapsed;
+
+      if (isDrag) {
+        const focused = document.activeElement;
+        if (focused?.closest?.(".hr")) {
+          focused.blur();
+        }
+      }
+
+      if (wrapper) {
+        delete wrapper.dataset.selecting;
+      }
+
       tryShowMenu();
     }, 0);
   };
@@ -164,6 +191,7 @@
       document.querySelector('[data-testid="manuscript-container"]');
 
     if (manuscriptContainer) {
+      manuscriptContainer.addEventListener("mousedown", handleMouseDown);
       manuscriptContainer.addEventListener("mouseup", handleMouseUp);
     }
 
@@ -178,6 +206,7 @@
       document.querySelector('[data-testid="manuscript-container"]');
 
     if (manuscriptContainer) {
+      manuscriptContainer.removeEventListener("mousedown", handleMouseDown);
       manuscriptContainer.removeEventListener("mouseup", handleMouseUp);
     }
 
