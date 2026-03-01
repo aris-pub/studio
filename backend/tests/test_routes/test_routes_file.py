@@ -184,6 +184,37 @@ async def test_get_file_content(client: AsyncClient, authenticated_user):
     assert "<h1>Heading</h1>" in response.text
 
 
+async def test_get_file_content_structured_has_no_theme_toggle(client: AsyncClient, authenticated_user):
+    """Regression: structured file content must not include a theme toggle.
+
+    The theme toggle conflicts with Studio's own theme management.
+    """
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Theme Toggle Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Test\n\nHello world",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    response = await client.get(
+        f"/files/{file_id}/content?format=structured", headers=headers
+    )
+    assert response.status_code == 200
+
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "body" in result
+    assert "rsm-theme-toggle" not in result["body"]
+    assert "theme-toggle" not in result["body"]
+
+
 async def test_get_file_content_section(client: AsyncClient, authenticated_user):
     """Test getting a specific section of file content."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
