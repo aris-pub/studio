@@ -11,6 +11,7 @@ All models use timezone-aware timestamps and cascade deletion where appropriate.
 import enum
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -18,7 +19,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Table,
     Text,

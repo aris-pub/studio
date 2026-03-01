@@ -1,6 +1,6 @@
 """Feedback submission route."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +8,7 @@ from ..deps import UserRead, current_user, get_db
 from ..logging_config import get_logger
 from ..models import Feedback
 from ..services.email import get_email_service
+
 
 logger = get_logger(__name__)
 
