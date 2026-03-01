@@ -702,7 +702,7 @@ class Annotation(Base):
     file_id = Column(Integer, ForeignKey("files.id"), nullable=False)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     color = Column(String, nullable=False, default="purple")
-    visibility = Column(
+    visibility: Column[AnnotationVisibility] = Column(
         Enum(AnnotationVisibility), nullable=False, default=AnnotationVisibility.PRIVATE
     )
     anchor_data = Column(JSON, nullable=False)

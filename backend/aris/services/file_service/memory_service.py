@@ -64,7 +64,7 @@ class InMemoryFileService(FileServiceInterface):
                 if not file_data.is_deleted()
             ]
     
-    async def create_file(self, data: FileCreateData, db: AsyncSession = None) -> FileData:
+    async def create_file(self, data: FileCreateData, db: AsyncSession | None = None) -> FileData:
         """Create a new file.
 
         When *db* is provided the row is inserted into the database first so
@@ -88,8 +88,9 @@ class InMemoryFileService(FileServiceInterface):
                 db.add(db_file)
                 await db.flush()
 
+                assigned_id: int = db_file.id  # type: ignore[assignment]
                 file_data = FileData(
-                    id=db_file.id,
+                    id=assigned_id,
                     title=data.title,
                     abstract=data.abstract,
                     source=data.source,
@@ -100,10 +101,10 @@ class InMemoryFileService(FileServiceInterface):
                     deleted_at=None,
                 )
 
-                self._files[db_file.id] = file_data
+                self._files[assigned_id] = file_data
                 if data.owner_id not in self._user_files:
                     self._user_files[data.owner_id] = set()
-                self._user_files[data.owner_id].add(db_file.id)
+                self._user_files[data.owner_id].add(assigned_id)
 
                 await db.commit()
                 logger.debug(f"Created file {file_data.id} for user {data.owner_id} (DB-assigned ID)")
@@ -172,7 +173,7 @@ class InMemoryFileService(FileServiceInterface):
             logger.debug(f"Soft deleted file {file_id}")
             return True
     
-    async def duplicate_file(self, file_id: int, db: AsyncSession = None) -> Optional[FileData]:
+    async def duplicate_file(self, file_id: int, db: AsyncSession | None = None) -> Optional[FileData]:
         """Create a duplicate of an existing file."""
         async with self._lock:
             original = self._files.get(file_id)
