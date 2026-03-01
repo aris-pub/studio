@@ -120,5 +120,3 @@ For CI/STAGING/PROD: set `ENV=CI/STAGING/PROD` and provide all vars directly in 
 
 ## Language Guidelines
 - Stop using the word 'absolutely'
-
-## AI Collaboration Guidelines
