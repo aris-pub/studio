@@ -303,14 +303,19 @@
 
     &.right {
       flex: 1;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       border-bottom-left-radius: calc(16px - 12px);
       border-bottom-right-radius: calc(16px - 2px);
       padding-inline: 16px 8px;
       padding-bottom: 16px;
       display: flex;
+      align-items: flex-start;
       height: 100vh;
       outline: none;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--gray-400) transparent;
     }
   }
 
@@ -336,11 +341,6 @@
   .inner.right .middle-column {
     flex: 4;
     min-width: 0;
-    height: 100vh;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: var(--gray-400) transparent;
   }
 
   /* When no annotations are present, middle column should expand to full width */
@@ -363,15 +363,9 @@
   }
 
   .inner.right .right-column {
-    /* Make annotations panel much narrower */
-    /* Annotations should be compact to keep focus on main content */
-    flex: 0 0 280px; /* Fixed width for annotations panel - even narrower */
-    min-width: 250px; /* Minimum width to prevent collapse */
-    max-width: 300px; /* Maximum width to keep it compact */
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
+    flex: 0 0 280px;
+    min-width: 250px;
+    max-width: 300px;
   }
 
   .outer.mobile .inner.right .middle-column {

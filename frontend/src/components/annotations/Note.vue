@@ -1,6 +1,6 @@
 <script setup>
-  import { ref, inject, computed, nextTick } from "vue";
-  import { SWATCH_COLORS } from "@/constants/annotationColors.js";
+  import { ref, inject, computed, nextTick, onUnmounted } from "vue";
+  import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
   const props = defineProps({
     annotation: { type: Object, required: true },
@@ -10,7 +10,8 @@
   const editing = ref(false);
   const editText = ref("");
   const editInput = ref(null);
-  const user = inject("user");
+  const confirmingDelete = ref(false);
+  let deleteTimeout = null;
   const annotationActions = inject("annotationActions", null);
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
 
@@ -21,8 +22,17 @@
     return msgs?.length ? msgs[0] : null;
   });
 
-  const colorValue = computed(() => {
-    return SWATCH_COLORS[props.annotation.color] || SWATCH_COLORS.purple;
+  const barColor = computed(() => {
+    const colors = HIGHLIGHT_COLORS[props.annotation.color] || HIGHLIGHT_COLORS.purple;
+    return colors.border;
+  });
+
+  const displayText = computed(() => {
+    return props.annotation.selected_text?.trim() || "";
+  });
+
+  const previewText = computed(() => {
+    return note.value?.content || displayText.value;
   });
 
   const timeAgo = computed(() => {
@@ -44,6 +54,20 @@
       document.querySelector(`mark[data-annotation-id="${props.annotation.id}"]`) ||
       document.querySelector(`[data-highlight-annotation="${props.annotation.id}"]`);
     if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function onDeleteClick() {
+    if (confirmingDelete.value) {
+      onDelete();
+      confirmingDelete.value = false;
+      clearTimeout(deleteTimeout);
+    } else {
+      confirmingDelete.value = true;
+      clearTimeout(deleteTimeout);
+      deleteTimeout = setTimeout(() => {
+        confirmingDelete.value = false;
+      }, 3000);
+    }
   }
 
   async function onDelete() {
@@ -80,28 +104,41 @@
     editing.value = false;
     editText.value = "";
   }
+
+  onUnmounted(() => clearTimeout(deleteTimeout));
 </script>
 
 <template>
-  <div class="note" :class="{ active: isActive }" @click="onSelect">
+  <div
+    class="note"
+    :class="{ active: isActive }"
+    :style="{ '--note-color': barColor }"
+    @click="onSelect"
+  >
     <div class="header">
-      <span class="color-dot" :style="{ backgroundColor: colorValue }" />
       <span class="timestamp text-caption">{{ timeAgo }}</span>
       <div class="actions">
-        <Button kind="tertiary" size="sm" icon="Trash" @click.stop="onDelete" />
         <Button kind="tertiary" size="sm" icon="Edit" @click.stop="onEdit" />
         <Button
           kind="tertiary"
           size="sm"
+          icon="Trash"
+          :class="{ confirming: confirmingDelete }"
+          @click.stop="onDeleteClick"
+        />
+        <Button
+          kind="tertiary"
+          size="sm"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
-          class="no-hide"
           @click.stop="collapsed = !collapsed"
         />
       </div>
     </div>
 
+    <p v-if="collapsed" class="collapsed-preview text-caption">{{ previewText }}</p>
+
     <div v-if="!collapsed" class="content">
-      <p class="selected-text text-caption">"{{ annotation.selected_text }}"</p>
+      <p class="selected-text text-caption">{{ displayText }}</p>
 
       <div v-if="editing" class="edit-area">
         <textarea
@@ -128,30 +165,39 @@
 <style scoped>
   .note {
     border: var(--border-extrathin) solid var(--border-primary);
-    outline-style: solid;
-    outline-color: transparent;
-    outline-width: var(--border-extrathin);
-    border-radius: 16px;
-    padding-block: 8px;
-    padding-inline: 12px;
-    min-width: 264px;
+    border-left: 3px solid var(--note-color);
+    border-radius: 4px 12px 12px 4px;
+    padding: 12px 14px;
+    background-color: var(--surface-page);
     position: relative;
     z-index: 2;
     cursor: pointer;
-    transition: outline-color 0.3s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
   }
 
-  .note.active {
-    outline-color: var(--border-action);
+  .note.active:not(:hover) {
+    border-color: var(--border-action);
+    border-left-color: var(--note-color);
+    box-shadow: 0 0 0 1px var(--border-action);
   }
 
   .note:hover {
-    outline-color: var(--border-primary);
-    box-shadow: var(--shadow-strong);
+    border-color: var(--border-primary);
+    border-left-color: var(--note-color);
+    box-shadow: var(--shadow-soft);
 
-    & .actions > :not(.no-hide) {
+    & .actions > * {
       opacity: 1;
     }
+  }
+
+  .note.active:hover {
+    border-color: var(--border-action);
+    border-left-color: var(--note-color);
+    box-shadow: 0 0 0 1px var(--border-action), var(--shadow-soft);
   }
 
   .header {
@@ -160,26 +206,18 @@
     gap: 8px;
   }
 
-  .color-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
   .timestamp {
     flex: 1;
-    font-size: 12px;
-    color: var(--dark);
+    color: var(--gray-500);
   }
 
   .actions {
     display: flex;
     gap: 0;
 
-    & > :not(.no-hide) {
+    & > * {
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.2s ease;
     }
 
     & :deep(button) {
@@ -192,14 +230,26 @@
       margin: 0 !important;
       stroke-width: 1.75;
     }
+
+    & .confirming :deep(.tabler-icon) {
+      color: var(--red-500);
+    }
+  }
+
+  .collapsed-preview {
+    color: var(--gray-500);
+    margin: 4px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .content {
-    padding-block: 4px;
+    padding-block: 8px 0;
   }
 
   .selected-text {
-    color: var(--dark);
+    color: var(--gray-500);
     font-style: italic;
     margin: 0;
     line-height: 1.4;
@@ -210,9 +260,10 @@
   }
 
   .note-text {
-    margin: 4px 0 0;
+    margin: 8px 0 0;
     color: var(--extra-dark);
     font-size: 14px;
+    font-weight: var(--weight-medium);
     line-height: 1.4;
     white-space: pre-wrap;
   }
@@ -220,14 +271,14 @@
   .edit-area {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-top: 4px;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   .edit-input {
     width: 100%;
     border: var(--border-thin) solid var(--border-primary);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 8px 12px;
     font-family: inherit;
     font-size: 14px;

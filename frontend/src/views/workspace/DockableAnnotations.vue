@@ -7,9 +7,19 @@
   const sortedAnnotations = computed(() => {
     const list = isRef(annotations) ? annotations.value : annotations;
     if (!list?.length) return [];
-    return [...list].sort(
-      (a, b) => new Date(a.created_at) - new Date(b.created_at)
-    );
+    return [...list].sort((a, b) => {
+      const markA =
+        document.querySelector(`mark[data-annotation-id="${a.id}"]`) ||
+        document.querySelector(`[data-highlight-annotation="${a.id}"]`);
+      const markB =
+        document.querySelector(`mark[data-annotation-id="${b.id}"]`) ||
+        document.querySelector(`[data-highlight-annotation="${b.id}"]`);
+      if (!markA || !markB) return 0;
+      const pos = markA.compareDocumentPosition(markB);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
   });
 </script>
 
@@ -21,9 +31,9 @@
 
 <style scoped>
   .annotations {
-    padding-block: 16px;
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
   }
 </style>
