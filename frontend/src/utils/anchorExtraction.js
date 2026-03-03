@@ -1,6 +1,13 @@
 /**
  * Build anchor data from a DOM Range within a manuscript element.
  * Finds the nearest [data-nodeid] ancestor and computes character offsets.
+ *
+ * Math limitation: browsers prevent cross-boundary selections that start in
+ * normal text and end inside MathML (or vice versa). A selection that begins
+ * outside a <math> element cannot extend into it. Users must select entirely
+ * within the equation or entirely outside it. When a math-internal selection
+ * is anchored, the [data-nodeid] block is the <span class="math"> wrapper
+ * itself, and the offsets span individual MathML text nodes (e.g. <mn>, <mo>).
  */
 export function extractAnchor(range, manuscriptEl) {
   if (!range || !manuscriptEl) return null;

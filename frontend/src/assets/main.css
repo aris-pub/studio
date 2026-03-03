@@ -15,19 +15,15 @@ mark[data-annotation-id] {
   transition: box-shadow 0.2s ease;
 }
 
-mark[data-annotation-id]:hover {
+mark[data-annotation-id].hover {
   box-shadow: inset 0 -2px 0 var(--mark-border, var(--gray-600));
-}
-
-mark[data-annotation-id]:hover:has(mark[data-annotation-id]:hover) {
-  box-shadow: none;
 }
 
 mark[data-annotation-id].active {
   box-shadow: inset 0 -2px 0 var(--mark-border, var(--purple-400));
 }
 
-[data-highlight-annotation]:hover {
+[data-highlight-annotation].hover {
   box-shadow: inset 0 -2px 0 var(--mark-border, var(--gray-600));
 }
 

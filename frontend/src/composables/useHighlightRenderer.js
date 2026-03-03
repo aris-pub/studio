@@ -23,6 +23,8 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
     });
   }
 
+  // Apply highlight styling to an entire math element. We style the whole
+  // equation because <mark> elements inside MathML break rendering.
   function styleMath(container, annId, colors) {
     const mathTarget = container.querySelector("math");
     const target = mathTarget?.style ? mathTarget : container;
@@ -33,13 +35,24 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
   }
 
   // Wrap a range in <mark> element(s). Three strategies depending on content:
-  // 1. Range inside math → non-destructive inline styling (marks break MathML)
-  // 2. Cross-boundary, no math → extractContents for one contiguous mark
-  // 3. Cross-boundary with math → per-text-node marks + inline math styling
+  //
+  // 1. Range inside math → non-destructive inline styling on the whole equation.
+  //    Inserting <mark> inside MathML breaks rendering, so math elements are
+  //    treated as atomic units: even a partial selection highlights the entire
+  //    equation. This matches Google Docs / Notion behavior.
+  //
+  // 2. Cross-boundary, no math → extractContents for one contiguous mark.
+  //
+  // 3. Cross-boundary with math → per-text-node marks + inline math styling.
+  //
+  // NOTE: Browsers do not allow cross-boundary selections that start in normal
+  // text and end inside MathML (or vice versa). Users must select entirely
+  // within the math element or entirely outside it. This is a Chromium/WebKit
+  // limitation, not something we can work around in JS.
   function wrapRange(range, mark, colors) {
     const annId = mark.getAttribute("data-annotation-id");
 
-    // Case 1: range entirely inside a math element
+    // Case 1: range entirely inside a math element — style the whole equation
     const startEl =
       range.startContainer.nodeType === Node.TEXT_NODE
         ? range.startContainer.parentElement
@@ -124,7 +137,11 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
     clearHighlights(el);
 
     const list = isRef(annotations) ? annotations.value : annotations;
-    for (const annotation of list) {
+    // Process newest first so their marks become inner elements in overlapping
+    // regions. Inner marks' backgrounds visually override outer marks', so the
+    // most recent annotation's color wins in the overlap.
+    const sorted = [...list].sort((a, b) => b.id - a.id);
+    for (const annotation of sorted) {
       if (!annotation.anchor_data) continue;
 
       const anchorData = {
@@ -160,11 +177,61 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
     activeAnnotationId.value = parseInt(annId, 10);
   }
 
+  // JS-based hover: highlight ALL marks/math-highlights sharing the same
+  // annotation ID so fragmented marks (from overlapping annotations) light
+  // up as a single unit. Uses the innermost mark under the cursor.
+  let hoveredAnnId = null;
+
+  function handleHover(event) {
+    const mark = event.target.closest("mark[data-annotation-id]");
+    const mathHl = event.target.closest("[data-highlight-annotation]");
+    const annId =
+      mark?.getAttribute("data-annotation-id") ||
+      mathHl?.getAttribute("data-highlight-annotation") ||
+      null;
+
+    if (annId === hoveredAnnId) return;
+
+    const el = manuscriptRef.value?.$el || manuscriptRef.value;
+    if (!el) return;
+
+    if (hoveredAnnId) {
+      el.querySelectorAll(".hover[data-annotation-id], .hover[data-highlight-annotation]").forEach(
+        (m) => m.classList.remove("hover"),
+      );
+    }
+
+    hoveredAnnId = annId;
+
+    if (hoveredAnnId) {
+      el.querySelectorAll(`mark[data-annotation-id="${hoveredAnnId}"]`).forEach((m) =>
+        m.classList.add("hover"),
+      );
+      el.querySelectorAll(`[data-highlight-annotation="${hoveredAnnId}"]`).forEach((m) =>
+        m.classList.add("hover"),
+      );
+    }
+  }
+
+  function handleHoverLeave() {
+    if (!hoveredAnnId) return;
+    const el = manuscriptRef.value?.$el || manuscriptRef.value;
+    if (!el) return;
+    el.querySelectorAll(".hover").forEach((m) => m.classList.remove("hover"));
+    hoveredAnnId = null;
+  }
+
   function setupClickHandler() {
     const el = manuscriptRef.value?.$el || manuscriptRef.value;
     if (!el) return;
     el.addEventListener("click", handleMarkClick);
-    return () => el.removeEventListener("click", handleMarkClick);
+    el.addEventListener("mouseover", handleHover);
+    el.addEventListener("mouseleave", handleHoverLeave);
+    return () => {
+      el.removeEventListener("click", handleMarkClick);
+      el.removeEventListener("mouseover", handleHover);
+      el.removeEventListener("mouseleave", handleHoverLeave);
+    };
   }
 
   watch(

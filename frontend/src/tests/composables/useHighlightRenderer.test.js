@@ -233,7 +233,7 @@ describe("useHighlightRenderer — highlight colors", () => {
     expect(mathEl.classList.contains("active")).toBe(false);
   });
 
-  it("overlapping annotations: second wraps within existing <mark>", () => {
+  it("overlapping annotations: both marks exist", () => {
     const { el } = setup('<p data-nodeid="n1">Hello world</p>', [
       {
         id: 1,
@@ -253,6 +253,33 @@ describe("useHighlightRenderer — highlight colors", () => {
     const mark2 = el.querySelector('mark[data-annotation-id="2"]');
     expect(mark1).not.toBeNull();
     expect(mark2).not.toBeNull();
+  });
+
+  it("overlapping annotations: newest annotation color wins in overlap region", () => {
+    const { el } = setup('<p data-nodeid="n1">Hello world today</p>', [
+      {
+        id: 1,
+        color: "purple",
+        anchor_data: { node_id: "n1", start_offset: 0, end_offset: 11 },
+        selected_text: "Hello world",
+      },
+      {
+        id: 2,
+        color: "orange",
+        anchor_data: { node_id: "n1", start_offset: 6, end_offset: 17 },
+        selected_text: "world today",
+      },
+    ]);
+
+    // "world" is the overlap. The newest annotation (id=2, orange) should be
+    // the innermost mark so its background-color wins visually.
+    const mark2 = el.querySelector('mark[data-annotation-id="2"]');
+    expect(mark2).not.toBeNull();
+    expect(mark2.textContent).toContain("world");
+
+    // The orange mark should be inside the purple mark in the overlap
+    const parentMark = mark2.closest('mark[data-annotation-id="1"]');
+    expect(parentMark).not.toBeNull();
   });
 
   it("cross-boundary range produces a single contiguous mark", () => {
