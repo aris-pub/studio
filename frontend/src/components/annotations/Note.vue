@@ -116,7 +116,7 @@
     @click="onSelect"
   >
     <div class="header">
-      <span class="timestamp text-caption">{{ timeAgo }}</span>
+      <span class="timestamp">{{ timeAgo }}</span>
       <div class="actions">
         <Button kind="tertiary" size="sm" icon="Edit" @click.stop="onEdit" />
         <Button
@@ -127,6 +127,7 @@
           @click.stop="onDeleteClick"
         />
         <Button
+          v-if="note"
           kind="tertiary"
           size="sm"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
@@ -135,10 +136,10 @@
       </div>
     </div>
 
-    <p v-if="collapsed" class="collapsed-preview text-caption">{{ previewText }}</p>
+    <p v-if="collapsed" class="collapsed-line note-text">{{ previewText }}</p>
 
     <div v-if="!collapsed" class="content">
-      <p class="selected-text text-caption">{{ displayText }}</p>
+      <p class="selected-text">{{ displayText }}</p>
 
       <div v-if="editing" class="edit-area">
         <textarea
@@ -167,15 +168,14 @@
     border: var(--border-extrathin) solid var(--border-primary);
     border-left: 3px solid var(--note-color);
     border-radius: 4px 12px 12px 4px;
-    padding: 12px 14px;
+    padding: 8px 10px 10px;
     background-color: var(--surface-page);
     position: relative;
     z-index: 2;
     cursor: pointer;
     transition:
       border-color 0.15s ease,
-      box-shadow 0.15s ease,
-      background-color 0.15s ease;
+      box-shadow 0.15s ease;
   }
 
   .note.active:not(:hover) {
@@ -203,17 +203,21 @@
   .header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
   }
 
   .timestamp {
     flex: 1;
     color: var(--gray-500);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .actions {
     display: flex;
     gap: 0;
+    margin-right: -4px;
 
     & > * {
       opacity: 0;
@@ -226,9 +230,9 @@
     }
 
     & :deep(.tabler-icon) {
-      color: var(--dark);
+      color: var(--gray-500);
       margin: 0 !important;
-      stroke-width: 1.75;
+      stroke-width: 1.5;
     }
 
     & .confirming :deep(.tabler-icon) {
@@ -236,8 +240,7 @@
     }
   }
 
-  .collapsed-preview {
-    color: var(--gray-500);
+  .collapsed-line {
     margin: 4px 0 0;
     white-space: nowrap;
     overflow: hidden;
@@ -245,12 +248,13 @@
   }
 
   .content {
-    padding-block: 8px 0;
+    margin-top: 6px;
   }
 
   .selected-text {
-    color: var(--gray-500);
+    color: var(--gray-700);
     font-style: italic;
+    font-size: 13px;
     margin: 0;
     line-height: 1.4;
     display: -webkit-box;
@@ -260,7 +264,7 @@
   }
 
   .note-text {
-    margin: 8px 0 0;
+    margin: 6px 0 0;
     color: var(--extra-dark);
     font-size: 14px;
     font-weight: var(--weight-medium);
@@ -272,7 +276,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   .edit-input {
