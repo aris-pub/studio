@@ -1,5 +1,6 @@
 <script setup>
   import { ref, inject, computed, nextTick, onUnmounted } from "vue";
+  import { IconTrash } from "@tabler/icons-vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
   const props = defineProps({
@@ -56,13 +57,18 @@
     if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  let deleteArmedAt = 0;
+  const DEBOUNCE_MS = 400;
+
   function onDeleteClick() {
     if (confirmingDelete.value) {
+      if (Date.now() - deleteArmedAt < DEBOUNCE_MS) return;
       onDelete();
       confirmingDelete.value = false;
       clearTimeout(deleteTimeout);
     } else {
       confirmingDelete.value = true;
+      deleteArmedAt = Date.now();
       clearTimeout(deleteTimeout);
       deleteTimeout = setTimeout(() => {
         confirmingDelete.value = false;
@@ -119,13 +125,14 @@
       <span class="timestamp">{{ timeAgo }}</span>
       <div class="actions">
         <Button kind="tertiary" size="sm" icon="Edit" @click.stop="onEdit" />
-        <Button
-          kind="tertiary"
-          size="sm"
-          icon="Trash"
+        <button
+          class="delete-btn"
           :class="{ confirming: confirmingDelete }"
           @click.stop="onDeleteClick"
-        />
+        >
+          <IconTrash v-if="!confirmingDelete" class="delete-icon" />
+          <span v-else class="delete-label">Delete</span>
+        </button>
         <Button
           v-if="note"
           kind="tertiary"
@@ -224,7 +231,7 @@
       transition: opacity 0.2s ease;
     }
 
-    & :deep(button) {
+    & :deep(button):not(.delete-btn) {
       width: 24px;
       height: 24px;
     }
@@ -235,9 +242,54 @@
       stroke-width: 1.5;
     }
 
-    & .confirming :deep(.tabler-icon) {
-      color: var(--red-500);
+  }
+
+  .delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+    transition: opacity 0.2s ease, min-width 0.15s ease, background-color 0.15s ease, padding 0.15s ease;
+
+    &:hover {
+      background-color: var(--surface-hint);
+      box-shadow: var(--shadow-strong);
     }
+
+    &:hover .delete-icon {
+      color: var(--almost-black);
+    }
+
+    &.confirming {
+      min-width: 52px;
+      padding: 0 8px;
+      background-color: var(--red-100);
+    }
+
+    &.confirming:hover {
+      background-color: var(--red-200);
+      box-shadow: var(--shadow-strong);
+    }
+  }
+
+  .delete-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--gray-500);
+    stroke-width: 1.5;
+  }
+
+  .delete-label {
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+    color: var(--red-600);
+    white-space: nowrap;
   }
 
   .collapsed-line {
