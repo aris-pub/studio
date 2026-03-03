@@ -30,7 +30,7 @@
    *   default-active="brand-b"
    * />
    */
-  import { ref } from "vue";
+  import { ref, watch } from "vue";
 
   const props = defineProps({
     colors: { type: Object, required: true },
@@ -40,6 +40,12 @@
   const emit = defineEmits(["change"]);
 
   const activeColor = ref(props.defaultActive);
+  watch(
+    () => props.defaultActive,
+    (val) => {
+      activeColor.value = val;
+    }
+  );
 
   const onClick = (name) => {
     activeColor.value = name;

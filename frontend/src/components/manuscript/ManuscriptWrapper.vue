@@ -1,5 +1,15 @@
 <script setup>
-  import { ref, watch, computed, inject, onBeforeMount, onMounted, onUnmounted, useTemplateRef, nextTick } from "vue";
+  import {
+    ref,
+    watch,
+    computed,
+    inject,
+    onBeforeMount,
+    onMounted,
+    onUnmounted,
+    useTemplateRef,
+    nextTick,
+  } from "vue";
   import Manuscript from "./Manuscript.vue";
   import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
@@ -26,7 +36,7 @@
     htmlString: { type: String, required: true },
     keys: { type: Boolean, required: true },
     showFooter: { type: Boolean, default: false },
-    settings: { type: Object, default: () => {} },
+    settings: { type: Object, default: () => ({}) },
   });
   const emit = defineEmits(["mounted-at"]);
 
@@ -103,6 +113,8 @@
       console.error("Render error:", err);
     } finally {
       executeRenderInProgress = false;
+      await nextTick();
+      applyHighlights();
     }
   };
 
@@ -116,8 +128,12 @@
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const { applyHighlights, setupClickHandler } = useHighlightRenderer(
     annotations,
-    { get value() { return selfRef.value; } },
-    activeAnnotationId,
+    {
+      get value() {
+        return selfRef.value;
+      },
+    },
+    activeAnnotationId
   );
 
   let cleanupClickHandler = null;
@@ -128,12 +144,8 @@
     cleanupClickHandler?.();
   });
 
-  // Re-apply highlights after manuscript renders
-  watch([onload, () => selfRef.value, () => props.htmlString], async () => {
-    await nextTick();
-    // Small delay to let RSM's onload finish rendering
-    setTimeout(applyHighlights, 100);
-  });
+  // No separate highlight watch needed — executeRender calls applyHighlights
+  // after Temml math rendering completes.
 </script>
 
 <template>

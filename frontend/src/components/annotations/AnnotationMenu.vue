@@ -1,61 +1,47 @@
 <script setup>
-  import { ref, computed, inject, onMounted, onUnmounted, useTemplateRef } from "vue";
+  import { ref, inject, onMounted, onUnmounted, useTemplateRef } from "vue";
   import { useFloating, autoUpdate, offset, flip, shift } from "@floating-ui/vue";
   import { extractAnchor } from "@/utils/anchorExtraction.js";
+  import { SWATCH_COLORS } from "@/constants/annotationColors.js";
 
   const selfRef = useTemplateRef("selfRef");
+  const noteInputRef = useTemplateRef("noteInputRef");
   const visible = ref(false);
   const virtualEl = ref(null);
-  const currentRange = ref(null);
-  const expanded = ref(false);
-  const selectedColor = ref("purple");
+  const currentAnchor = ref(null);
+  const showNoteInput = ref(false);
+  const inputText = ref("");
+  // Static rect snapshot — immune to DOM mutations that invalidate live Ranges
+  let anchorRect = null;
 
   const annotationActions = inject("annotationActions", null);
 
-  // Color state
-  const colors = computed(() =>
-    expanded.value
-      ? {
-          purple: "var(--purple-300)",
-          orange: "var(--orange-300)",
-          green: "var(--green-300)",
-          red: "var(--red-300)",
-          pink: "var(--pink-300)",
-          yellow: "var(--yellow-300)",
-        }
-      : {
-          purple: "var(--purple-300)",
-          orange: "var(--orange-300)",
-          green: "var(--green-300)",
-        }
-  );
-
-  // Create virtual element for Floating UI
-  const getVirtualElementFromRange = (range) => ({
-    getBoundingClientRect: () => range.getBoundingClientRect(),
+  const getVirtualElementFromRect = (rect) => ({
+    getBoundingClientRect: () => rect,
     contextElement: document.body,
   });
 
-  // Floating UI setup
   const { floatingStyles } = useFloating(virtualEl, selfRef, {
     whileElementsMounted: autoUpdate,
+    strategy: "fixed",
     placement: "top",
     middleware: [offset(8), shift(), flip()],
   });
 
-  // Range in viewport check
-  const isRangeInViewport = (range) => {
-    const rect = range.getBoundingClientRect();
+  const isRectInViewport = (rect) => {
+    if (!rect || (rect.width === 0 && rect.height === 0)) return false;
     const vh = window.innerHeight || document.documentElement.clientHeight;
     const vw = window.innerWidth || document.documentElement.clientWidth;
-
     return rect.bottom >= 0 && rect.right >= 0 && rect.top <= vh && rect.left <= vw;
   };
 
   const clearSelection = () => {
     visible.value = false;
     virtualEl.value = null;
-    currentRange.value = null;
+    anchorRect = null;
+    currentAnchor.value = null;
+    showNoteInput.value = false;
+    inputText.value = "";
 
     const selection = window.getSelection();
     if (selection && selection.removeAllRanges) {
@@ -63,17 +49,13 @@
     }
   };
 
-  // Update floating position and hide if out of bounds
   const updateFloatingPosition = () => {
-    if (!currentRange.value) return;
-
-    virtualEl.value = getVirtualElementFromRange(currentRange.value);
-    if (!isRangeInViewport(currentRange.value)) {
+    if (!anchorRect) return;
+    if (!isRectInViewport(anchorRect)) {
       clearSelection();
     }
   };
 
-  // Called only after user has finished selecting (mouseup)
   const tryShowMenu = () => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
@@ -87,19 +69,27 @@
       return;
     }
 
-    currentRange.value = range;
-    virtualEl.value = getVirtualElementFromRange(range);
+    // Extract anchor and snapshot the rect immediately while the Range
+    // is still valid. DOM mutations from applyHighlights invalidate live Ranges.
+    const manuscriptEl = getManuscriptEl();
+    const anchor = extractAnchor(range, manuscriptEl);
+    if (!anchor) {
+      clearSelection();
+      return;
+    }
+
+    anchorRect = range.getBoundingClientRect();
+    currentAnchor.value = anchor;
+    virtualEl.value = getVirtualElementFromRect(anchorRect);
+    showNoteInput.value = false;
+    inputText.value = "";
     visible.value = true;
-    updateFloatingPosition();
   };
 
   function getManuscriptWrapper() {
     return document.querySelector(".manuscriptwrapper");
   }
 
-  // Set data-selecting on mousedown so the CSS rule
-  // .manuscriptwrapper:not([data-selecting]) .hr:focus won't match.
-  // This runs before the browser's default focus action paints.
   const handleMouseDown = () => {
     const wrapper = getManuscriptWrapper();
     if (wrapper) {
@@ -107,13 +97,15 @@
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    const clickedMark = e.target.closest?.("mark[data-annotation-id]");
+
     setTimeout(() => {
       const wrapper = getManuscriptWrapper();
       const sel = window.getSelection();
       const isDrag = sel && !sel.isCollapsed;
 
-      if (isDrag) {
+      if (isDrag || clickedMark) {
         const focused = document.activeElement;
         if (focused?.closest?.(".hr")) {
           focused.blur();
@@ -128,6 +120,20 @@
     }, 0);
   };
 
+  const handleMouseUpFallback = (e) => {
+    const manuscriptContainer =
+      document.querySelector('[data-testid="manuscript-viewer"]') ||
+      document.querySelector(".rsm-manuscript") ||
+      document.querySelector('[data-testid="manuscript-container"]');
+    // Only clean up when mouseup is outside the manuscript (the leak scenario).
+    // Inside-manuscript mouseups are handled by handleMouseUp with proper sequencing.
+    if (manuscriptContainer?.contains(e.target)) return;
+    const wrapper = getManuscriptWrapper();
+    if (wrapper?.hasAttribute("data-selecting")) {
+      delete wrapper.dataset.selecting;
+    }
+  };
+
   function getManuscriptEl() {
     return (
       document.querySelector('[data-testid="manuscript-viewer"]') ||
@@ -135,54 +141,53 @@
     );
   }
 
+  // Color click is the terminal action: create annotation with whatever
+  // note text exists (empty string for highlight-only) and dismiss.
   async function onColorClick(colorName) {
-    selectedColor.value = colorName;
-    if (!annotationActions || !currentRange.value) return;
+    if (!annotationActions || !currentAnchor.value) return;
 
-    const manuscriptEl = getManuscriptEl();
-    const anchor = extractAnchor(currentRange.value, manuscriptEl);
-    if (!anchor) return;
+    const anchor = currentAnchor.value;
 
-    await annotationActions.createAnnotation({
-      color: colorName,
-      anchorData: {
-        node_id: anchor.node_id,
-        element_id: anchor.element_id,
-        start_offset: anchor.start_offset,
-        end_offset: anchor.end_offset,
-      },
-      selectedText: anchor.selected_text,
-    });
+    try {
+      const annotation = await annotationActions.createAnnotation({
+        color: colorName,
+        anchorData: {
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+        },
+        selectedText: anchor.selected_text,
+      });
+
+      if (inputText.value.trim()) {
+        await annotationActions.addNote(annotation.id, inputText.value.trim());
+      }
+    } catch (err) {
+      console.error("Failed to create annotation:", err);
+    }
 
     clearSelection();
   }
 
-  const inputText = ref("");
-  const onSubmit = async () => {
-    if (!annotationActions || !currentRange.value) return;
+  function onNoteClick() {
+    showNoteInput.value = true;
+    setTimeout(() => noteInputRef.value?.focus(), 0);
+  }
 
-    const manuscriptEl = getManuscriptEl();
-    const anchor = extractAnchor(currentRange.value, manuscriptEl);
-    if (!anchor) return;
+  // Send button / Enter in the note input: commit with purple default
+  async function onNoteSubmit() {
+    await onColorClick("purple");
+  }
 
-    const annotation = await annotationActions.createAnnotation({
-      color: selectedColor.value,
-      anchorData: {
-        node_id: anchor.node_id,
-        element_id: anchor.element_id,
-        start_offset: anchor.start_offset,
-        end_offset: anchor.end_offset,
-      },
-      selectedText: anchor.selected_text,
-    });
-
-    if (inputText.value.trim()) {
-      await annotationActions.addNote(annotation.id, inputText.value.trim());
+  function onNoteKeydown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (inputText.value.trim()) {
+        onNoteSubmit();
+      }
     }
-
-    inputText.value = "";
-    clearSelection();
-  };
+  }
 
   onMounted(() => {
     const manuscriptContainer =
@@ -197,6 +202,7 @@
 
     document.addEventListener("scroll", updateFloatingPosition, true);
     window.addEventListener("resize", updateFloatingPosition);
+    document.addEventListener("mouseup", handleMouseUpFallback);
   });
 
   onUnmounted(() => {
@@ -212,31 +218,50 @@
 
     document.removeEventListener("scroll", updateFloatingPosition, true);
     window.removeEventListener("resize", updateFloatingPosition);
+    document.removeEventListener("mouseup", handleMouseUpFallback);
   });
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="visible" ref="selfRef" :style="floatingStyles" class="hl-menu" @mouseup.stop>
-      <div class="left">
-        <ColorPicker
-          :colors="colors"
-          :labels="false"
-          :default-active="selectedColor"
-          @change="onColorClick"
+      <div class="swatches" @mousedown.prevent>
+        <button
+          v-for="(color, name) in SWATCH_COLORS"
+          :key="name"
+          type="button"
+          class="swatch-btn"
+          :aria-label="`Highlight ${name}`"
+          @click="onColorClick(name)"
+        >
+          <span class="swatch-circle" :style="{ backgroundColor: color }" />
+        </button>
+      </div>
+
+      <div class="separator" />
+
+      <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
+        <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
+      </div>
+
+      <div v-else class="note-area">
+        <textarea
+          ref="noteInputRef"
+          v-model="inputText"
+          class="note-input"
+          placeholder="Add a note..."
+          rows="1"
+          @keydown="onNoteKeydown"
         />
-      </div>
-      <div class="middle">
-        <AnnotationInputBox v-model="inputText" :expanded="expanded" @submit="onSubmit" />
-      </div>
-      <div class="right">
         <Button
           kind="tertiary"
           size="sm"
-          :icon="expanded ? 'ChevronUp' : 'ChevronDown'"
-          @click="expanded = !expanded"
+          icon="Send2"
+          :disabled="!inputText.trim()"
+          class="send-btn"
+          @mousedown.prevent
+          @click="onNoteSubmit"
         />
-        <ButtonClose @click="clearSelection" />
       </div>
     </div>
   </Teleport>
@@ -244,7 +269,7 @@
 
 <style scoped>
   .hl-menu {
-    position: absolute;
+    position: fixed;
     background: var(--surface-page);
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 16px;
@@ -252,43 +277,101 @@
     padding-inline: 8px;
     box-shadow: var(--shadow-soft);
     display: flex;
-    gap: 16px;
+    align-items: center;
+    gap: 8px;
     z-index: 999;
+  }
 
-    & > * {
-      display: flex;
-      align-items: center;
+  .swatches {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .swatch-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--blue-100);
+    }
+
+    &:active {
+      background-color: var(--blue-400);
     }
   }
 
-  .left {
-    width: 88px;
+  .swatch-circle {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: var(--border-extrathin) solid var(--gray-700);
+    pointer-events: none;
   }
 
-  .right {
+  .separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-primary);
+    flex-shrink: 0;
+  }
+
+  .note-trigger {
     display: flex;
-    padding-block: 4px;
-    align-items: flex-start;
-    margin: -4px;
+    align-items: center;
 
     & :deep(.tabler-icon) {
       color: var(--dark) !important;
     }
   }
 
-  .cp-wrapper {
-    gap: 2px !important;
+  .note-area {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    & :deep(.tabler-icon) {
+      color: var(--dark) !important;
+    }
   }
 
-  .cp-wrapper :deep(.swatch) {
-    height: fit-content;
-    width: fit-content;
-    padding-inline: 6px;
-    padding-block: 6px;
+  .note-input {
+    width: 180px;
+    min-height: 28px;
+    max-height: 64px;
+    padding: 4px 8px;
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+    resize: none;
+    outline: none;
+    background-color: var(--surface-hover);
+    color: var(--extra-dark);
+    transition: var(--transition-bd-color);
 
-    & > button {
-      height: 16px;
-      width: 16px;
+    &:focus {
+      border-color: var(--border-action);
     }
+
+    &::placeholder {
+      color: var(--medium);
+      font-style: italic;
+    }
+  }
+
+  .send-btn {
+    flex-shrink: 0;
   }
 </style>

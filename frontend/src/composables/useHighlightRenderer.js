@@ -1,14 +1,6 @@
 import { watch, nextTick, isRef } from "vue";
 import { resolveAnchor } from "@/utils/anchorExtraction.js";
-
-const COLOR_MAP = {
-  purple: "var(--purple-200)",
-  orange: "var(--orange-200)",
-  green: "var(--green-200)",
-  red: "var(--red-200)",
-  pink: "var(--pink-200)",
-  yellow: "var(--yellow-200)",
-};
+import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
 export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotationId) {
   function clearHighlights(root) {
@@ -21,6 +13,41 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
       }
       parent.removeChild(mark);
       parent.normalize();
+    });
+    // Remove highlight styling from math elements
+    root.querySelectorAll("[data-highlight-annotation]").forEach((el) => {
+      el.style.removeProperty("background-color");
+      el.style.removeProperty("border-radius");
+      el.style.removeProperty("--mark-border");
+      el.removeAttribute("data-highlight-annotation");
+    });
+  }
+
+  // Wrap a range in a single <mark> element. Uses extractContents when
+  // surroundContents fails (cross-boundary ranges) so each annotation
+  // always produces one contiguous mark instead of per-text-node fragments.
+  function wrapRange(range, mark, colors) {
+    try {
+      range.surroundContents(mark);
+    } catch {
+      // Range crosses element boundaries — extractContents handles partial
+      // selections by cloning the partially-selected ancestor elements.
+      const contents = range.extractContents();
+      mark.appendChild(contents);
+      range.insertNode(mark);
+    }
+
+    // Style any math elements inside the mark — target <math> directly since
+    // native MathML rendering can obscure parent backgrounds. Fall back to the
+    // wrapper span if <math> lacks a style property (e.g. jsdom).
+    const annId = mark.getAttribute("data-annotation-id");
+    mark.querySelectorAll("span.math, .mathblock").forEach((mathEl) => {
+      const mathTarget = mathEl.querySelector("math");
+      const target = mathTarget?.style ? mathTarget : mathEl;
+      target.style.backgroundColor = colors.bg;
+      target.style.borderRadius = "2px";
+      target.style.setProperty("--mark-border", colors.border);
+      target.setAttribute("data-highlight-annotation", annId);
     });
   }
 
@@ -43,7 +70,9 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
 
       const mark = document.createElement("mark");
       mark.setAttribute("data-annotation-id", annotation.id);
-      mark.style.backgroundColor = COLOR_MAP[annotation.color] || COLOR_MAP.purple;
+      const colors = HIGHLIGHT_COLORS[annotation.color] || HIGHLIGHT_COLORS.purple;
+      mark.style.backgroundColor = colors.bg;
+      mark.style.setProperty("--mark-border", colors.border);
       mark.style.borderRadius = "2px";
       mark.style.cursor = "pointer";
 
@@ -51,21 +80,18 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
         mark.classList.add("active");
       }
 
-      try {
-        range.surroundContents(mark);
-      } catch {
-        // Range spans multiple elements — use extractContents fallback
-        const fragment = range.extractContents();
-        mark.appendChild(fragment);
-        range.insertNode(mark);
-      }
+      wrapRange(range, mark, colors);
     }
   }
 
   function handleMarkClick(event) {
     const mark = event.target.closest("mark[data-annotation-id]");
-    if (!mark || !activeAnnotationId) return;
-    activeAnnotationId.value = parseInt(mark.getAttribute("data-annotation-id"));
+    const mathHighlight = event.target.closest("[data-highlight-annotation]");
+    const annId =
+      mark?.getAttribute("data-annotation-id") ||
+      mathHighlight?.getAttribute("data-highlight-annotation");
+    if (!annId || !activeAnnotationId) return;
+    activeAnnotationId.value = parseInt(annId, 10);
   }
 
   function setupClickHandler() {
@@ -76,7 +102,7 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
   }
 
   watch(
-    [annotations, () => manuscriptRef.value],
+    annotations,
     async () => {
       await nextTick();
       applyHighlights();
@@ -89,8 +115,12 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
       const el = manuscriptRef.value?.$el || manuscriptRef.value;
       if (!el) return;
       el.querySelectorAll("mark[data-annotation-id]").forEach((mark) => {
-        const id = parseInt(mark.getAttribute("data-annotation-id"));
+        const id = parseInt(mark.getAttribute("data-annotation-id"), 10);
         mark.classList.toggle("active", id === activeAnnotationId.value);
+      });
+      el.querySelectorAll("[data-highlight-annotation]").forEach((mathEl) => {
+        const id = parseInt(mathEl.getAttribute("data-highlight-annotation"), 10);
+        mathEl.classList.toggle("active", id === activeAnnotationId.value);
       });
     });
   }

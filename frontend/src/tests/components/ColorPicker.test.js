@@ -51,4 +51,33 @@ describe("ColorPicker.vue", () => {
     expect(wrapper.emitted("change")?.[1]).toEqual(["blue"]);
     expect(wrapper.findAll(".swatch")[2].classes()).toContain("active");
   });
+
+  it("updates active swatch when parent changes defaultActive prop", async () => {
+    const wrapper = mount(ColorPicker, {
+      props: { colors, defaultActive: "red" },
+    });
+
+    expect(wrapper.findAll(".swatch")[0].classes()).toContain("active");
+
+    await wrapper.setProps({ defaultActive: "blue" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.findAll(".swatch")[0].classes()).not.toContain("active");
+    expect(wrapper.findAll(".swatch")[2].classes()).toContain("active");
+  });
+
+  it("clears all active states when defaultActive is reset to empty", async () => {
+    const wrapper = mount(ColorPicker, {
+      props: { colors, defaultActive: "green" },
+    });
+
+    expect(wrapper.findAll(".swatch")[1].classes()).toContain("active");
+
+    await wrapper.setProps({ defaultActive: "" });
+    await wrapper.vm.$nextTick();
+
+    wrapper.findAll(".swatch").forEach((swatch) => {
+      expect(swatch.classes()).not.toContain("active");
+    });
+  });
 });

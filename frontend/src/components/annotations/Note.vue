@@ -1,5 +1,6 @@
 <script setup>
-  import { ref, inject, computed } from "vue";
+  import { ref, inject, computed, nextTick } from "vue";
+  import { SWATCH_COLORS } from "@/constants/annotationColors.js";
 
   const props = defineProps({
     annotation: { type: Object, required: true },
@@ -8,6 +9,7 @@
   const collapsed = ref(false);
   const editing = ref(false);
   const editText = ref("");
+  const editInput = ref(null);
   const user = inject("user");
   const annotationActions = inject("annotationActions", null);
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
@@ -20,15 +22,7 @@
   });
 
   const colorValue = computed(() => {
-    const map = {
-      purple: "var(--purple-300)",
-      orange: "var(--orange-300)",
-      green: "var(--green-300)",
-      red: "var(--red-300)",
-      pink: "var(--pink-300)",
-      yellow: "var(--yellow-300)",
-    };
-    return map[props.annotation.color] || map.purple;
+    return SWATCH_COLORS[props.annotation.color] || SWATCH_COLORS.purple;
   });
 
   const timeAgo = computed(() => {
@@ -46,31 +40,37 @@
 
   function onSelect() {
     activeAnnotationId.value = props.annotation.id;
-    const mark = document.querySelector(`mark[data-annotation-id="${props.annotation.id}"]`);
+    const mark =
+      document.querySelector(`mark[data-annotation-id="${props.annotation.id}"]`) ||
+      document.querySelector(`[data-highlight-annotation="${props.annotation.id}"]`);
     if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function onDelete() {
     if (!annotationActions) return;
-    await annotationActions.deleteAnnotation(props.annotation.id);
+    try {
+      await annotationActions.deleteAnnotation(props.annotation.id);
+    } catch (err) {
+      console.error("Failed to delete annotation:", err);
+    }
   }
 
   function onEdit() {
-    if (note.value) {
-      editText.value = note.value.content;
-      editing.value = true;
-    } else {
-      editText.value = "";
-      editing.value = true;
-    }
+    editText.value = note.value ? note.value.content : "";
+    editing.value = true;
+    nextTick(() => editInput.value?.focus());
   }
 
   async function onSaveEdit() {
     if (!annotationActions) return;
-    if (note.value) {
-      await annotationActions.updateNote(note.value.id, editText.value);
-    } else if (editText.value.trim()) {
-      await annotationActions.addNote(props.annotation.id, editText.value.trim());
+    try {
+      if (note.value) {
+        await annotationActions.updateNote(note.value.id, editText.value);
+      } else if (editText.value.trim()) {
+        await annotationActions.addNote(props.annotation.id, editText.value.trim());
+      }
+    } catch (err) {
+      console.error("Failed to save note:", err);
     }
     editing.value = false;
     editText.value = "";
@@ -83,11 +83,7 @@
 </script>
 
 <template>
-  <div
-    class="note"
-    :class="{ active: isActive }"
-    @click="onSelect"
-  >
+  <div class="note" :class="{ active: isActive }" @click="onSelect">
     <div class="header">
       <span class="color-dot" :style="{ backgroundColor: colorValue }" />
       <span class="timestamp text-caption">{{ timeAgo }}</span>
@@ -109,12 +105,13 @@
 
       <div v-if="editing" class="edit-area">
         <textarea
+          ref="editInput"
           v-model="editText"
           class="edit-input"
           rows="2"
           placeholder="Add a note..."
           @click.stop
-          @keydown.enter.ctrl.prevent="onSaveEdit"
+          @keydown.enter.exact.prevent="onSaveEdit"
           @keydown.esc="onCancelEdit"
         />
         <div class="edit-actions">
@@ -217,6 +214,7 @@
     color: var(--extra-dark);
     font-size: 14px;
     line-height: 1.4;
+    white-space: pre-wrap;
   }
 
   .edit-area {

@@ -58,8 +58,8 @@
    */
   const value = defineModel({ type: String, default: "" });
 
-  const onSubmit = () => {
-    emit("submit", value.value);
+  const onSubmit = (text) => {
+    emit("submit", text);
   };
 </script>
 
