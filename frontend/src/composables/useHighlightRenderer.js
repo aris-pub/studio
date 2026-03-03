@@ -23,32 +23,98 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
     });
   }
 
-  // Wrap a range in a single <mark> element. Uses extractContents when
-  // surroundContents fails (cross-boundary ranges) so each annotation
-  // always produces one contiguous mark instead of per-text-node fragments.
+  function styleMath(container, annId, colors) {
+    const mathTarget = container.querySelector("math");
+    const target = mathTarget?.style ? mathTarget : container;
+    target.style.backgroundColor = colors.bg;
+    target.style.borderRadius = "2px";
+    target.style.setProperty("--mark-border", colors.border);
+    target.setAttribute("data-highlight-annotation", annId);
+  }
+
+  // Wrap a range in <mark> element(s). Three strategies depending on content:
+  // 1. Range inside math → non-destructive inline styling (marks break MathML)
+  // 2. Cross-boundary, no math → extractContents for one contiguous mark
+  // 3. Cross-boundary with math → per-text-node marks + inline math styling
   function wrapRange(range, mark, colors) {
+    const annId = mark.getAttribute("data-annotation-id");
+
+    // Case 1: range entirely inside a math element
+    const startEl =
+      range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+    if (startEl?.closest("math")) {
+      const container =
+        startEl.closest("span.math") || startEl.closest(".mathblock") || startEl.closest("math");
+      styleMath(container, annId, colors);
+      return;
+    }
+
+    // Case 2: simple range — no partial elements
     try {
       range.surroundContents(mark);
+      mark.querySelectorAll("span.math, .mathblock").forEach((m) => styleMath(m, annId, colors));
+      return;
     } catch {
-      // Range crosses element boundaries — extractContents handles partial
-      // selections by cloning the partially-selected ancestor elements.
+      // Range crosses element boundaries — fall through
+    }
+
+    // Walk the range to detect math and collect text nodes
+    const ancestor =
+      range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentElement
+        : range.commonAncestorContainer;
+    const startContainer = range.startContainer;
+    const startOffset = range.startOffset;
+    const endContainer = range.endContainer;
+    const endOffset = range.endOffset;
+
+    const mathEls = new Set();
+    const wrapTargets = [];
+    const walker = document.createTreeWalker(ancestor, NodeFilter.SHOW_TEXT);
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!range.intersectsNode(node)) continue;
+
+      const mathParent = node.parentElement?.closest("span.math, .mathblock, math");
+      if (mathParent) {
+        mathEls.add(mathParent.closest("span.math") || mathParent);
+      } else {
+        let sliceStart = 0;
+        let sliceEnd = node.textContent.length;
+        if (node === startContainer) sliceStart = startOffset;
+        if (node === endContainer) sliceEnd = endOffset;
+        if (sliceStart < sliceEnd) {
+          wrapTargets.push({ node, sliceStart, sliceEnd });
+        }
+      }
+    }
+
+    if (mathEls.size === 0) {
+      // Case 2b: no math — extractContents for single contiguous mark
       const contents = range.extractContents();
       mark.appendChild(contents);
       range.insertNode(mark);
+      return;
     }
 
-    // Style any math elements inside the mark — target <math> directly since
-    // native MathML rendering can obscure parent backgrounds. Fall back to the
-    // wrapper span if <math> lacks a style property (e.g. jsdom).
-    const annId = mark.getAttribute("data-annotation-id");
-    mark.querySelectorAll("span.math, .mathblock").forEach((mathEl) => {
-      const mathTarget = mathEl.querySelector("math");
-      const target = mathTarget?.style ? mathTarget : mathEl;
-      target.style.backgroundColor = colors.bg;
-      target.style.borderRadius = "2px";
-      target.style.setProperty("--mark-border", colors.border);
-      target.setAttribute("data-highlight-annotation", annId);
-    });
+    // Case 3: math present — wrap text nodes individually, style math inline
+    for (const mathEl of mathEls) {
+      styleMath(mathEl, annId, colors);
+    }
+    for (const { node, sliceStart, sliceEnd } of wrapTargets) {
+      const nodeRange = document.createRange();
+      nodeRange.setStart(node, sliceStart);
+      nodeRange.setEnd(node, sliceEnd);
+      const m = mark.cloneNode(false);
+      try {
+        nodeRange.surroundContents(m);
+      } catch {
+        // Skip nodes that can't be wrapped
+      }
+    }
   }
 
   function applyHighlights() {
