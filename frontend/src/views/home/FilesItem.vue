@@ -313,10 +313,7 @@
       <!-- List mode layout: displays file information in a grid row format -->
       <template v-if="mode === 'list'">
         <div class="title-cell">
-          <FileTitle
-            ref="file-title-ref"
-            :file="file"
-          />
+          <FileTitle ref="file-title-ref" :file="file" />
           <FilesItemRole :role="file.role" />
         </div>
 
@@ -345,6 +342,7 @@
 
         <!-- Grid layout spacer to complete the row -->
         <span class="spacer"></span>
+
       </template>
     </template>
 

@@ -1,5 +1,5 @@
 <script setup>
-  import {} from "vue";
+  import ScrollbarMinimap from "@/views/workspace/ScrollbarMinimap.vue";
 
   const props = defineProps({
     file: { type: Object, required: true },
@@ -9,7 +9,7 @@
 <template>
   <div class="preview">
     <div class="left">
-      <Minimap :file="file.value" :highlight-scroll="false" />
+      <ScrollbarMinimap :file="file.value" mode="compact" orientation="horizontal" />
       <Abstract :file="file.value" />
     </div>
     <div class="right"></div>

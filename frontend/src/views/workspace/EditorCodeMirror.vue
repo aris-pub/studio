@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, shallowRef, computed, inject, watch, onBeforeUnmount, toRaw } from "vue";
+  import { ref, shallowRef, computed, inject, provide, watch, onBeforeUnmount, toRaw } from "vue";
   import {
     EditorView,
     keymap,
@@ -57,6 +57,7 @@
   const ytext = shallowRef(null);
   const provider = shallowRef(null);
   const awareness = shallowRef(null);
+  provide("awareness", awareness);
   const isConnected = ref(false);
   const isSynced = ref(false);
   const isInitialized = ref(false);

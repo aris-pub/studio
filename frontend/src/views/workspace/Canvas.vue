@@ -20,7 +20,7 @@
   import ReaderTopbar from "./ReaderTopbar.vue";
   import Dock from "./Dock.vue";
   import Editor from "./Editor.vue";
-  import DockableMinimap from "./DockableMinimap.vue";
+  import ScrollbarMinimap from "./ScrollbarMinimap.vue";
   import DockableSearch from "./DockableSearch.vue";
   import DockableAnnotations from "./DockableAnnotations.vue";
 
@@ -180,6 +180,17 @@
     return list && list.length > 0;
   });
   const middleTopWidth = computed(() => `${columnSizes.middle.width + 8}px`);
+
+  // Available width for annotation cards: space from manuscript right edge to container clip edge
+  const rightColumnMaxWidth = computed(() => {
+    const midW = columnSizes.middle.width;
+    const manuscriptW = Math.min(720, midW);
+    const spare = midW - manuscriptW;
+    // When editor is open, manuscript is left-aligned so all spare space is on the right
+    // When editor is closed, manuscript is centered so only half the spare is on the right
+    const rightMargin = props.showEditor ? spare : spare / 2;
+    return `${Math.max(rightMargin, 0)}px`;
+  });
 </script>
 
 <template>
@@ -203,7 +214,6 @@
           ref="inner-right-ref"
           data-testid="manuscript-container"
           class="inner right"
-          :class="{ 'no-annotations': !hasAnnotations }"
         >
           <div ref="left-column-ref" class="left-column">
             <Dock class="dock left top"> </Dock>
@@ -225,18 +235,14 @@
                 :settings="fileSettings"
                 :show-footer="true"
               />
-            </Dock>
-          </div>
-          <div v-if="hasAnnotations && !mobileMode" ref="right-column-ref" class="right-column">
-            <Dock class="dock right top"> </Dock>
-            <Dock class="dock right main">
-              <DockableAnnotations />
+              <div v-if="hasAnnotations && !mobileMode" ref="right-column-ref" class="right-column">
+                <DockableAnnotations />
+              </div>
             </Dock>
           </div>
         </div>
+        <ScrollbarMinimap :file="file" mode="workspace" />
       </div>
-
-      <DockableMinimap v-if="!showEditor" :file="file" side="right" />
 
       <!-- <Drawer :class="{ focus: focusMode, mobile: mobileMode }" /> -->
     </div>
@@ -339,14 +345,8 @@
   }
 
   .inner.right .middle-column {
-    flex: 4;
+    flex: 1;
     min-width: 0;
-  }
-
-  /* When no annotations are present, middle column should expand to full width */
-  .inner.right.no-annotations .middle-column {
-    flex: 1; /* Take all available space when no right column */
-    max-width: none; /* Remove any width constraints */
   }
 
   .inner.right .left-column {
@@ -363,9 +363,12 @@
   }
 
   .inner.right .right-column {
-    flex: 0 0 280px;
-    min-width: 250px;
-    max-width: 300px;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    width: 280px;
+    max-width: v-bind(rightColumnMaxWidth);
+    overflow: hidden;
   }
 
   .outer.mobile .inner.right .middle-column {
@@ -415,6 +418,16 @@
     }
   }
 
+  /* When editor is open AND annotations visible, push manuscript left for card room */
+  .inner.left + .inner.right .dock.main:has(.right-column) {
+    margin: 0;
+  }
+
+  /* When editor is open with no annotations, give editor more room */
+  .inner.left:has(+ .inner.right:not(:has(.right-column))) {
+    max-width: 720px;
+  }
+
   .outer.mobile .inner.right {
     padding: 0;
   }
@@ -441,14 +454,6 @@
   .drawer.focus {
     opacity: 0;
     transition: opacity var(--transition-duration) ease;
-  }
-
-  :deep(.float-minimap-wrapper) {
-    display: none !important;
-  }
-
-  :deep(.mm-wrapper) {
-    position: fixed;
   }
 
   :deep(.manuscriptwrapper) {

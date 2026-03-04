@@ -452,7 +452,7 @@ describe("Workspace State Management", () => {
 
       // Should show right column with annotations
       expect(wrapper.find(".right-column").exists()).toBe(true);
-      expect(wrapper.find(".inner.right").classes()).not.toContain("no-annotations");
+      // no-annotations class removed; middle column is always flex: 1
 
       // Remove annotations
       annotations.splice(0);
@@ -460,7 +460,7 @@ describe("Workspace State Management", () => {
 
       // Should hide right column
       expect(wrapper.find(".right-column").exists()).toBe(false);
-      expect(wrapper.find(".inner.right").classes()).toContain("no-annotations");
+      // no-annotations class removed; middle column is always flex: 1
 
       // Add annotations back
       annotations.push({ id: 2, type: "note", content: "New note" });
@@ -468,7 +468,7 @@ describe("Workspace State Management", () => {
 
       // Should show right column again
       expect(wrapper.find(".right-column").exists()).toBe(true);
-      expect(wrapper.find(".inner.right").classes()).not.toContain("no-annotations");
+      // no-annotations class removed; middle column is always flex: 1
     });
 
     it("should handle annotation updates", async () => {

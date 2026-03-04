@@ -38,18 +38,77 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
     expect(rightColMatch[1]).not.toContain("overflow-y");
   });
 
-  it(".right-column has fixed width 280px with min/max constraints", () => {
+  it(".right-column is absolutely positioned at manuscript edge", () => {
     const rightColMatch = canvasSource.match(
       /\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s,
     );
     expect(rightColMatch).toBeTruthy();
-    expect(rightColMatch[1]).toContain("flex: 0 0 280px");
-    expect(rightColMatch[1]).toContain("min-width: 250px");
-    expect(rightColMatch[1]).toContain("max-width: 300px");
+    expect(rightColMatch[1]).toContain("position: absolute");
+    expect(rightColMatch[1]).toContain("left: 100%");
+    expect(rightColMatch[1]).toContain("width: 280px");
   });
 
   it(".inner.right has align-items: flex-start", () => {
     expect(canvasSource).toMatch(/&\.right\s*\{[^}]*align-items:\s*flex-start/s);
+  });
+
+  it("annotation cards have max-width constraint to prevent overflow in split view", () => {
+    const rightColMatch = canvasSource.match(
+      /\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s,
+    );
+    expect(rightColMatch).toBeTruthy();
+    expect(rightColMatch[1]).toContain("max-width:");
+    expect(rightColMatch[1]).toContain("overflow: hidden");
+  });
+});
+
+describe("Canvas.vue — manuscript centering and annotation layout", () => {
+  it("manuscript is centered by default (margin: 0 auto on .dock.main)", () => {
+    const dockMainMatch = canvasSource.match(
+      /\.inner\.right\s+\.dock\.main\s*\{([^}]*)\}/s,
+    );
+    expect(dockMainMatch).toBeTruthy();
+    expect(dockMainMatch[1]).toContain("margin: 0 auto");
+  });
+
+  it("manuscript left-aligns when editor open AND annotations present", () => {
+    expect(canvasSource).toMatch(
+      /\.inner\.left\s*\+\s*\.inner\.right\s+\.dock\.main:has\(\.right-column\)\s*\{[^}]*margin:\s*0[^}]*\}/s,
+    );
+  });
+
+  it("editor gets wider max-width when no annotations present", () => {
+    expect(canvasSource).toMatch(
+      /\.inner\.left:has\(\+\s*\.inner\.right:not\(:has\(\.right-column\)\)\)\s*\{[^}]*max-width:\s*720px/s,
+    );
+  });
+
+  it(".middle-column is always flex: 1 (not conditional on annotations)", () => {
+    const middleColMatch = canvasSource.match(
+      /\.inner\.right\s+\.middle-column\s*\{([^}]*)\}/s,
+    );
+    expect(middleColMatch).toBeTruthy();
+    expect(middleColMatch[1]).toContain("flex: 1");
+    // Should NOT have a .no-annotations conditional
+    expect(canvasSource).not.toContain("no-annotations");
+  });
+
+  it(".right-column is inside .dock.main.middle (not a sibling column)", () => {
+    // The v-if for right-column must be inside a Dock with class "dock middle main"
+    // Verify by checking the template nesting: right-column-ref appears after ManuscriptWrapper
+    // and before the closing Dock tag
+    const templateSection = canvasSource.match(/<template>([\s\S]*)<\/template>/);
+    expect(templateSection).toBeTruthy();
+    // right-column should appear after manuscript-ref and inside the middle main dock
+    const manuscriptIdx = templateSection[1].indexOf('ref="manuscript-ref"');
+    const rightColIdx = templateSection[1].indexOf('ref="right-column-ref"');
+    expect(manuscriptIdx).toBeGreaterThan(-1);
+    expect(rightColIdx).toBeGreaterThan(-1);
+    expect(rightColIdx).toBeGreaterThan(manuscriptIdx);
+    // And the right-column should NOT be a direct child of .inner.right in the template
+    // (it should be nested deeper, inside the dock)
+    const rightColLine = templateSection[1].substring(rightColIdx - 200, rightColIdx);
+    expect(rightColLine).not.toMatch(/class="inner right"[^]*ref="right-column-ref"/);
   });
 });
 

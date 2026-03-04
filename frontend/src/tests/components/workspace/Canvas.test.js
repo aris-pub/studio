@@ -35,11 +35,11 @@ vi.mock("@/views/workspace/DockableSearch.vue", () => ({
   },
 }));
 
-vi.mock("@/views/workspace/DockableMinimap.vue", () => ({
+vi.mock("@/views/workspace/ScrollbarMinimap.vue", () => ({
   default: {
-    name: "DockableMinimap",
-    template: '<div data-testid="dockable-minimap-mock">DockableMinimap</div>',
-    props: ["file", "side"],
+    name: "ScrollbarMinimap",
+    template: '<div data-testid="scrollbar-minimap-mock">ScrollbarMinimap</div>',
+    props: ["file", "mode", "orientation"],
   },
 }));
 
@@ -276,7 +276,6 @@ describe("Canvas Layout", () => {
       const innerRight = wrapper.find(".inner.right");
 
       expect(rightColumn.exists()).toBe(true);
-      expect(innerRight.classes()).not.toContain("no-annotations");
     });
 
     it("should hide right column when no annotations", async () => {
@@ -292,10 +291,9 @@ describe("Canvas Layout", () => {
       const innerRight = wrapper.find(".inner.right");
 
       expect(rightColumn.exists()).toBe(false);
-      expect(innerRight.classes()).toContain("no-annotations");
     });
 
-    it("should expand middle column when no annotations", async () => {
+    it("should have middle column present when no annotations", async () => {
       wrapper = createWrapper(
         {},
         {
@@ -305,11 +303,7 @@ describe("Canvas Layout", () => {
       await wrapper.vm.$nextTick();
 
       const middleColumn = wrapper.find(".middle-column");
-      const innerRight = wrapper.find(".inner.right");
-
       expect(middleColumn.exists()).toBe(true);
-      expect(innerRight.classes()).toContain("no-annotations");
-      // The CSS rule .inner.right.no-annotations .middle-column should apply
     });
   });
 
@@ -429,21 +423,18 @@ describe("Canvas Layout", () => {
 
       // Initially has annotations
       expect(wrapper.find(".right-column").exists()).toBe(true);
-      expect(wrapper.find(".inner.right").classes()).not.toContain("no-annotations");
 
       // Remove all annotations
       annotations.splice(0);
       await wrapper.vm.$nextTick();
 
       expect(wrapper.find(".right-column").exists()).toBe(false);
-      expect(wrapper.find(".inner.right").classes()).toContain("no-annotations");
 
       // Add annotations back
       annotations.push({ id: 2, type: "note", content: "New note" });
       await wrapper.vm.$nextTick();
 
       expect(wrapper.find(".right-column").exists()).toBe(true);
-      expect(wrapper.find(".inner.right").classes()).not.toContain("no-annotations");
     });
 
     it("should handle empty or malformed file data", async () => {
@@ -610,7 +601,6 @@ describe("Canvas Layout", () => {
       });
       await wrapper.vm.$nextTick();
 
-      // All interactive elements should be reachable via tab navigation
       const leftColumn = wrapper.find(".left-column");
       const middleColumn = wrapper.find(".middle-column");
       const rightColumn = wrapper.find(".right-column");
