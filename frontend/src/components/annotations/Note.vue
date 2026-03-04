@@ -49,6 +49,15 @@
     return `${diffDay}d ago`;
   });
 
+  function onEsc(e) {
+    if (editing.value) {
+      onCancelEdit();
+    } else if (isActive.value) {
+      activeAnnotationId.value = null;
+      e.currentTarget.blur();
+    }
+  }
+
   function onSelect() {
     activeAnnotationId.value = props.annotation.id;
     const mark =
@@ -117,9 +126,11 @@
 <template>
   <div
     class="note"
-    :class="{ active: isActive }"
+    :class="{ active: isActive && !editing, editing: editing }"
     :style="{ '--note-color': barColor }"
+    tabindex="0"
     @click="onSelect"
+    @keydown.esc="onEsc"
   >
     <div class="header">
       <span class="timestamp">{{ timeAgo }}</span>
@@ -157,7 +168,7 @@
           placeholder="Add a note..."
           @click.stop
           @keydown.enter.exact.prevent="onSaveEdit"
-          @keydown.esc="onCancelEdit"
+          @keydown.esc.stop="onCancelEdit"
         />
         <div class="edit-actions">
           <Button kind="tertiary" size="sm" @click.stop="onCancelEdit">Cancel</Button>
@@ -180,6 +191,7 @@
     position: relative;
     z-index: 2;
     cursor: pointer;
+    outline: none;
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease;

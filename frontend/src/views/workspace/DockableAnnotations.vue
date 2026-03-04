@@ -80,6 +80,8 @@
 
   // Deselect when clicking the manuscript/scroll area (not on a highlight or card)
   function onOutsideClick(e) {
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
     if (
       e.target.closest(".note") ||
       e.target.closest(".annotations") ||
