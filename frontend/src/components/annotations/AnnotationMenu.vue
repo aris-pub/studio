@@ -189,6 +189,18 @@
     }
   }
 
+  function onKeydown(e) {
+    if (e.key === "Escape" && visible.value) {
+      clearSelection();
+    }
+  }
+
+  function onOutsideMousedown(e) {
+    if (!visible.value) return;
+    if (selfRef.value?.contains(e.target)) return;
+    clearSelection();
+  }
+
   onMounted(() => {
     const manuscriptContainer =
       document.querySelector('[data-testid="manuscript-viewer"]') ||
@@ -203,6 +215,8 @@
     document.addEventListener("scroll", updateFloatingPosition, true);
     window.addEventListener("resize", updateFloatingPosition);
     document.addEventListener("mouseup", handleMouseUpFallback);
+    document.addEventListener("keydown", onKeydown);
+    document.addEventListener("mousedown", onOutsideMousedown);
   });
 
   onUnmounted(() => {
@@ -219,12 +233,31 @@
     document.removeEventListener("scroll", updateFloatingPosition, true);
     window.removeEventListener("resize", updateFloatingPosition);
     document.removeEventListener("mouseup", handleMouseUpFallback);
+    document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("mousedown", onOutsideMousedown);
   });
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="visible" ref="selfRef" :style="floatingStyles" class="hl-menu" @mouseup.stop>
+      <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
+        <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
+      </div>
+
+      <div v-if="showNoteInput" class="note-area">
+        <textarea
+          ref="noteInputRef"
+          v-model="inputText"
+          class="note-input"
+          placeholder="Add a note..."
+          rows="1"
+          @keydown="onNoteKeydown"
+        />
+      </div>
+
+      <div class="separator" />
+
       <div class="swatches" @mousedown.prevent>
         <button
           v-for="(color, name) in SWATCH_COLORS"
@@ -237,32 +270,6 @@
           <span class="swatch-circle" :style="{ backgroundColor: color }" />
         </button>
       </div>
-
-      <div class="separator" />
-
-      <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
-        <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
-      </div>
-
-      <div v-else class="note-area">
-        <textarea
-          ref="noteInputRef"
-          v-model="inputText"
-          class="note-input"
-          placeholder="Add a note..."
-          rows="1"
-          @keydown="onNoteKeydown"
-        />
-        <Button
-          kind="tertiary"
-          size="sm"
-          icon="Send2"
-          :disabled="!inputText.trim()"
-          class="send-btn"
-          @mousedown.prevent
-          @click="onNoteSubmit"
-        />
-      </div>
     </div>
   </Teleport>
 </template>
@@ -273,8 +280,7 @@
     background: var(--surface-page);
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 16px;
-    padding-block: 4px;
-    padding-inline: 8px;
+    padding: 6px 8px;
     box-shadow: var(--shadow-soft);
     display: flex;
     align-items: center;
@@ -371,7 +377,4 @@
     }
   }
 
-  .send-btn {
-    flex-shrink: 0;
-  }
 </style>

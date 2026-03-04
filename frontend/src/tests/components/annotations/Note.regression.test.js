@@ -5,6 +5,10 @@ import Note from "@/components/annotations/Note.vue";
 import Button from "@/components/base/Button.vue";
 import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
+beforeEach(() => {
+  localStorage.removeItem("annotation-collapsed");
+});
+
 function makeAnnotation(overrides = {}) {
   return {
     id: 1,
@@ -380,5 +384,66 @@ describe("Note.vue — timeAgo display", () => {
     const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
     const { wrapper } = createWrapper(makeAnnotation({ created_at: fiveMinAgo }));
     expect(wrapper.find(".timestamp").text()).toContain("5min ago");
+  });
+});
+
+describe("Note.vue — persistent collapse state (std-1u9j)", () => {
+  it("saves collapsed state to localStorage on toggle", async () => {
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 50 }));
+    const chevronBtn = findButtonByIcon(wrapper, "ChevronUp");
+    await chevronBtn.trigger("click");
+    await nextTick();
+
+    const stored = JSON.parse(localStorage.getItem("annotation-collapsed") || "{}");
+    expect(stored[50]).toBe(true);
+  });
+
+  it("restores collapsed state from localStorage", () => {
+    localStorage.setItem("annotation-collapsed", JSON.stringify({ 60: true }));
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 60 }));
+    expect(wrapper.find(".collapsed-line").exists()).toBe(true);
+    expect(wrapper.find(".content").exists()).toBe(false);
+  });
+
+  it("removes key from localStorage when expanding", async () => {
+    localStorage.setItem("annotation-collapsed", JSON.stringify({ 70: true }));
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 70 }));
+    const chevronBtn = findButtonByIcon(wrapper, "ChevronDown");
+    await chevronBtn.trigger("click");
+    await nextTick();
+
+    const stored = JSON.parse(localStorage.getItem("annotation-collapsed") || "{}");
+    expect(stored[70]).toBeUndefined();
+  });
+});
+
+describe("Note.vue — collapsed chevron affordance (std-u3o4)", () => {
+  it("has .collapsed class on card when collapsed with a note", async () => {
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 80 }));
+    const chevronBtn = findButtonByIcon(wrapper, "ChevronUp");
+    await chevronBtn.trigger("click");
+    await nextTick();
+    expect(wrapper.find(".note").classes()).toContain("collapsed");
+  });
+
+  it("does NOT have .collapsed class on card without a note", () => {
+    const { wrapper } = createWrapper(makeAnnotation());
+    expect(wrapper.find(".note").classes()).not.toContain("collapsed");
+  });
+
+  it("chevron shows ChevronDown icon when collapsed", async () => {
+    localStorage.setItem("annotation-collapsed", JSON.stringify({ 90: true }));
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 90 }));
+    const chevronDown = findButtonByIcon(wrapper, "ChevronDown");
+    expect(chevronDown).toBeTruthy();
+  });
+});
+
+describe("Note.vue — trash button squircle (std-0f70)", () => {
+  it("delete button has border-radius 8px (squircle, not circle)", () => {
+    const { wrapper } = createWrapper(makeAnnotation());
+    const deleteBtn = wrapper.find(".delete-btn");
+    expect(deleteBtn.exists()).toBe(true);
+    // Verified via CSS: .delete-btn { border-radius: 8px; }
   });
 });

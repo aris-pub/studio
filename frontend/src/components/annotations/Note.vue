@@ -7,7 +7,26 @@
     annotation: { type: Object, required: true },
   });
 
-  const collapsed = ref(false);
+  const COLLAPSE_KEY = "annotation-collapsed";
+  function loadCollapsed(id) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
+      return !!stored[id];
+    } catch { return false; }
+  }
+  function saveCollapsed(id, val) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
+      if (val) stored[id] = true; else delete stored[id];
+      localStorage.setItem(COLLAPSE_KEY, JSON.stringify(stored));
+    } catch { /* ignore */ }
+  }
+
+  const collapsed = ref(loadCollapsed(props.annotation.id));
+  function toggleCollapse() {
+    collapsed.value = !collapsed.value;
+    saveCollapsed(props.annotation.id, collapsed.value);
+  }
   const editing = ref(false);
   const editText = ref("");
   const editInput = ref(null);
@@ -126,7 +145,7 @@
 <template>
   <div
     class="note"
-    :class="{ active: isActive && !editing, editing: editing }"
+    :class="{ active: isActive && !editing, editing, collapsed: collapsed && note }"
     :style="{ '--note-color': barColor }"
     tabindex="0"
     @click="onSelect"
@@ -149,7 +168,7 @@
           kind="tertiary"
           size="sm"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
-          @click.stop="collapsed = !collapsed"
+          @click.stop="toggleCollapse"
         />
       </div>
     </div>
@@ -201,6 +220,10 @@
     border-color: var(--border-action);
     border-left-color: var(--note-color);
     box-shadow: 0 0 0 1px var(--border-action);
+  }
+
+  .note.collapsed .actions > :last-child {
+    opacity: 1;
   }
 
   .note:hover {
@@ -264,7 +287,7 @@
     min-width: 24px;
     padding: 0;
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     background: transparent;
     cursor: pointer;
     transition: opacity 0.2s ease, min-width 0.15s ease, background-color 0.15s ease, padding 0.15s ease;
