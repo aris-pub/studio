@@ -163,3 +163,26 @@ describe("AnnotationMenu.vue — separator aria-hidden (std-d0be)", () => {
     expect(menuTemplate).toMatch(/class="separator"[\s\S]*?aria-hidden="true"/);
   });
 });
+
+describe("Note.vue — WCAG AA contrast for card hierarchy (std-nn1a)", () => {
+  it("timestamp uses gray-800 (not gray-500)", () => {
+    expect(noteStyle).toMatch(/\.timestamp[\s\S]*?color:\s*var\(--gray-800\)/);
+  });
+
+  it("timestamp is 10px with 0.06em tracking", () => {
+    expect(noteStyle).toMatch(/\.timestamp[\s\S]*?font-size:\s*10px/);
+    expect(noteStyle).toMatch(/\.timestamp[\s\S]*?letter-spacing:\s*0\.06em/);
+  });
+
+  it("action icons use gray-700 (not gray-500)", () => {
+    expect(noteStyle).toMatch(/\.tabler-icon[\s\S]*?color:\s*var\(--gray-700\)/);
+  });
+
+  it("delete icon uses gray-700", () => {
+    expect(noteStyle).toMatch(/\.delete-icon[\s\S]*?color:\s*var\(--gray-700\)/);
+  });
+
+  it("selected-text uses gray-800 (not gray-700)", () => {
+    expect(noteStyle).toMatch(/\.selected-text[\s\S]*?color:\s*var\(--gray-800\)/);
+  });
+});

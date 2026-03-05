@@ -273,9 +273,9 @@
 
   .timestamp {
     flex: 1;
-    color: var(--gray-500);
-    font-size: 11px;
-    letter-spacing: 0.04em;
+    color: var(--gray-800);
+    font-size: 10px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
@@ -295,7 +295,7 @@
     }
 
     & :deep(.tabler-icon) {
-      color: var(--gray-500);
+      color: var(--gray-700);
       margin: 0 !important;
       stroke-width: 1.5;
     }
@@ -340,9 +340,9 @@
   }
 
   .delete-icon {
-    width: 18px;
-    height: 18px;
-    color: var(--gray-500);
+    width: 16px;
+    height: 16px;
+    color: var(--gray-700);
     stroke-width: 1.5;
   }
 
@@ -365,7 +365,7 @@
   }
 
   .selected-text {
-    color: var(--gray-700);
+    color: var(--gray-800);
     font-style: italic;
     font-size: 13px;
     margin: 0;
