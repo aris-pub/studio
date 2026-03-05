@@ -424,6 +424,20 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
   });
 });
 
+describe("ScrollbarMinimap.vue — annotation mark activates card (std-0ha7)", () => {
+  const scriptSection = minimapSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+
+  it("injects activeAnnotationId", () => {
+    expect(scriptSection).toMatch(/inject\(\s*["']activeAnnotationId["']/);
+  });
+
+  it("onMarkClick sets activeAnnotationId for annotation marks", () => {
+    expect(scriptSection).toMatch(
+      /mark\.type\s*===\s*["']annotation["'][\s\S]*?activeAnnotationId\.value/
+    );
+  });
+});
+
 // ---- Layout regressions ----
 
 const canvasSource = readFileSync(resolve(__dirname, "../../views/workspace/Canvas.vue"), "utf-8");

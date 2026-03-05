@@ -25,6 +25,7 @@
 
   const manuscriptRef = inject("manuscriptRef", ref(null));
   const annotations = inject("annotations", ref([]));
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const awareness = inject("awareness", ref(null));
   const columnSizes = inject("columnSizes", null);
 
@@ -94,6 +95,10 @@
       top: mark.top * sh - ch / 2,
       behavior: "smooth",
     });
+    if (mark.type === "annotation") {
+      const id = parseInt(mark.id.replace("ann-", ""), 10);
+      if (!isNaN(id)) activeAnnotationId.value = id;
+    }
   }
 
   onMounted(() => {
