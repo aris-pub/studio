@@ -368,6 +368,9 @@
     &.left {
       flex: 2;
       max-width: 600px;
+      height: calc(100vh - 32px);
+      box-sizing: border-box;
+      overflow: hidden;
       border-bottom-left-radius: 16px;
       border-bottom-right-radius: 16px;
       margin-inline: 16px 0;

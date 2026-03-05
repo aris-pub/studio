@@ -197,8 +197,10 @@
 
   .content {
     height: calc(100% - 16px);
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 0 8px 8px 8px;
   }
