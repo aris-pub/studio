@@ -61,8 +61,8 @@ vi.mock("@/components/manuscript/ManuscriptWrapper.vue", () => ({
 // Mock composables
 const { useElementSize } = vi.hoisted(() => ({
   useElementSize: vi.fn(() => ({
-    width: ref(300),
-    height: ref(400),
+    width: ref(1200),
+    height: ref(800),
   })),
 }));
 
@@ -106,6 +106,10 @@ describe("Canvas Layout", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useElementSize).mockImplementation(() => ({
+      width: ref(1200),
+      height: ref(800),
+    }));
   });
 
   const createWrapper = (props = {}, provides = {}) => {
@@ -128,16 +132,14 @@ describe("Canvas Layout", () => {
     });
   };
 
-  describe("Three-Column Layout Structure", () => {
-    it("should render three-column layout with proper classes", async () => {
+  describe("Layout Structure", () => {
+    it("should render layout columns with proper classes", async () => {
       wrapper = createWrapper();
       await wrapper.vm.$nextTick();
 
-      const leftColumn = wrapper.find(".left-column");
       const middleColumn = wrapper.find(".middle-column");
       const rightColumn = wrapper.find(".right-column");
 
-      expect(leftColumn.exists()).toBe(true);
       expect(middleColumn.exists()).toBe(true);
       expect(rightColumn.exists()).toBe(true);
     });
@@ -252,13 +254,11 @@ describe("Canvas Layout", () => {
       await wrapper.vm.$nextTick();
 
       const innerRight = wrapper.find(".inner.right");
-      const leftColumn = wrapper.find(".left-column");
       const middleColumn = wrapper.find(".middle-column");
       const rightColumn = wrapper.find(".right-column");
 
       // Verify structure exists
       expect(innerRight.exists()).toBe(true);
-      expect(leftColumn.exists()).toBe(true);
       expect(middleColumn.exists()).toBe(true);
       expect(rightColumn.exists()).toBe(true);
 
@@ -326,10 +326,8 @@ describe("Canvas Layout", () => {
       const outer = wrapper.find(".outer");
       expect(outer.classes()).toContain("mobile");
 
-      // Should still render all columns even in narrow viewport
-      const leftColumn = wrapper.find(".left-column");
+      // Should still render columns even in narrow viewport
       const middleColumn = wrapper.find(".middle-column");
-      expect(leftColumn.exists()).toBe(true);
       expect(middleColumn.exists()).toBe(true);
     });
 
@@ -522,12 +520,10 @@ describe("Canvas Layout", () => {
       wrapper = createWrapper();
       await wrapper.vm.$nextTick();
 
-      // At desktop size, all columns should have adequate space
-      const leftColumn = wrapper.find(".left-column");
+      // At desktop size, columns should have adequate space
       const middleColumn = wrapper.find(".middle-column");
       const rightColumn = wrapper.find(".right-column");
 
-      expect(leftColumn.exists()).toBe(true);
       expect(middleColumn.exists()).toBe(true);
       expect(rightColumn.exists()).toBe(true);
     });
@@ -601,11 +597,9 @@ describe("Canvas Layout", () => {
       });
       await wrapper.vm.$nextTick();
 
-      const leftColumn = wrapper.find(".left-column");
       const middleColumn = wrapper.find(".middle-column");
       const rightColumn = wrapper.find(".right-column");
 
-      expect(leftColumn.exists()).toBe(true);
       expect(middleColumn.exists()).toBe(true);
       expect(rightColumn.exists()).toBe(true);
     });

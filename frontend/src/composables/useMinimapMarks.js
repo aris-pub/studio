@@ -90,8 +90,10 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       });
     }
 
-    // Search highlights
-    const searchMarks = el.querySelectorAll("mark.aris-search-highlight");
+    // Search highlights (include --current variant so the active match isn't missed)
+    const searchMarks = el.querySelectorAll(
+      "mark.aris-search-highlight, mark.aris-search-highlight--current"
+    );
     let searchIdx = 0;
     for (const mark of searchMarks) {
       result.push({
@@ -106,19 +108,28 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
     // Presence (Y.js awareness)
     const awarenessVal = awareness && isRef(awareness) ? awareness.value : awareness;
     const fileVal = file && isRef(file) ? file.value : file;
-    if (awarenessVal && fileVal?.source) {
-      const totalLen = fileVal.source.length || 1;
+    if (awarenessVal) {
+      // Use source length if available, otherwise estimate from scroll height
+      const totalLen = fileVal?.source?.length || container.scrollHeight || 1;
+      const useCharPos = !!fileVal?.source;
       const states = awarenessVal.getStates();
       for (const [clientId, state] of states) {
         if (clientId === awarenessVal.clientID) continue;
-        if (!state.cursor || !state.user) continue;
-        const pos = Math.max(0, Math.min(1, state.cursor.head / totalLen));
+        if (!state.user) continue;
+        let pos = 0.5;
+        if (state.cursor && useCharPos) {
+          pos = Math.max(0, Math.min(1, state.cursor.head / totalLen));
+        } else if (state.cursor) {
+          pos = Math.max(0, Math.min(1, state.cursor.head / totalLen));
+        }
         result.push({
           top: pos,
-          color: state.user.color || "var(--primary-400)",
+          color: state.user.avatar_color || state.user.color || "var(--primary-400)",
           type: "presence",
           id: `presence-${clientId}`,
           label: state.user.name,
+          userId: state.user.id,
+          avatarColor: state.user.avatar_color,
         });
       }
     }
@@ -127,6 +138,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
   }
 
   // Observe search highlight changes via MutationObserver
+  let observerDebounce = null;
   function setupObserver() {
     teardownObserver();
     const manuscriptEl = manuscriptRef?.value;
@@ -134,25 +146,15 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
     const el = manuscriptEl.$el || manuscriptEl;
     if (!el) return;
 
-    observer = new MutationObserver((mutations) => {
-      const relevant = mutations.some((m) => {
-        for (const node of [...m.addedNodes, ...m.removedNodes]) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (
-              node.classList?.contains("aris-search-highlight") ||
-              node.querySelector?.("mark.aris-search-highlight")
-            )
-              return true;
-          }
-        }
-        return false;
-      });
-      if (relevant) computeMarks();
+    observer = new MutationObserver(() => {
+      clearTimeout(observerDebounce);
+      observerDebounce = setTimeout(() => computeMarks(), 100);
     });
     observer.observe(el, { childList: true, subtree: true });
   }
 
   function teardownObserver() {
+    clearTimeout(observerDebounce);
     if (observer) {
       observer.disconnect();
       observer = null;
@@ -192,6 +194,9 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
         await nextTick();
         computeMarks();
         setupObserver();
+        // Annotation highlights may render after the manuscript mounts;
+        // recompute once more after a short delay to catch them.
+        setTimeout(() => computeMarks(), 500);
       }
     },
     { immediate: true }

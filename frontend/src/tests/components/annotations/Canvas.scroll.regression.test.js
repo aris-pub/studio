@@ -7,7 +7,7 @@ import { resolve } from "path";
 
 const canvasSource = readFileSync(
   resolve(__dirname, "../../../views/workspace/Canvas.vue"),
-  "utf-8",
+  "utf-8"
 );
 
 describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
@@ -16,9 +16,7 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
     expect(canvasSource).toMatch(/&\.right\s*\{[^}]*overflow-y:\s*auto/s);
 
     // .middle-column should NOT have overflow-y
-    const middleColumnMatch = canvasSource.match(
-      /\.inner\.right\s+\.middle-column\s*\{([^}]*)\}/s,
-    );
+    const middleColumnMatch = canvasSource.match(/\.inner\.right\s+\.middle-column\s*\{([^}]*)\}/s);
     if (middleColumnMatch) {
       expect(middleColumnMatch[1]).not.toContain("overflow-y");
     }
@@ -30,18 +28,14 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
   });
 
   it(".right-column does NOT have position: sticky or overflow-y", () => {
-    const rightColMatch = canvasSource.match(
-      /\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s,
-    );
+    const rightColMatch = canvasSource.match(/\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s);
     expect(rightColMatch).toBeTruthy();
     expect(rightColMatch[1]).not.toContain("position: sticky");
     expect(rightColMatch[1]).not.toContain("overflow-y");
   });
 
   it(".right-column is absolutely positioned at manuscript edge", () => {
-    const rightColMatch = canvasSource.match(
-      /\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s,
-    );
+    const rightColMatch = canvasSource.match(/\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s);
     expect(rightColMatch).toBeTruthy();
     expect(rightColMatch[1]).toContain("position: absolute");
     expect(rightColMatch[1]).toContain("left: 100%");
@@ -53,9 +47,7 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
   });
 
   it("annotation cards have max-width constraint to prevent overflow in split view", () => {
-    const rightColMatch = canvasSource.match(
-      /\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s,
-    );
+    const rightColMatch = canvasSource.match(/\.inner\.right\s+\.right-column\s*\{([^}]*)\}/s);
     expect(rightColMatch).toBeTruthy();
     expect(rightColMatch[1]).toContain("max-width:");
     expect(rightColMatch[1]).toContain("overflow: hidden");
@@ -64,29 +56,25 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
 
 describe("Canvas.vue — manuscript centering and annotation layout", () => {
   it("manuscript is centered by default (margin: 0 auto on .dock.main)", () => {
-    const dockMainMatch = canvasSource.match(
-      /\.inner\.right\s+\.dock\.main\s*\{([^}]*)\}/s,
-    );
+    const dockMainMatch = canvasSource.match(/\.inner\.right\s+\.dock\.main\s*\{([^}]*)\}/s);
     expect(dockMainMatch).toBeTruthy();
     expect(dockMainMatch[1]).toContain("margin: 0 auto");
   });
 
   it("manuscript left-aligns when editor open AND annotations present", () => {
     expect(canvasSource).toMatch(
-      /\.inner\.left\s*\+\s*\.inner\.right\s+\.dock\.main:has\(\.right-column\)\s*\{[^}]*margin:\s*0[^}]*\}/s,
+      /\.inner\.left\s*\+\s*\.inner\.right\s+\.dock\.main:has\(\.right-column\)\s*\{[^}]*margin:\s*0[^}]*\}/s
     );
   });
 
   it("editor gets wider max-width when no annotations present", () => {
     expect(canvasSource).toMatch(
-      /\.inner\.left:has\(\+\s*\.inner\.right:not\(:has\(\.right-column\)\)\)\s*\{[^}]*max-width:\s*720px/s,
+      /\.inner\.left:has\(\+\s*\.inner\.right:not\(:has\(\.right-column\)\)\)\s*\{[^}]*max-width:\s*640px/s
     );
   });
 
   it(".middle-column is always flex: 1 (not conditional on annotations)", () => {
-    const middleColMatch = canvasSource.match(
-      /\.inner\.right\s+\.middle-column\s*\{([^}]*)\}/s,
-    );
+    const middleColMatch = canvasSource.match(/\.inner\.right\s+\.middle-column\s*\{([^}]*)\}/s);
     expect(middleColMatch).toBeTruthy();
     expect(middleColMatch[1]).toContain("flex: 1");
     // Should NOT have a .no-annotations conditional
@@ -115,7 +103,7 @@ describe("Canvas.vue — manuscript centering and annotation layout", () => {
 describe("DockableAnnotations container — padding and gap (std-gf5h cont.)", () => {
   const dockableSource = readFileSync(
     resolve(__dirname, "../../../views/workspace/DockableAnnotations.vue"),
-    "utf-8",
+    "utf-8"
   );
 
   it("has padding 16px 12px", () => {

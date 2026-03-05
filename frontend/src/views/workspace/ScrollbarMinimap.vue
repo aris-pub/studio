@@ -1,11 +1,11 @@
 <script setup>
   import { ref, computed, inject, watch, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, computeSectionMarks } from "@/composables/useMinimapMarks.js";
+  import { IconMessageFilled } from "@tabler/icons-vue";
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);
   const hoveredEl = ref(null);
-  const tooltipText = computed(() => hoveredMark.value?.label || "");
 
   function onMarkEnter(event, mark) {
     hoveredEl.value = event.currentTarget;
@@ -52,7 +52,11 @@
     );
   }
 
-  const displayMarks = computed(() => (isCompact.value ? compactMarks.value : marks.value));
+  const allMarks = computed(() => (isCompact.value ? compactMarks.value : marks.value));
+  const sectionMarks = computed(() => allMarks.value.filter((m) => m.type === "section"));
+  const annotationMarks = computed(() => allMarks.value.filter((m) => m.type === "annotation"));
+  const searchMarks = computed(() => allMarks.value.filter((m) => m.type === "search"));
+  const presenceMarks = computed(() => allMarks.value.filter((m) => m.type === "presence"));
 
   function updateViewport() {
     if (!scrollContainer.value) return;
@@ -115,19 +119,6 @@
       () => updateViewport()
     );
   }
-
-  function markStyle(mark) {
-    if (isHorizontal.value) {
-      return {
-        left: `${mark.top * 100}%`,
-        backgroundColor: mark.color,
-      };
-    }
-    return {
-      top: `${mark.top * 100}%`,
-      backgroundColor: mark.color,
-    };
-  }
 </script>
 
 <template>
@@ -135,6 +126,7 @@
     ref="stripRef"
     class="scrollbar-minimap"
     :class="[mode, orientation, { compact: isCompact }]"
+    @click="onStripClick"
   >
     <!-- Viewport indicator (workspace mode only) -->
     <div
@@ -146,36 +138,88 @@
       }"
     />
 
-    <!-- Marks -->
+    <!-- Section lines — full-width for level-1, shorter for sub-sections -->
     <div
-      v-for="mark in displayMarks"
+      v-for="mark in sectionMarks"
       :key="mark.id"
-      class="minimap-mark"
-      :class="[mark.type, { 'level-1': mark.level === 1 }]"
-      :style="markStyle(mark)"
+      class="mm-section"
+      :class="{ 'level-1': mark.level === 1 }"
+      :style="{ top: `${mark.top * 100}%` }"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
     />
 
-    <Tooltip :anchor="hoveredEl" :content="tooltipText" placement="left" />
+    <!-- Annotation bubbles -->
+    <div
+      v-for="mark in annotationMarks"
+      :key="mark.id"
+      class="mm-annotation"
+      :style="{ top: `${mark.top * 100}%`, '--ann-color': mark.color }"
+      @mouseenter="onMarkEnter($event, mark)"
+      @mouseleave="onMarkLeave"
+      @click="onMarkClick($event, mark)"
+    >
+      <IconMessageFilled :size="20" />
+    </div>
+
+    <!-- Search dashes -->
+    <div
+      v-for="mark in searchMarks"
+      :key="mark.id"
+      class="mm-search"
+      :style="{ top: `${mark.top * 100}%` }"
+      @mouseenter="onMarkEnter($event, mark)"
+      @mouseleave="onMarkLeave"
+      @click="onMarkClick($event, mark)"
+    />
+
+    <!-- Presence dots -->
+    <div
+      v-for="mark in presenceMarks"
+      :key="mark.id"
+      class="mm-presence"
+      :style="{
+        top: `clamp(6px, ${mark.top * 100}%, calc(100% - 6px))`,
+        backgroundColor: mark.avatarColor || mark.color,
+      }"
+      @mouseenter="onMarkEnter($event, mark)"
+      @mouseleave="onMarkLeave"
+      @click="onMarkClick($event, mark)"
+    />
+
+    <!-- Tooltip: avatar + name for presence, plain text for others -->
+    <Tooltip :anchor="hoveredEl" placement="left">
+      <div v-if="hoveredMark?.type === 'presence'" class="presence-tooltip">
+        <Avatar
+          :user="{
+            id: hoveredMark.userId,
+            name: hoveredMark.label,
+            avatar_color: hoveredMark.avatarColor || hoveredMark.color,
+          }"
+          size="md"
+          :tooltip="false"
+        />
+        <span>{{ hoveredMark.label }}</span>
+      </div>
+      <template v-else>{{ hoveredMark?.label || "" }}</template>
+    </Tooltip>
   </div>
 </template>
 
 <style scoped>
   .scrollbar-minimap {
     position: relative;
-    flex-shrink: 0;
   }
 
-  /* Workspace mode: thin strip at right edge, outside flex flow */
+  /* Workspace mode: strip at right edge */
   .scrollbar-minimap.workspace.vertical {
-    width: 12px;
+    width: 24px;
     position: sticky;
     top: 0;
-    height: 100vh;
-    margin-left: auto;
-    flex: 0 0 0px;
+    height: calc(100vh - 32px);
+    flex: 0 0 24px;
+    margin-left: 8px;
     overflow: visible;
   }
 
@@ -191,58 +235,103 @@
     display: none;
   }
 
-  /* Mark base styles */
-  .minimap-mark {
+  /* ── Section lines ── */
+  .mm-section {
     position: absolute;
-    left: 1px;
-    right: 1px;
+    left: 6px;
+    right: 6px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--gray-400);
+    opacity: 0.5;
     pointer-events: auto;
     cursor: pointer;
   }
 
-  /* Vertical marks */
-  .scrollbar-minimap.vertical .minimap-mark {
-    height: 8px;
-    border-radius: 2px;
+  .mm-section.level-1 {
+    left: 2px;
+    right: 2px;
+    height: 4px;
+    opacity: 0.75;
   }
 
-  .scrollbar-minimap.vertical .minimap-mark.section {
+  /* ── Annotation bubble icons ── */
+  .mm-annotation {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--ann-color);
+    opacity: 0.8;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    line-height: 0;
+  }
+
+  .mm-annotation:hover {
+    opacity: 1;
+  }
+
+  /* ── Search dashes ── */
+  .mm-search {
+    position: absolute;
+    left: 25%;
+    right: 25%;
     height: 2px;
-    opacity: 0.4;
+    border-radius: 1px;
+    background-color: var(--orange-400);
+    opacity: 0.85;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
-  .scrollbar-minimap.vertical .minimap-mark.section.level-1 {
-    opacity: 0.6;
-    height: 3px;
+  .mm-search:hover {
+    opacity: 1;
   }
 
-  .scrollbar-minimap.vertical .minimap-mark.presence {
-    width: 6px;
-    height: 6px;
-    left: 3px;
+  /* ── Presence dots ── */
+  .mm-presence {
+    position: absolute;
+    left: 50%;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 1;
+    transition: top 300ms ease-out;
+    box-shadow: 0 0 0 2px var(--surface-page, #fff);
   }
 
-  /* Horizontal marks (compact mode) */
-  .scrollbar-minimap.horizontal .minimap-mark {
+  .mm-presence:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+
+  /* ── Presence tooltip ── */
+  .presence-tooltip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  /* ── Horizontal marks (compact mode) ── */
+  .scrollbar-minimap.horizontal .mm-section {
     top: 0;
     height: 100%;
-    width: 2px;
+    width: 1px;
+    left: auto;
+    right: auto;
     border-radius: 1px;
   }
 
-  .scrollbar-minimap.horizontal .minimap-mark.section {
-    width: 1px;
-    opacity: 0.5;
-  }
-
-  .scrollbar-minimap.horizontal .minimap-mark.section.level-1 {
-    opacity: 0.8;
+  .scrollbar-minimap.horizontal .mm-section.level-1 {
     width: 2px;
+    opacity: 0.8;
   }
 
-  .scrollbar-minimap.workspace .minimap-mark:hover {
+  .scrollbar-minimap.workspace .mm-section:hover {
     opacity: 1;
-    transform: scaleX(1.5);
   }
 </style>

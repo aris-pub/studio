@@ -1,6 +1,7 @@
 <script setup>
   import {
     ref,
+    shallowRef,
     reactive,
     computed,
     watch,
@@ -43,24 +44,23 @@
   );
   provide("manuscriptRef", manuscriptRef);
 
+  // Shared awareness ref — EditorCodeMirror writes to it, ScrollbarMinimap reads it
+  const awareness = shallowRef(null);
+  provide("awareness", awareness);
+
   // Expose some of the geometry
   const innerRef = useTemplateRef("inner-right-ref");
-  const lftColRef = useTemplateRef("left-column-ref");
   const midColRef = useTemplateRef("middle-column-ref");
   const rgtColRef = useTemplateRef("right-column-ref");
   const columnSizes = reactive({
-    left: { width: 0, height: 0 },
     middle: { width: 0, height: 0 },
     right: { width: 0, height: 0 },
     inner: { width: 0, height: 0 },
   });
-  const { width: lftColW, height: lftColH } = useElementSize(lftColRef);
   const { width: midColW, height: midColH } = useElementSize(midColRef);
   const { width: rgtColW, height: rgtColH } = useElementSize(rgtColRef);
   const { width: innerW, height: innerH } = useElementSize(innerRef);
   watchEffect(() => {
-    columnSizes.left.width = lftColW.value;
-    columnSizes.left.height = lftColH.value;
     columnSizes.middle.width = midColW.value;
     columnSizes.middle.height = midColH.value;
     columnSizes.right.width = rgtColW.value;
@@ -191,6 +191,14 @@
     const rightMargin = props.showEditor ? spare : spare / 2;
     return `${Math.max(rightMargin, 0)}px`;
   });
+  const showAnnotationCards = computed(() => {
+    const midW = columnSizes.middle.width;
+    if (midW === 0) return true; // Not yet measured
+    const manuscriptW = Math.min(720, midW);
+    const spare = midW - manuscriptW;
+    const rightMargin = props.showEditor ? spare : spare / 2;
+    return rightMargin >= 120;
+  });
 </script>
 
 <template>
@@ -215,10 +223,6 @@
           data-testid="manuscript-container"
           class="inner right"
         >
-          <div ref="left-column-ref" class="left-column">
-            <Dock class="dock left top"> </Dock>
-            <Dock class="dock left main"> </Dock>
-          </div>
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
               <ReaderTopbar :show-title="!isMainTitleVisible" />
@@ -235,13 +239,17 @@
                 :settings="fileSettings"
                 :show-footer="true"
               />
-              <div v-if="hasAnnotations && !mobileMode" ref="right-column-ref" class="right-column">
+              <div
+                v-if="hasAnnotations && !mobileMode && showAnnotationCards"
+                ref="right-column-ref"
+                class="right-column"
+              >
                 <DockableAnnotations />
               </div>
             </Dock>
           </div>
+          <ScrollbarMinimap :file="file" mode="workspace" />
         </div>
-        <ScrollbarMinimap :file="file" mode="workspace" />
       </div>
 
       <!-- <Drawer :class="{ focus: focusMode, mobile: mobileMode }" /> -->
@@ -299,7 +307,7 @@
     width: 50%;
 
     &.left {
-      flex: 1;
+      flex: 2;
       max-width: 600px;
       border-bottom-left-radius: 16px;
       border-bottom-right-radius: 16px;
@@ -308,7 +316,7 @@
     }
 
     &.right {
-      flex: 1;
+      flex: 3;
       overflow-y: auto;
       overflow-x: hidden;
       border-bottom-left-radius: calc(16px - 12px);
@@ -317,7 +325,7 @@
       padding-bottom: 16px;
       display: flex;
       align-items: flex-start;
-      height: 100vh;
+      height: calc(100vh - 32px);
       outline: none;
       scrollbar-gutter: stable;
       scrollbar-width: thin;
@@ -347,19 +355,6 @@
   .inner.right .middle-column {
     flex: 1;
     min-width: 0;
-  }
-
-  .inner.right .left-column {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 0px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow: hidden;
-    align-items: flex-start;
-    padding: 16px;
-    box-sizing: border-box;
   }
 
   .inner.right .right-column {
@@ -411,11 +406,6 @@
       min-height: 100%;
       max-width: 720px;
     }
-
-    &.left {
-      min-height: auto;
-      max-width: none;
-    }
   }
 
   /* When editor is open AND annotations visible, push manuscript left for card room */
@@ -425,7 +415,7 @@
 
   /* When editor is open with no annotations, give editor more room */
   .inner.left:has(+ .inner.right:not(:has(.right-column))) {
-    max-width: 720px;
+    max-width: 640px;
   }
 
   .outer.mobile .inner.right {

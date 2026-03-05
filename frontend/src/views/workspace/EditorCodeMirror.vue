@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, shallowRef, computed, inject, provide, watch, onBeforeUnmount, toRaw } from "vue";
+  import { ref, shallowRef, computed, inject, watch, onBeforeUnmount, toRaw } from "vue";
   import {
     EditorView,
     keymap,
@@ -56,8 +56,7 @@
   const ydoc = shallowRef(null);
   const ytext = shallowRef(null);
   const provider = shallowRef(null);
-  const awareness = shallowRef(null);
-  provide("awareness", awareness);
+  const awareness = inject("awareness", shallowRef(null));
   const isConnected = ref(false);
   const isSynced = ref(false);
   const isInitialized = ref(false);
@@ -80,11 +79,14 @@
     if (!user?.value?.name && !user?.value?.email) {
       throw new Error("User information is required for collaboration");
     }
+    const fallbackColor = `#${Math.floor(Math.random() * 16777215)
+      .toString(16)
+      .padStart(6, "0")}`;
     return {
       name: user.value.name || user.value.email,
-      color: `#${Math.floor(Math.random() * 16777215)
-        .toString(16)
-        .padStart(6, "0")}`,
+      color: user.value.avatar_color || fallbackColor,
+      id: user.value.id,
+      avatar_color: user.value.avatar_color,
     };
   });
 
@@ -454,6 +456,7 @@
   .cm-container :deep(.cm-gutters) {
     background-color: var(--surface-hover);
     border-right: none;
+    font-size: 11px;
   }
 
   .cm-container :deep(.cm-cursor) {
