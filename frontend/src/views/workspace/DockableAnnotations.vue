@@ -2,6 +2,10 @@
   import { ref, inject, isRef, watch, nextTick, onMounted, onUnmounted } from "vue";
   import Note from "@/components/annotations/Note.vue";
 
+  const props = defineProps({
+    aligned: { type: Boolean, default: false },
+  });
+
   const annotations = inject("annotations", ref([]));
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const manuscriptRef = inject("manuscriptRef", ref(null));
@@ -26,8 +30,63 @@
 
   function trySort() {
     const list = isRef(annotations) ? annotations.value : annotations;
-    if (!list?.length) { sortedAnnotations.value = []; return; }
+    if (!list?.length) {
+      sortedAnnotations.value = [];
+      return;
+    }
     sortedAnnotations.value = sortByDomPosition([...list]);
+  }
+
+  // --- Aligned positioning: compute card top offsets to match highlight marks ---
+
+  const cardPositions = ref(new Map());
+  const containerMinHeight = ref("auto");
+  const MIN_GAP = 8;
+
+  function getOffsetTop(el, ancestor) {
+    let top = 0;
+    let current = el;
+    while (current && current !== ancestor) {
+      top += current.offsetTop;
+      current = current.offsetParent;
+    }
+    return top;
+  }
+
+  function computePositions() {
+    if (!props.aligned) {
+      cardPositions.value = new Map();
+      containerMinHeight.value = "auto";
+      return;
+    }
+
+    const dock = document.querySelector(".dock.main.middle");
+    if (!dock) return;
+
+    const positions = new Map();
+    let lastBottom = 0;
+
+    for (const ann of sortedAnnotations.value) {
+      const mark =
+        document.querySelector(`mark[data-annotation-id="${ann.id}"]`) ||
+        document.querySelector(`[data-highlight-annotation="${ann.id}"]`);
+      if (!mark) continue;
+
+      const markTop = getOffsetTop(mark, dock);
+      const desiredTop = Math.max(markTop, lastBottom + MIN_GAP);
+      positions.set(ann.id, desiredTop);
+
+      const cardEl = document.querySelector(`[data-card-id="${ann.id}"]`);
+      lastBottom = desiredTop + (cardEl?.offsetHeight ?? 80);
+    }
+
+    cardPositions.value = positions;
+    containerMinHeight.value = lastBottom > 0 ? `${lastBottom}px` : "auto";
+  }
+
+  function refinePositions() {
+    if (!props.aligned) return;
+    computePositions();
   }
 
   // Watch annotations and re-sort after highlights are painted.
@@ -46,28 +105,62 @@
     { immediate: true }
   );
 
+  // Recompute positions after sort settles
+  watch(sortedAnnotations, async () => {
+    await nextTick();
+    await nextTick();
+    computePositions();
+    await nextTick();
+    refinePositions();
+  });
+
+  // Recompute when active card changes (expand/collapse changes heights)
+  watch(activeAnnotationId, async () => {
+    if (!props.aligned) return;
+    await nextTick();
+    await nextTick();
+    refinePositions();
+  });
+
   // Re-sort when mark elements appear in the manuscript DOM
   let observer = null;
   let sortTimer = null;
-  watch(manuscriptRef, (mRef) => {
-    observer?.disconnect();
-    const el = mRef?.$el || mRef;
-    if (!el) return;
-    observer = new MutationObserver((mutations) => {
-      const hasMarks = mutations.some((m) =>
-        [...m.addedNodes].some(
-          (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
-        )
-      );
-      if (!hasMarks) return;
-      clearTimeout(sortTimer);
-      sortTimer = setTimeout(trySort, 50);
+  watch(
+    manuscriptRef,
+    (mRef) => {
+      observer?.disconnect();
+      const el = mRef?.$el || mRef;
+      if (!el) return;
+      observer = new MutationObserver((mutations) => {
+        const hasMarks = mutations.some((m) =>
+          [...m.addedNodes].some(
+            (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
+          )
+        );
+        if (!hasMarks) return;
+        clearTimeout(sortTimer);
+        sortTimer = setTimeout(trySort, 50);
+      });
+      observer.observe(el, { childList: true, subtree: true });
+    },
+    { immediate: true }
+  );
+
+  // ResizeObserver on dock container to catch layout reflow
+  let resizeObserver = null;
+  onMounted(() => {
+    if (!props.aligned) return;
+    const dock = document.querySelector(".dock.main.middle");
+    if (!dock) return;
+    resizeObserver = new ResizeObserver(() => {
+      refinePositions();
     });
-    observer.observe(el, { childList: true, subtree: true });
-  }, { immediate: true });
+    resizeObserver.observe(dock);
+  });
 
   onUnmounted(() => {
     observer?.disconnect();
+    resizeObserver?.disconnect();
     clearTimeout(sortTimer);
   });
 
@@ -87,7 +180,8 @@
       e.target.closest(".annotations") ||
       e.target.closest("mark[data-annotation-id]") ||
       e.target.closest("[data-highlight-annotation]")
-    ) return;
+    )
+      return;
     activeAnnotationId.value = null;
   }
 
@@ -103,8 +197,23 @@
 </script>
 
 <template>
-  <div class="annotations" @click="onContainerClick">
-    <Note v-for="ann in sortedAnnotations" :key="ann.id" :annotation="ann" />
+  <div
+    class="annotations"
+    :class="{ aligned }"
+    :style="aligned ? { minHeight: containerMinHeight } : {}"
+    @click="onContainerClick"
+  >
+    <Note
+      v-for="ann in sortedAnnotations"
+      :key="ann.id"
+      :annotation="ann"
+      :data-card-id="ann.id"
+      :style="
+        aligned && cardPositions.get(ann.id) != null
+          ? { position: 'absolute', top: cardPositions.get(ann.id) + 'px', width: 'calc(100% - 24px)' }
+          : {}
+      "
+    />
   </div>
 </template>
 
@@ -114,5 +223,11 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .annotations.aligned {
+    position: relative;
+    padding: 0 12px;
+    gap: 0;
   }
 </style>

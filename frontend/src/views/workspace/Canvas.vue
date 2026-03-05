@@ -275,13 +275,18 @@
                 ref="right-column-ref"
                 class="right-column"
               >
-                <DockableAnnotations />
+                <DockableAnnotations aligned />
               </div>
             </Dock>
           </div>
 
           <Transition name="overlay-slide">
-            <div v-if="annotationOverlayOpen && !showAnnotationCards" class="annotation-overlay" role="complementary" aria-label="Annotations panel">
+            <div
+              v-if="annotationOverlayOpen && !showAnnotationCards"
+              class="annotation-overlay"
+              role="complementary"
+              aria-label="Annotations panel"
+            >
               <Pane>
                 <template #header>
                   <span class="overlay-header-title">
@@ -537,7 +542,10 @@
     background: var(--surface-page);
     color: var(--gray-600);
     cursor: pointer;
-    transition: var(--transition-bg-color), var(--transition-bd-color), box-shadow 0.15s ease;
+    transition:
+      var(--transition-bg-color),
+      var(--transition-bd-color),
+      box-shadow 0.15s ease;
   }
 
   .annotation-overlay-toggle:hover {
