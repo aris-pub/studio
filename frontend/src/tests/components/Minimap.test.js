@@ -408,6 +408,20 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
   it("minimap height matches inner.right (calc(100vh - 32px))", () => {
     expect(minimapSource).toContain("height: calc(100vh - 32px)");
   });
+
+  it("strip background is not clickable (pointer-events: none), only marks are", () => {
+    expect(minimapSource).toMatch(/\.scrollbar-minimap\s*\{[^}]*pointer-events:\s*none/s);
+    expect(minimapSource).toMatch(/\.mm-section\s*\{[^}]*pointer-events:\s*auto/s);
+    expect(minimapSource).toMatch(/\.mm-annotation\s*\{[^}]*pointer-events:\s*auto/s);
+    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*pointer-events:\s*auto/s);
+    expect(minimapSource).toMatch(/\.mm-presence\s*\{[^}]*pointer-events:\s*auto/s);
+  });
+
+  it("strip has no click handler in template", () => {
+    const templateSection = minimapSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+    const stripLine = templateSection.match(/class="scrollbar-minimap"[^>]*/)?.[0] ?? "";
+    expect(stripLine).not.toContain("@click");
+  });
 });
 
 // ---- Layout regressions ----

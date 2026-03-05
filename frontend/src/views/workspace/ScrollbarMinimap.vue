@@ -126,7 +126,6 @@
     ref="stripRef"
     class="scrollbar-minimap"
     :class="[mode, orientation, { compact: isCompact }]"
-    @click="onStripClick"
   >
     <!-- Viewport indicator (workspace mode only) -->
     <div
@@ -210,6 +209,7 @@
 <style scoped>
   .scrollbar-minimap {
     position: relative;
+    pointer-events: none;
   }
 
   /* Workspace mode: strip at right edge */
