@@ -74,11 +74,26 @@ describe("Canvas.vue — annotation overlay panel (std-y6e3)", () => {
 });
 
 describe("Canvas.vue — overlay toggle positioning and transitions (std-y6e3)", () => {
-  it("toggle is sticky-positioned (always visible while scrolling)", () => {
-    const toggleCSS = styleSection.match(
-      /\.annotation-overlay-toggle\s*\{([^}]*)\}/s
-    )?.[1] ?? "";
+  const toggleCSS = styleSection.match(
+    /\.annotation-overlay-toggle\s*\{([^}]*)\}/s
+  )?.[1] ?? "";
+
+  it("toggle is absolutely positioned (always visible while scrolling)", () => {
     expect(toggleCSS).toContain("position: absolute");
+  });
+
+  it("toggle has minimum 32px height for accessibility", () => {
+    expect(toggleCSS).toContain("height: 32px");
+  });
+
+  it("toggle has focus-visible outline", () => {
+    expect(styleSection).toMatch(/\.annotation-overlay-toggle:focus-visible/);
+    expect(styleSection).toMatch(/outline.*var\(--border-action\)/);
+  });
+
+  it("toggle has tooltip", () => {
+    expect(templateSection).toContain('ref="overlay-toggle-ref"');
+    expect(templateSection).toMatch(/Tooltip.*overlayToggleRef/s);
   });
 
   it("Vue Transition wraps overlay with overlay-slide name", () => {

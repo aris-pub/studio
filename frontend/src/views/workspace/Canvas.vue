@@ -54,6 +54,7 @@
   const innerRef = useTemplateRef("inner-right-ref");
   const midColRef = useTemplateRef("middle-column-ref");
   const rgtColRef = useTemplateRef("right-column-ref");
+  const overlayToggleRef = useTemplateRef("overlay-toggle-ref");
   const columnSizes = reactive({
     middle: { width: 0, height: 0 },
     right: { width: 0, height: 0 },
@@ -299,6 +300,7 @@
 
         <button
           v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
+          ref="overlay-toggle-ref"
           class="annotation-overlay-toggle"
           :aria-label="`Show ${annotationCount} annotations`"
           @click="annotationOverlayOpen = !annotationOverlayOpen"
@@ -306,6 +308,7 @@
           <IconMessageFilled :size="16" />
           <span class="toggle-count">{{ annotationCount }}</span>
         </button>
+        <Tooltip :anchor="overlayToggleRef" content="Annotations" placement="left" />
       </div>
 
       <!-- <Drawer :class="{ focus: focusMode, mobile: mobileMode }" /> -->
@@ -523,27 +526,33 @@
     z-index: 3;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding-block: 0;
-    padding-inline: 4px;
-    border-radius: 4px;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px 0 8px;
+    border-radius: 8px;
     border: var(--border-extrathin) solid var(--border-primary);
     background: var(--surface-page);
-    color: var(--gray-500);
+    color: var(--gray-600);
     cursor: pointer;
-    z-index: 3;
-    transition: var(--transition-bg-color), var(--transition-bd-color);
+    transition: var(--transition-bg-color), var(--transition-bd-color), box-shadow 0.15s ease;
   }
 
   .annotation-overlay-toggle:hover {
+    background: var(--surface-hover);
     box-shadow: var(--shadow-soft);
-    color: var(--gray-700);
+    color: var(--gray-800);
+  }
+
+  .annotation-overlay-toggle:focus-visible {
+    outline: 2px solid var(--border-action);
+    outline-offset: 2px;
   }
 
   .toggle-count {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--weight-medium);
-    padding-inline: 2px 8px;
+    color: var(--gray-700);
+    line-height: 1;
   }
 
   .annotation-overlay {
