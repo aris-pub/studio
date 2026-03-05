@@ -247,8 +247,8 @@
     right: 6px;
     height: 3px;
     border-radius: 2px;
-    background-color: var(--gray-400);
-    opacity: 0.5;
+    background-color: var(--gray-800);
+    opacity: 0.7;
     pointer-events: auto;
     cursor: pointer;
   }
@@ -257,7 +257,6 @@
     left: 2px;
     right: 2px;
     height: 4px;
-    opacity: 0.75;
   }
 
   /* ── Annotation bubble icons ── */
@@ -266,15 +265,14 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--ann-color);
-    opacity: 0.8;
     pointer-events: auto;
     cursor: pointer;
-    transition: opacity 0.15s ease;
+    transition: transform 0.15s ease;
     line-height: 0;
   }
 
   .mm-annotation:hover {
-    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
   }
 
   /* ── Search dashes ── */
@@ -284,14 +282,9 @@
     right: 25%;
     height: 2px;
     border-radius: 1px;
-    background-color: var(--orange-400);
-    opacity: 0.85;
+    background-color: var(--orange-700);
     pointer-events: auto;
     cursor: pointer;
-  }
-
-  .mm-search:hover {
-    opacity: 1;
   }
 
   /* ── Presence dots ── */

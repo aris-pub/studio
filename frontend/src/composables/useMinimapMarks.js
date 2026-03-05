@@ -83,7 +83,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       const label = snippet ? `"${snippet}${snippet.length >= 40 ? "…" : ""}"` : "Annotation";
       result.push({
         top: measureElement(mark, container),
-        color: `var(--${colorName}-400)`,
+        color: `var(--${colorName}-600)`,
         type: "annotation",
         id: `ann-${annId}`,
         label,

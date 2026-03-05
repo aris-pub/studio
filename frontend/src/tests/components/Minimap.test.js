@@ -70,8 +70,8 @@ vi.mock("@/composables/useMinimapMarks.js", async (importOriginal) => {
       marks: ref([
         { top: 0.1, color: "var(--gray-300)", type: "section", id: "s1", level: 1 },
         { top: 0.3, color: "var(--gray-300)", type: "section", id: "s2", level: 2 },
-        { top: 0.5, color: "var(--purple-400)", type: "annotation", id: "a1", label: "purple" },
-        { top: 0.7, color: "var(--orange-400)", type: "search", id: "sr1", label: "Search match" },
+        { top: 0.5, color: "var(--purple-600)", type: "annotation", id: "a1", label: "purple" },
+        { top: 0.7, color: "var(--orange-700)", type: "search", id: "sr1", label: "Search match" },
         {
           top: 0.9,
           color: "var(--primary-400)",
@@ -244,7 +244,7 @@ describe("computeSectionMarks — edge cases", () => {
 
 const minimapMarksSource = readFileSync(
   resolve(__dirname, "../../composables/useMinimapMarks.js"),
-  "utf-8",
+  "utf-8"
 );
 
 describe("useMinimapMarks — search highlight query regression", () => {
@@ -263,7 +263,9 @@ describe("useMinimapMarks — search highlight query regression", () => {
 
   it("observer debounce timer is cleaned up in teardown", () => {
     // teardownObserver must clear the debounce timer to prevent stale recomputes
-    expect(minimapMarksSource).toMatch(/function teardownObserver[\s\S]*?clearTimeout\(observerDebounce\)/);
+    expect(minimapMarksSource).toMatch(
+      /function teardownObserver[\s\S]*?clearTimeout\(observerDebounce\)/
+    );
   });
 
   it("presence marks include userId and avatarColor fields", () => {
@@ -320,7 +322,7 @@ describe("ScrollbarMinimap.vue — interaction behavior", () => {
     const wrapper = mountComponent();
     const ann = wrapper.find(".mm-annotation");
     expect(ann.attributes("style")).toContain("--ann-color");
-    expect(ann.attributes("style")).toContain("var(--purple-400)");
+    expect(ann.attributes("style")).toContain("var(--purple-600)");
   });
 
   it("search marks are positioned independently from section marks", () => {
@@ -366,13 +368,15 @@ describe("ScrollbarMinimap.vue — interaction behavior", () => {
 
 const minimapSource = readFileSync(
   resolve(__dirname, "../../views/workspace/ScrollbarMinimap.vue"),
-  "utf-8",
+  "utf-8"
 );
 
 describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
   it("workspace strip is 24px wide with sticky positioning", () => {
     expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*width:\s*24px/s);
-    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*position:\s*sticky/s);
+    expect(minimapSource).toMatch(
+      /\.scrollbar-minimap\.workspace\.vertical[^}]*position:\s*sticky/s
+    );
   });
 
   it("section marks have different sizes for level-1 vs sub-sections", () => {
@@ -388,7 +392,7 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
   });
 
   it("search uses orange, not yellow, to distinguish from annotations", () => {
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*--orange-400/s);
+    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*--orange-700/s);
   });
 
   it("presence dots are 14px circles with white ring", () => {
@@ -444,7 +448,7 @@ const canvasSource = readFileSync(resolve(__dirname, "../../views/workspace/Canv
 
 const editorSource = readFileSync(
   resolve(__dirname, "../../views/workspace/EditorCodeMirror.vue"),
-  "utf-8",
+  "utf-8"
 );
 
 describe("Layout regressions — editor/manuscript split", () => {

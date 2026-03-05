@@ -550,7 +550,7 @@
     border-radius: 8px;
     border: var(--border-extrathin) solid var(--border-primary);
     background: var(--surface-page);
-    color: var(--gray-600);
+    color: var(--gray-700);
     cursor: pointer;
     transition:
       var(--transition-bg-color),
@@ -572,7 +572,7 @@
   .toggle-count {
     font-size: 12px;
     font-weight: var(--weight-medium);
-    color: var(--gray-700);
+    color: var(--gray-800);
     line-height: 1;
   }
 
