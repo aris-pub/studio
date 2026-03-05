@@ -201,6 +201,8 @@
     class="annotations"
     :class="{ aligned }"
     :style="aligned ? { minHeight: containerMinHeight } : {}"
+    role="region"
+    aria-label="Annotations list"
     @click="onContainerClick"
   >
     <Note

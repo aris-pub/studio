@@ -241,13 +241,24 @@
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" ref="selfRef" :style="floatingStyles" class="hl-menu" role="toolbar" aria-label="Annotation tools" tabindex="-1" @mouseup.stop>
+    <div
+      v-if="visible"
+      ref="selfRef"
+      :style="floatingStyles"
+      class="hl-menu"
+      role="toolbar"
+      aria-label="Annotation tools"
+      tabindex="-1"
+      @mouseup.stop
+    >
       <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
         <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
       </div>
 
       <div v-if="showNoteInput" class="note-area">
+        <label for="annotation-menu-note" class="sr-only">Annotation note</label>
         <textarea
+          id="annotation-menu-note"
           ref="noteInputRef"
           v-model="inputText"
           class="note-input"
@@ -257,7 +268,7 @@
         />
       </div>
 
-      <div class="separator" />
+      <div class="separator" aria-hidden="true" />
 
       <div class="swatches" @mousedown.prevent>
         <button
@@ -386,4 +397,15 @@
     }
   }
 
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 </style>

@@ -21,6 +21,13 @@ const canvasSource = readFileSync(
   "utf-8"
 );
 const canvasTemplate = canvasSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+const canvasScript = canvasSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+
+const dockableSource = readFileSync(
+  resolve(__dirname, "../../../views/workspace/DockableAnnotations.vue"),
+  "utf-8"
+);
+const dockableTemplate = dockableSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
 
 describe("Note.vue — focus visibility (std-edzz)", () => {
   it("card has focus-visible outline style", () => {
@@ -96,5 +103,63 @@ describe("Canvas.vue — overlay panel role (std-aa3y)", () => {
 
   it("annotation-overlay has aria-label", () => {
     expect(canvasTemplate).toMatch(/class="annotation-overlay"[\s\S]*?aria-label=/);
+  });
+});
+
+describe("Canvas.vue — overlay focus management (std-czeu)", () => {
+  it("overlay panel has tabindex for programmatic focus", () => {
+    expect(canvasTemplate).toMatch(/class="annotation-overlay"[\s\S]*?tabindex="-1"/);
+  });
+
+  it("focus moves into overlay on open", () => {
+    expect(canvasScript).toMatch(/overlayPanelRef[\s\S]*?\.focus\(\)/);
+  });
+
+  it("focus returns to toggle on close", () => {
+    expect(canvasScript).toMatch(/overlayToggleRef[\s\S]*?\.focus\(\)/);
+  });
+});
+
+describe("Canvas.vue — toggle aria-label reflects state (std-zhy4)", () => {
+  it("aria-label switches between Show/Hide", () => {
+    expect(canvasTemplate).toMatch(/annotationOverlayOpen\s*\?\s*'Hide annotations'/);
+  });
+});
+
+describe("DockableAnnotations.vue — container semantics (std-yyo8)", () => {
+  it("annotations container has role=region", () => {
+    expect(dockableTemplate).toMatch(/role="region"/);
+  });
+
+  it("annotations container has aria-label", () => {
+    expect(dockableTemplate).toMatch(/aria-label="Annotations list"/);
+  });
+});
+
+describe("Note.vue — visually-hidden textarea label (std-wz20)", () => {
+  it("edit textarea has a label element", () => {
+    expect(noteTemplate).toMatch(/<label[\s\S]*?class="sr-only"[\s\S]*?Annotation note/);
+  });
+
+  it("label for attribute matches textarea id", () => {
+    expect(noteTemplate).toMatch(/:for="`note-edit-\$\{annotation\.id\}`"/);
+    expect(noteTemplate).toMatch(/:id="`note-edit-\$\{annotation\.id\}`"/);
+  });
+});
+
+describe("AnnotationMenu.vue — visually-hidden textarea label (std-wz20)", () => {
+  it("note textarea has a label element", () => {
+    expect(menuTemplate).toMatch(/<label[\s\S]*?class="sr-only"[\s\S]*?Annotation note/);
+  });
+
+  it("label for attribute matches textarea id", () => {
+    expect(menuTemplate).toMatch(/for="annotation-menu-note"/);
+    expect(menuTemplate).toMatch(/id="annotation-menu-note"/);
+  });
+});
+
+describe("AnnotationMenu.vue — separator aria-hidden (std-d0be)", () => {
+  it("separator has aria-hidden=true", () => {
+    expect(menuTemplate).toMatch(/class="separator"[\s\S]*?aria-hidden="true"/);
   });
 });

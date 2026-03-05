@@ -12,14 +12,19 @@
     try {
       const stored = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
       return !!stored[id];
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
   function saveCollapsed(id, val) {
     try {
       const stored = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
-      if (val) stored[id] = true; else delete stored[id];
+      if (val) stored[id] = true;
+      else delete stored[id];
       localStorage.setItem(COLLAPSE_KEY, JSON.stringify(stored));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const collapsed = ref(loadCollapsed(props.annotation.id));
@@ -154,7 +159,13 @@
     <div class="header">
       <span class="timestamp">{{ timeAgo }}</span>
       <div class="actions">
-        <Button kind="tertiary" size="sm" icon="Edit" aria-label="Edit annotation" @click.stop="onEdit" />
+        <Button
+          kind="tertiary"
+          size="sm"
+          icon="Edit"
+          aria-label="Edit annotation"
+          @click.stop="onEdit"
+        />
         <button
           class="delete-btn"
           :class="{ confirming: confirmingDelete }"
@@ -181,7 +192,9 @@
       <p class="selected-text">{{ displayText }}</p>
 
       <div v-if="editing" class="edit-area">
+        <label :for="`note-edit-${annotation.id}`" class="sr-only">Annotation note</label>
         <textarea
+          :id="`note-edit-${annotation.id}`"
           ref="editInput"
           v-model="editText"
           class="edit-input"
@@ -247,7 +260,9 @@
   .note.active:hover {
     border-color: var(--border-action);
     border-left-color: var(--note-color);
-    box-shadow: 0 0 0 1px var(--border-action), var(--shadow-soft);
+    box-shadow:
+      0 0 0 1px var(--border-action),
+      var(--shadow-soft);
   }
 
   .header {
@@ -284,7 +299,6 @@
       margin: 0 !important;
       stroke-width: 1.5;
     }
-
   }
 
   .delete-btn {
@@ -298,7 +312,11 @@
     border-radius: 8px;
     background: transparent;
     cursor: pointer;
-    transition: opacity 0.2s ease, min-width 0.15s ease, background-color 0.15s ease, padding 0.15s ease;
+    transition:
+      opacity 0.2s ease,
+      min-width 0.15s ease,
+      background-color 0.15s ease,
+      padding 0.15s ease;
 
     &:hover {
       background-color: var(--surface-hint);
@@ -398,5 +416,17 @@
     display: flex;
     justify-content: flex-end;
     gap: 4px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

@@ -226,9 +226,17 @@
     autoActivate: false,
   });
 
-  watch(annotationOverlayOpen, (open) => {
-    if (open) activateOverlayClosable();
-    else deactivateOverlayClosable();
+  const overlayPanelRef = useTemplateRef("overlay-panel-ref");
+
+  watch(annotationOverlayOpen, async (open) => {
+    if (open) {
+      activateOverlayClosable();
+      await nextTick();
+      overlayPanelRef.value?.focus();
+    } else {
+      deactivateOverlayClosable();
+      overlayToggleRef.value?.focus();
+    }
   });
 </script>
 
@@ -283,9 +291,11 @@
           <Transition name="overlay-slide">
             <div
               v-if="annotationOverlayOpen && !showAnnotationCards"
+              ref="overlay-panel-ref"
               class="annotation-overlay"
               role="complementary"
               aria-label="Annotations panel"
+              tabindex="-1"
             >
               <Pane>
                 <template #header>
@@ -307,7 +317,7 @@
           v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
           ref="overlay-toggle-ref"
           class="annotation-overlay-toggle"
-          :aria-label="`Show ${annotationCount} annotations`"
+          :aria-label="annotationOverlayOpen ? 'Hide annotations' : `Show ${annotationCount} annotations`"
           @click="annotationOverlayOpen = !annotationOverlayOpen"
         >
           <IconMessageFilled :size="16" />
