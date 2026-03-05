@@ -79,6 +79,7 @@
         <Separator v-if="it.name === 'Separator'" />
         <SidebarItem
           v-else-if="it.type === 'toggle'"
+          v-model="it.state"
           :icon="it.icon"
           :label="it.label"
           @on="emit('on', idx)"
@@ -101,6 +102,7 @@
       <template v-for="(it, idx) in items" :key="it.name + idx">
         <SidebarItem
           v-if="it.type === 'toggle'"
+          v-model="it.state"
           :icon="it.icon"
           :label="it.label"
           @on="emit('on', idx)"

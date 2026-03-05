@@ -97,15 +97,25 @@
   const mobileMode = inject("mobileMode");
   const xsMode = inject("xsMode");
   const drawerOpen = inject("drawerOpen");
+  const showEditor = inject("showEditor", null);
   const showSearch = inject("showSearch", null);
 
-  // Sync search toggle when showSearch changes externally (e.g. DockableSearch closing itself)
+  // Sync toggle buttons when state changes externally (immediate to catch mount)
+  watch(
+    () => showEditor?.value,
+    (isOpen) => {
+      const editorItem = items.find((item) => item.name === "DockableEditor");
+      if (editorItem && editorItem.state !== isOpen) editorItem.state = isOpen;
+    },
+    { immediate: true }
+  );
   watch(
     () => showSearch?.value,
     (isOpen) => {
       const searchItem = items.find((item) => item.name === "DockableSearch");
-      if (searchItem) searchItem.state = isOpen;
-    }
+      if (searchItem && searchItem.state !== isOpen) searchItem.state = isOpen;
+    },
+    { immediate: true }
   );
 
   // Sync drawer button states with drawerOpen (fixes ESC key closing drawer but button staying active)

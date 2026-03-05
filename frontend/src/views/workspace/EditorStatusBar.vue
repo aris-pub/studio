@@ -61,7 +61,7 @@
     const view = cmView?.value;
     if (!view) return;
     const raw = toRaw(view);
-    raw.dispatch({ selection: { anchor: crumb.offset } });
+    raw.dispatch({ selection: { anchor: crumb.offset }, scrollIntoView: true });
     raw.focus();
   }
 
