@@ -281,7 +281,7 @@
           </div>
 
           <Transition name="overlay-slide">
-            <div v-if="annotationOverlayOpen && !showAnnotationCards" class="annotation-overlay">
+            <div v-if="annotationOverlayOpen && !showAnnotationCards" class="annotation-overlay" role="complementary" aria-label="Annotations panel">
               <Pane>
                 <template #header>
                   <span class="overlay-header-title">

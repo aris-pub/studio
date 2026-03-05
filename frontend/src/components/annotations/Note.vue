@@ -154,10 +154,11 @@
     <div class="header">
       <span class="timestamp">{{ timeAgo }}</span>
       <div class="actions">
-        <Button kind="tertiary" size="sm" icon="Edit" @click.stop="onEdit" />
+        <Button kind="tertiary" size="sm" icon="Edit" aria-label="Edit annotation" @click.stop="onEdit" />
         <button
           class="delete-btn"
           :class="{ confirming: confirmingDelete }"
+          :aria-label="confirmingDelete ? 'Confirm delete' : 'Delete annotation'"
           @click.stop="onDeleteClick"
         >
           <IconTrash v-if="!confirmingDelete" class="delete-icon" />
@@ -168,6 +169,7 @@
           kind="tertiary"
           size="sm"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
+          :aria-label="collapsed ? 'Expand annotation' : 'Collapse annotation'"
           @click.stop="toggleCollapse"
         />
       </div>
@@ -216,6 +218,11 @@
       box-shadow 0.15s ease;
   }
 
+  .note:focus-visible {
+    outline: 2px solid var(--border-action);
+    outline-offset: 2px;
+  }
+
   .note.active:not(:hover) {
     border-color: var(--border-action);
     border-left-color: var(--note-color);
@@ -226,7 +233,8 @@
     opacity: 1;
   }
 
-  .note:hover {
+  .note:hover,
+  .note:focus-within {
     border-color: var(--border-primary);
     border-left-color: var(--note-color);
     box-shadow: var(--shadow-soft);
@@ -382,6 +390,8 @@
 
   .edit-input:focus {
     border-color: var(--border-action);
+    outline: 2px solid var(--border-action);
+    outline-offset: -2px;
   }
 
   .edit-actions {

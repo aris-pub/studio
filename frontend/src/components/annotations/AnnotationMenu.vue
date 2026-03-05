@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, onMounted, onUnmounted, useTemplateRef } from "vue";
+  import { ref, inject, onMounted, onUnmounted, useTemplateRef, nextTick } from "vue";
   import { useFloating, autoUpdate, offset, flip, shift } from "@floating-ui/vue";
   import { extractAnchor } from "@/utils/anchorExtraction.js";
   import { SWATCH_COLORS } from "@/constants/annotationColors.js";
@@ -84,6 +84,7 @@
     showNoteInput.value = false;
     inputText.value = "";
     visible.value = true;
+    nextTick(() => selfRef.value?.focus());
   };
 
   function getManuscriptWrapper() {
@@ -240,7 +241,7 @@
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" ref="selfRef" :style="floatingStyles" class="hl-menu" @mouseup.stop>
+    <div v-if="visible" ref="selfRef" :style="floatingStyles" class="hl-menu" role="toolbar" aria-label="Annotation tools" tabindex="-1" @mouseup.stop>
       <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
         <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
       </div>
@@ -286,6 +287,7 @@
     align-items: center;
     gap: 8px;
     z-index: 999;
+    outline: none;
   }
 
   .swatches {
@@ -313,6 +315,11 @@
 
     &:active {
       background-color: var(--blue-400);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--border-action);
+      outline-offset: 2px;
     }
   }
 
@@ -369,6 +376,8 @@
 
     &:focus {
       border-color: var(--border-action);
+      outline: 2px solid var(--border-action);
+      outline-offset: -2px;
     }
 
     &::placeholder {
