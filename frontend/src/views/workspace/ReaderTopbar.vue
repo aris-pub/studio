@@ -17,6 +17,9 @@
   <div class="topbar" :class="{ active: isActive, focus: focusMode, mobile: mobileMode }">
     <FileTitle v-if="!component && showTitle" :file="file" class="text-h6" />
     <component :is="component" v-if="component" ref="middle-comp" :file="file" side="top" />
+    <div v-if="$slots.trailing" class="topbar-trailing">
+      <slot name="trailing" />
+    </div>
   </div>
 </template>
 
@@ -52,6 +55,11 @@
   .topbar.focus {
     opacity: 0;
     transform: translateY(-100%);
+  }
+
+  .topbar-trailing {
+    position: absolute;
+    right: 8px;
   }
 
   .topbar.mobile {

@@ -18,6 +18,8 @@
   import useElementVisibilityObserver from "@/composables/useElementVisibilityObserver";
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
+  import { IconMessageFilled } from "@tabler/icons-vue";
+  import useClosable from "@/composables/useClosable.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
   import Dock from "./Dock.vue";
   import Editor from "./Editor.vue";
@@ -199,6 +201,29 @@
     const rightMargin = props.showEditor ? spare : spare / 2;
     return rightMargin >= 120;
   });
+
+  // Overlay panel for annotations at narrow viewports
+  const annotationOverlayOpen = ref(false);
+  const annotationCount = computed(() => {
+    const list = isRef(annotations) ? annotations.value : annotations;
+    return list?.length ?? 0;
+  });
+
+  watch(showAnnotationCards, (visible) => {
+    if (visible) annotationOverlayOpen.value = false;
+  });
+
+  const { activate: activateOverlayClosable, deactivate: deactivateOverlayClosable } = useClosable({
+    onClose: () => (annotationOverlayOpen.value = false),
+    closeOnEsc: true,
+    closeOnOutsideClick: false,
+    autoActivate: false,
+  });
+
+  watch(annotationOverlayOpen, (open) => {
+    if (open) activateOverlayClosable();
+    else deactivateOverlayClosable();
+  });
 </script>
 
 <template>
@@ -225,7 +250,19 @@
         >
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
-              <ReaderTopbar :show-title="!isMainTitleVisible" />
+              <ReaderTopbar :show-title="!isMainTitleVisible">
+                <template #trailing>
+                  <button
+                    v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
+                    class="annotation-overlay-toggle"
+                    :aria-label="`Show ${annotationCount} annotations`"
+                    @click="annotationOverlayOpen = !annotationOverlayOpen"
+                  >
+                    <IconMessageFilled :size="16" />
+                    <span class="toggle-count">{{ annotationCount }}</span>
+                  </button>
+                </template>
+              </ReaderTopbar>
             </Dock>
             <Dock class="dock middle main">
               <ManuscriptWrapper
@@ -248,6 +285,13 @@
               </div>
             </Dock>
           </div>
+
+          <Transition name="overlay-slide">
+            <div v-if="annotationOverlayOpen && !showAnnotationCards" class="annotation-overlay">
+              <DockableAnnotations />
+            </div>
+          </Transition>
+
           <ScrollbarMinimap :file="file" mode="workspace" />
         </div>
       </div>
@@ -458,5 +502,53 @@
     top: 0;
     right: 0;
     z-index: 3;
+  }
+
+  .annotation-overlay-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 16px;
+    background: var(--surface-page);
+    color: var(--gray-500);
+    cursor: pointer;
+    z-index: 3;
+    transition: var(--transition-bg-color), var(--transition-bd-color);
+  }
+
+  .annotation-overlay-toggle:hover {
+    box-shadow: var(--shadow-soft);
+    color: var(--gray-700);
+  }
+
+  .toggle-count {
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+  }
+
+  .annotation-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 999;
+    background: var(--surface-page);
+    border-left: var(--border-extrathin) solid var(--border-primary);
+    box-shadow: var(--shadow-strong);
+    overflow-y: auto;
+  }
+
+  .overlay-slide-enter-active {
+    transition: transform 0.3s ease-out;
+  }
+  .overlay-slide-leave-active {
+    transition: transform 0.3s ease-in;
+  }
+  .overlay-slide-enter-from,
+  .overlay-slide-leave-to {
+    transform: translateX(100%);
   }
 </style>

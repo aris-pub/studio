@@ -82,6 +82,17 @@ vi.mock("@/composables/useElementVisibilityObserver", () => ({
 
 vi.mock("@/composables/useKeyboardShortcuts.js", () => ({
   registerAsFallback: vi.fn(),
+  useKeyboardShortcuts: vi.fn(() => ({
+    activate: vi.fn(),
+    deactivate: vi.fn(),
+  })),
+}));
+
+vi.mock("@/composables/useClosable.js", () => ({
+  default: vi.fn(() => ({
+    activate: vi.fn(),
+    deactivate: vi.fn(),
+  })),
 }));
 
 describe("Canvas Layout", () => {
