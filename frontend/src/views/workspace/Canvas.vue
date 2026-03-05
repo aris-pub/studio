@@ -177,6 +177,7 @@
   const focusMode = inject("focusMode");
   const drawerOpen = inject("drawerOpen");
   const annotations = inject("annotations", ref([]));
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const hasAnnotations = computed(() => {
     const list = isRef(annotations) ? annotations.value : annotations;
     return list && list.length > 0;
@@ -211,6 +212,10 @@
 
   watch(showAnnotationCards, (visible) => {
     if (visible) annotationOverlayOpen.value = false;
+  });
+
+  watch(activeAnnotationId, (id) => {
+    if (id != null && !showAnnotationCards.value) annotationOverlayOpen.value = true;
   });
 
   const { activate: activateOverlayClosable, deactivate: deactivateOverlayClosable } = useClosable({
@@ -250,19 +255,7 @@
         >
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
-              <ReaderTopbar :show-title="!isMainTitleVisible">
-                <template #trailing>
-                  <button
-                    v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
-                    class="annotation-overlay-toggle"
-                    :aria-label="`Show ${annotationCount} annotations`"
-                    @click="annotationOverlayOpen = !annotationOverlayOpen"
-                  >
-                    <IconMessageFilled :size="16" />
-                    <span class="toggle-count">{{ annotationCount }}</span>
-                  </button>
-                </template>
-              </ReaderTopbar>
+              <ReaderTopbar :show-title="!isMainTitleVisible" />
             </Dock>
             <Dock class="dock middle main">
               <ManuscriptWrapper
@@ -288,12 +281,31 @@
 
           <Transition name="overlay-slide">
             <div v-if="annotationOverlayOpen && !showAnnotationCards" class="annotation-overlay">
-              <DockableAnnotations />
+              <Pane>
+                <template #header>
+                  <span class="overlay-header-title">
+                    <Icon name="MessageFilled" />
+                    <h3>Annotations</h3>
+                  </span>
+                  <ButtonClose @close="annotationOverlayOpen = false" />
+                </template>
+                <DockableAnnotations />
+              </Pane>
             </div>
           </Transition>
 
           <ScrollbarMinimap :file="file" mode="workspace" />
         </div>
+
+        <button
+          v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
+          class="annotation-overlay-toggle"
+          :aria-label="`Show ${annotationCount} annotations`"
+          @click="annotationOverlayOpen = !annotationOverlayOpen"
+        >
+          <IconMessageFilled :size="16" />
+          <span class="toggle-count">{{ annotationCount }}</span>
+        </button>
       </div>
 
       <!-- <Drawer :class="{ focus: focusMode, mobile: mobileMode }" /> -->
@@ -505,12 +517,17 @@
   }
 
   .annotation-overlay-toggle {
+    position: absolute;
+    top: 8px;
+    right: 68px;
+    z-index: 3;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 8px;
+    padding-block: 0;
+    padding-inline: 4px;
+    border-radius: 4px;
     border: var(--border-extrathin) solid var(--border-primary);
-    border-radius: 16px;
     background: var(--surface-page);
     color: var(--gray-500);
     cursor: pointer;
@@ -526,19 +543,36 @@
   .toggle-count {
     font-size: 11px;
     font-weight: var(--weight-medium);
+    padding-inline: 2px 8px;
   }
 
   .annotation-overlay {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
     width: 280px;
     z-index: 999;
-    background: var(--surface-page);
-    border-left: var(--border-extrathin) solid var(--border-primary);
+    display: flex;
+    flex-direction: column;
     box-shadow: var(--shadow-strong);
-    overflow-y: auto;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .overlay-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .annotation-overlay :deep(.pane) {
+    height: 100%;
+    box-shadow: none;
+  }
+
+  .annotation-overlay :deep(.annotations) {
+    padding: 8px 4px;
   }
 
   .overlay-slide-enter-active {

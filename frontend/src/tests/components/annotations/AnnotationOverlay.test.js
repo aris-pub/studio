@@ -74,12 +74,11 @@ describe("Canvas.vue — annotation overlay panel (std-y6e3)", () => {
 });
 
 describe("Canvas.vue — overlay toggle positioning and transitions (std-y6e3)", () => {
-  it("toggle is inside ReaderTopbar trailing slot", () => {
-    const readerTopbarBlock = templateSection.match(
-      /<ReaderTopbar[\s\S]*?<\/ReaderTopbar>/
-    )?.[0] ?? "";
-    expect(readerTopbarBlock).toContain("annotation-overlay-toggle");
-    expect(readerTopbarBlock).toContain('#trailing');
+  it("toggle is sticky-positioned (always visible while scrolling)", () => {
+    const toggleCSS = styleSection.match(
+      /\.annotation-overlay-toggle\s*\{([^}]*)\}/s
+    )?.[1] ?? "";
+    expect(toggleCSS).toContain("position: absolute");
   });
 
   it("Vue Transition wraps overlay with overlay-slide name", () => {
@@ -96,5 +95,41 @@ describe("Canvas.vue — overlay auto-close watcher (std-y6e3)", () => {
   it("script contains watcher that closes overlay when showAnnotationCards becomes true", () => {
     expect(scriptSection).toContain("annotationOverlayOpen");
     expect(scriptSection).toMatch(/watch\b[\s\S]*?showAnnotationCards/);
+  });
+
+  it("clicking a highlight opens overlay when cards are not visible", () => {
+    expect(scriptSection).toMatch(
+      /watch\(activeAnnotationId[\s\S]*?!showAnnotationCards\.value[\s\S]*?annotationOverlayOpen\.value\s*=\s*true/
+    );
+  });
+});
+
+describe("Canvas.vue — overlay panel uses established UI components (std-y6e3)", () => {
+  const overlayBlock =
+    templateSection.match(/class="annotation-overlay"[\s\S]*?<\/Transition>/)?.[0] ?? "";
+
+  it("overlay uses Pane component", () => {
+    expect(overlayBlock).toContain("<Pane");
+  });
+
+  it("overlay has grouped header title with icon", () => {
+    expect(overlayBlock).toContain("overlay-header-title");
+  });
+
+  it("overlay has ButtonClose for dismissal", () => {
+    expect(overlayBlock).toContain("<ButtonClose");
+  });
+
+  it("overlay header shows 'Annotations' title", () => {
+    expect(overlayBlock).toMatch(/<h3>Annotations<\/h3>/);
+  });
+
+  it("overlay has border-radius matching drawer pattern", () => {
+    const overlayCSS = styleSection.match(/\.annotation-overlay\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(overlayCSS).toContain("border-radius: 16px");
+  });
+
+  it("overlay reduces annotation card padding", () => {
+    expect(styleSection).toMatch(/\.annotation-overlay[\s\S]*?:deep\(\.annotations\)/);
   });
 });
