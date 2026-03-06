@@ -236,11 +236,6 @@
     innerRef.value?.removeEventListener("scroll", updateSectionBreadcrumb);
   });
 
-  // Scroll to top
-  function scrollToTop() {
-    innerRef.value?.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   // Keyboard shortcuts
   registerAsFallback(manuscriptRef);
 
@@ -346,7 +341,6 @@
               <ReaderTopbar
                 :show-title="!isMainTitleVisible"
                 :current-section="currentSection"
-                @scroll-to-top="scrollToTop"
               />
             </Dock>
             <Dock class="dock middle main">

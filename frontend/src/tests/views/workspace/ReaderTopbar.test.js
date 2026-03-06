@@ -133,10 +133,10 @@ describe("ReaderTopbar — section breadcrumb (std-vcrh)", () => {
   });
 });
 
-// std-ag6w: Scroll-to-top button
-describe("ReaderTopbar — scroll-to-top button (std-ag6w)", () => {
-  it("topbar has a scroll-to-top action", () => {
-    expect(topbarTemplate).toMatch(/scroll.*top|scrollToTop/i);
+// std-ag6w: Scroll-to-top removed (minimap handles navigation)
+describe("ReaderTopbar — no scroll-to-top button (std-ag6w)", () => {
+  it("topbar does NOT have a scroll-to-top button", () => {
+    expect(topbarTemplate).not.toMatch(/scroll-to-top/);
   });
 });
 
@@ -149,8 +149,8 @@ describe("ReaderTopbar — no uppercase title (std-v9g6)", () => {
 
 // std-qqy6: Add padding
 describe("ReaderTopbar — has padding (std-qqy6)", () => {
-  it("topbar has padding-inline", () => {
-    expect(topbarStyle).toMatch(/\.topbar\s*\{[^}]*padding-inline/s);
+  it("topbar has padding-inline: 32px", () => {
+    expect(topbarStyle).toMatch(/\.topbar\s*\{[^}]*padding-inline:\s*38px/s);
   });
 });
 
