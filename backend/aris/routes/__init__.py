@@ -2,6 +2,7 @@ from .auth import router as auth_router
 from .feedback import router as feedback_router
 from .file import router as file_router
 from .file_annotations import router as file_annotations_router
+from .file_reactions import router as file_reactions_router
 from .file_settings import router as file_settings_router
 from .lsp import router as lsp_router
 from .permissions import router as permissions_router
@@ -18,6 +19,7 @@ __all__ = [
     "auth_router",
     "feedback_router",
     "file_annotations_router",
+    "file_reactions_router",
     "file_router",
     "file_settings_router",
     "lsp_router",

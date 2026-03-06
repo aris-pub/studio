@@ -1,5 +1,15 @@
 import { ref, watch, nextTick, isRef, onUnmounted } from "vue";
 
+const FEEDBACK_COLORS = {
+  bookmark: "var(--blue-500)",
+  star: "var(--yellow-500)",
+  heart: "var(--red-400)",
+  check: "var(--green-500)",
+  exclamation: "var(--orange-500)",
+  question: "var(--pink-500)",
+  quote: "var(--purple-500)",
+};
+
 function measureElement(el, containerEl) {
   const containerRect = containerEl.getBoundingClientRect();
   const elRect = el.getBoundingClientRect();
@@ -90,6 +100,22 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       });
     }
 
+    // Feedback icons
+    const fileVal = file && isRef(file) ? file.value : file;
+    if (fileVal?.icons) {
+      for (const [iconId, entry] of Object.entries(fileVal.icons)) {
+        if (!entry.element) continue;
+        const label = entry.class.charAt(0).toUpperCase() + entry.class.slice(1);
+        result.push({
+          top: measureElement(entry.element, container),
+          color: FEEDBACK_COLORS[entry.class] || "var(--gray-500)",
+          type: "feedback",
+          id: `feedback-${iconId}`,
+          label,
+        });
+      }
+    }
+
     // Search highlights (include --current variant so the active match isn't missed)
     const searchMarks = el.querySelectorAll(
       "mark.aris-search-highlight, mark.aris-search-highlight--current"
@@ -107,7 +133,6 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
 
     // Presence (Y.js awareness)
     const awarenessVal = awareness && isRef(awareness) ? awareness.value : awareness;
-    const fileVal = file && isRef(file) ? file.value : file;
     if (awarenessVal) {
       // Use source length if available, otherwise estimate from scroll height
       const totalLen = fileVal?.source?.length || container.scrollHeight || 1;
@@ -183,6 +208,11 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
         computeMarks();
         setupObserver();
       }
+    );
+    watch(
+      () => (isRef(file) ? file.value?.icons : file?.icons),
+      () => computeMarks(),
+      { deep: true }
     );
   }
 

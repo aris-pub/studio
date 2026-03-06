@@ -190,6 +190,9 @@ class User(Base):
     annotation_messages = relationship(
         "AnnotationMessage", back_populates="owner", cascade="all, delete-orphan"
     )
+    reactions = relationship(
+        "Reaction", back_populates="owner", cascade="all, delete-orphan"
+    )
 
     def generate_verification_token(self) -> str:
         """Generate a new email verification token.
@@ -356,6 +359,9 @@ class File(Base):
     )
     permissions = relationship(
         "FilePermission", back_populates="file", cascade="all, delete-orphan"
+    )
+    reactions = relationship(
+        "Reaction", back_populates="file", cascade="all, delete-orphan"
     )
     versions = relationship(
         "FileVersion", back_populates="file", cascade="all, delete-orphan"
@@ -885,3 +891,23 @@ class Feedback(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     message = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Reaction(Base):
+    """A reaction badge on a manuscript paragraph.
+
+    Anchored by node_id (the stable data-nodeid attribute on content blocks).
+    One reaction per user per node — upserting replaces the previous reaction_type.
+    """
+
+    __tablename__ = "reaction"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    node_id = Column(String, nullable=False)
+    reaction_type = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    file = relationship("File", back_populates="reactions")
+    owner = relationship("User", back_populates="reactions")

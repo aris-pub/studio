@@ -4,23 +4,33 @@ import { mount } from "@vue/test-utils";
 
 import FeedbackIcon from "@/components/manuscript/FeedbackIcon.vue";
 
-// Stub ContextMenu and its items for interaction
 const ContextMenu = defineComponent({
   name: "ContextMenu",
-  props: {
-    icon: { type: String },
-    iconClass: { type: String },
-    placement: { type: String },
-  },
+  props: { placement: { type: String }, variant: { type: String } },
   methods: { toggle() {} },
-  template: "<div><slot/></div>",
+  template: "<div><slot /><slot name='trigger' :toggle='toggle' /></div>",
 });
 const ContextMenuItem = defineComponent({
   name: "ContextMenuItem",
+  props: { icon: String, caption: String, iconClass: String },
   emits: ["click"],
-  template: '<button class="item" @click="$emit(\'click\')"></button>',
+  template: '<button class="item" @click="$emit(\'click\')">{{ caption }}</button>',
 });
-const Separator = defineComponent({ name: "Separator", template: "<div/>" });
+const Separator = defineComponent({ name: "Separator", template: "<div class='sep'/>" });
+const Icon = defineComponent({
+  name: "Icon",
+  props: { name: String },
+  template: "<span />",
+});
+
+function mountIcon(file) {
+  return mount(FeedbackIcon, {
+    global: {
+      provide: { file },
+      stubs: { ContextMenu, ContextMenuItem, Separator, Icon },
+    },
+  });
+}
 
 describe("FeedbackIcon.vue", () => {
   let file;
@@ -28,47 +38,69 @@ describe("FeedbackIcon.vue", () => {
     file = ref({ icons: {} });
   });
 
-  it("is hidden by default", () => {
-    const wrapper = mount(FeedbackIcon, {
-      global: {
-        provide: { file },
-        stubs: { ContextMenu, ContextMenuItem, Separator },
-      },
-    });
-    const el = wrapper.get(".feedback").element;
-    expect(el.style.visibility).toBe("hidden");
+  it("is hidden by default (opacity 0)", () => {
+    const wrapper = mountIcon(file);
+    const el = wrapper.get(".feedback");
+    expect(el.classes()).not.toContain("visible");
   });
 
-  it("activates icon and updates file icons on click", async () => {
-    const wrapper = mount(FeedbackIcon, {
-      global: {
-        provide: { file },
-        stubs: { ContextMenu, ContextMenuItem, Separator },
-      },
-    });
+  it("selects a reaction and writes to file.icons", async () => {
+    const wrapper = mountIcon(file);
     const items = wrapper.findAll(".item");
-    expect(items.length).toBe(8);
+    expect(items.length).toBe(7);
+
     await items[0].trigger("click");
     const keys = Object.keys(file.value.icons);
     expect(keys).toHaveLength(1);
-    const entry = file.value.icons[keys[0]];
-    expect(entry.class).toBe("bookmark");
-    expect(entry.element).toBe(wrapper.get(".feedback").element.parentElement);
+    expect(file.value.icons[keys[0]].class).toBe("bookmark");
   });
 
-  it("removes all icons on remove click", async () => {
-    const wrapper = mount(FeedbackIcon, {
-      global: {
-        provide: { file },
-        stubs: { ContextMenu, ContextMenuItem, Separator },
-      },
-    });
+  it("becomes visible when a reaction is selected", async () => {
+    const wrapper = mountIcon(file);
+    await wrapper.findAll(".item")[0].trigger("click");
+    expect(wrapper.get(".feedback").classes()).toContain("visible");
+  });
+
+  it("switching reactions replaces the previous one", async () => {
+    const wrapper = mountIcon(file);
     const items = wrapper.findAll(".item");
-    // activate one icon first
-    await items[1].trigger("click");
+
+    await items[0].trigger("click");
+    expect(file.value.icons[Object.keys(file.value.icons)[0]].class).toBe("bookmark");
+
+    await items[6].trigger("click");
+    const keys = Object.keys(file.value.icons);
+    expect(keys).toHaveLength(1);
+    expect(file.value.icons[keys[0]].class).toBe("quote");
+  });
+
+  it("re-selecting the same reaction deselects it", async () => {
+    const wrapper = mountIcon(file);
+    const items = wrapper.findAll(".item");
+
+    await items[2].trigger("click");
     expect(Object.keys(file.value.icons)).toHaveLength(1);
-    // remove all icons
-    await items[items.length - 1].trigger("click");
-    expect(file.value.icons).toEqual({});
+
+    await items[2].trigger("click");
+    expect(Object.keys(file.value.icons)).toHaveLength(0);
+    expect(wrapper.get(".feedback").classes()).not.toContain("visible");
+  });
+
+  it("shows Remove only when a reaction is selected", async () => {
+    const wrapper = mountIcon(file);
+    expect(wrapper.findAll(".sep")).toHaveLength(0);
+
+    await wrapper.findAll(".item")[0].trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findAll(".sep")).toHaveLength(1);
+  });
+
+  it("cleans up file.icons on unmount", async () => {
+    const wrapper = mountIcon(file);
+    await wrapper.findAll(".item")[0].trigger("click");
+    expect(Object.keys(file.value.icons)).toHaveLength(1);
+
+    wrapper.unmount();
+    expect(Object.keys(file.value.icons)).toHaveLength(0);
   });
 });

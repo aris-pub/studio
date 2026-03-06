@@ -4,6 +4,7 @@
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useAnnotations } from "@/composables/useAnnotations.js";
+  import { useReactions } from "@/composables/useReactions.js";
   import { File } from "@/models/File.js";
   import Sidebar from "./Sidebar.vue";
   import Canvas from "./Canvas.vue";
@@ -100,14 +101,23 @@
     deleteNote,
   };
 
+  const { reactions, fetchReactions, upsertReaction, deleteReaction } = useReactions(fileId, api);
+
+  const reactionActions = { upsertReaction, deleteReaction };
+
   provide("annotations", annotations);
   provide("annotationActions", annotationActions);
   provide("activeAnnotationId", activeAnnotationId);
+  provide("reactions", reactions);
+  provide("reactionActions", reactionActions);
 
   watch(
     fileId,
     (id) => {
-      if (id) fetchAnnotations();
+      if (id) {
+        fetchAnnotations();
+        fetchReactions();
+      }
     },
     { immediate: true }
   );

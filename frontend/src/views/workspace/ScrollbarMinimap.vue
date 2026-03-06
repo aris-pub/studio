@@ -58,6 +58,7 @@
   const annotationMarks = computed(() => allMarks.value.filter((m) => m.type === "annotation"));
   const searchMarks = computed(() => allMarks.value.filter((m) => m.type === "search"));
   const presenceMarks = computed(() => allMarks.value.filter((m) => m.type === "presence"));
+  const feedbackMarks = computed(() => allMarks.value.filter((m) => m.type === "feedback"));
 
   function updateViewport() {
     if (!scrollContainer.value) return;
@@ -185,6 +186,17 @@
     >
       <IconMessageFilled :size="20" />
     </div>
+
+    <!-- Feedback dots -->
+    <div
+      v-for="mark in feedbackMarks"
+      :key="mark.id"
+      class="mm-feedback"
+      :style="{ top: `${mark.top * 100}%`, '--fb-color': mark.color }"
+      @mouseenter="onMarkEnter($event, mark)"
+      @mouseleave="onMarkLeave"
+      @click="onMarkClick($event, mark)"
+    />
 
     <!-- Search dashes -->
     <div
@@ -332,6 +344,25 @@
     & :deep(svg) {
       color: var(--gray-700);
     }
+  }
+
+  /* ── Feedback dots ── */
+  .mm-feedback {
+    position: absolute;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--fb-color);
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 0.15s ease;
+  }
+
+  .mm-feedback:hover {
+    transform: translate(-50%, -50%) scale(1.3);
   }
 
   /* ── Search dashes ── */

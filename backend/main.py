@@ -20,6 +20,7 @@ from aris.routes import (
     auth_router,
     feedback_router,
     file_annotations_router,
+    file_reactions_router,
     file_router,
     file_settings_router,
     lsp_router,
@@ -321,6 +322,7 @@ app.include_router(render_router, tags=["render"])
 app.include_router(signup_router, tags=["signup"])
 app.include_router(lsp_router, tags=["lsp"])
 app.include_router(file_annotations_router, tags=["annotations"])
+app.include_router(file_reactions_router, tags=["reactions"])
 logger.info("All routers registered successfully")
 
 
