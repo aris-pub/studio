@@ -100,15 +100,18 @@ describe("ReaderTopbar — consistent width strategy (std-rqdi)", () => {
   });
 });
 
-// std-lnry: Show manuscript title not filename
-describe("ReaderTopbar — shows manuscript title (std-lnry)", () => {
-  it("does NOT use FileTitle component for scroll title", () => {
+// std-lnry: Show section as running header, not manuscript title
+describe("ReaderTopbar — section-only running header (std-lnry)", () => {
+  it("does NOT use FileTitle component", () => {
     expect(topbarTemplate).not.toMatch(/FileTitle.*showTitle/);
   });
 
-  it("displays manuscript heading text", () => {
-    // Should show the extracted H1 text, not the file title
-    expect(topbarScript).toMatch(/manuscriptTitle|headingText|titleText/);
+  it("does NOT accept manuscriptTitle prop", () => {
+    expect(topbarScript).not.toMatch(/manuscriptTitle/);
+  });
+
+  it("shows currentSection in template", () => {
+    expect(topbarTemplate).toMatch(/currentSection/);
   });
 });
 

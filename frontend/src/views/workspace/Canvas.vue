@@ -219,7 +219,7 @@
     // Skip level 1 (the manuscript title, already shown or obvious)
     const crumbs = levels.filter((l) => l > 1).map((l) => byLevel.get(l));
     activeSections.value = crumbs;
-    currentSection.value = crumbs.join(" > ");
+    currentSection.value = crumbs.length ? crumbs[crumbs.length - 1] : "";
   }
   watch(
     () => manuscriptRef.value,
@@ -345,7 +345,6 @@
             <Dock class="dock middle top">
               <ReaderTopbar
                 :show-title="!isMainTitleVisible"
-                :manuscript-title="manuscriptTitle"
                 :current-section="currentSection"
                 @scroll-to-top="scrollToTop"
               />
