@@ -308,7 +308,7 @@
     const manuscriptW = Math.min(720, midW);
     const spare = midW - manuscriptW;
     const rightMargin = props.showEditor ? spare : spare / 2;
-    return rightMargin >= 120;
+    return rightMargin >= 192;
   });
 
   // Overlay panel for annotations at narrow viewports
