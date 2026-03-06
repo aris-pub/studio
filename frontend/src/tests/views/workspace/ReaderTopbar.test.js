@@ -42,6 +42,14 @@ describe("ReaderTopbar — collapsed state is height:0 or opacity-only (std-vw2m
   it("Canvas Dock parent does NOT have background !important", () => {
     expect(canvasStyle).not.toMatch(/\.dock\.top\.middle[^}]*background[^}]*!important/s);
   });
+
+  it("Canvas Dock parent has background to mask scrolling content", () => {
+    expect(canvasStyle).toMatch(/\.dock\.top\.middle\s*\{[^}]*background/s);
+  });
+
+  it("Canvas Dock parent matches manuscript width (720px)", () => {
+    expect(canvasStyle).toMatch(/\.dock\.top\.middle\s*\{[^}]*max-width:\s*720px/s);
+  });
 });
 
 // std-v84t: Fix immedate typo
@@ -83,8 +91,12 @@ describe("ReaderTopbar — no min-width/transform hack on Dock (std-6ue4)", () =
 
 // std-rqdi: Fix width conflict
 describe("ReaderTopbar — consistent width strategy (std-rqdi)", () => {
-  it("topbar does NOT set max-width: 720px (parent handles width)", () => {
-    expect(topbarStyle).not.toMatch(/\.topbar\s*\{[^}]*max-width:\s*720px/s);
+  it("topbar does NOT set its own max-width (fills parent Dock)", () => {
+    expect(topbarStyle).not.toMatch(/\.topbar\s*\{[^}]*max-width/s);
+  });
+
+  it("Dock parent has max-width: 720px matching manuscript", () => {
+    expect(canvasStyle).toMatch(/\.dock\.top\.middle\s*\{[^}]*max-width:\s*720px/s);
   });
 });
 

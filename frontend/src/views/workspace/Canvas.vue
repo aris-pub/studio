@@ -538,6 +538,7 @@
     z-index: 2;
     max-width: 720px;
     margin: 0 auto;
+    background: v-bind(fileSettings.background);
 
     &:has(+ .middle.main .rsm-manuscript.title-visible) {
       height: 0;
@@ -565,6 +566,10 @@
 
   /* When editor is open AND annotations visible, push manuscript left for card room */
   .inner.left + .inner.right .dock.main:has(.right-column) {
+    margin: 0;
+  }
+
+  .inner.left + .inner.right .middle-column:has(.right-column) .dock.top.middle {
     margin: 0;
   }
 
