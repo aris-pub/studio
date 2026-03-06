@@ -15,7 +15,7 @@
     onUnmounted,
   } from "vue";
   import { useElementSize, useScroll } from "@vueuse/core";
-  import useElementVisibilityObserver from "@/composables/useElementVisibilityObserver";
+
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { IconMessageFilled } from "@tabler/icons-vue";
@@ -135,37 +135,55 @@
   });
   const fileSettings = inject("fileSettings");
 
-  // Is main title visible?
+  // Progressive topbar reveal: height driven by scroll position, not a binary toggle.
+  // As the title scrolls out of view, the topbar grows from 0→48px proportionally.
   const isMainTitleVisible = ref(true);
+  const topbarHeight = ref(0);
   const manuscriptTitle = ref("");
-  let tearDown = () => {};
+  let mainTitleEl = null;
+
   watch(
     () => [file.value, manuscriptRef.value],
     async () => {
       if (!file.value || !manuscriptRef.value || !manuscriptRef.value.$el) return;
-      tearDown();
 
-      const mainTitle = manuscriptRef.value.$el.querySelector("section.level-1 > .heading.hr");
-      if (!mainTitle) return;
+      mainTitleEl = manuscriptRef.value.$el.querySelector("section.level-1 > .heading.hr");
+      if (!mainTitleEl) return;
 
-      // Extract manuscript H1 text
-      const h1 = mainTitle.querySelector("h1, h2, h3");
+      const h1 = mainTitleEl.querySelector("h1, h2, h3");
       manuscriptTitle.value = h1?.textContent?.trim() || file.value?.title || "";
 
-      const { isVisible, tearDown: newTearDown } = useElementVisibilityObserver(mainTitle);
-      isMainTitleVisible.value = isVisible.value;
-
-      const stopWatch = watch(isVisible, (newVal) => (isMainTitleVisible.value = newVal));
-      tearDown = () => {
-        newTearDown();
-        stopWatch();
-      };
+      updateTopbarHeight();
     },
     { immediate: true }
   );
-  onUnmounted(() => tearDown());
 
-  // Scroll-direction hysteresis: only show topbar when scrolling down past title
+  const TOPBAR_MAX = 48;
+
+  function updateTopbarHeight() {
+    if (!mainTitleEl || !innerRef.value) return;
+
+    const titleRect = mainTitleEl.getBoundingClientRect();
+    const containerRect = innerRef.value.getBoundingClientRect();
+
+    // How far the title's bottom is above the container's top edge
+    const overshoot = containerRect.top - titleRect.bottom;
+
+    // Clamp: 0 when title fully visible, 48 when title fully scrolled out
+    const h = Math.min(TOPBAR_MAX, Math.max(0, overshoot));
+    topbarHeight.value = h;
+    isMainTitleVisible.value = h === 0;
+  }
+
+  const topbarFullyRevealed = computed(() => topbarHeight.value >= TOPBAR_MAX);
+  const topbarClipPath = computed(() =>
+    topbarFullyRevealed.value
+      ? `inset(0 -100px calc(${fileSettings.lineHeight} * -0.75em) -100px)`
+      : "none"
+  );
+  const topbarGradientOpacity = computed(() => (topbarFullyRevealed.value ? 1 : 0));
+
+  // Scroll-direction hysteresis
   const lastScrollTop = ref(0);
   const scrollingDown = ref(false);
   function onManuscriptScroll() {
@@ -173,6 +191,7 @@
     const st = innerRef.value.scrollTop;
     scrollingDown.value = st > lastScrollTop.value;
     lastScrollTop.value = st;
+    updateTopbarHeight();
   }
   onMounted(() => {
     innerRef.value?.addEventListener("scroll", onManuscriptScroll, { passive: true });
@@ -187,14 +206,22 @@
   function updateSectionBreadcrumb() {
     if (!manuscriptRef.value?.$el || !innerRef.value) return;
     const el = manuscriptRef.value.$el;
-    const sections = el.querySelectorAll("section[class*='level-']");
-    if (!sections.length) { currentSection.value = ""; return; }
-
-    const scrollTop = innerRef.value.scrollTop;
     const containerRect = innerRef.value.getBoundingClientRect();
     const threshold = containerRect.top + 60;
 
-    const visible = [];
+    // Collect all headings that have scrolled past, in DOM order.
+    // Include abstract as a virtual section.
+    const entries = [];
+
+    const abstract = el.querySelector(".abstract");
+    if (abstract) {
+      const rect = abstract.getBoundingClientRect();
+      if (rect.top <= threshold) {
+        entries.push({ level: 2, text: "Abstract" });
+      }
+    }
+
+    const sections = el.querySelectorAll("section[class*='level-']");
     for (const section of sections) {
       const heading = section.querySelector(
         ":scope > .heading.hr .hr-content-zone :is(h1,h2,h3,h4,h5,h6)"
@@ -204,22 +231,28 @@
       if (rect.top <= threshold) {
         const levelClass = [...section.classList].find((c) => c.startsWith("level-"));
         const level = levelClass ? parseInt(levelClass.split("-")[1], 10) : 1;
-        visible.push({ level, text: heading.textContent.trim() });
+        entries.push({ level, text: heading.textContent.trim() });
       }
     }
 
-    // Keep the deepest heading per level (last one scrolled past)
-    const byLevel = new Map();
-    for (const v of visible) {
-      byLevel.set(v.level, v.text);
+    // Walk entries in DOM order; when a heading at level N appears,
+    // it invalidates all deeper entries from previous siblings.
+    const stack = [];
+    for (const entry of entries) {
+      // Pop everything at this level or deeper
+      while (stack.length && stack[stack.length - 1].level >= entry.level) {
+        stack.pop();
+      }
+      stack.push(entry);
     }
 
-    // Build breadcrumb from shallowest to deepest
-    const levels = [...byLevel.keys()].sort((a, b) => a - b);
-    // Skip level 1 (the manuscript title, already shown or obvious)
-    const crumbs = levels.filter((l) => l > 1).map((l) => byLevel.get(l));
+    // Skip level 1 (the manuscript title) for breadcrumb display
+    const crumbs = stack.filter((s) => s.level > 1).map((s) => s.text);
     activeSections.value = crumbs;
-    currentSection.value = crumbs.length ? crumbs[crumbs.length - 1] : "";
+    // Show deepest section, or manuscript title if no section yet
+    currentSection.value = crumbs.length
+      ? crumbs[crumbs.length - 1]
+      : manuscriptTitle.value;
   }
   watch(
     () => manuscriptRef.value,
@@ -290,7 +323,9 @@
   });
 
   watch(activeAnnotationId, (id) => {
-    if (id != null && !showAnnotationCards.value) annotationOverlayOpen.value = true;
+    if (id != null && (!showAnnotationCards.value || focusMode.value)) {
+      annotationOverlayOpen.value = true;
+    }
   });
 
   const { activate: activateOverlayClosable, deactivate: deactivateOverlayClosable } = useClosable({
@@ -339,7 +374,8 @@
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
               <ReaderTopbar
-                :show-title="!isMainTitleVisible"
+                :revealed="!isMainTitleVisible"
+                :show-title="topbarFullyRevealed"
                 :current-section="currentSection"
               />
             </Dock>
@@ -359,6 +395,7 @@
                 v-if="hasAnnotations && !mobileMode && showAnnotationCards"
                 ref="right-column-ref"
                 class="right-column"
+                :class="{ focus: focusMode }"
               >
                 <DockableAnnotations aligned />
               </div>
@@ -367,7 +404,7 @@
 
           <Transition name="overlay-slide">
             <div
-              v-if="annotationOverlayOpen && !showAnnotationCards"
+              v-if="annotationOverlayOpen && (!showAnnotationCards || focusMode)"
               ref="overlay-panel-ref"
               class="annotation-overlay"
               role="complementary"
@@ -430,7 +467,7 @@
 
   .outer.narrow {
     left: calc(var(--sidebar-width) + 64px);
-    width: calc(100% - var(--sidebar-width));
+    width: calc(100% - var(--sidebar-width) - 64px);
   }
 
   .outer.focus {
@@ -475,7 +512,7 @@
       overflow-x: hidden;
       border-bottom-left-radius: calc(16px - 12px);
       border-bottom-right-radius: calc(16px - 2px);
-      padding-inline: 16px 8px;
+      padding-inline: 16px 2px;
       padding-bottom: 16px;
       display: flex;
       align-items: flex-start;
@@ -519,6 +556,12 @@
     width: 280px;
     max-width: v-bind(rightColumnMaxWidth);
     overflow: hidden;
+    transition: opacity var(--transition-duration) ease;
+  }
+
+  .inner.right .right-column.focus {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .outer.mobile .inner.right .middle-column {
@@ -531,14 +574,32 @@
     z-index: 2;
     max-width: 720px;
     margin: 0 auto;
-    background: v-bind(fileSettings.background);
 
-    &:has(+ .middle.main .rsm-manuscript.title-visible) {
-      height: 0;
-      overflow: hidden;
+    /* Cover manuscript box-shadow that extends beyond 720px */
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -40px;
+      right: -40px;
+      height: 100%;
+      background: v-bind(fileSettings.background);
+      z-index: -1;
     }
-    &:has(+ .middle.main .rsm-manuscript:not(.title-visible)) {
-      height: 48px;
+
+    height: v-bind(topbarHeight + 'px');
+    clip-path: v-bind(topbarClipPath);
+
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: calc(v-bind(fileSettings.lineHeight) * -0.75em);
+      left: var(--border-extrathin);
+      right: var(--border-extrathin);
+      height: calc(v-bind(fileSettings.lineHeight) * 0.75em);
+      background: linear-gradient(to bottom, v-bind(fileSettings.background), transparent);
+      pointer-events: none;
+      opacity: v-bind(topbarGradientOpacity);
     }
   }
 
@@ -579,18 +640,17 @@
     padding-top: 16px;
   }
 
-  .outer.mobile .inner.right .dock.main.middle .rsm-manuscript {
+  .outer.mobile .inner.right .dock.main.middle :deep(.rsm-manuscript) {
     box-shadow: none;
     border-color: transparent;
     padding-inline: 0;
     padding-block: 16px;
   }
 
-  .rsm-manuscript {
+  :deep(.rsm-manuscript) {
     padding-block: 32px;
     border-radius: 8px;
     border: var(--border-extrathin) solid var(--border-primary);
-    border-top: none;
     box-shadow: var(--shadow-soft);
   }
 

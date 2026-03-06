@@ -3,6 +3,7 @@
 
   const props = defineProps({
     showTitle: { type: Boolean, required: true },
+    revealed: { type: Boolean, default: false },
     currentSection: { type: String, default: "" },
     component: { type: Object, default: null },
   });
@@ -12,11 +13,11 @@
 
   const focusMode = inject("focusMode");
   const mobileMode = inject("mobileMode");
-  const isActive = computed(() => props.showTitle || props.component);
+  const isActive = computed(() => props.revealed || props.showTitle || props.component);
 </script>
 
 <template>
-  <div class="topbar" :class="{ active: isActive, focus: focusMode, mobile: mobileMode }">
+  <div class="topbar" :class="{ active: isActive, full: showTitle, focus: focusMode, mobile: mobileMode }">
     <span v-if="!component && showTitle" class="topbar-section">{{ currentSection }}</span>
     <component :is="component" v-if="component" ref="middle-comp" :file="file" side="top" />
     <div class="topbar-trailing">
@@ -45,9 +46,10 @@
     background-color: v-bind(fileSettings.background);
   }
 
-  .topbar.focus {
-    display: none;
+  .topbar.full {
+    box-shadow: var(--shadow-soft);
   }
+
 
   .topbar-section {
     font-family: "Montserrat", sans-serif;

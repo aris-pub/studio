@@ -178,7 +178,7 @@
       v-for="mark in annotationMarks"
       :key="mark.id"
       class="mm-annotation"
-      :style="{ top: `${mark.top * 100}%`, '--ann-color': mark.color }"
+      :style="{ top: `${mark.top * 100}%` }"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
@@ -250,6 +250,7 @@
     flex: 0 0 20px;
     margin-left: 0;
     overflow: visible;
+    z-index: 3;
   }
 
   /* Compact/homepage mode: horizontal bar */
@@ -262,8 +263,8 @@
 
   .viewport-indicator {
     position: absolute;
-    left: 4px;
-    right: 4px;
+    left: 6px;
+    right: 6px;
     background: var(--gray-600);
     opacity: 0.25;
     border-radius: 4px;
@@ -273,20 +274,35 @@
   /* ── Section lines ── */
   .mm-section {
     position: absolute;
-    left: 6px;
-    right: 6px;
-    height: 3px;
-    border-radius: 2px;
-    background-color: var(--gray-800);
-    opacity: 0.7;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    height: 16px;
+    transform: translateY(-50%);
     pointer-events: auto;
     cursor: pointer;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 100%;
+      margin-inline: 6px;
+      height: 3px;
+      border-radius: 2px;
+      background-color: var(--gray-500);
+      transition: margin-inline 0.15s ease, background-color 0.15s ease;
+    }
   }
 
-  .mm-section.level-1 {
-    left: 2px;
-    right: 2px;
+  .mm-section.level-1::after {
+    margin-inline: 2px;
     height: 4px;
+  }
+
+  .mm-section:hover::after {
+    margin-inline: 2px;
+    background-color: var(--gray-700);
   }
 
   /* ── Annotation bubble icons ── */
@@ -294,15 +310,28 @@
     position: absolute;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: var(--ann-color);
+    color: var(--gray-500);
+    z-index: 1;
     pointer-events: auto;
     cursor: pointer;
     transition: transform 0.15s ease;
     line-height: 0;
+
+    & :deep(svg) {
+      color: var(--gray-500);
+    }
+    & :deep(svg *) {
+      stroke: none;
+    }
   }
 
   .mm-annotation:hover {
-    transform: translate(-50%, -50%) scale(1.15);
+    transform: translate(-50%, -50%) scale(1.2);
+    color: var(--gray-700);
+
+    & :deep(svg) {
+      color: var(--gray-700);
+    }
   }
 
   /* ── Search dashes ── */
@@ -312,7 +341,7 @@
     right: 25%;
     height: 2px;
     border-radius: 1px;
-    background-color: var(--orange-700);
+    background-color: var(--orange-300);
     pointer-events: auto;
     cursor: pointer;
   }
@@ -348,18 +377,24 @@
   .scrollbar-minimap.horizontal .mm-section {
     top: 0;
     height: 100%;
-    width: 1px;
+    width: 16px;
     left: auto;
     right: auto;
-    border-radius: 1px;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+
+    &::after {
+      width: 1px;
+      height: 100%;
+      margin-inline: 0;
+      border-radius: 1px;
+    }
   }
 
-  .scrollbar-minimap.horizontal .mm-section.level-1 {
+  .scrollbar-minimap.horizontal .mm-section.level-1::after {
     width: 2px;
-    opacity: 0.8;
-  }
-
-  .scrollbar-minimap.workspace .mm-section:hover {
-    opacity: 1;
+    margin-inline: 0;
   }
 </style>

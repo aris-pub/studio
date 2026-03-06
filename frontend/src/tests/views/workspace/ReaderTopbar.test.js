@@ -154,13 +154,22 @@ describe("ReaderTopbar — has padding (std-qqy6)", () => {
   });
 });
 
-// std-jhxy: Fix double-shadow seam
-describe("ReaderTopbar — no double shadow (std-jhxy)", () => {
-  it("active topbar does NOT use box-shadow", () => {
-    expect(topbarStyle).not.toMatch(/\.topbar\.active[^}]*box-shadow/s);
+// std-jhxy: Shadow continuity between topbar and manuscript
+describe("ReaderTopbar — shadow continuity (std-jhxy)", () => {
+  it("fully revealed topbar has box-shadow matching manuscript", () => {
+    expect(topbarStyle).toMatch(/\.topbar\.full[^}]*box-shadow/s);
   });
 
   it("active topbar uses border-bottom for separation", () => {
     expect(topbarStyle).toMatch(/\.topbar\.active[^}]*border-bottom/s);
+  });
+});
+
+// std-q8m3: Sidebar drawer must not clip minimap/manuscript
+describe("Canvas — narrow mode width accounts for icon bar (std-q8m3)", () => {
+  it(".outer.narrow width subtracts both sidebar-width and 64px icon bar", () => {
+    expect(canvasStyle).toMatch(
+      /\.outer\.narrow\s*\{[^}]*width:\s*calc\(100%\s*-\s*var\(--sidebar-width\)\s*-\s*64px\)/s
+    );
   });
 });
