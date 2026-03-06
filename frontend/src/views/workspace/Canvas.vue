@@ -137,6 +137,7 @@
 
   // Is main title visible?
   const isMainTitleVisible = ref(true);
+  const manuscriptTitle = ref("");
   let tearDown = () => {};
   watch(
     () => [file.value, manuscriptRef.value],
@@ -147,6 +148,10 @@
       const mainTitle = manuscriptRef.value.$el.querySelector("section.level-1 > .heading.hr");
       if (!mainTitle) return;
 
+      // Extract manuscript H1 text
+      const h1 = mainTitle.querySelector("h1, h2, h3");
+      manuscriptTitle.value = h1?.textContent?.trim() || file.value?.title || "";
+
       const { isVisible, tearDown: newTearDown } = useElementVisibilityObserver(mainTitle);
       isMainTitleVisible.value = isVisible.value;
 
@@ -156,9 +161,85 @@
         stopWatch();
       };
     },
-    { immedate: true }
+    { immediate: true }
   );
   onUnmounted(() => tearDown());
+
+  // Scroll-direction hysteresis: only show topbar when scrolling down past title
+  const lastScrollTop = ref(0);
+  const scrollingDown = ref(false);
+  function onManuscriptScroll() {
+    if (!innerRef.value) return;
+    const st = innerRef.value.scrollTop;
+    scrollingDown.value = st > lastScrollTop.value;
+    lastScrollTop.value = st;
+  }
+  onMounted(() => {
+    innerRef.value?.addEventListener("scroll", onManuscriptScroll, { passive: true });
+  });
+  onUnmounted(() => {
+    innerRef.value?.removeEventListener("scroll", onManuscriptScroll);
+  });
+
+  // Section breadcrumb: track the current visible section heading
+  const currentSection = ref("");
+  const activeSections = ref([]);
+  function updateSectionBreadcrumb() {
+    if (!manuscriptRef.value?.$el || !innerRef.value) return;
+    const el = manuscriptRef.value.$el;
+    const sections = el.querySelectorAll("section[class*='level-']");
+    if (!sections.length) { currentSection.value = ""; return; }
+
+    const scrollTop = innerRef.value.scrollTop;
+    const containerRect = innerRef.value.getBoundingClientRect();
+    const threshold = containerRect.top + 60;
+
+    const visible = [];
+    for (const section of sections) {
+      const heading = section.querySelector(
+        ":scope > .heading.hr .hr-content-zone :is(h1,h2,h3,h4,h5,h6)"
+      );
+      if (!heading) continue;
+      const rect = heading.getBoundingClientRect();
+      if (rect.top <= threshold) {
+        const levelClass = [...section.classList].find((c) => c.startsWith("level-"));
+        const level = levelClass ? parseInt(levelClass.split("-")[1], 10) : 1;
+        visible.push({ level, text: heading.textContent.trim() });
+      }
+    }
+
+    // Keep the deepest heading per level (last one scrolled past)
+    const byLevel = new Map();
+    for (const v of visible) {
+      byLevel.set(v.level, v.text);
+    }
+
+    // Build breadcrumb from shallowest to deepest
+    const levels = [...byLevel.keys()].sort((a, b) => a - b);
+    // Skip level 1 (the manuscript title, already shown or obvious)
+    const crumbs = levels.filter((l) => l > 1).map((l) => byLevel.get(l));
+    activeSections.value = crumbs;
+    currentSection.value = crumbs.join(" > ");
+  }
+  watch(
+    () => manuscriptRef.value,
+    async (val) => {
+      if (!val) return;
+      await nextTick();
+      updateSectionBreadcrumb();
+    }
+  );
+  onMounted(() => {
+    innerRef.value?.addEventListener("scroll", updateSectionBreadcrumb, { passive: true });
+  });
+  onUnmounted(() => {
+    innerRef.value?.removeEventListener("scroll", updateSectionBreadcrumb);
+  });
+
+  // Scroll to top
+  function scrollToTop() {
+    innerRef.value?.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   // Keyboard shortcuts
   registerAsFallback(manuscriptRef);
@@ -183,8 +264,6 @@
     const list = isRef(annotations) ? annotations.value : annotations;
     return list && list.length > 0;
   });
-  const middleTopWidth = computed(() => `${columnSizes.middle.width + 8}px`);
-
   // Available width for annotation cards: space from manuscript right edge to container clip edge
   const rightColumnMaxWidth = computed(() => {
     const midW = columnSizes.middle.width;
@@ -264,7 +343,12 @@
         >
           <div ref="middle-column-ref" class="middle-column">
             <Dock class="dock middle top">
-              <ReaderTopbar :show-title="!isMainTitleVisible" />
+              <ReaderTopbar
+                :show-title="!isMainTitleVisible"
+                :manuscript-title="manuscriptTitle"
+                :current-section="currentSection"
+                @scroll-to-top="scrollToTop"
+              />
             </Dock>
             <Dock class="dock middle main">
               <ManuscriptWrapper
@@ -452,22 +536,15 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    padding-inline: 4px;
-    min-width: v-bind(middleTopWidth);
-    transform: translateX(-4px);
-
-    background: v-bind(fileSettings.background) !important;
-
-    will-change: opacity;
-    transition: opacity 0.3s ease;
+    max-width: 720px;
+    margin: 0 auto;
 
     &:has(+ .middle.main .rsm-manuscript.title-visible) {
-      height: 2px;
-      opacity: 0;
+      height: 0;
+      overflow: hidden;
     }
     &:has(+ .middle.main .rsm-manuscript:not(.title-visible)) {
       height: 48px;
-      opacity: 1;
     }
   }
 
