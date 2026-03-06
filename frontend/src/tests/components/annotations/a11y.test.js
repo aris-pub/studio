@@ -79,6 +79,12 @@ describe("AnnotationMenu.vue — swatch focus-visible (std-ao8d)", () => {
   });
 });
 
+describe("AnnotationMenu.vue — swatch border contrast (std-sdg2)", () => {
+  it("swatch-circle border uses gray-800 for WCAG 3:1 against all swatch colors", () => {
+    expect(menuStyle).toMatch(/\.swatch-circle[\s\S]*?border:[\s\S]*?var\(--gray-800\)/);
+  });
+});
+
 describe("AnnotationMenu.vue — textarea focus outline (std-9ywg)", () => {
   it("note-input focus has outline", () => {
     const focusBlock = menuStyle.match(/note-input[\s\S]*?&:focus\s*\{([^}]*)\}/s)?.[1] ?? "";

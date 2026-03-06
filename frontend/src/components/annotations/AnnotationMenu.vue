@@ -339,7 +339,7 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: var(--border-extrathin) solid var(--gray-700);
+    border: var(--border-extrathin) solid var(--gray-800);
     pointer-events: none;
   }
 
