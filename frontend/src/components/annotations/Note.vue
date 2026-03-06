@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, computed, nextTick, onUnmounted } from "vue";
+  import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
   import { IconTrash } from "@tabler/icons-vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
@@ -144,11 +144,17 @@
     editText.value = "";
   }
 
+  const noteRef = useTemplateRef("note-ref");
+  watch(isActive, (active) => {
+    if (active) nextTick(() => noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }));
+  });
+
   onUnmounted(() => clearTimeout(deleteTimeout));
 </script>
 
 <template>
   <div
+    ref="note-ref"
     class="note"
     :class="{ active: isActive && !editing, editing, collapsed: collapsed && note }"
     :style="{ '--note-color': barColor }"

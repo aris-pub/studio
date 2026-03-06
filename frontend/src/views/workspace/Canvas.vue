@@ -415,7 +415,7 @@
                 <template #header>
                   <span class="overlay-header-title">
                     <Icon name="MessageFilled" />
-                    <h3>Annotations</h3>
+                    <h3>Marginalia</h3>
                   </span>
                   <ButtonClose @close="annotationOverlayOpen = false" />
                 </template>
@@ -721,7 +721,7 @@
     z-index: 999;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-strong);
+    box-shadow: var(--shadow-strong), var(--shadow-soft);
     border-radius: 16px;
     overflow: hidden;
   }
@@ -735,6 +735,11 @@
   .annotation-overlay :deep(.pane) {
     height: 100%;
     box-shadow: none;
+    background-color: var(--surface-page);
+  }
+
+  .annotation-overlay :deep(.pane-header) {
+    justify-content: space-between;
   }
 
   .annotation-overlay :deep(.annotations) {
