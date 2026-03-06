@@ -114,10 +114,7 @@ describe("EditorStatusBar", () => {
   });
 
   it("shows 'Syncing…' when connected but not synced", () => {
-    const wrapper = createWrapper(
-      {},
-      { collabIsConnected: ref(true), collabIsSynced: ref(false) }
-    );
+    const wrapper = createWrapper({}, { collabIsConnected: ref(true), collabIsSynced: ref(false) });
     expect(wrapper.find(".status-warning").exists()).toBe(true);
     expect(wrapper.find(".status-label").text()).toBe("Syncing…");
     wrapper.unmount();

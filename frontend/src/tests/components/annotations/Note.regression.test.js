@@ -50,9 +50,7 @@ function createWrapper(annotation, { activeId = null, actions = {} } = {}) {
 
 // Helper: find a Button component by its icon prop
 function findButtonByIcon(wrapper, iconName) {
-  return wrapper
-    .findAllComponents(Button)
-    .find((b) => b.props("icon") === iconName);
+  return wrapper.findAllComponents(Button).find((b) => b.props("icon") === iconName);
 }
 
 describe("Note.vue — border and left color bar (std-lqmk)", () => {
@@ -65,9 +63,7 @@ describe("Note.vue — border and left color bar (std-lqmk)", () => {
 
   it("falls back to purple when color is unknown", () => {
     const { wrapper } = createWrapper(makeAnnotation({ color: "nonexistent" }));
-    expect(wrapper.find(".note").attributes("style")).toContain(
-      HIGHLIGHT_COLORS.purple.border,
-    );
+    expect(wrapper.find(".note").attributes("style")).toContain(HIGHLIGHT_COLORS.purple.border);
   });
 
   it("uses border color (400 shade) not bg color for the bar", () => {
@@ -90,9 +86,7 @@ describe("Note.vue — visual states (std-7cfa)", () => {
   });
 
   it("clicking the card sets activeAnnotationId", async () => {
-    const { wrapper, activeAnnotationId } = createWrapper(
-      makeAnnotation({ id: 42 }),
-    );
+    const { wrapper, activeAnnotationId } = createWrapper(makeAnnotation({ id: 42 }));
     await wrapper.find(".note").trigger("click");
     expect(activeAnnotationId.value).toBe(42);
   });
@@ -125,9 +119,7 @@ describe("Note.vue — typography hierarchy (std-i1uq)", () => {
   });
 
   it("renders selected text with .selected-text class", () => {
-    const { wrapper } = createWrapper(
-      makeAnnotation({ selected_text: "some text" }),
-    );
+    const { wrapper } = createWrapper(makeAnnotation({ selected_text: "some text" }));
     const sel = wrapper.find(".selected-text");
     expect(sel.exists()).toBe(true);
     expect(sel.text()).toBe("some text");
@@ -278,10 +270,9 @@ describe("Note.vue — chevron only with note (std-r0j0)", () => {
 
 describe("Note.vue — ESC deselects active card (std-e0vc)", () => {
   it("ESC clears activeAnnotationId when card is active", async () => {
-    const { wrapper, activeAnnotationId } = createWrapper(
-      makeAnnotation({ id: 3 }),
-      { activeId: 3 },
-    );
+    const { wrapper, activeAnnotationId } = createWrapper(makeAnnotation({ id: 3 }), {
+      activeId: 3,
+    });
     expect(activeAnnotationId.value).toBe(3);
 
     await wrapper.find(".note").trigger("keydown", { key: "Escape" });
@@ -291,20 +282,18 @@ describe("Note.vue — ESC deselects active card (std-e0vc)", () => {
   });
 
   it("ESC does nothing when card is not active", async () => {
-    const { wrapper, activeAnnotationId } = createWrapper(
-      makeAnnotation({ id: 3 }),
-      { activeId: 999 },
-    );
+    const { wrapper, activeAnnotationId } = createWrapper(makeAnnotation({ id: 3 }), {
+      activeId: 999,
+    });
     await wrapper.find(".note").trigger("keydown", { key: "Escape" });
     await nextTick();
     expect(activeAnnotationId.value).toBe(999);
   });
 
   it("ESC on textarea cancels edit without deselecting (stopPropagation)", async () => {
-    const { wrapper, activeAnnotationId } = createWrapper(
-      makeAnnotationWithNote({ id: 3 }),
-      { activeId: 3 },
-    );
+    const { wrapper, activeAnnotationId } = createWrapper(makeAnnotationWithNote({ id: 3 }), {
+      activeId: 3,
+    });
     // Enter edit mode
     const editBtn = findButtonByIcon(wrapper, "Edit");
     await editBtn.trigger("click");
@@ -322,10 +311,7 @@ describe("Note.vue — ESC deselects active card (std-e0vc)", () => {
 
 describe("Note.vue — edit mode suppresses active border (std-5l1z)", () => {
   it("active class is removed during editing", async () => {
-    const { wrapper } = createWrapper(
-      makeAnnotationWithNote({ id: 3 }),
-      { activeId: 3 },
-    );
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 3 }), { activeId: 3 });
     expect(wrapper.find(".note").classes()).toContain("active");
 
     const editBtn = findButtonByIcon(wrapper, "Edit");
@@ -337,18 +323,13 @@ describe("Note.vue — edit mode suppresses active border (std-5l1z)", () => {
   });
 
   it("active class returns after saving edit", async () => {
-    const { wrapper } = createWrapper(
-      makeAnnotationWithNote({ id: 3 }),
-      { activeId: 3 },
-    );
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 3 }), { activeId: 3 });
     await findButtonByIcon(wrapper, "Edit").trigger("click");
     await nextTick();
     expect(wrapper.find(".note").classes()).not.toContain("active");
 
     // Find Save button by text content
-    const saveBtn = wrapper
-      .findAllComponents(Button)
-      .find((b) => b.text() === "Save");
+    const saveBtn = wrapper.findAllComponents(Button).find((b) => b.text() === "Save");
     await saveBtn.trigger("click");
     await nextTick();
 
@@ -357,16 +338,11 @@ describe("Note.vue — edit mode suppresses active border (std-5l1z)", () => {
   });
 
   it("active class returns after canceling edit", async () => {
-    const { wrapper } = createWrapper(
-      makeAnnotationWithNote({ id: 3 }),
-      { activeId: 3 },
-    );
+    const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 3 }), { activeId: 3 });
     await findButtonByIcon(wrapper, "Edit").trigger("click");
     await nextTick();
 
-    const cancelBtn = wrapper
-      .findAllComponents(Button)
-      .find((b) => b.text() === "Cancel");
+    const cancelBtn = wrapper.findAllComponents(Button).find((b) => b.text() === "Cancel");
     await cancelBtn.trigger("click");
     await nextTick();
 

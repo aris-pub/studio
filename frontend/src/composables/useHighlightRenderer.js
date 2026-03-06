@@ -197,7 +197,7 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
 
     if (hoveredAnnId) {
       el.querySelectorAll(".hover[data-annotation-id], .hover[data-highlight-annotation]").forEach(
-        (m) => m.classList.remove("hover"),
+        (m) => m.classList.remove("hover")
       );
     }
 
@@ -205,10 +205,10 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
 
     if (hoveredAnnId) {
       el.querySelectorAll(`mark[data-annotation-id="${hoveredAnnId}"]`).forEach((m) =>
-        m.classList.add("hover"),
+        m.classList.add("hover")
       );
       el.querySelectorAll(`[data-highlight-annotation="${hoveredAnnId}"]`).forEach((m) =>
-        m.classList.add("hover"),
+        m.classList.add("hover")
       );
     }
   }

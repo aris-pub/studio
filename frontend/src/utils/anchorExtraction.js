@@ -12,9 +12,10 @@
 export function extractAnchor(range, manuscriptEl) {
   if (!range || !manuscriptEl) return null;
 
-  const container = range.startContainer.nodeType === Node.TEXT_NODE
-    ? range.startContainer.parentElement
-    : range.startContainer;
+  const container =
+    range.startContainer.nodeType === Node.TEXT_NODE
+      ? range.startContainer.parentElement
+      : range.startContainer;
 
   const block = container.closest("[data-nodeid]");
   if (!block || !manuscriptEl.contains(block)) return null;

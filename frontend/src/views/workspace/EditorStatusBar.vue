@@ -89,9 +89,12 @@
 
     if (!connected) return { label: "Offline", icon: "wifi-off", cls: "status-error" };
     if (!synced) return { label: "Syncing\u2026", icon: "clock", cls: "status-warning" };
-    if (props.saveStatus === "error") return { label: "Save failed", icon: "error", cls: "status-error" };
-    if (props.saveStatus === "saving") return { label: "Saving\u2026", icon: "saving", cls: "status-saving" };
-    if (props.saveStatus === "pending") return { label: "Unsaved", icon: "clock", cls: "status-warning" };
+    if (props.saveStatus === "error")
+      return { label: "Save failed", icon: "error", cls: "status-error" };
+    if (props.saveStatus === "saving")
+      return { label: "Saving\u2026", icon: "saving", cls: "status-saving" };
+    if (props.saveStatus === "pending")
+      return { label: "Unsaved", icon: "clock", cls: "status-warning" };
     if (showSavedFlash.value) return { label: "Saved", icon: "check", cls: "status-saved" };
     return null;
   });
@@ -137,7 +140,12 @@
       <IconExclamationCircle v-else-if="statusIndicator.icon === 'error'" />
       <span class="status-label">{{ statusIndicator.label }}</span>
     </div>
-    <Tooltip v-if="statusIndicator" :anchor="statusRef" :content="statusTooltip" placement="top-end" />
+    <Tooltip
+      v-if="statusIndicator"
+      :anchor="statusRef"
+      :content="statusTooltip"
+      placement="top-end"
+    />
   </div>
 </template>
 

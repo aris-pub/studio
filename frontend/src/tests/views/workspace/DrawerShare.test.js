@@ -74,7 +74,8 @@ describe("DrawerShare", () => {
           },
           Button: {
             name: "Button",
-            template: '<button class="button-stub" @click="$emit(\'click\')" :disabled="disabled" />',
+            template:
+              '<button class="button-stub" @click="$emit(\'click\')" :disabled="disabled" />',
             props: ["kind", "size", "icon", "text", "disabled"],
             emits: ["click"],
           },
@@ -177,9 +178,7 @@ describe("DrawerShare", () => {
 
     it("fetches abstract on mount", () => {
       wrapper = createWrapper();
-      expect(mockApi.get).toHaveBeenCalledWith(
-        "/files/123/content/abstract?handrails=false",
-      );
+      expect(mockApi.get).toHaveBeenCalledWith("/files/123/content/abstract?handrails=false");
     });
 
     it("displays abstract after fetch", async () => {
@@ -249,7 +248,7 @@ describe("DrawerShare", () => {
       // Should have opened Press in new tab
       expect(openSpy).toHaveBeenCalledWith(
         expect.stringContaining("scroll.press/upload"),
-        "_blank",
+        "_blank"
       );
 
       openSpy.mockRestore();
@@ -281,11 +280,12 @@ describe("DrawerShare", () => {
 
     it("prevents double-click during download", async () => {
       let resolveDownload;
-      mockApi.get
-        .mockResolvedValueOnce({ data: { html: "" } })
-        .mockImplementationOnce(
-          () => new Promise((resolve) => { resolveDownload = resolve; }),
-        );
+      mockApi.get.mockResolvedValueOnce({ data: { html: "" } }).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve;
+          })
+      );
 
       wrapper = createWrapper();
       await flushPromises();

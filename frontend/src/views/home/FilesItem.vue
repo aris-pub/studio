@@ -342,7 +342,6 @@
 
         <!-- Grid layout spacer to complete the row -->
         <span class="spacer"></span>
-
       </template>
     </template>
 

@@ -182,7 +182,10 @@ describe("DrawerFile", () => {
     it("disables button during download", async () => {
       let resolveDownload;
       mockApi.get.mockImplementation(
-        () => new Promise((resolve) => { resolveDownload = resolve; }),
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve;
+          })
       );
 
       wrapper = createWrapper();
@@ -236,7 +239,7 @@ describe("DrawerFile", () => {
           id: null,
           owner_id: 1,
           title: "Test Manuscript (Copy)",
-        }),
+        })
       );
     });
 
@@ -251,14 +254,17 @@ describe("DrawerFile", () => {
       expect(mockFileStore.createFile).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Untitled (Copy)",
-        }),
+        })
       );
     });
 
     it("disables button during duplication", async () => {
       let resolveDuplicate;
       mockFileStore.createFile.mockImplementation(
-        () => new Promise((resolve) => { resolveDuplicate = resolve; }),
+        () =>
+          new Promise((resolve) => {
+            resolveDuplicate = resolve;
+          })
       );
 
       wrapper = createWrapper();
@@ -294,9 +300,7 @@ describe("DrawerFile", () => {
       await modal.vm.$emit("confirm");
       await flushPromises();
 
-      expect(mockFileStore.deleteFile).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 123 }),
-      );
+      expect(mockFileStore.deleteFile).toHaveBeenCalledWith(expect.objectContaining({ id: 123 }));
       expect(pushMock).toHaveBeenCalledWith("/");
     });
 

@@ -24,7 +24,7 @@
         await nextTick();
         textareaRef.value?.focus();
       }
-    },
+    }
   );
 
   const onInput = () => {
@@ -51,7 +51,7 @@
 <template>
   <Modal v-if="show" data-testid="feedback-modal" @close="$emit('close')">
     <template #header>
-      <div @click.stop class="feedback-header">
+      <div class="feedback-header" @click.stop>
         <Icon name="MessageChatbot" class="header-icon" />
         <span>Feedback</span>
       </div>
@@ -75,7 +75,11 @@
             @input="onInput"
             @keydown.meta.enter.prevent="submit"
           ></textarea>
-          <span v-if="charCount > 0" class="char-count" :class="{ near: charCount > MAX_CHARS * 0.9 }">
+          <span
+            v-if="charCount > 0"
+            class="char-count"
+            :class="{ near: charCount > MAX_CHARS * 0.9 }"
+          >
             {{ charCount }}/{{ MAX_CHARS }}
           </span>
         </div>

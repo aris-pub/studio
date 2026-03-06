@@ -131,7 +131,8 @@ describe("DockableAnnotations — click-to-deselect (std-y9yh)", () => {
         e.target.closest(".annotations") ||
         e.target.closest("mark[data-annotation-id]") ||
         e.target.closest("[data-highlight-annotation]")
-      ) return;
+      )
+        return;
       activeAnnotationId.value = null;
     }
 
@@ -165,7 +166,8 @@ describe("DockableAnnotations — click-to-deselect (std-y9yh)", () => {
         e.target.closest(".annotations") ||
         e.target.closest("mark[data-annotation-id]") ||
         e.target.closest("[data-highlight-annotation]")
-      ) return;
+      )
+        return;
       activeAnnotationId.value = null;
     }
 
@@ -192,7 +194,8 @@ describe("DockableAnnotations — click-to-deselect (std-y9yh)", () => {
         e.target.closest(".annotations") ||
         e.target.closest("mark[data-annotation-id]") ||
         e.target.closest("[data-highlight-annotation]")
-      ) return;
+      )
+        return;
       activeAnnotationId.value = null;
     }
 
@@ -218,7 +221,8 @@ describe("DockableAnnotations — selection menu guard (std-epgb)", () => {
         e.target.closest(".annotations") ||
         e.target.closest("mark[data-annotation-id]") ||
         e.target.closest("[data-highlight-annotation]")
-      ) return;
+      )
+        return;
       activeAnnotationId.value = null;
     }
 
@@ -251,8 +255,8 @@ describe("DockableAnnotations — MutationObserver re-sort (std-z99r cont.)", ()
     function filterMutations(mutations) {
       const hasMarks = mutations.some((m) =>
         [...m.addedNodes].some(
-          (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark")),
-        ),
+          (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
+        )
       );
       if (hasMarks) callback();
     }

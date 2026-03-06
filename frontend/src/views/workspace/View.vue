@@ -104,9 +104,13 @@
   provide("annotationActions", annotationActions);
   provide("activeAnnotationId", activeAnnotationId);
 
-  watch(fileId, (id) => {
-    if (id) fetchAnnotations();
-  }, { immediate: true });
+  watch(
+    fileId,
+    (id) => {
+      if (id) fetchAnnotations();
+    },
+    { immediate: true }
+  );
 
   // Only redirect to 404 when fileStore is loaded but file is not found
   const router = useRouter();

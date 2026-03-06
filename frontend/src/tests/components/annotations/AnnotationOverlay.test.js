@@ -41,19 +41,17 @@ describe("Canvas.vue — annotation overlay panel (std-y6e3)", () => {
   });
 
   it("overlay is conditional on annotationOverlayOpen and !showAnnotationCards", () => {
-    const overlayVif = templateSection.match(
-      /class="annotation-overlay"[\s\S]{0,300}v-if="([^"]+)"/
-    )?.[1] ?? templateSection.match(
-      /v-if="([^"]+)"[\s\S]{0,300}class="annotation-overlay"/
-    )?.[1] ?? "";
+    const overlayVif =
+      templateSection.match(/class="annotation-overlay"[\s\S]{0,300}v-if="([^"]+)"/)?.[1] ??
+      templateSection.match(/v-if="([^"]+)"[\s\S]{0,300}class="annotation-overlay"/)?.[1] ??
+      "";
     expect(overlayVif).toContain("annotationOverlayOpen");
     expect(overlayVif).toContain("!showAnnotationCards");
   });
 
   it("overlay contains DockableAnnotations", () => {
-    const overlayBlock = templateSection.match(
-      /class="annotation-overlay"[\s\S]*?<\/div>/
-    )?.[0] ?? "";
+    const overlayBlock =
+      templateSection.match(/class="annotation-overlay"[\s\S]*?<\/div>/)?.[0] ?? "";
     expect(overlayBlock).toContain("DockableAnnotations");
   });
 
@@ -74,9 +72,7 @@ describe("Canvas.vue — annotation overlay panel (std-y6e3)", () => {
 });
 
 describe("Canvas.vue — overlay toggle positioning and transitions (std-y6e3)", () => {
-  const toggleCSS = styleSection.match(
-    /\.annotation-overlay-toggle\s*\{([^}]*)\}/s
-  )?.[1] ?? "";
+  const toggleCSS = styleSection.match(/\.annotation-overlay-toggle\s*\{([^}]*)\}/s)?.[1] ?? "";
 
   it("toggle is absolutely positioned (always visible while scrolling)", () => {
     expect(toggleCSS).toContain("position: absolute");
