@@ -22,9 +22,9 @@ describe("Canvas.vue — scroll container layout (std-gf5h)", () => {
     }
   });
 
-  it(".inner.right has scrollbar styling", () => {
-    expect(canvasSource).toContain("scrollbar-gutter: stable");
-    expect(canvasSource).toContain("scrollbar-width: thin");
+  it(".inner.right hides native scrollbar (minimap replaces it)", () => {
+    expect(canvasSource).toContain("scrollbar-width: none");
+    expect(canvasSource).toMatch(/::-webkit-scrollbar/);
   });
 
   it(".right-column does NOT have position: sticky or overflow-y", () => {

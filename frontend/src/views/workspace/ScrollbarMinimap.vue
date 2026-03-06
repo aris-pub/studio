@@ -72,18 +72,34 @@
     updateViewport();
   }
 
-  function onStripClick(event) {
-    if (isCompact.value || !scrollContainer.value) return;
+  const isDragging = ref(false);
+
+  function scrollToFraction(event) {
     const rect = stripRef.value.getBoundingClientRect();
     const fraction = isHorizontal.value
       ? (event.clientX - rect.left) / rect.width
       : (event.clientY - rect.top) / rect.height;
+    const clamped = Math.max(0, Math.min(1, fraction));
     const sh = scrollContainer.value.scrollHeight;
     const ch = scrollContainer.value.clientHeight;
-    scrollContainer.value.scrollTo({
-      top: fraction * sh - ch / 2,
-      behavior: "smooth",
-    });
+    scrollContainer.value.scrollTop = clamped * sh - ch / 2;
+  }
+
+  function onStripPointerDown(event) {
+    if (isCompact.value || !scrollContainer.value) return;
+    if (event.target !== stripRef.value && event.target.classList.contains("viewport-indicator") === false) return;
+    isDragging.value = true;
+    stripRef.value.setPointerCapture(event.pointerId);
+    scrollToFraction(event);
+  }
+
+  function onStripPointerMove(event) {
+    if (!isDragging.value) return;
+    scrollToFraction(event);
+  }
+
+  function onStripPointerUp() {
+    isDragging.value = false;
   }
 
   function onMarkClick(event, mark) {
@@ -130,7 +146,10 @@
   <div
     ref="stripRef"
     class="scrollbar-minimap"
-    :class="[mode, orientation, { compact: isCompact }]"
+    :class="[mode, orientation, { compact: isCompact, dragging: isDragging }]"
+    @pointerdown="onStripPointerDown"
+    @pointermove="onStripPointerMove"
+    @pointerup="onStripPointerUp"
   >
     <!-- Viewport indicator (workspace mode only) -->
     <div
@@ -214,17 +233,22 @@
 <style scoped>
   .scrollbar-minimap {
     position: relative;
-    pointer-events: none;
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  .scrollbar-minimap.dragging {
+    cursor: grabbing;
   }
 
   /* Workspace mode: strip at right edge */
   .scrollbar-minimap.workspace.vertical {
-    width: 24px;
+    width: 20px;
     position: sticky;
     top: 0;
     height: calc(100vh - 32px);
-    flex: 0 0 24px;
-    margin-left: 8px;
+    flex: 0 0 20px;
+    margin-left: 0;
     overflow: visible;
   }
 
@@ -237,7 +261,13 @@
   }
 
   .viewport-indicator {
-    display: none;
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    background: var(--gray-600);
+    opacity: 0.25;
+    border-radius: 4px;
+    pointer-events: none;
   }
 
   /* ── Section lines ── */

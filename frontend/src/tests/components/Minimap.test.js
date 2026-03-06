@@ -372,8 +372,8 @@ const minimapSource = readFileSync(
 );
 
 describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
-  it("workspace strip is 24px wide with sticky positioning", () => {
-    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*width:\s*24px/s);
+  it("workspace strip is 20px wide with sticky positioning", () => {
+    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*width:\s*20px/s);
     expect(minimapSource).toMatch(
       /\.scrollbar-minimap\.workspace\.vertical[^}]*position:\s*sticky/s
     );
@@ -413,18 +413,16 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
     expect(minimapSource).toContain("height: calc(100vh - 32px)");
   });
 
-  it("strip background is not clickable (pointer-events: none), only marks are", () => {
-    expect(minimapSource).toMatch(/\.scrollbar-minimap\s*\{[^}]*pointer-events:\s*none/s);
-    expect(minimapSource).toMatch(/\.mm-section\s*\{[^}]*pointer-events:\s*auto/s);
-    expect(minimapSource).toMatch(/\.mm-annotation\s*\{[^}]*pointer-events:\s*auto/s);
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*pointer-events:\s*auto/s);
-    expect(minimapSource).toMatch(/\.mm-presence\s*\{[^}]*pointer-events:\s*auto/s);
+  it("strip is interactive (pointer-events: auto) for drag-to-scroll", () => {
+    expect(minimapSource).toMatch(/\.scrollbar-minimap\s*\{[^}]*pointer-events:\s*auto/s);
   });
 
-  it("strip has no click handler in template", () => {
+  it("strip has pointer event handlers for drag-to-scroll", () => {
     const templateSection = minimapSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
     const stripLine = templateSection.match(/class="scrollbar-minimap"[^>]*/)?.[0] ?? "";
-    expect(stripLine).not.toContain("@click");
+    expect(stripLine).toContain("@pointerdown");
+    expect(stripLine).toContain("@pointermove");
+    expect(stripLine).toContain("@pointerup");
   });
 });
 
@@ -462,8 +460,8 @@ describe("Layout regressions — editor/manuscript split", () => {
     expect(templateSection[1]).not.toContain("left-column");
   });
 
-  it("minimap strip has margin-left spacing from manuscript", () => {
-    expect(minimapSource).toContain("margin-left: 8px");
+  it("minimap strip has no margin-left (replaces native scrollbar)", () => {
+    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*margin-left:\s*0/s);
   });
 
   it("inner.right height accounts for outer padding (not raw 100vh)", () => {
@@ -483,5 +481,39 @@ describe("Layout regressions — editor/manuscript split", () => {
     expect(editorSource).toContain('inject("awareness"');
     // Must NOT create its own provide — it shares via Canvas
     expect(editorSource).not.toContain('provide("awareness"');
+  });
+});
+
+// ---- Minimap replaces native scrollbar (std-b9dz) ----
+
+const canvasStyle = canvasSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+const minimapScript = minimapSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+const minimapStyle = minimapSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+
+describe("Minimap replaces native scrollbar (std-b9dz)", () => {
+  it("native scrollbar is hidden on .inner.right", () => {
+    expect(canvasStyle).toMatch(/&\.right\s*\{[^}]*scrollbar-width:\s*none/s);
+    expect(canvasStyle).toMatch(/::-webkit-scrollbar/);
+  });
+
+  it("drag-to-scroll: isDragging ref exists", () => {
+    expect(minimapScript).toMatch(/isDragging\s*=\s*ref\(false\)/);
+  });
+
+  it("drag-to-scroll: scrollToFraction computes scroll position", () => {
+    expect(minimapScript).toMatch(/function scrollToFraction/);
+  });
+
+  it("drag-to-scroll: pointerdown skips mark elements", () => {
+    expect(minimapScript).toMatch(/onStripPointerDown[\s\S]*?event\.target\s*!==\s*stripRef/);
+  });
+
+  it("viewport indicator is visible with position absolute", () => {
+    expect(minimapStyle).toMatch(/\.viewport-indicator\s*\{[^}]*position:\s*absolute/s);
+    expect(minimapStyle).not.toMatch(/\.viewport-indicator\s*\{[^}]*display:\s*none/s);
+  });
+
+  it("dragging class shows grabbing cursor", () => {
+    expect(minimapStyle).toMatch(/\.scrollbar-minimap\.dragging[^}]*cursor:\s*grabbing/s);
   });
 });

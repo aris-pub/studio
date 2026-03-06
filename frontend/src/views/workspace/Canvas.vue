@@ -404,9 +404,10 @@
       align-items: flex-start;
       height: calc(100vh - 32px);
       outline: none;
-      scrollbar-gutter: stable;
-      scrollbar-width: thin;
-      scrollbar-color: var(--gray-400) transparent;
+      scrollbar-width: none;
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
   }
 
