@@ -239,6 +239,56 @@ describe("highlightSearchMatches utils", () => {
       expect(matches).toEqual([]);
     });
 
+    it("finds matches in display math (div.mathblock)", () => {
+      const root = document.createElement("div");
+      const block = document.createElement("div");
+      block.className = "mathblock";
+      const math = document.createElementNS("http://www.w3.org/1998/Math/MathML", "math");
+      const mi = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mi");
+      mi.textContent = "x";
+      math.appendChild(mi);
+      block.appendChild(math);
+      root.appendChild(block);
+
+      const matches = highlightMathMatches(root, "x");
+      expect(matches).toHaveLength(1);
+      expect(matches[0].mathEls[0].textContent).toBe("x");
+    });
+
+    it("adds container wash to display math (div.mathblock)", () => {
+      const root = document.createElement("div");
+      const block = document.createElement("div");
+      block.className = "mathblock";
+      const math = document.createElementNS("http://www.w3.org/1998/Math/MathML", "math");
+      const mi = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mi");
+      mi.textContent = "y";
+      math.appendChild(mi);
+      block.appendChild(math);
+      root.appendChild(block);
+
+      highlightMathMatches(root, "y");
+      expect(block.classList.contains(mathContainerClass)).toBe(true);
+    });
+
+    it("applies container wash independently per container", () => {
+      const root = buildMathDOM("a+b");
+      // Add a second math container with no match
+      const span2 = document.createElement("span");
+      span2.className = "math";
+      const math2 = document.createElementNS("http://www.w3.org/1998/Math/MathML", "math");
+      const mi2 = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mi");
+      mi2.textContent = "z";
+      math2.appendChild(mi2);
+      span2.appendChild(math2);
+      root.appendChild(span2);
+
+      highlightMathMatches(root, "a");
+
+      const containers = root.querySelectorAll("span.math");
+      expect(containers[0].classList.contains(mathContainerClass)).toBe(true);
+      expect(containers[1].classList.contains(mathContainerClass)).toBe(false);
+    });
+
     it("sets mark to first element for scrollIntoView", () => {
       const root = buildMathDOM("x+y");
       const matches = highlightMathMatches(root, "x+y");
@@ -274,6 +324,13 @@ describe("highlightSearchMatches utils", () => {
       root.innerHTML = '<p>hello world</p><span class="math"><math><mi>x</mi></math></span>';
       const matches = highlightSearchMatches(root, "hello");
       expect(matches).toHaveLength(1);
+    });
+
+    it("skips text inside display math (div.mathblock)", () => {
+      const root = document.createElement("div");
+      root.innerHTML = '<p>text</p><div class="mathblock"><math><mi>n</mi></math></div>';
+      const result = highlightSearchMatches(root, "n");
+      expect(result).toBe(0);
     });
   });
 

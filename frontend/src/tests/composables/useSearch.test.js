@@ -278,6 +278,108 @@ describe("useSearch composable", () => {
     });
   });
 
+  describe("scope toggling and math search", () => {
+    it("toggleScope adds and removes scopes", () => {
+      const search = createSearch();
+      expect(search.activeScopes.value.has("document")).toBe(true);
+      expect(search.activeScopes.value.has("math")).toBe(false);
+
+      search.toggleScope("math");
+      expect(search.activeScopes.value.has("math")).toBe(true);
+
+      search.toggleScope("math");
+      expect(search.activeScopes.value.has("math")).toBe(false);
+    });
+
+    it("toggleScope prevents empty scopes — reverts to document", () => {
+      const search = createSearch();
+      search.toggleScope("document");
+      // Trying to remove the only scope should revert to document
+      expect(search.activeScopes.value.has("document")).toBe(true);
+    });
+
+    it("toggleScope auto-re-searches when active", () => {
+      const search = createSearch();
+      search.search("test");
+      expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
+
+      search.toggleScope("math");
+      // Should re-search with the same query
+      expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(2);
+    });
+
+    it("toggleScope does not re-search when not actively searching", () => {
+      const search = createSearch();
+      search.toggleScope("math");
+      expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
+    });
+
+    it("search calls highlightMathMatches when math scope is active", () => {
+      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
+      const search = createSearch();
+      search.toggleScope("math");
+      search.search("x");
+
+      expect(HSM.highlightMathMatches).toHaveBeenCalledWith(manuscriptEl, "x", {});
+    });
+
+    it("search does not call highlightMathMatches when math scope is inactive", () => {
+      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
+      const search = createSearch();
+      search.search("x");
+
+      expect(HSM.highlightMathMatches).not.toHaveBeenCalled();
+    });
+
+    it("merges document and math matches into a single list", () => {
+      const docMatches = [{ mark: makeMark() }];
+      const mathMark = makeMark();
+      const mathMatches = [{ mark: mathMark, mathEls: [mathMark] }];
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(docMatches);
+      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue(mathMatches);
+
+      const search = createSearch();
+      search.toggleScope("math");
+      search.search("a");
+
+      expect(search.matches.value).toHaveLength(2);
+      expect(search.matches.value[0]).toBe(docMatches[0]);
+      expect(search.matches.value[1]).toBe(mathMatches[0]);
+    });
+
+    it("navigates across mixed document and math matches", () => {
+      const docMark = makeMark();
+      const mathMark = makeMark();
+      const docMatches = [{ mark: docMark }];
+      const mathMatches = [{ mark: mathMark, mathEls: [mathMark] }];
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(docMatches);
+      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue(mathMatches);
+
+      const search = createSearch();
+      search.toggleScope("math");
+      search.search("a");
+
+      expect(search.currentIndex.value).toBe(0);
+      search.next();
+      expect(search.currentIndex.value).toBe(1);
+      expect(mathMark.scrollIntoView).toHaveBeenCalled();
+      search.next();
+      expect(search.currentIndex.value).toBe(0);
+      expect(docMark.scrollIntoView).toHaveBeenCalled();
+    });
+
+    it("math-only search skips document scope", () => {
+      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
+      const search = createSearch();
+      search.toggleScope("math");
+      search.toggleScope("document");
+      search.search("x");
+
+      expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
+      expect(HSM.highlightMathMatches).toHaveBeenCalled();
+    });
+  });
+
   describe("source search", () => {
     it("searches source text in parallel", () => {
       const file = ref({ source: "hello world" });
