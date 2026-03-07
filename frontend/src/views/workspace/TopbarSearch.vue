@@ -209,4 +209,21 @@
   .aris-search-highlight--current {
     background-color: var(--orange-300);
   }
+
+  .aris-search-math-container {
+    background-color: color-mix(in srgb, var(--yellow-200) 25%, transparent);
+    border-radius: 3px;
+  }
+
+  math .aris-search-highlight {
+    outline: 2px solid var(--yellow-500);
+    outline-offset: 1px;
+    border-radius: 2px;
+  }
+
+  math .aris-search-highlight--current {
+    outline: 2.5px solid var(--orange-500);
+    outline-offset: 1px;
+    border-radius: 2px;
+  }
 </style>

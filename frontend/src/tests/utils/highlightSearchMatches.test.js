@@ -6,6 +6,7 @@ import {
   clearHighlights,
   highlightClass,
   currentHighlightClass,
+  mathContainerClass,
 } from "@/utils/highlightSearchMatches.js";
 
 describe("highlightSearchMatches utils", () => {
@@ -243,6 +244,20 @@ describe("highlightSearchMatches utils", () => {
       const matches = highlightMathMatches(root, "x+y");
       expect(matches[0].mark).toBe(matches[0].mathEls[0]);
     });
+
+    it("adds container wash class to math container", () => {
+      const root = buildMathDOM("x+y");
+      highlightMathMatches(root, "x");
+      const container = root.querySelector("span.math");
+      expect(container.classList.contains(mathContainerClass)).toBe(true);
+    });
+
+    it("does not add container wash when no matches", () => {
+      const root = buildMathDOM("x+y");
+      highlightMathMatches(root, "z");
+      const container = root.querySelector("span.math");
+      expect(container.classList.contains(mathContainerClass)).toBe(false);
+    });
   });
 
   describe("highlightSearchMatches (document scope)", () => {
@@ -280,6 +295,13 @@ describe("highlightSearchMatches utils", () => {
       clearHighlights(root);
       expect(root.querySelector("mark")).toBeNull();
       expect(root.querySelector("mi").classList.contains(currentHighlightClass)).toBe(false);
+    });
+
+    it("clears container wash class", () => {
+      const root = document.createElement("div");
+      root.innerHTML = `<span class="math ${mathContainerClass}"><math><mi>x</mi></math></span>`;
+      clearHighlights(root);
+      expect(root.querySelector("span.math").classList.contains(mathContainerClass)).toBe(false);
     });
   });
 });

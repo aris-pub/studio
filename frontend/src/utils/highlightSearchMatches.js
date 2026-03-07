@@ -1,5 +1,6 @@
 export const highlightClass = "aris-search-highlight";
 export const currentHighlightClass = "aris-search-highlight--current";
+export const mathContainerClass = "aris-search-math-container";
 
 const MATH_CONTAINER_SELECTOR = "span.math, div.mathblock";
 
@@ -24,6 +25,12 @@ export function clearHighlights(rootEl) {
   const mathHits = rootEl.querySelectorAll(`.${highlightClass}, .${currentHighlightClass}`);
   for (const el of mathHits) {
     el.classList.remove(highlightClass, currentHighlightClass);
+  }
+
+  // Clear container wash
+  const containers = rootEl.querySelectorAll(`.${mathContainerClass}`);
+  for (const el of containers) {
+    el.classList.remove(mathContainerClass);
   }
 }
 
@@ -283,7 +290,7 @@ export function highlightMathMatches(rootEl, searchTerm, options = {}) {
 
       if (els.length > 0) {
         for (const el of els) el.classList.add(highlightClass);
-        // Use first element as scroll target
+        container.classList.add(mathContainerClass);
         matches.push({ mark: els[0], mathEls: els });
       }
 
