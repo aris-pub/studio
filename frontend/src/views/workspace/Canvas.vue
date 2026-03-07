@@ -24,7 +24,7 @@
   import Dock from "./Dock.vue";
   import Editor from "./Editor.vue";
   import ScrollbarMinimap from "./ScrollbarMinimap.vue";
-  import DockableSearch from "./DockableSearch.vue";
+  import TopbarSearch from "./TopbarSearch.vue";
   import DockableAnnotations from "./DockableAnnotations.vue";
 
   const props = defineProps({
@@ -176,6 +176,9 @@
   }
 
   const topbarFullyRevealed = computed(() => topbarHeight.value >= TOPBAR_MAX);
+  const dockHeight = computed(() =>
+    props.showSearch ? "auto" : topbarHeight.value + "px"
+  );
   const topbarClipPath = computed(() =>
     topbarFullyRevealed.value
       ? `inset(0 -100px calc(${fileSettings.lineHeight} * -0.75em) -100px)`
@@ -356,10 +359,6 @@
       :class="{ focus: focusMode, mobile: mobileMode, narrow: drawerOpen }"
       :data-testid="$attrs['data-testid']"
     >
-      <div class="outer-topbar">
-        <DockableSearch v-if="showSearch" />
-      </div>
-
       <div class="inner-wrapper">
         <div v-if="showEditor" data-testid="workspace-editor" class="inner left">
           <Editor v-model="file" />
@@ -377,7 +376,12 @@
                 :revealed="!isMainTitleVisible"
                 :show-title="topbarFullyRevealed"
                 :current-section="currentSection"
-              />
+                :search-active="showSearch"
+              >
+                <template v-if="showSearch" #search>
+                  <TopbarSearch />
+                </template>
+              </ReaderTopbar>
             </Dock>
             <Dock class="dock middle main">
               <ManuscriptWrapper
@@ -587,7 +591,7 @@
       z-index: -1;
     }
 
-    height: v-bind(topbarHeight + 'px');
+    height: v-bind(dockHeight);
     clip-path: v-bind(topbarClipPath);
 
     &::after {
@@ -664,13 +668,6 @@
     font-family: v-bind(fileSettings.fontFamily) !important;
     line-height: v-bind(fileSettings.lineHeight) !important;
     padding-inline: v-bind(fileSettings.marginWidth) !important;
-  }
-
-  .outer-topbar {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 3;
   }
 
   .annotation-overlay-toggle {

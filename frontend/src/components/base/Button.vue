@@ -328,6 +328,8 @@
 
     &:hover {
       background-color: unset;
+      border-color: transparent;
+      box-shadow: none;
       cursor: unset;
 
       & > svg {

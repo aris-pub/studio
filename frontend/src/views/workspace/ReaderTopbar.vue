@@ -6,6 +6,7 @@
     revealed: { type: Boolean, default: false },
     currentSection: { type: String, default: "" },
     component: { type: Object, default: null },
+    searchActive: { type: Boolean, default: false },
   });
 
   const file = inject("file");
@@ -13,14 +14,19 @@
 
   const focusMode = inject("focusMode");
   const mobileMode = inject("mobileMode");
-  const isActive = computed(() => props.revealed || props.showTitle || props.component);
+  const isActive = computed(
+    () => props.revealed || props.showTitle || props.component || props.searchActive
+  );
 </script>
 
 <template>
-  <div class="topbar" :class="{ active: isActive, full: showTitle, focus: focusMode, mobile: mobileMode }">
-    <span v-if="!component && showTitle" class="topbar-section">{{ currentSection }}</span>
-    <component :is="component" v-if="component" ref="middle-comp" :file="file" side="top" />
-    <div class="topbar-trailing">
+  <div class="topbar" :class="{ active: isActive, full: showTitle && !searchActive, search: searchActive, focus: focusMode, mobile: mobileMode }">
+    <slot v-if="searchActive" name="search" />
+    <template v-else>
+      <span v-if="!component && showTitle" class="topbar-section">{{ currentSection }}</span>
+      <component :is="component" v-if="component" ref="middle-comp" :file="file" side="top" />
+    </template>
+    <div v-if="!searchActive" class="topbar-trailing">
       <slot name="trailing" />
     </div>
   </div>
@@ -44,6 +50,17 @@
     border-color: var(--border-primary);
     border-bottom: var(--border-extrathin) solid var(--border-primary);
     background-color: v-bind(fileSettings.background);
+  }
+
+  .topbar.search {
+    height: auto;
+    min-height: 48px;
+    overflow: visible;
+    padding-inline: 0;
+    border-color: var(--border-primary);
+    border-bottom: var(--border-thin) solid var(--border-primary);
+    background-color: v-bind(fileSettings.background);
+    box-shadow: var(--shadow-soft);
   }
 
   .topbar.full {

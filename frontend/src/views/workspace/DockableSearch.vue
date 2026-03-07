@@ -1,116 +1,40 @@
 <script setup>
-  import { ref, computed, reactive, watch, inject, onMounted, useTemplateRef } from "vue";
+  import { inject, onMounted, useTemplateRef } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-  import {
-    highlightSearchMatches,
-    highlightSearchMatchesSource,
-    clearHighlights,
-    updateCurrentMatch,
-  } from "@/utils/highlightSearchMatches.js";
+  import { useSearch } from "@/composables/useSearch.js";
 
   const manuscriptRef = inject("manuscriptRef");
   const file = inject("file");
   const showSearch = inject("showSearch", null);
 
-  const searchInfo = reactive({
-    isSearching: false,
-    searchString: "",
-    matches: [],
-    sourceMatches: [],
-    lastMatchScrolledTo: null,
-  });
-
-  const hintText = computed(() => {
-    if (!searchInfo.isSearching) return "";
-    if (searchInfo.matches.length === 0) return "No matches";
-    const idx = (searchInfo.lastMatchScrolledTo ?? 0) + 1;
-    return `${idx} of ${searchInfo.matches.length}`;
-  });
-
-  const buttonsDisabled = computed(() => {
-    return searchInfo.isSearching && searchInfo.matches.length === 0;
-  });
-
-  const startSearch = () => {
-    searchInfo.matches = highlightSearchMatches(manuscriptRef.value.$el, searchInfo.searchString);
-    searchInfo.sourceMatches = highlightSearchMatchesSource(
-      file.value.source,
-      searchInfo.searchString
-    );
-    searchInfo.lastMatchScrolledTo = null;
-    onNext();
-  };
-
-  const resetSearchState = () => {
-    searchInfo.searchString = "";
-    searchInfo.matches = [];
-    searchInfo.sourceMatches = [];
-    searchInfo.lastMatchScrolledTo = null;
-  };
-
-  const cancelSearch = () => {
-    if (!searchInfo.isSearching) return;
-    clearHighlights(manuscriptRef.value.$el);
-    searchInfo.isSearching = false;
-    resetSearchState();
-  };
-
-  watch(
-    () => searchInfo.isSearching,
-    (newVal) => {
-      if (newVal) startSearch();
-    }
-  );
+  const {
+    isSearching,
+    hintText,
+    buttonsDisabled,
+    search,
+    next: onNext,
+    prev: onPrev,
+    clear,
+  } = useSearch({ manuscriptRef, file });
 
   const onSubmit = (searchString) => {
-    if (!manuscriptRef.value) return;
     const trimmed = searchString.trim();
     if (trimmed === "") {
-      if (searchInfo.isSearching) cancelSearch();
+      if (isSearching.value) clear();
       return;
     }
-    searchInfo.searchString = trimmed;
-    searchInfo.isSearching = true;
-  };
-
-  const onNext = () => {
-    if (!searchInfo.isSearching || searchInfo.matches.length === 0) return;
-    const lastMatchScrolledTo =
-      searchInfo.lastMatchScrolledTo === null ? -1 : searchInfo.lastMatchScrolledTo;
-    const scrollTo = (lastMatchScrolledTo + 1) % searchInfo.matches.length;
-    if (searchInfo.matches[scrollTo] && searchInfo.matches[scrollTo].mark) {
-      searchInfo.matches[scrollTo].mark.scrollIntoView({ behavior: "smooth", block: "center" });
-      searchInfo.lastMatchScrolledTo = scrollTo;
-      updateCurrentMatch(searchInfo.matches, scrollTo);
-    }
-  };
-
-  const onPrev = () => {
-    if (!searchInfo.isSearching || searchInfo.matches.length === 0) return;
-    const lastMatchScrolledTo =
-      searchInfo.lastMatchScrolledTo === null
-        ? searchInfo.matches.length + 1
-        : searchInfo.lastMatchScrolledTo;
-    const scrollTo =
-      (lastMatchScrolledTo - 1 + searchInfo.matches.length) % searchInfo.matches.length;
-    if (searchInfo.matches[scrollTo] && searchInfo.matches[scrollTo].mark) {
-      searchInfo.matches[scrollTo].mark.scrollIntoView({ behavior: "smooth", block: "center" });
-      searchInfo.lastMatchScrolledTo = scrollTo;
-      updateCurrentMatch(searchInfo.matches, scrollTo);
-    }
+    search(trimmed);
   };
 
   const closePanel = () => {
-    if (searchInfo.isSearching) cancelSearch();
+    if (isSearching.value) clear();
     if (showSearch) showSearch.value = false;
   };
 
   const onSearchBarCancel = () => {
-    if (searchInfo.isSearching) {
-      // First ESC: clear the active search but keep the panel open
-      cancelSearch();
+    if (isSearching.value) {
+      clear();
     } else {
-      // Second ESC: search was already cleared, close the panel
       closePanel();
     }
   };

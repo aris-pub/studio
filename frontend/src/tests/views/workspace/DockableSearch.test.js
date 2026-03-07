@@ -82,7 +82,7 @@ describe("DockableSearch.vue", () => {
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", query);
     await nextTick();
 
-    expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(manuscriptRef.value.$el, query.trim());
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(manuscriptRef.value.$el, query.trim(), {});
     expect(HSM.highlightSearchMatchesSource).toHaveBeenCalledWith(file.value.source, query.trim());
 
     const searchBar = wrapper.findComponent(SearchBarStub);

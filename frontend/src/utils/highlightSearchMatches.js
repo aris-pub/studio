@@ -59,7 +59,9 @@ export function highlightSearchMatches(rootEl, searchTerm, options = {}) {
         !node.textContent.trim() ||
         parent.nodeName === "SCRIPT" ||
         parent.nodeName === "STYLE" ||
-        parent.nodeName === "MARK"
+        (parent.nodeName === "MARK" &&
+          (parent.classList.contains(highlightClass) ||
+            parent.classList.contains(currentHighlightClass)))
       ) {
         return NodeFilter.FILTER_REJECT;
       }
