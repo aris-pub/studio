@@ -53,6 +53,7 @@
   }
 
   .topbar.search {
+    height: auto;
     min-height: 48px;
     overflow: visible;
     padding-inline: 0;

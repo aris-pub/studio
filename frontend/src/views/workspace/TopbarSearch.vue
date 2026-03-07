@@ -140,12 +140,14 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    background-color: inherit;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 
   .search-row {
     display: flex;
     align-items: center;
-    height: 48px;
+    height: calc(48px - var(--border-extrathin) * 2);
     padding-inline: 12px;
     gap: 4px;
   }
