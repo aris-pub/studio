@@ -368,13 +368,31 @@
   /* ── Search dashes ── */
   .mm-search {
     position: absolute;
-    left: 25%;
-    right: 25%;
-    height: 2px;
-    border-radius: 1px;
-    background-color: var(--orange-300);
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    height: 16px;
+    transform: translateY(-50%);
     pointer-events: auto;
     cursor: pointer;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 100%;
+      margin-inline: 4px;
+      height: 2px;
+      border-radius: 1px;
+      background-color: var(--orange-300);
+      transition: margin-inline 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+    }
+  }
+
+  .mm-search:hover::after {
+    margin-inline: 2px;
+    height: 3px;
+    background-color: var(--orange-400);
   }
 
   /* ── Presence dots ── */

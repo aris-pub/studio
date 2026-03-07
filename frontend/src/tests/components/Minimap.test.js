@@ -386,13 +386,14 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
     expect(minimapSource).toMatch(/\.mm-section\s*\{[^}]*height:\s*3px/s);
   });
 
-  it("search dashes are narrower than section lines (25% inset)", () => {
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*left:\s*25%/s);
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*right:\s*25%/s);
+  it("search dashes have expanded click target like section marks", () => {
+    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*height:\s*16px/s);
+    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*transform:\s*translateY\(-50%\)/s);
   });
 
-  it("search uses orange, not yellow, to distinguish from annotations", () => {
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*--orange-700/s);
+  it("search uses orange and has hover expansion", () => {
+    expect(minimapSource).toMatch(/\.mm-search.*--orange-300/s);
+    expect(minimapSource).toMatch(/\.mm-search:hover/s);
   });
 
   it("presence dots are 14px circles with white ring", () => {
