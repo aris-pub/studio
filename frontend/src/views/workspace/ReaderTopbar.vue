@@ -53,12 +53,11 @@
   }
 
   .topbar.search {
-    height: auto;
     min-height: 48px;
     overflow: visible;
     padding-inline: 0;
     border-color: var(--border-primary);
-    border-bottom: var(--border-thin) solid var(--border-primary);
+    border-bottom: var(--border-extrathin) solid var(--border-primary);
     background-color: v-bind(fileSettings.background);
     box-shadow: var(--shadow-soft);
   }

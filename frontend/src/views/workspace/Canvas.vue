@@ -179,6 +179,9 @@
   const dockHeight = computed(() =>
     props.showSearch ? "auto" : topbarHeight.value + "px"
   );
+  const mainDockTop = computed(() =>
+    props.showSearch || topbarHeight.value > 0 ? "calc(var(--radius-lg) * -1)" : "0"
+  );
   const topbarClipPath = computed(() =>
     topbarFullyRevealed.value
       ? `inset(0 -100px calc(${fileSettings.lineHeight} * -0.75em) -100px)`
@@ -610,6 +613,7 @@
   .inner.right .dock.main {
     max-width: 720px;
     position: relative;
+    top: v-bind(mainDockTop);
     overflow-x: visible;
     will-change: padding-top;
     margin: 0 auto;
@@ -653,7 +657,7 @@
 
   :deep(.rsm-manuscript) {
     padding-block: 32px;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     border: var(--border-extrathin) solid var(--border-primary);
     box-shadow: var(--shadow-soft);
   }
