@@ -133,6 +133,35 @@ describe("TopbarSearch.vue", () => {
     expect(HSM.clearHighlights).toHaveBeenCalled();
   });
 
+  it("re-searches when Enter is pressed with a different query", async () => {
+    const wrapper = createWrapper();
+    const input = wrapper.find("[data-testid='search-input']");
+
+    // First search
+    await input.setValue("hello");
+    await input.trigger("keyup.enter");
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
+
+    // Change query and press Enter again — should re-search, not navigate
+    await input.setValue("world");
+    await input.trigger("keyup.enter");
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(2);
+  });
+
+  it("navigates on Enter when query has not changed", async () => {
+    const wrapper = createWrapper();
+    const input = wrapper.find("[data-testid='search-input']");
+
+    await input.setValue("hello");
+    await input.trigger("keyup.enter");
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
+
+    // Same query, press Enter — should navigate, not re-search
+    await input.trigger("keyup.enter");
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
+    expect(HSM.updateCurrentMatch).toHaveBeenCalled();
+  });
+
   it("closes panel on Escape when not searching", async () => {
     const showSearch = ref(true);
     const wrapper = createWrapper({ showSearch });

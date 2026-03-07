@@ -9,6 +9,7 @@
   const showSearch = inject("showSearch", null);
 
   const {
+    query,
     isSearching,
     isAdvanced,
     activeScopes,
@@ -33,7 +34,7 @@
   ];
 
   const onEnter = (ev) => {
-    if (!isSearching.value) {
+    if (!isSearching.value || searchText.value.trim() !== query.value) {
       search(searchText.value);
       return;
     }
