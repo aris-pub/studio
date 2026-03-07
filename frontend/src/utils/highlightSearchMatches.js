@@ -1,19 +1,30 @@
 export const highlightClass = "aris-search-highlight";
 export const currentHighlightClass = "aris-search-highlight--current";
 
+const MATH_CONTAINER_SELECTOR = "span.math, div.mathblock";
+
+function isInsideMath(node) {
+  return !!node.closest?.(MATH_CONTAINER_SELECTOR) || !!node.parentNode?.closest?.(MATH_CONTAINER_SELECTOR);
+}
+
 export function clearHighlights(rootEl) {
+  // Clear <mark> highlights (document scope)
   const marks = rootEl.querySelectorAll(`mark.${highlightClass}, mark.${currentHighlightClass}`);
   for (const mark of marks) {
     const parent = mark.parentNode;
-    // Use document fragment for better performance
     const fragment = document.createDocumentFragment();
     while (mark.firstChild) {
       fragment.appendChild(mark.firstChild);
     }
     parent.replaceChild(fragment, mark);
   }
-  // Normalize at the root level once rather than per node
   rootEl.normalize();
+
+  // Clear math highlights (class applied directly to MathML elements)
+  const mathHits = rootEl.querySelectorAll(`.${highlightClass}, .${currentHighlightClass}`);
+  for (const el of mathHits) {
+    el.classList.remove(highlightClass, currentHighlightClass);
+  }
 }
 
 /**
@@ -24,16 +35,29 @@ export function clearHighlights(rootEl) {
 export function updateCurrentMatch(matches, currentIndex) {
   // Remove current highlight class from all matches
   matches.forEach((match) => {
-    if (match.mark) {
+    if (match.mathEls) {
+      for (const el of match.mathEls) {
+        el.classList.remove(currentHighlightClass);
+        el.classList.add(highlightClass);
+      }
+    } else if (match.mark) {
       match.mark.classList.remove(currentHighlightClass);
       match.mark.classList.add(highlightClass);
     }
   });
 
   // Add current highlight class to the current match
-  if (currentIndex >= 0 && currentIndex < matches.length && matches[currentIndex].mark) {
-    matches[currentIndex].mark.classList.remove(highlightClass);
-    matches[currentIndex].mark.classList.add(currentHighlightClass);
+  if (currentIndex >= 0 && currentIndex < matches.length) {
+    const current = matches[currentIndex];
+    if (current.mathEls) {
+      for (const el of current.mathEls) {
+        el.classList.remove(highlightClass);
+        el.classList.add(currentHighlightClass);
+      }
+    } else if (current.mark) {
+      current.mark.classList.remove(highlightClass);
+      current.mark.classList.add(currentHighlightClass);
+    }
   }
 }
 
@@ -50,15 +74,18 @@ export function highlightSearchMatches(rootEl, searchTerm, options = {}) {
   const { caseSensitive = false, wholeWord = false } = options;
   if (!rootEl || !searchTerm || searchTerm.trim() === "") return 0;
 
-  // Setup TreeWalker to find all text nodes
-  const treeWalker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+  // Setup TreeWalker to find all text nodes (skipping math containers)
+  const treeWalker = document.createTreeWalker(rootEl, NodeFilter.SHOW_ALL, {
     acceptNode: (node) => {
-      // Skip empty text nodes and script/style content
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.nodeName === "SCRIPT" || node.nodeName === "STYLE") return NodeFilter.FILTER_REJECT;
+        if (node.matches?.(MATH_CONTAINER_SELECTOR)) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_SKIP;
+      }
+      // Text node checks
       const parent = node.parentNode;
       if (
         !node.textContent.trim() ||
-        parent.nodeName === "SCRIPT" ||
-        parent.nodeName === "STYLE" ||
         (parent.nodeName === "MARK" &&
           (parent.classList.contains(highlightClass) ||
             parent.classList.contains(currentHighlightClass)))
@@ -200,14 +227,73 @@ export function highlightSearchMatches(rootEl, searchTerm, options = {}) {
 }
 
 /**
- * Highlights text matches in source
- * @param {Element} rootEl - The root element to search within
- * @param {string} searchTerm - The text to search for
- * @param {Object} options - Configuration options
- * @param {boolean} options.caseSensitive - Whether search should be case-sensitive (default: false)
- * @param {boolean} options.wholeWord - Match whole words only (default: false)
- * @returns {number} - Count of matches found
+ * Highlights search matches inside math containers (span.math, div.mathblock).
+ * Applies highlight class directly to MathML leaf elements rather than wrapping in <mark>.
  */
+export function highlightMathMatches(rootEl, searchTerm, options = {}) {
+  const { caseSensitive = false } = options;
+  if (!rootEl || !searchTerm || searchTerm.trim() === "") return [];
+
+  const containers = rootEl.querySelectorAll(MATH_CONTAINER_SELECTOR);
+  if (containers.length === 0) return [];
+
+  const searchFor = caseSensitive ? searchTerm : searchTerm.toLowerCase();
+  const matches = [];
+
+  for (const container of containers) {
+    // Only search inside <math> elements (skip handrail zones, error spans, etc.)
+    const mathEl = container.querySelector("math");
+    if (!mathEl) continue;
+
+    const leaves = [];
+    const walker = document.createTreeWalker(mathEl, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+    });
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+      leaves.push({ node: textNode, parent: textNode.parentElement });
+    }
+    if (leaves.length === 0) continue;
+
+    // Build concatenated text and position map
+    const segments = [];
+    let pos = 0;
+    for (const leaf of leaves) {
+      const text = leaf.node.textContent;
+      segments.push({ leaf, start: pos, end: pos + text.length });
+      pos += text.length;
+    }
+    const fullText = leaves.map((l) => l.node.textContent).join("");
+    const searchIn = caseSensitive ? fullText : fullText.toLowerCase();
+
+    // Find matches in this container's text
+    let idx = 0;
+    while ((idx = searchIn.indexOf(searchFor, idx)) !== -1) {
+      const matchEnd = idx + searchFor.length;
+
+      // Find all MathML leaf elements participating in this match
+      const els = [];
+      for (const seg of segments) {
+        if (seg.end > idx && seg.start < matchEnd && seg.leaf.parent) {
+          if (!els.includes(seg.leaf.parent)) {
+            els.push(seg.leaf.parent);
+          }
+        }
+      }
+
+      if (els.length > 0) {
+        for (const el of els) el.classList.add(highlightClass);
+        // Use first element as scroll target
+        matches.push({ mark: els[0], mathEls: els });
+      }
+
+      idx += searchFor.length;
+    }
+  }
+
+  return matches;
+}
+
 export function highlightSearchMatchesSource(sourceText, searchString) {
   if (!searchString.trim() || !sourceText) {
     return [];

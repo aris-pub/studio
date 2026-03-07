@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   updateCurrentMatch,
+  highlightMathMatches,
+  highlightSearchMatches,
+  clearHighlights,
   highlightClass,
   currentHighlightClass,
 } from "@/utils/highlightSearchMatches.js";
@@ -129,6 +132,154 @@ describe("highlightSearchMatches utils", () => {
         expect(mockMatches[i].mark.classList.remove).not.toHaveBeenCalledWith(highlightClass);
         expect(mockMatches[i].mark.classList.add).not.toHaveBeenCalledWith(currentHighlightClass);
       }
+    });
+
+    it("should handle mathEls matches (math scope)", () => {
+      const el1 = { classList: { remove: vi.fn(), add: vi.fn() } };
+      const el2 = { classList: { remove: vi.fn(), add: vi.fn() } };
+      const el3 = { classList: { remove: vi.fn(), add: vi.fn() } };
+
+      const mathMatches = [
+        { mark: el1, mathEls: [el1, el2] },
+        { mark: el3, mathEls: [el3] },
+      ];
+
+      updateCurrentMatch(mathMatches, 0);
+
+      // Current match: both el1 and el2 get current highlight
+      expect(el1.classList.add).toHaveBeenCalledWith(currentHighlightClass);
+      expect(el2.classList.add).toHaveBeenCalledWith(currentHighlightClass);
+      // Non-current: el3 gets regular highlight
+      expect(el3.classList.remove).toHaveBeenCalledWith(currentHighlightClass);
+      expect(el3.classList.add).toHaveBeenCalledWith(highlightClass);
+    });
+
+    it("should switch current between mathEls matches", () => {
+      const el1 = { classList: { remove: vi.fn(), add: vi.fn() } };
+      const el2 = { classList: { remove: vi.fn(), add: vi.fn() } };
+
+      const mathMatches = [
+        { mark: el1, mathEls: [el1] },
+        { mark: el2, mathEls: [el2] },
+      ];
+
+      updateCurrentMatch(mathMatches, 1);
+
+      expect(el1.classList.remove).toHaveBeenCalledWith(currentHighlightClass);
+      expect(el1.classList.add).toHaveBeenCalledWith(highlightClass);
+      expect(el2.classList.add).toHaveBeenCalledWith(currentHighlightClass);
+    });
+  });
+
+  describe("highlightMathMatches", () => {
+    function buildMathDOM(latex) {
+      // Simulate Temml output: <span class="math"><math><mrow><mi>...</mi></mrow></math></span>
+      const container = document.createElement("div");
+      const span = document.createElement("span");
+      span.className = "math";
+      const math = document.createElementNS("http://www.w3.org/1998/Math/MathML", "math");
+      const mrow = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mrow");
+
+      // Split latex into individual character MathML elements
+      for (const ch of latex) {
+        const tag = /[0-9]/.test(ch) ? "mn" : /[a-zA-Z]/.test(ch) ? "mi" : "mo";
+        const el = document.createElementNS("http://www.w3.org/1998/Math/MathML", tag);
+        el.textContent = ch;
+        mrow.appendChild(el);
+      }
+
+      math.appendChild(mrow);
+      span.appendChild(math);
+      container.appendChild(span);
+      return container;
+    }
+
+    it("finds matches in inline math", () => {
+      const root = buildMathDOM("a+b=c");
+      const matches = highlightMathMatches(root, "b=c");
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0].mathEls).toHaveLength(3); // b, =, c
+      expect(matches[0].mathEls[0].textContent).toBe("b");
+      expect(matches[0].mathEls[1].textContent).toBe("=");
+      expect(matches[0].mathEls[2].textContent).toBe("c");
+    });
+
+    it("applies highlight class to matched elements", () => {
+      const root = buildMathDOM("x+y");
+      highlightMathMatches(root, "x");
+
+      const mi = root.querySelector("mi");
+      expect(mi.classList.contains(highlightClass)).toBe(true);
+    });
+
+    it("is case-insensitive by default", () => {
+      const root = buildMathDOM("ABC");
+      const matches = highlightMathMatches(root, "abc");
+      expect(matches).toHaveLength(1);
+    });
+
+    it("respects caseSensitive option", () => {
+      const root = buildMathDOM("ABC");
+      const matches = highlightMathMatches(root, "abc", { caseSensitive: true });
+      expect(matches).toHaveLength(0);
+    });
+
+    it("finds multiple matches in one container", () => {
+      const root = buildMathDOM("a+a+a");
+      const matches = highlightMathMatches(root, "a");
+      expect(matches).toHaveLength(3);
+    });
+
+    it("returns empty array when no math containers exist", () => {
+      const root = document.createElement("div");
+      root.textContent = "plain text";
+      const matches = highlightMathMatches(root, "plain");
+      expect(matches).toEqual([]);
+    });
+
+    it("sets mark to first element for scrollIntoView", () => {
+      const root = buildMathDOM("x+y");
+      const matches = highlightMathMatches(root, "x+y");
+      expect(matches[0].mark).toBe(matches[0].mathEls[0]);
+    });
+  });
+
+  describe("highlightSearchMatches (document scope)", () => {
+    it("skips text nodes inside math containers", () => {
+      const root = document.createElement("div");
+      root.innerHTML = '<p>hello world</p><span class="math"><math><mi>x</mi></math></span>';
+      const result = highlightSearchMatches(root, "x");
+      // Returns 0 (no matches) since "x" is inside a math container
+      expect(result).toBe(0);
+    });
+
+    it("still matches text outside math containers", () => {
+      const root = document.createElement("div");
+      root.innerHTML = '<p>hello world</p><span class="math"><math><mi>x</mi></math></span>';
+      const matches = highlightSearchMatches(root, "hello");
+      expect(matches).toHaveLength(1);
+    });
+  });
+
+  describe("clearHighlights", () => {
+    it("clears math highlight classes", () => {
+      const root = document.createElement("div");
+      root.innerHTML = '<span class="math"><math><mi class="aris-search-highlight">x</mi></math></span>';
+      clearHighlights(root);
+      const mi = root.querySelector("mi");
+      expect(mi.classList.contains(highlightClass)).toBe(false);
+    });
+
+    it("clears both mark and math highlights", () => {
+      const root = document.createElement("div");
+      root.innerHTML = `
+        <p><mark class="${highlightClass}">hello</mark></p>
+        <span class="math"><math><mi class="${currentHighlightClass}">x</mi></math></span>
+      `;
+      clearHighlights(root);
+      expect(root.querySelector("mark")).toBeNull();
+      expect(root.querySelector("mi").classList.contains(currentHighlightClass)).toBe(false);
     });
   });
 });

@@ -1,6 +1,7 @@
-import { ref, computed } from "vue";
+import { ref, shallowRef, markRaw, computed, watch } from "vue";
 import {
   highlightSearchMatches,
+  highlightMathMatches,
   highlightSearchMatchesSource,
   clearHighlights,
   updateCurrentMatch,
@@ -9,7 +10,7 @@ import {
 export function useSearch({ manuscriptRef, file }) {
   const query = ref("");
   const isSearching = ref(false);
-  const matches = ref([]);
+  const matches = shallowRef([]);
   const sourceMatches = ref([]);
   const currentIndex = ref(-1);
 
@@ -53,8 +54,19 @@ export function useSearch({ manuscriptRef, file }) {
     if (caseSensitive.value) options.caseSensitive = true;
     if (wholeWord.value) options.wholeWord = true;
 
-    const result = highlightSearchMatches(el, trimmed, options);
-    matches.value = result || [];
+    const scopes = activeScopes.value;
+    let allMatches = [];
+
+    if (scopes.has("document")) {
+      const result = highlightSearchMatches(el, trimmed, options);
+      if (result) allMatches.push(...result);
+    }
+    if (scopes.has("math")) {
+      const mathResult = highlightMathMatches(el, trimmed, options);
+      if (mathResult) allMatches.push(...mathResult);
+    }
+
+    matches.value = allMatches.length > 0 ? markRaw(allMatches) : [];
     sourceMatches.value = highlightSearchMatchesSource(file.value?.source || "", trimmed);
 
     if (matches.value.length > 0) {
@@ -66,10 +78,10 @@ export function useSearch({ manuscriptRef, file }) {
   }
 
   function navigateToMatch(index) {
+    updateCurrentMatch(matches.value, index);
     const match = matches.value[index];
     if (match?.mark) {
       match.mark.scrollIntoView({ behavior: "smooth", block: "center" });
-      updateCurrentMatch(matches.value, index);
     }
   }
 
@@ -98,6 +110,9 @@ export function useSearch({ manuscriptRef, file }) {
       next.add("document");
     }
     activeScopes.value = next;
+    if (isSearching.value && query.value) {
+      search(query.value);
+    }
   }
 
   function toggleAdvanced() {

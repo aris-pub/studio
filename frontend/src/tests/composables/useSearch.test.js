@@ -145,6 +145,61 @@ describe("useSearch composable", () => {
       search.prev();
       expect(search.currentIndex.value).toBe(-1);
     });
+
+    it("next() calls updateCurrentMatch even when target match has null mark", () => {
+      const matchesWithNullMark = [
+        { mark: makeMark() },
+        { mark: null },
+        { mark: makeMark() },
+      ];
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
+      HSM.updateCurrentMatch.mockClear();
+
+      const search = createSearch();
+      search.search("test");
+      HSM.updateCurrentMatch.mockClear();
+
+      search.next(); // index 0 → 1 (null mark)
+      expect(search.currentIndex.value).toBe(1);
+      expect(HSM.updateCurrentMatch).toHaveBeenCalledWith(matchesWithNullMark, 1);
+    });
+
+    it("prev() calls updateCurrentMatch even when target match has null mark", () => {
+      const matchesWithNullMark = [
+        { mark: null },
+        { mark: makeMark() },
+      ];
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
+
+      const search = createSearch();
+      search.search("test");
+      // currentIndex starts at 0 (null mark)
+      HSM.updateCurrentMatch.mockClear();
+
+      search.prev(); // wraps to index 1
+      expect(HSM.updateCurrentMatch).toHaveBeenCalledWith(matchesWithNullMark, 1);
+
+      HSM.updateCurrentMatch.mockClear();
+      search.prev(); // wraps back to index 0 (null mark)
+      expect(search.currentIndex.value).toBe(0);
+      expect(HSM.updateCurrentMatch).toHaveBeenCalledWith(matchesWithNullMark, 0);
+    });
+
+    it("does not call scrollIntoView when match.mark is null", () => {
+      const goodMark = makeMark();
+      const matchesWithNullMark = [
+        { mark: goodMark },
+        { mark: null },
+      ];
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
+
+      const search = createSearch();
+      search.search("test");
+      goodMark.scrollIntoView.mockClear();
+
+      search.next(); // navigate to null mark
+      expect(goodMark.scrollIntoView).not.toHaveBeenCalled();
+    });
   });
 
   describe("clear and cancel", () => {
