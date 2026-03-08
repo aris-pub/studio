@@ -465,5 +465,128 @@ describe("useSearch composable", () => {
       expect(s.sourceMatchCount.value).toBe(0);
       view.destroy();
     });
+
+    it("clears CM search when source scope is toggled off", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt, getSearchQuery } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "hello world hello",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "hello world hello" }),
+        cmView,
+      });
+      s.toggleScope("source");
+      s.search("hello");
+      expect(s.sourceMatchCount.value).toBe(2);
+
+      s.toggleScope("source"); // toggle off
+      expect(s.sourceMatchCount.value).toBe(0);
+      const sq = getSearchQuery(view.state);
+      expect(sq.search).toBe("");
+      view.destroy();
+    });
+
+    it("shows source-only hint text when only source scope active", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "hello world hello",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "hello world hello" }),
+        cmView,
+      });
+      s.toggleScope("source");
+      s.toggleScope("output"); // only source active
+      s.search("hello");
+
+      expect(s.hintText.value).toBe("2 in source");
+      view.destroy();
+    });
+
+    it("shows combined hint text when both output and source active", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "hello world",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "hello world" }),
+        cmView,
+      });
+      s.toggleScope("source"); // both output + source
+      s.search("hello");
+
+      // Output has 2 matches (from stubMatches), source has 1
+      expect(s.hintText.value).toBe("1 of 2 in output, 1 in source");
+      view.destroy();
+    });
+
+    it("calls findNext on CM view during next() when source active", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "aa bb aa cc aa",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "aa bb aa cc aa" }),
+        cmView,
+      });
+      s.toggleScope("source");
+      s.toggleScope("output"); // source only
+      s.search("aa");
+
+      // First search calls findNext, positioning on first match
+      const sel1 = view.state.selection.main;
+      expect(sel1.from).toBe(0);
+      expect(sel1.to).toBe(2);
+
+      // next() advances to second match
+      s.next();
+      const sel2 = view.state.selection.main;
+      expect(sel2.from).toBe(6);
+      expect(sel2.to).toBe(8);
+
+      // prev() goes back
+      s.prev();
+      const sel3 = view.state.selection.main;
+      expect(sel3.from).toBe(0);
+      expect(sel3.to).toBe(2);
+
+      view.destroy();
+    });
   });
 });
