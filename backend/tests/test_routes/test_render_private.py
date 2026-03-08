@@ -1,6 +1,7 @@
 """Tests for private render endpoint with asset resolver."""
 
 from httpx import AsyncClient
+from sqlalchemy import text
 
 from aris.models.models import File, FileAsset
 
@@ -125,3 +126,55 @@ class TestRenderPrivate:
         assert private_response.status_code == 200
         private_html = private_response.json()
         assert "Private Asset" in private_html
+
+    async def test_render_private_persists_source_to_db(
+        self, client: AsyncClient, authenticated_user, db_session
+    ):
+        headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+        file = File(owner_id=authenticated_user['user_id'], source="original source")
+        db_session.add(file)
+        await db_session.commit()
+        await db_session.refresh(file)
+
+        response = await client.post(
+            "/render/private",
+            json={"source": "updated source", "file_id": file.id},
+            headers=headers,
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            text("SELECT source FROM files WHERE id = :file_id"),
+            {"file_id": file.id},
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row[0] == "updated source"
+
+    async def test_render_private_persisted_source_matches_request(
+        self, client: AsyncClient, authenticated_user, db_session
+    ):
+        headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+        file = File(owner_id=authenticated_user['user_id'], source="placeholder")
+        db_session.add(file)
+        await db_session.commit()
+        await db_session.refresh(file)
+
+        source_with_special_chars = ':manuscript:\n\n  A "paragraph" with <html> & symbols\'s.\n\n::'
+
+        response = await client.post(
+            "/render/private",
+            json={"source": source_with_special_chars, "file_id": file.id},
+            headers=headers,
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            text("SELECT source FROM files WHERE id = :file_id"),
+            {"file_id": file.id},
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row[0] == source_with_special_chars

@@ -77,6 +77,22 @@ async def reset_test_user():
             print("🔍 [RESET-USER-DEBUG] Cleaning up existing user data...")
             
             # Delete all existing data for test user
+            # Order matters: delete child tables before parent tables (FK constraints)
+            print("🔍 [RESET-USER-DEBUG] Deleting annotation_messages...")
+            await session.execute(
+                text("DELETE FROM annotation_message WHERE annotation_id IN (SELECT id FROM annotation WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id))"),
+                {"user_id": user_id},
+            )
+            print("🔍 [RESET-USER-DEBUG] Deleting annotations...")
+            await session.execute(
+                text("DELETE FROM annotation WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id)"),
+                {"user_id": user_id},
+            )
+            print("🔍 [RESET-USER-DEBUG] Deleting file_versions...")
+            await session.execute(
+                text("DELETE FROM file_versions WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id)"),
+                {"user_id": user_id},
+            )
             print("🔍 [RESET-USER-DEBUG] Deleting file_tags...")
             await session.execute(
                 text("DELETE FROM file_tags WHERE file_id IN (SELECT id FROM files WHERE owner_id = :user_id)"),

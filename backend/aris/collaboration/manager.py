@@ -59,8 +59,11 @@ class CollaborationManager:
             self.tasks.pop(file_id, None)
 
         try:
-            # Use environment namespace to prevent conflicts between dev/test
-            env = os.getenv("ENV", "local").lower()
+            # Room name must match the frontend's convention:
+            # frontend uses VITE_ENV (default "dev"), backend uses ENV.
+            # Normalize LOCAL → dev so both join the same Y.js room.
+            raw_env = os.getenv("ENV", "dev").lower()
+            env = "dev" if raw_env == "local" else raw_env
             websocket_url = f"{self.websocket_base_url}/file-{file_id}-{env}"
             logger.info(f"Starting YDocClient for file {file_id} at {websocket_url}")
 

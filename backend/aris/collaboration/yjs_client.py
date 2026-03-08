@@ -269,8 +269,6 @@ class YDocClient:
                     content = row[0]
                     logger.info(f"Loaded {len(content)} chars from DB for file {self.file_id}")
 
-                    # CRITICAL: Clear text before inserting to prevent duplication
-                    # Using += would append, causing content duplication if text isn't empty
                     with self.doc.transaction():
                         if len(self.text) > 0:
                             del self.text[0:len(self.text)]
