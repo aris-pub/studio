@@ -423,3 +423,127 @@ describe("Note.vue — trash button squircle (std-0f70)", () => {
     // Verified via CSS: .delete-btn { border-radius: 8px; }
   });
 });
+
+describe("Note.vue — search match highlighting (std-50vp)", () => {
+  function createSearchWrapper(
+    annotation,
+    { searchMatch = false, searchMatchCurrent = false, searchQuery = "" } = {}
+  ) {
+    return mount(Note, {
+      props: { annotation, searchMatch, searchMatchCurrent, searchQuery },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+        },
+      },
+    });
+  }
+
+  it("applies .search-match class when searchMatch prop is true", () => {
+    const wrapper = createSearchWrapper(makeAnnotation(), { searchMatch: true });
+    expect(wrapper.find(".note").classes()).toContain("search-match");
+  });
+
+  it("does not apply .search-match class when searchMatch prop is false", () => {
+    const wrapper = createSearchWrapper(makeAnnotation());
+    expect(wrapper.find(".note").classes()).not.toContain("search-match");
+  });
+
+  it("highlights search term in note content with aris-search-highlight span", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "quantum leap", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, { searchMatch: true, searchQuery: "quantum" });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain('<span class="aris-search-highlight">quantum</span>');
+  });
+
+  it("highlights search term in selected_text", () => {
+    const ann = makeAnnotation({ selected_text: "endless possibilities" });
+    const wrapper = createSearchWrapper(ann, { searchMatch: true, searchQuery: "endless" });
+    const selectedText = wrapper.find(".selected-text");
+    expect(selectedText.html()).toContain('<span class="aris-search-highlight">endless</span>');
+  });
+
+  it("does not inject highlights when searchMatch is false", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "quantum leap", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, { searchMatch: false, searchQuery: "quantum" });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).not.toContain("aris-search-highlight");
+  });
+
+  it("escapes HTML in text before highlighting", () => {
+    const ann = makeAnnotation({ selected_text: "<script>alert(1)</script>" });
+    const wrapper = createSearchWrapper(ann, { searchMatch: true, searchQuery: "script" });
+    const selectedText = wrapper.find(".selected-text");
+    expect(selectedText.html()).not.toContain("<script>");
+    expect(selectedText.html()).toContain("&lt;");
+  });
+
+  it("handles special regex characters in search query", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "price is $100 (USD)", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, { searchMatch: true, searchQuery: "$100" });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain('<span class="aris-search-highlight">$100</span>');
+  });
+
+  it("is case-insensitive when highlighting", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "Quantum Leap", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, { searchMatch: true, searchQuery: "quantum" });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain('<span class="aris-search-highlight">Quantum</span>');
+  });
+
+  it("applies .search-match-current class when searchMatchCurrent prop is true", () => {
+    const wrapper = createSearchWrapper(makeAnnotation(), {
+      searchMatch: true,
+      searchMatchCurrent: true,
+    });
+    expect(wrapper.find(".note").classes()).toContain("search-match-current");
+  });
+
+  it("does not apply .search-match-current class by default", () => {
+    const wrapper = createSearchWrapper(makeAnnotation(), { searchMatch: true });
+    expect(wrapper.find(".note").classes()).not.toContain("search-match-current");
+  });
+
+  it("uses aris-search-highlight--current class for inline text when current", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "foo bar", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, {
+      searchMatch: true,
+      searchMatchCurrent: true,
+      searchQuery: "foo",
+    });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain('<span class="aris-search-highlight--current">foo</span>');
+    expect(noteText.html()).not.toContain('"aris-search-highlight"');
+  });
+
+  it("uses aris-search-highlight class for inline text when not current", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "foo bar", deleted_at: null }],
+    });
+    const wrapper = createSearchWrapper(ann, {
+      searchMatch: true,
+      searchMatchCurrent: false,
+      searchQuery: "foo",
+    });
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain('<span class="aris-search-highlight">foo</span>');
+    expect(noteText.html()).not.toContain("--current");
+  });
+});

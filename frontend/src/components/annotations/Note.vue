@@ -5,6 +5,9 @@
 
   const props = defineProps({
     annotation: { type: Object, required: true },
+    searchMatch: { type: Boolean, default: false },
+    searchMatchCurrent: { type: Boolean, default: false },
+    searchQuery: { type: String, default: "" },
   });
 
   const COLLAPSE_KEY = "annotation-collapsed";
@@ -59,6 +62,26 @@
   const previewText = computed(() => {
     return note.value?.content || displayText.value;
   });
+
+  function highlightMatch(text) {
+    if (!text || !props.searchMatch || !props.searchQuery) return escapeHtml(text);
+    const escaped = escapeHtml(text);
+    const queryEscaped = props.searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${queryEscaped})`, "gi");
+    const cls = props.searchMatchCurrent
+      ? "aris-search-highlight--current"
+      : "aris-search-highlight";
+    return escaped.replace(re, `<span class="${cls}">$1</span>`);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   const timeAgo = computed(() => {
     const created = new Date(props.annotation.created_at);
@@ -146,7 +169,8 @@
 
   const noteRef = useTemplateRef("note-ref");
   watch(isActive, (active) => {
-    if (active) nextTick(() => noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }));
+    if (active)
+      nextTick(() => noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }));
   });
 
   onUnmounted(() => clearTimeout(deleteTimeout));
@@ -156,7 +180,13 @@
   <div
     ref="note-ref"
     class="note"
-    :class="{ active: isActive && !editing, editing, collapsed: collapsed && note }"
+    :class="{
+      active: isActive && !editing,
+      editing,
+      collapsed: collapsed && note,
+      'search-match': searchMatch,
+      'search-match-current': searchMatchCurrent,
+    }"
     :style="{ '--note-color': barColor }"
     tabindex="0"
     @click="onSelect"
@@ -192,10 +222,10 @@
       </div>
     </div>
 
-    <p v-if="collapsed" class="collapsed-line note-text">{{ previewText }}</p>
+    <p v-if="collapsed" class="collapsed-line note-text" v-html="highlightMatch(previewText)"></p>
 
     <div v-if="!collapsed" class="content">
-      <p class="selected-text">{{ displayText }}</p>
+      <p class="selected-text" v-html="highlightMatch(displayText)"></p>
 
       <div v-if="editing" class="edit-area">
         <label :for="`note-edit-${annotation.id}`" class="sr-only">Annotation note</label>
@@ -216,7 +246,7 @@
         </div>
       </div>
 
-      <p v-else-if="note" class="note-text">{{ note.content }}</p>
+      <p v-else-if="note" class="note-text" v-html="highlightMatch(note.content)"></p>
     </div>
   </div>
 </template>
@@ -246,6 +276,18 @@
     border-color: var(--border-action);
     border-left-color: var(--note-color);
     box-shadow: 0 0 0 1px var(--border-action);
+  }
+
+  .note.search-match {
+    background-color: color-mix(in srgb, var(--yellow-200) 20%, var(--surface-page));
+    border-color: var(--yellow-300);
+    border-left-color: var(--note-color);
+  }
+
+  .note.search-match-current {
+    background-color: color-mix(in srgb, var(--orange-200) 25%, var(--surface-page));
+    border-color: var(--orange-300);
+    border-left-color: var(--note-color);
   }
 
   .note.collapsed .actions > :last-child {

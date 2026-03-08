@@ -1,5 +1,5 @@
 <script setup>
-  import { inject, onMounted, useTemplateRef, ref, shallowRef } from "vue";
+  import { inject, onMounted, useTemplateRef, ref, shallowRef, watch } from "vue";
   import { IconSearch, IconAdjustmentsHorizontal } from "@tabler/icons-vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useSearch } from "@/composables/useSearch.js";
@@ -8,12 +8,18 @@
   const file = inject("file");
   const showSearch = inject("showSearch", null);
   const cmView = inject("cmView", shallowRef(null));
+  const annotations = inject("annotations", ref([]));
+  const searchMatchedAnnotationIds = inject("searchMatchedAnnotationIds", shallowRef(new Set()));
+  const searchCurrentMarginaliaId = inject("searchCurrentMarginaliaId", ref(null));
+  const searchQueryForMarginalia = inject("searchQueryForMarginalia", ref(""));
 
   const {
     query,
     isSearching,
     isAdvanced,
     activeScopes,
+    marginaliaMatchIds,
+    currentMarginaliaId,
     hintText,
     buttonsDisabled,
     search,
@@ -22,7 +28,19 @@
     clear,
     toggleScope,
     toggleAdvanced,
-  } = useSearch({ manuscriptRef, file, cmView });
+  } = useSearch({ manuscriptRef, file, cmView, annotations });
+
+  watch(marginaliaMatchIds, (ids) => {
+    searchMatchedAnnotationIds.value = ids;
+    searchQueryForMarginalia.value = ids.size > 0 ? query.value : "";
+  });
+
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
+
+  watch(currentMarginaliaId, (id) => {
+    searchCurrentMarginaliaId.value = id;
+    if (id !== null) activeAnnotationId.value = id;
+  });
 
   const inputRef = useTemplateRef("inputRef");
   const searchText = ref("");

@@ -28,11 +28,17 @@ function clearCMSearch(cmView) {
   view.dispatch({ effects: setSearchQuery.of(empty) });
 }
 
-export function useSearch({ manuscriptRef, file, cmView }) {
+export function useSearch({ manuscriptRef, file, cmView, annotations }) {
   const query = ref("");
   const isSearching = ref(false);
   const matches = shallowRef([]);
   const sourceMatchCount = ref(0);
+  const marginaliaMatchIds = shallowRef(new Set());
+  const marginaliaMatchList = shallowRef([]);
+  const currentMarginaliaIdx = ref(-1);
+  const currentMarginaliaId = computed(() =>
+    currentMarginaliaIdx.value >= 0 ? marginaliaMatchList.value[currentMarginaliaIdx.value] : null
+  );
   const currentIndex = ref(-1);
 
   const caseSensitive = ref(false);
@@ -43,7 +49,8 @@ export function useSearch({ manuscriptRef, file, cmView }) {
   const totalMatchCount = computed(() => {
     const outputCount = matches.value.length;
     const srcCount = activeScopes.value.has("source") ? sourceMatchCount.value : 0;
-    return outputCount + srcCount;
+    const margCount = activeScopes.value.has("marginalia") ? marginaliaMatchIds.value.size : 0;
+    return outputCount + srcCount + margCount;
   });
 
   const hintText = computed(() => {
@@ -54,20 +61,24 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     const scopes = activeScopes.value;
     const hasOutput = scopes.has("output");
     const hasSource = scopes.has("source");
+    const hasMarginalia = scopes.has("marginalia");
+    const multiScope = [hasOutput, hasSource, hasMarginalia].filter(Boolean).length > 1;
 
-    if (hasOutput && !hasSource) {
-      return `${currentIndex.value + 1} of ${matches.value.length}`;
+    if (!multiScope) {
+      if (hasOutput) return `${currentIndex.value + 1} of ${matches.value.length}`;
+      if (hasSource) return `${sourceMatchCount.value} in source`;
+      if (hasMarginalia) return `${marginaliaMatchIds.value.size} in marginalia`;
     }
-    if (hasSource && !hasOutput) {
-      return `${sourceMatchCount.value} in source`;
-    }
-    // Both scopes active
+
     const parts = [];
-    if (matches.value.length > 0) {
+    if (hasOutput && matches.value.length > 0) {
       parts.push(`${currentIndex.value + 1} of ${matches.value.length} in output`);
     }
-    if (sourceMatchCount.value > 0) {
+    if (hasSource && sourceMatchCount.value > 0) {
       parts.push(`${sourceMatchCount.value} in source`);
+    }
+    if (hasMarginalia && marginaliaMatchIds.value.size > 0) {
+      parts.push(`${marginaliaMatchIds.value.size} in marginalia`);
     }
     return parts.join(", ") || "No matches";
   });
@@ -101,6 +112,41 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     if (sourceMatchCount.value > 0) {
       cmFindNext(view);
     }
+  }
+
+  function searchMarginalia(trimmed, options) {
+    const list = annotations?.value;
+    if (!list?.length) {
+      marginaliaMatchIds.value = new Set();
+      return;
+    }
+
+    const compare = options.caseSensitive
+      ? (hay, needle) => hay.includes(needle)
+      : (hay, needle) => hay.toLowerCase().includes(needle.toLowerCase());
+
+    const wordBoundary = options.wholeWord
+      ? (hay, needle) => {
+          const flags = options.caseSensitive ? "g" : "gi";
+          const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          return new RegExp(`\\b${escaped}\\b`, flags).test(hay);
+        }
+      : null;
+
+    const test = wordBoundary || compare;
+
+    const ids = new Set();
+    for (const ann of list) {
+      const msgs = ann.messages?.filter((m) => !m.deleted_at) || [];
+      const noteContent = msgs[0]?.content || "";
+
+      if (noteContent && test(noteContent, trimmed)) {
+        ids.add(ann.id);
+      }
+    }
+    marginaliaMatchIds.value = ids;
+    marginaliaMatchList.value = [...ids];
+    currentMarginaliaIdx.value = ids.size > 0 ? 0 : -1;
   }
 
   function search(searchString) {
@@ -140,6 +186,12 @@ export function useSearch({ manuscriptRef, file, cmView }) {
       sourceMatchCount.value = 0;
     }
 
+    if (scopes.has("marginalia")) {
+      searchMarginalia(trimmed, options);
+    } else {
+      marginaliaMatchIds.value = new Set();
+    }
+
     if (matches.value.length > 0) {
       currentIndex.value = 0;
       navigateToMatch(0);
@@ -162,10 +214,13 @@ export function useSearch({ manuscriptRef, file, cmView }) {
       currentIndex.value = (currentIndex.value + 1) % matches.value.length;
       navigateToMatch(currentIndex.value);
     }
-    // Also advance CM cursor if source scope is active
     const view = toRaw(cmView?.value);
     if (view && activeScopes.value.has("source")) {
       cmFindNext(view);
+    }
+    if (activeScopes.value.has("marginalia") && marginaliaMatchList.value.length > 0) {
+      currentMarginaliaIdx.value =
+        (currentMarginaliaIdx.value + 1) % marginaliaMatchList.value.length;
     }
   }
 
@@ -178,6 +233,11 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     const view = toRaw(cmView?.value);
     if (view && activeScopes.value.has("source")) {
       cmFindPrevious(view);
+    }
+    if (activeScopes.value.has("marginalia") && marginaliaMatchList.value.length > 0) {
+      currentMarginaliaIdx.value =
+        (currentMarginaliaIdx.value - 1 + marginaliaMatchList.value.length) %
+        marginaliaMatchList.value.length;
     }
   }
 
@@ -211,6 +271,9 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     isSearching.value = false;
     matches.value = [];
     sourceMatchCount.value = 0;
+    marginaliaMatchIds.value = new Set();
+    marginaliaMatchList.value = [];
+    currentMarginaliaIdx.value = -1;
     currentIndex.value = -1;
   }
 
@@ -229,6 +292,8 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     isSearching,
     matches,
     sourceMatchCount,
+    marginaliaMatchIds,
+    currentMarginaliaId,
     currentIndex,
     caseSensitive,
     wholeWord,

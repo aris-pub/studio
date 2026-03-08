@@ -54,6 +54,14 @@
   const cmView = shallowRef(null);
   provide("cmView", cmView);
 
+  // Search-matched annotation IDs and query — TopbarSearch writes, DockableAnnotations reads
+  const searchMatchedAnnotationIds = shallowRef(new Set());
+  const searchCurrentMarginaliaId = ref(null);
+  const searchQueryForMarginalia = ref("");
+  provide("searchMatchedAnnotationIds", searchMatchedAnnotationIds);
+  provide("searchCurrentMarginaliaId", searchCurrentMarginaliaId);
+  provide("searchQueryForMarginalia", searchQueryForMarginalia);
+
   // Expose some of the geometry
   const innerRef = useTemplateRef("inner-right-ref");
   const midColRef = useTemplateRef("middle-column-ref");
@@ -333,6 +341,25 @@
       annotationOverlayOpen.value = true;
     }
   });
+
+  // Auto-open annotation overlay when marginalia search finds matches
+  watch(searchMatchedAnnotationIds, (ids) => {
+    if (ids.size > 0 && (!showAnnotationCards.value || focusMode.value)) {
+      annotationOverlayOpen.value = true;
+    }
+  });
+
+  // Clear marginalia highlights when search panel closes
+  watch(
+    () => props.showSearch,
+    (open) => {
+      if (!open) {
+        searchMatchedAnnotationIds.value = new Set();
+        searchCurrentMarginaliaId.value = null;
+        searchQueryForMarginalia.value = "";
+      }
+    }
+  );
 
   const { activate: activateOverlayClosable, deactivate: deactivateOverlayClosable } = useClosable({
     onClose: () => (annotationOverlayOpen.value = false),
@@ -731,6 +758,7 @@
     box-shadow: var(--shadow-strong), var(--shadow-soft);
     border-radius: 16px;
     overflow: hidden;
+    outline: none;
   }
 
   .overlay-header-title {

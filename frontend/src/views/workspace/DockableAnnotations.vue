@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, isRef, watch, nextTick, onMounted, onUnmounted } from "vue";
+  import { ref, shallowRef, inject, isRef, watch, nextTick, onMounted, onUnmounted } from "vue";
   import Note from "@/components/annotations/Note.vue";
 
   const props = defineProps({
@@ -9,6 +9,9 @@
   const annotations = inject("annotations", ref([]));
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const manuscriptRef = inject("manuscriptRef", ref(null));
+  const searchMatchedAnnotationIds = inject("searchMatchedAnnotationIds", shallowRef(new Set()));
+  const searchCurrentMarginaliaId = inject("searchCurrentMarginaliaId", ref(null));
+  const searchQueryForMarginalia = inject("searchQueryForMarginalia", ref(""));
 
   const sortedAnnotations = ref([]);
 
@@ -209,10 +212,17 @@
       v-for="ann in sortedAnnotations"
       :key="ann.id"
       :annotation="ann"
+      :search-match="searchMatchedAnnotationIds.has(ann.id)"
+      :search-match-current="searchCurrentMarginaliaId === ann.id"
+      :search-query="searchQueryForMarginalia"
       :data-card-id="ann.id"
       :style="
         aligned && cardPositions.get(ann.id) != null
-          ? { position: 'absolute', top: cardPositions.get(ann.id) + 'px', width: 'calc(100% - 24px)' }
+          ? {
+              position: 'absolute',
+              top: cardPositions.get(ann.id) + 'px',
+              width: 'calc(100% - 24px)',
+            }
           : {}
       "
     />

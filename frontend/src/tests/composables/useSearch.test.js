@@ -589,4 +589,225 @@ describe("useSearch composable", () => {
       view.destroy();
     });
   });
+
+  describe("marginalia search", () => {
+    const makeAnnotations = () =>
+      ref([
+        {
+          id: 1,
+          selected_text: "quantum entanglement",
+          messages: [{ content: "Important concept", deleted_at: null }],
+        },
+        {
+          id: 2,
+          selected_text: "classical mechanics",
+          messages: [{ content: "Also relevant to quantum", deleted_at: null }],
+        },
+        {
+          id: 3,
+          selected_text: "thermodynamics",
+          messages: [{ content: "Heat transfer", deleted_at: null }],
+        },
+        {
+          id: 4,
+          selected_text: "empty note",
+          messages: [{ content: "deleted msg", deleted_at: "2026-01-01" }],
+        },
+      ]);
+
+    const createMargSearch = (annotations) => {
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "test" }),
+        annotations,
+      });
+      s.toggleScope("marginalia");
+      return s;
+    };
+
+    it("marginaliaMatchIds is empty when marginalia scope is inactive", () => {
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "test" }),
+        annotations: makeAnnotations(),
+      });
+      s.search("Important");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("matches annotations by note content", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("quantum");
+      // Ann 2 has "quantum" in its note content
+      expect(s.marginaliaMatchIds.value.has(2)).toBe(true);
+    });
+
+    it("does not match by selected_text (covered by output/source scopes)", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("entanglement");
+      // "entanglement" only appears in ann 1's selected_text, not in any note
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("does not match deleted messages", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("deleted msg");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("is case-insensitive by default", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("IMPORTANT");
+      // Ann 1 has "Important concept" in note content
+      expect(s.marginaliaMatchIds.value.has(1)).toBe(true);
+    });
+
+    it("respects caseSensitive option", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.caseSensitive.value = true;
+      s.search("important");
+      // "Important" has uppercase I — case-sensitive search for lowercase should miss
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("respects wholeWord option", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.wholeWord.value = true;
+      s.search("quantum");
+      // Ann 2 note has "quantum" as a whole word
+      expect(s.marginaliaMatchIds.value.has(2)).toBe(true);
+
+      s.search("quant");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("clears marginalia matches on clear()", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("quantum");
+      expect(s.marginaliaMatchIds.value.size).toBeGreaterThan(0);
+
+      s.clear();
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("clears marginalia matches when scope is toggled off", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("quantum");
+      expect(s.marginaliaMatchIds.value.size).toBeGreaterThan(0);
+
+      s.toggleScope("marginalia");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("shows marginalia-only hint text", () => {
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+      const s = createMargSearch(makeAnnotations());
+      s.toggleScope("output"); // only marginalia active
+      s.search("quantum");
+      // Only ann 2 note has "quantum"
+      expect(s.hintText.value).toBe("1 in marginalia");
+    });
+
+    it("includes marginalia count in combined hint text", () => {
+      const s = createMargSearch(makeAnnotations());
+      // output + marginalia active
+      s.search("quantum");
+      // stubMatches has 2 output matches, 1 marginalia match (ann 2 note)
+      expect(s.hintText.value).toContain("in output");
+      expect(s.hintText.value).toContain("1 in marginalia");
+    });
+
+    it("includes marginalia in totalMatchCount", () => {
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+      const s = createMargSearch(makeAnnotations());
+      s.toggleScope("output"); // only marginalia
+      s.search("quantum");
+      expect(s.marginaliaMatchIds.value.size).toBe(1);
+      expect(s.hintText.value).toBe("1 in marginalia");
+    });
+
+    it("handles empty annotations gracefully", () => {
+      const s = createMargSearch(ref([]));
+      s.search("quantum");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("handles null annotations gracefully", () => {
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "test" }),
+      });
+      s.toggleScope("marginalia");
+      s.search("quantum");
+      expect(s.marginaliaMatchIds.value.size).toBe(0);
+    });
+
+    it("sets currentMarginaliaId to first match on search", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("Important");
+      // Ann 1 note has "Important concept"
+      expect(s.currentMarginaliaId.value).toBe(1);
+    });
+
+    it("currentMarginaliaId is null when no matches", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("nonexistent");
+      expect(s.currentMarginaliaId.value).toBeNull();
+    });
+
+    it("next() cycles currentMarginaliaId through matches", () => {
+      const annotations = ref([
+        { id: 10, selected_text: "a", messages: [{ content: "shared term", deleted_at: null }] },
+        { id: 20, selected_text: "b", messages: [{ content: "shared term", deleted_at: null }] },
+        { id: 30, selected_text: "c", messages: [{ content: "shared term", deleted_at: null }] },
+      ]);
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "test" }),
+        annotations,
+      });
+      s.toggleScope("marginalia");
+      s.toggleScope("output"); // only marginalia
+      s.search("shared term");
+
+      expect(s.currentMarginaliaId.value).toBe(10);
+      s.next();
+      expect(s.currentMarginaliaId.value).toBe(20);
+      s.next();
+      expect(s.currentMarginaliaId.value).toBe(30);
+      s.next();
+      expect(s.currentMarginaliaId.value).toBe(10); // wraps
+    });
+
+    it("prev() cycles currentMarginaliaId backwards", () => {
+      const annotations = ref([
+        { id: 10, selected_text: "a", messages: [{ content: "shared term", deleted_at: null }] },
+        { id: 20, selected_text: "b", messages: [{ content: "shared term", deleted_at: null }] },
+      ]);
+      vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "test" }),
+        annotations,
+      });
+      s.toggleScope("marginalia");
+      s.toggleScope("output");
+      s.search("shared term");
+
+      expect(s.currentMarginaliaId.value).toBe(10);
+      s.prev();
+      expect(s.currentMarginaliaId.value).toBe(20); // wraps backwards
+      s.prev();
+      expect(s.currentMarginaliaId.value).toBe(10);
+    });
+
+    it("clear() resets currentMarginaliaId to null", () => {
+      const s = createMargSearch(makeAnnotations());
+      s.search("Important");
+      expect(s.currentMarginaliaId.value).not.toBeNull();
+      s.clear();
+      expect(s.currentMarginaliaId.value).toBeNull();
+    });
+  });
 });
