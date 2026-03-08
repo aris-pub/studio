@@ -218,10 +218,14 @@ class YDocClient:
             logger.info(f"WebSocket closed for file {self.file_id}")
             raise
         finally:
-            # Graceful shutdown: save final state
             if self._shutdown:
                 logger.info(f"Shutting down, saving final state for file {self.file_id}")
-                await self._save_to_db(force=True)
+                try:
+                    await asyncio.wait_for(self._save_to_db(force=True), timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"Final save timed out for file {self.file_id}")
+                except Exception as e:
+                    logger.warning(f"Final save failed for file {self.file_id}: {e}")
 
     async def _handle_message(self, websocket, message):
         """Handle a single WebSocket message."""

@@ -39,6 +39,7 @@
   // route, where the home-route bulk-load hasn't run).
   const directFile = ref(null);
   const directFileError = ref(false);
+  const directFilePending = ref(false);
 
   watchEffect(async () => {
     const routeFileId = parseInt(route?.params?.file_id);
@@ -48,6 +49,7 @@
     if (fileStore.value.filesLoaded?.value) return;
     if (directFile.value?.id === routeFileId) return;
 
+    directFilePending.value = true;
     try {
       const response = await api.get(`/files/${routeFileId}`);
       directFile.value = new File(
@@ -56,6 +58,8 @@
       );
     } catch {
       directFileError.value = true;
+    } finally {
+      directFilePending.value = false;
     }
   });
 
@@ -229,7 +233,7 @@
     />
 
     <!-- No file found state (after files loaded but target file not found) -->
-    <div v-else-if="isFileStoreLoaded" class="state-message">
+    <div v-else-if="isFileStoreLoaded && !directFilePending" class="state-message">
       <p>File not found</p>
       <p>The file you're looking for doesn't exist or you don't have access to it.</p>
       <Button kind="secondary" @click="$router.push('/')">Go back home</Button>
