@@ -1,4 +1,4 @@
-import { ref, shallowRef, markRaw, computed, watch } from "vue";
+import { ref, shallowRef, markRaw, computed, watch, nextTick } from "vue";
 import {
   highlightSearchMatches,
   highlightMathMatches,
@@ -17,7 +17,7 @@ export function useSearch({ manuscriptRef, file }) {
   const caseSensitive = ref(false);
   const wholeWord = ref(false);
   const isAdvanced = ref(false);
-  const activeScopes = ref(new Set(["document"]));
+  const activeScopes = ref(new Set(["output"]));
 
   const hintText = computed(() => {
     if (!isSearching.value) return "";
@@ -57,11 +57,9 @@ export function useSearch({ manuscriptRef, file }) {
     const scopes = activeScopes.value;
     let allMatches = [];
 
-    if (scopes.has("document")) {
+    if (scopes.has("output")) {
       const result = highlightSearchMatches(el, trimmed, options);
       if (result) allMatches.push(...result);
-    }
-    if (scopes.has("math")) {
       const mathResult = highlightMathMatches(el, trimmed, options);
       if (mathResult) allMatches.push(...mathResult);
     }
@@ -107,7 +105,7 @@ export function useSearch({ manuscriptRef, file }) {
     }
     // Never allow empty scopes — revert to document
     if (next.size === 0) {
-      next.add("document");
+      next.add("output");
     }
     activeScopes.value = next;
     if (isSearching.value && query.value) {
@@ -130,6 +128,16 @@ export function useSearch({ manuscriptRef, file }) {
     sourceMatches.value = [];
     currentIndex.value = -1;
   }
+
+  // Re-run search when manuscript HTML changes (recompilation)
+  watch(
+    () => file.value?.html,
+    async () => {
+      if (!isSearching.value || !query.value) return;
+      await nextTick();
+      search(query.value);
+    }
+  );
 
   return {
     query,

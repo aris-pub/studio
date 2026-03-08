@@ -67,22 +67,21 @@ describe("TopbarSearch.vue", () => {
     expect(wrapper.find("[data-testid='scope-chips']").exists()).toBe(true);
   });
 
-  it("renders all four scope chips in advanced mode", async () => {
+  it("renders all three scope chips in advanced mode", async () => {
     const wrapper = createWrapper();
     await wrapper.find("[data-testid='search-toggle-advanced']").trigger("click");
     const chips = wrapper.findAll("button-toggle-stub");
-    expect(chips.length).toBe(4);
-    expect(chips[0].attributes("text")).toBe("Document");
+    expect(chips.length).toBe(3);
+    expect(chips[0].attributes("text")).toBe("Output");
     expect(chips[1].attributes("text")).toBe("Source");
     expect(chips[2].attributes("text")).toBe("Marginalia");
-    expect(chips[3].attributes("text")).toBe("Math");
   });
 
-  it("document chip is active by default", async () => {
+  it("output chip is active by default", async () => {
     const wrapper = createWrapper();
     await wrapper.find("[data-testid='search-toggle-advanced']").trigger("click");
-    const documentChip = wrapper.find("[data-testid='scope-chip-document']");
-    expect(documentChip.attributes("model-value")).toBe("true");
+    const outputChip = wrapper.find("[data-testid='scope-chip-output']");
+    expect(outputChip.attributes("model-value")).toBe("true");
   });
 
   it("source chip is inactive by default", async () => {

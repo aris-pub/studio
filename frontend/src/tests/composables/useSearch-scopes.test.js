@@ -14,6 +14,7 @@ describe("useSearch scopes", () => {
   beforeEach(() => {
     manuscriptEl = document.createElement("div");
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
+    vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
     vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});
@@ -30,9 +31,9 @@ describe("useSearch scopes", () => {
   };
 
   describe("activeScopes", () => {
-    it("defaults to document scope only", () => {
+    it("defaults to output scope only", () => {
       const search = createSearch();
-      expect(search.activeScopes.value).toEqual(new Set(["document"]));
+      expect(search.activeScopes.value).toEqual(new Set(["output"]));
     });
 
     it("can toggle scopes on and off", () => {
@@ -40,28 +41,26 @@ describe("useSearch scopes", () => {
 
       search.toggleScope("source");
       expect(search.activeScopes.value.has("source")).toBe(true);
-      expect(search.activeScopes.value.has("document")).toBe(true);
+      expect(search.activeScopes.value.has("output")).toBe(true);
 
-      search.toggleScope("document");
-      expect(search.activeScopes.value.has("document")).toBe(false);
+      search.toggleScope("output");
+      expect(search.activeScopes.value.has("output")).toBe(false);
       expect(search.activeScopes.value.has("source")).toBe(true);
     });
 
-    it("reverts to document if all scopes toggled off", () => {
+    it("reverts to output if all scopes toggled off", () => {
       const search = createSearch();
-      search.toggleScope("document");
-      // Should auto-revert since no scopes remain
-      expect(search.activeScopes.value.has("document")).toBe(true);
+      search.toggleScope("output");
+      expect(search.activeScopes.value.has("output")).toBe(true);
     });
 
-    it("supports all four scopes", () => {
+    it("supports all three scopes", () => {
       const search = createSearch();
       search.toggleScope("source");
       search.toggleScope("marginalia");
-      search.toggleScope("math");
 
       expect(search.activeScopes.value).toEqual(
-        new Set(["document", "source", "marginalia", "math"])
+        new Set(["output", "source", "marginalia"])
       );
     });
   });
@@ -82,7 +81,7 @@ describe("useSearch scopes", () => {
   });
 
   describe("scope-aware search", () => {
-    it("only searches document scope by default", () => {
+    it("only searches output scope by default", () => {
       const stubMatches = [{ mark: makeMark() }];
       vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(stubMatches);
 

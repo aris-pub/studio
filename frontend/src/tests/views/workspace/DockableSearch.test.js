@@ -42,6 +42,7 @@ describe("DockableSearch.vue", () => {
 
   beforeEach(() => {
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(stubMatches);
+    vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
     vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});

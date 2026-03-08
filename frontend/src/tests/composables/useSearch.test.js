@@ -16,6 +16,7 @@ describe("useSearch composable", () => {
   beforeEach(() => {
     manuscriptEl = document.createElement("div");
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(stubMatches);
+    vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
     vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});
@@ -278,24 +279,26 @@ describe("useSearch composable", () => {
     });
   });
 
-  describe("scope toggling and math search", () => {
-    it("toggleScope adds and removes scopes", () => {
+  describe("scope toggling and output search", () => {
+    it("defaults to output scope", () => {
       const search = createSearch();
-      expect(search.activeScopes.value.has("document")).toBe(true);
-      expect(search.activeScopes.value.has("math")).toBe(false);
-
-      search.toggleScope("math");
-      expect(search.activeScopes.value.has("math")).toBe(true);
-
-      search.toggleScope("math");
-      expect(search.activeScopes.value.has("math")).toBe(false);
+      expect(search.activeScopes.value.has("output")).toBe(true);
+      expect(search.activeScopes.value.size).toBe(1);
     });
 
-    it("toggleScope prevents empty scopes — reverts to document", () => {
+    it("toggleScope adds and removes scopes", () => {
       const search = createSearch();
-      search.toggleScope("document");
-      // Trying to remove the only scope should revert to document
-      expect(search.activeScopes.value.has("document")).toBe(true);
+      search.toggleScope("source");
+      expect(search.activeScopes.value.has("source")).toBe(true);
+
+      search.toggleScope("source");
+      expect(search.activeScopes.value.has("source")).toBe(false);
+    });
+
+    it("toggleScope prevents empty scopes — reverts to output", () => {
+      const search = createSearch();
+      search.toggleScope("output");
+      expect(search.activeScopes.value.has("output")).toBe(true);
     });
 
     it("toggleScope auto-re-searches when active", () => {
@@ -303,35 +306,37 @@ describe("useSearch composable", () => {
       search.search("test");
       expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
 
-      search.toggleScope("math");
-      // Should re-search with the same query
+      search.toggleScope("source");
       expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(2);
     });
 
     it("toggleScope does not re-search when not actively searching", () => {
       const search = createSearch();
-      search.toggleScope("math");
+      search.toggleScope("source");
       expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
     });
 
-    it("search calls highlightMathMatches when math scope is active", () => {
+    it("output scope calls both highlightSearchMatches and highlightMathMatches", () => {
       vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
       const search = createSearch();
-      search.toggleScope("math");
       search.search("x");
 
+      expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(manuscriptEl, "x", {});
       expect(HSM.highlightMathMatches).toHaveBeenCalledWith(manuscriptEl, "x", {});
     });
 
-    it("search does not call highlightMathMatches when math scope is inactive", () => {
+    it("non-output scope does not call highlight functions", () => {
       vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
       const search = createSearch();
+      search.toggleScope("source");
+      search.toggleScope("output");
       search.search("x");
 
+      expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
       expect(HSM.highlightMathMatches).not.toHaveBeenCalled();
     });
 
-    it("merges document and math matches into a single list", () => {
+    it("merges text and math matches into a single list under output scope", () => {
       const docMatches = [{ mark: makeMark() }];
       const mathMark = makeMark();
       const mathMatches = [{ mark: mathMark, mathEls: [mathMark] }];
@@ -339,7 +344,6 @@ describe("useSearch composable", () => {
       vi.spyOn(HSM, "highlightMathMatches").mockReturnValue(mathMatches);
 
       const search = createSearch();
-      search.toggleScope("math");
       search.search("a");
 
       expect(search.matches.value).toHaveLength(2);
@@ -347,7 +351,7 @@ describe("useSearch composable", () => {
       expect(search.matches.value[1]).toBe(mathMatches[0]);
     });
 
-    it("navigates across mixed document and math matches", () => {
+    it("navigates across mixed text and math matches", () => {
       const docMark = makeMark();
       const mathMark = makeMark();
       const docMatches = [{ mark: docMark }];
@@ -356,7 +360,6 @@ describe("useSearch composable", () => {
       vi.spyOn(HSM, "highlightMathMatches").mockReturnValue(mathMatches);
 
       const search = createSearch();
-      search.toggleScope("math");
       search.search("a");
 
       expect(search.currentIndex.value).toBe(0);
@@ -367,16 +370,46 @@ describe("useSearch composable", () => {
       expect(search.currentIndex.value).toBe(0);
       expect(docMark.scrollIntoView).toHaveBeenCalled();
     });
+  });
 
-    it("math-only search skips document scope", () => {
-      vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
-      const search = createSearch();
-      search.toggleScope("math");
-      search.toggleScope("document");
-      search.search("x");
+  describe("re-search on manuscript change", () => {
+    it("re-runs search when file.html changes during active search", async () => {
+      const file = ref({ source: "test", html: "<p>hello</p>" });
+      const search = createSearch({ file });
+      search.search("hello");
+      expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(1);
+
+      // Simulate recompilation
+      file.value = { ...file.value, html: "<p>hello world</p>" };
+      await nextTick();
+      await nextTick();
+
+      expect(HSM.highlightSearchMatches).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not re-search when file.html changes but not actively searching", async () => {
+      const file = ref({ source: "test", html: "<p>hello</p>" });
+      const search = createSearch({ file });
+
+      file.value = { ...file.value, html: "<p>hello world</p>" };
+      await nextTick();
+      await nextTick();
 
       expect(HSM.highlightSearchMatches).not.toHaveBeenCalled();
-      expect(HSM.highlightMathMatches).toHaveBeenCalled();
+    });
+
+    it("preserves query when re-searching after compile", async () => {
+      const file = ref({ source: "test", html: "<p>hello</p>" });
+      const search = createSearch({ file });
+      search.search("hello");
+
+      file.value = { ...file.value, html: "<p>hello updated</p>" };
+      await nextTick();
+      await nextTick();
+
+      expect(HSM.highlightSearchMatches).toHaveBeenLastCalledWith(
+        manuscriptEl, "hello", {}
+      );
     });
   });
 

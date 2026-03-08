@@ -273,12 +273,11 @@ export function highlightMathMatches(rootEl, searchTerm, options = {}) {
     const fullText = leaves.map((l) => l.node.textContent).join("");
     const searchIn = caseSensitive ? fullText : fullText.toLowerCase();
 
-    // Find matches in this container's text
+    // Find matches in this container's rendered text
     let idx = 0;
     while ((idx = searchIn.indexOf(searchFor, idx)) !== -1) {
       const matchEnd = idx + searchFor.length;
 
-      // Find all MathML leaf elements participating in this match
       const els = [];
       for (const seg of segments) {
         if (seg.end > idx && seg.start < matchEnd && seg.leaf.parent) {

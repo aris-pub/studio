@@ -27,10 +27,9 @@
   const searchText = ref("");
 
   const scopes = [
-    { id: "document", label: "Document" },
+    { id: "output", label: "Output" },
     { id: "source", label: "Source" },
     { id: "marginalia", label: "Marginalia" },
-    { id: "math", label: "Math" },
   ];
 
   const onEnter = (ev) => {
@@ -213,6 +212,17 @@
   .aris-search-math-container {
     background-color: color-mix(in srgb, var(--yellow-200) 25%, transparent);
     border-radius: 3px;
+  }
+
+  .aris-search-math-container.aris-search-highlight {
+    outline: 2px solid var(--yellow-500);
+    outline-offset: 2px;
+  }
+
+  .aris-search-math-container.aris-search-highlight--current {
+    background-color: color-mix(in srgb, var(--orange-200) 30%, transparent);
+    outline: 2.5px solid var(--orange-500);
+    outline-offset: 2px;
   }
 
   math .aris-search-highlight {
