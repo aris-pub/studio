@@ -1,5 +1,5 @@
 <script setup>
-  import { inject, onMounted, useTemplateRef, ref } from "vue";
+  import { inject, onMounted, useTemplateRef, ref, shallowRef } from "vue";
   import { IconSearch, IconAdjustmentsHorizontal } from "@tabler/icons-vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useSearch } from "@/composables/useSearch.js";
@@ -7,6 +7,7 @@
   const manuscriptRef = inject("manuscriptRef");
   const file = inject("file");
   const showSearch = inject("showSearch", null);
+  const cmView = inject("cmView", shallowRef(null));
 
   const {
     query,
@@ -21,7 +22,7 @@
     clear,
     toggleScope,
     toggleAdvanced,
-  } = useSearch({ manuscriptRef, file });
+  } = useSearch({ manuscriptRef, file, cmView });
 
   const inputRef = useTemplateRef("inputRef");
   const searchText = ref("");

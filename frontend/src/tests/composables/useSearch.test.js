@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ref, nextTick } from "vue";
+import { ref, shallowRef, nextTick } from "vue";
 import { useSearch } from "@/composables/useSearch.js";
 import * as HSM from "@/utils/highlightSearchMatches.js";
 
@@ -17,7 +17,6 @@ describe("useSearch composable", () => {
     manuscriptEl = document.createElement("div");
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(stubMatches);
     vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
-    vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});
   });
@@ -148,11 +147,7 @@ describe("useSearch composable", () => {
     });
 
     it("next() calls updateCurrentMatch even when target match has null mark", () => {
-      const matchesWithNullMark = [
-        { mark: makeMark() },
-        { mark: null },
-        { mark: makeMark() },
-      ];
+      const matchesWithNullMark = [{ mark: makeMark() }, { mark: null }, { mark: makeMark() }];
       vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
       HSM.updateCurrentMatch.mockClear();
 
@@ -166,10 +161,7 @@ describe("useSearch composable", () => {
     });
 
     it("prev() calls updateCurrentMatch even when target match has null mark", () => {
-      const matchesWithNullMark = [
-        { mark: null },
-        { mark: makeMark() },
-      ];
+      const matchesWithNullMark = [{ mark: null }, { mark: makeMark() }];
       vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
 
       const search = createSearch();
@@ -188,10 +180,7 @@ describe("useSearch composable", () => {
 
     it("does not call scrollIntoView when match.mark is null", () => {
       const goodMark = makeMark();
-      const matchesWithNullMark = [
-        { mark: goodMark },
-        { mark: null },
-      ];
+      const matchesWithNullMark = [{ mark: goodMark }, { mark: null }];
       vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(matchesWithNullMark);
 
       const search = createSearch();
@@ -407,29 +396,74 @@ describe("useSearch composable", () => {
       await nextTick();
       await nextTick();
 
-      expect(HSM.highlightSearchMatches).toHaveBeenLastCalledWith(
-        manuscriptEl, "hello", {}
-      );
+      expect(HSM.highlightSearchMatches).toHaveBeenLastCalledWith(manuscriptEl, "hello", {});
     });
   });
 
-  describe("source search", () => {
-    it("searches source text in parallel", () => {
-      const file = ref({ source: "hello world" });
-      const search = createSearch({ file });
-      search.search("hello");
-
-      expect(HSM.highlightSearchMatchesSource).toHaveBeenCalledWith("hello world", "hello");
-    });
-
-    it("stores source matches separately", () => {
-      const sourceMatches = [{ index: 0, text: "hello", line: 1, column: 1 }];
-      vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue(sourceMatches);
-
+  describe("source search (CM integration)", () => {
+    it("sourceMatchCount is 0 when source scope is inactive", () => {
       const search = createSearch();
       search.search("hello");
+      expect(search.sourceMatchCount.value).toBe(0);
+    });
 
-      expect(search.sourceMatches.value).toStrictEqual(sourceMatches);
+    it("sourceMatchCount is 0 when no cmView is provided", () => {
+      const search = createSearch();
+      search.toggleScope("source");
+      search.search("hello");
+      expect(search.sourceMatchCount.value).toBe(0);
+    });
+
+    it("dispatches search query to CM and counts matches", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "hello world hello there hello",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "hello world hello there hello" }),
+        cmView,
+      });
+      s.toggleScope("source");
+      s.search("hello");
+
+      expect(s.sourceMatchCount.value).toBe(3);
+      view.destroy();
+    });
+
+    it("clears CM search on clear()", async () => {
+      const { EditorState } = await import("@codemirror/state");
+      const { EditorView } = await import("@codemirror/view");
+      const { search: cmSearchExt, getSearchQuery } = await import("@codemirror/search");
+
+      const state = EditorState.create({
+        doc: "hello world",
+        extensions: [cmSearchExt()],
+      });
+      const view = new EditorView({ state });
+      const cmView = shallowRef(view);
+
+      const s = useSearch({
+        manuscriptRef: ref({ $el: manuscriptEl }),
+        file: ref({ source: "hello world" }),
+        cmView,
+      });
+      s.toggleScope("source");
+      s.search("hello");
+      expect(s.sourceMatchCount.value).toBe(1);
+
+      s.clear();
+      const sq = getSearchQuery(view.state);
+      expect(sq.search).toBe("");
+      expect(s.sourceMatchCount.value).toBe(0);
+      view.destroy();
     });
   });
 });

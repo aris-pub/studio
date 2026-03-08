@@ -43,7 +43,6 @@ describe("DockableSearch.vue", () => {
   beforeEach(() => {
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue(stubMatches);
     vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
-    vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});
     vi.spyOn(KSMod, "useKeyboardShortcuts").mockImplementation(() => ({
@@ -83,8 +82,11 @@ describe("DockableSearch.vue", () => {
     await wrapper.findComponent(SearchBarStub).vm.$emit("submit", query);
     await nextTick();
 
-    expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(manuscriptRef.value.$el, query.trim(), {});
-    expect(HSM.highlightSearchMatchesSource).toHaveBeenCalledWith(file.value.source, query.trim());
+    expect(HSM.highlightSearchMatches).toHaveBeenCalledWith(
+      manuscriptRef.value.$el,
+      query.trim(),
+      {}
+    );
 
     const searchBar = wrapper.findComponent(SearchBarStub);
     expect(searchBar.props("hintText")).toBe(`1 of ${stubMatches.length}`);

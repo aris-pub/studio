@@ -1,17 +1,38 @@
-import { ref, shallowRef, markRaw, computed, watch, nextTick } from "vue";
+import { ref, shallowRef, markRaw, computed, watch, nextTick, toRaw } from "vue";
+import {
+  SearchQuery,
+  setSearchQuery,
+  findNext as cmFindNext,
+  findPrevious as cmFindPrevious,
+  getSearchQuery,
+} from "@codemirror/search";
 import {
   highlightSearchMatches,
   highlightMathMatches,
-  highlightSearchMatchesSource,
   clearHighlights,
   updateCurrentMatch,
 } from "@/utils/highlightSearchMatches.js";
 
-export function useSearch({ manuscriptRef, file }) {
+function countCMMatches(view, searchQuery) {
+  if (!view || !searchQuery.valid) return 0;
+  const cursor = searchQuery.getCursor(view.state);
+  let count = 0;
+  while (!cursor.next().done) count++;
+  return count;
+}
+
+function clearCMSearch(cmView) {
+  const view = toRaw(cmView?.value);
+  if (!view) return;
+  const empty = new SearchQuery({ search: "" });
+  view.dispatch({ effects: setSearchQuery.of(empty) });
+}
+
+export function useSearch({ manuscriptRef, file, cmView }) {
   const query = ref("");
   const isSearching = ref(false);
   const matches = shallowRef([]);
-  const sourceMatches = ref([]);
+  const sourceMatchCount = ref(0);
   const currentIndex = ref(-1);
 
   const caseSensitive = ref(false);
@@ -19,10 +40,36 @@ export function useSearch({ manuscriptRef, file }) {
   const isAdvanced = ref(false);
   const activeScopes = ref(new Set(["output"]));
 
+  const totalMatchCount = computed(() => {
+    const outputCount = matches.value.length;
+    const srcCount = activeScopes.value.has("source") ? sourceMatchCount.value : 0;
+    return outputCount + srcCount;
+  });
+
   const hintText = computed(() => {
     if (!isSearching.value) return "";
-    if (matches.value.length === 0) return "No matches";
-    return `${currentIndex.value + 1} of ${matches.value.length}`;
+    const total = totalMatchCount.value;
+    if (total === 0) return "No matches";
+
+    const scopes = activeScopes.value;
+    const hasOutput = scopes.has("output");
+    const hasSource = scopes.has("source");
+
+    if (hasOutput && !hasSource) {
+      return `${currentIndex.value + 1} of ${matches.value.length}`;
+    }
+    if (hasSource && !hasOutput) {
+      return `${sourceMatchCount.value} in source`;
+    }
+    // Both scopes active
+    const parts = [];
+    if (matches.value.length > 0) {
+      parts.push(`${currentIndex.value + 1} of ${matches.value.length} in output`);
+    }
+    if (sourceMatchCount.value > 0) {
+      parts.push(`${sourceMatchCount.value} in source`);
+    }
+    return parts.join(", ") || "No matches";
   });
 
   const buttonsDisabled = computed(() => {
@@ -35,6 +82,22 @@ export function useSearch({ manuscriptRef, file }) {
     return ref.$el || ref;
   }
 
+  function syncCMSearch(trimmed) {
+    const view = toRaw(cmView?.value);
+    if (!view) {
+      sourceMatchCount.value = 0;
+      return;
+    }
+
+    const sq = new SearchQuery({
+      search: trimmed,
+      caseSensitive: caseSensitive.value,
+      wholeWord: wholeWord.value,
+    });
+    view.dispatch({ effects: setSearchQuery.of(sq) });
+    sourceMatchCount.value = countCMMatches(view, sq);
+  }
+
   function search(searchString) {
     const trimmed = searchString.trim();
     if (!trimmed) return;
@@ -42,7 +105,6 @@ export function useSearch({ manuscriptRef, file }) {
     const el = getManuscriptEl();
     if (!el) return;
 
-    // Clear previous search
     if (isSearching.value) {
       clearHighlights(el);
     }
@@ -55,7 +117,7 @@ export function useSearch({ manuscriptRef, file }) {
     if (wholeWord.value) options.wholeWord = true;
 
     const scopes = activeScopes.value;
-    let allMatches = [];
+    const allMatches = [];
 
     if (scopes.has("output")) {
       const result = highlightSearchMatches(el, trimmed, options);
@@ -65,7 +127,13 @@ export function useSearch({ manuscriptRef, file }) {
     }
 
     matches.value = allMatches.length > 0 ? markRaw(allMatches) : [];
-    sourceMatches.value = highlightSearchMatchesSource(file.value?.source || "", trimmed);
+
+    if (scopes.has("source")) {
+      syncCMSearch(trimmed);
+    } else {
+      clearCMSearch(cmView);
+      sourceMatchCount.value = 0;
+    }
 
     if (matches.value.length > 0) {
       currentIndex.value = 0;
@@ -84,16 +152,28 @@ export function useSearch({ manuscriptRef, file }) {
   }
 
   function next() {
-    if (!isSearching.value || matches.value.length === 0) return;
-    currentIndex.value = (currentIndex.value + 1) % matches.value.length;
-    navigateToMatch(currentIndex.value);
+    if (!isSearching.value) return;
+    if (matches.value.length > 0) {
+      currentIndex.value = (currentIndex.value + 1) % matches.value.length;
+      navigateToMatch(currentIndex.value);
+    }
+    // Also advance CM cursor if source scope is active
+    const view = toRaw(cmView?.value);
+    if (view && activeScopes.value.has("source")) {
+      cmFindNext(view);
+    }
   }
 
   function prev() {
-    if (!isSearching.value || matches.value.length === 0) return;
-    currentIndex.value =
-      (currentIndex.value - 1 + matches.value.length) % matches.value.length;
-    navigateToMatch(currentIndex.value);
+    if (!isSearching.value) return;
+    if (matches.value.length > 0) {
+      currentIndex.value = (currentIndex.value - 1 + matches.value.length) % matches.value.length;
+      navigateToMatch(currentIndex.value);
+    }
+    const view = toRaw(cmView?.value);
+    if (view && activeScopes.value.has("source")) {
+      cmFindPrevious(view);
+    }
   }
 
   function toggleScope(scope) {
@@ -103,7 +183,6 @@ export function useSearch({ manuscriptRef, file }) {
     } else {
       next.add(scope);
     }
-    // Never allow empty scopes — revert to document
     if (next.size === 0) {
       next.add("output");
     }
@@ -122,10 +201,11 @@ export function useSearch({ manuscriptRef, file }) {
     if (el && isSearching.value) {
       clearHighlights(el);
     }
+    clearCMSearch(cmView);
     query.value = "";
     isSearching.value = false;
     matches.value = [];
-    sourceMatches.value = [];
+    sourceMatchCount.value = 0;
     currentIndex.value = -1;
   }
 
@@ -143,7 +223,7 @@ export function useSearch({ manuscriptRef, file }) {
     query,
     isSearching,
     matches,
-    sourceMatches,
+    sourceMatchCount,
     currentIndex,
     caseSensitive,
     wholeWord,

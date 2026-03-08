@@ -50,6 +50,10 @@
   const awareness = shallowRef(null);
   provide("awareness", awareness);
 
+  // Shared CodeMirror view — EditorCodeMirror writes, TopbarSearch reads for Source scope search
+  const cmView = shallowRef(null);
+  provide("cmView", cmView);
+
   // Expose some of the geometry
   const innerRef = useTemplateRef("inner-right-ref");
   const midColRef = useTemplateRef("middle-column-ref");
@@ -176,9 +180,7 @@
   }
 
   const topbarFullyRevealed = computed(() => topbarHeight.value >= TOPBAR_MAX);
-  const dockHeight = computed(() =>
-    props.showSearch ? "auto" : topbarHeight.value + "px"
-  );
+  const dockHeight = computed(() => (props.showSearch ? "auto" : topbarHeight.value + "px"));
   const mainDockTop = computed(() =>
     props.showSearch || topbarHeight.value > 0 ? "calc(var(--radius-lg) * -1)" : "0"
   );
@@ -256,9 +258,7 @@
     const crumbs = stack.filter((s) => s.level > 1).map((s) => s.text);
     activeSections.value = crumbs;
     // Show deepest section, or manuscript title if no section yet
-    currentSection.value = crumbs.length
-      ? crumbs[crumbs.length - 1]
-      : manuscriptTitle.value;
+    currentSection.value = crumbs.length ? crumbs[crumbs.length - 1] : manuscriptTitle.value;
   }
   watch(
     () => manuscriptRef.value,
@@ -438,7 +438,9 @@
           ref="overlay-toggle-ref"
           class="annotation-overlay-toggle"
           :class="{ 'search-active': showSearch }"
-          :aria-label="annotationOverlayOpen ? 'Hide annotations' : `Show ${annotationCount} annotations`"
+          :aria-label="
+            annotationOverlayOpen ? 'Hide annotations' : `Show ${annotationCount} annotations`
+          "
           @click="annotationOverlayOpen = !annotationOverlayOpen"
         >
           <IconMessageFilled :size="16" />

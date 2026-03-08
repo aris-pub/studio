@@ -1,11 +1,5 @@
 <script setup>
-  import {
-    ref,
-    shallowRef,
-    inject,
-    useTemplateRef,
-    provide,
-  } from "vue";
+  import { ref, shallowRef, inject, provide, useTemplateRef } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import EditorTopbar from "./EditorTopbar.vue";
   import EditorToolbar from "./EditorToolbar.vue";
@@ -37,8 +31,8 @@
     file.value.html = response.data;
   };
 
-  // Shared CodeMirror view + cursor position for toolbar and status bar
-  const cmView = shallowRef(null);
+  // CodeMirror view — provided by Canvas.vue, written by EditorCodeMirror
+  const cmView = inject("cmView", shallowRef(null));
   const cursorPos = ref(0);
   provide("cmView", cmView);
   provide("cursorPos", cursorPos);

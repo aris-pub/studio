@@ -15,7 +15,6 @@ describe("useSearch scopes", () => {
     manuscriptEl = document.createElement("div");
     vi.spyOn(HSM, "highlightSearchMatches").mockReturnValue([]);
     vi.spyOn(HSM, "highlightMathMatches").mockReturnValue([]);
-    vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue([]);
     vi.spyOn(HSM, "clearHighlights").mockImplementation(() => {});
     vi.spyOn(HSM, "updateCurrentMatch").mockImplementation(() => {});
   });
@@ -59,9 +58,7 @@ describe("useSearch scopes", () => {
       search.toggleScope("source");
       search.toggleScope("marginalia");
 
-      expect(search.activeScopes.value).toEqual(
-        new Set(["output", "source", "marginalia"])
-      );
+      expect(search.activeScopes.value).toEqual(new Set(["output", "source", "marginalia"]));
     });
   });
 
@@ -92,16 +89,13 @@ describe("useSearch scopes", () => {
       expect(search.matches.value).toStrictEqual(stubMatches);
     });
 
-    it("searches source when source scope is active", () => {
-      const sourceMatches = [{ index: 0, text: "test", line: 1, column: 1 }];
-      vi.spyOn(HSM, "highlightSearchMatchesSource").mockReturnValue(sourceMatches);
-
+    it("tracks source match count when source scope is active (no CM view)", () => {
       const search = createSearch();
       search.toggleScope("source");
       search.search("test");
 
-      expect(HSM.highlightSearchMatchesSource).toHaveBeenCalled();
-      expect(search.sourceMatches.value).toStrictEqual(sourceMatches);
+      // Without a CM view, source match count stays 0
+      expect(search.sourceMatchCount.value).toBe(0);
     });
   });
 });

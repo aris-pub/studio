@@ -5,7 +5,10 @@ export const mathContainerClass = "aris-search-math-container";
 const MATH_CONTAINER_SELECTOR = "span.math, div.mathblock";
 
 function isInsideMath(node) {
-  return !!node.closest?.(MATH_CONTAINER_SELECTOR) || !!node.parentNode?.closest?.(MATH_CONTAINER_SELECTOR);
+  return (
+    !!node.closest?.(MATH_CONTAINER_SELECTOR) ||
+    !!node.parentNode?.closest?.(MATH_CONTAINER_SELECTOR)
+  );
 }
 
 export function clearHighlights(rootEl) {
@@ -85,7 +88,8 @@ export function highlightSearchMatches(rootEl, searchTerm, options = {}) {
   const treeWalker = document.createTreeWalker(rootEl, NodeFilter.SHOW_ALL, {
     acceptNode: (node) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.nodeName === "SCRIPT" || node.nodeName === "STYLE") return NodeFilter.FILTER_REJECT;
+        if (node.nodeName === "SCRIPT" || node.nodeName === "STYLE")
+          return NodeFilter.FILTER_REJECT;
         if (node.matches?.(MATH_CONTAINER_SELECTOR)) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_SKIP;
       }
@@ -254,7 +258,8 @@ export function highlightMathMatches(rootEl, searchTerm, options = {}) {
 
     const leaves = [];
     const walker = document.createTreeWalker(mathEl, NodeFilter.SHOW_TEXT, {
-      acceptNode: (node) => node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+      acceptNode: (node) =>
+        node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
     });
     let textNode;
     while ((textNode = walker.nextNode())) {
@@ -298,38 +303,4 @@ export function highlightMathMatches(rootEl, searchTerm, options = {}) {
   }
 
   return matches;
-}
-
-export function highlightSearchMatchesSource(sourceText, searchString) {
-  if (!searchString.trim() || !sourceText) {
-    return [];
-  }
-
-  const matches = [];
-  const regex = new RegExp(escapeRegExp(searchString), "gi");
-  let match;
-
-  while ((match = regex.exec(sourceText)) !== null) {
-    matches.push({
-      index: match.index,
-      text: match[0],
-      line: getLineNumber(sourceText, match.index),
-      column: getColumnNumber(sourceText, match.index),
-    });
-  }
-
-  return matches;
-}
-
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function getLineNumber(text, index) {
-  return text.substring(0, index).split("\n").length;
-}
-
-function getColumnNumber(text, index) {
-  const lines = text.substring(0, index).split("\n");
-  return lines[lines.length - 1].length + 1;
 }

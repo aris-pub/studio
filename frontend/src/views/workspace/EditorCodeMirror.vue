@@ -22,7 +22,7 @@
     foldKeymap,
   } from "@codemirror/language";
   import { defaultKeymap } from "@codemirror/commands";
-  import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+  import { search as cmSearchExtension, highlightSelectionMatches } from "@codemirror/search";
   import {
     autocompletion,
     completionKeymap,
@@ -297,6 +297,7 @@
           doc: docContent,
           extensions: [
             customSetup,
+            cmSearchExtension(),
             yCollabExtension,
             keymap.of(yUndoManagerKeymap),
             readOnlyExtension,
