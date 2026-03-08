@@ -53,4 +53,45 @@ describe("Pane.vue", () => {
     const heading = wrapper.get("h2");
     expect(heading.text()).toBe("Custom");
   });
+
+  it("does not render ButtonClose when closable is false (default)", () => {
+    const wrapper = mount(Pane, {
+      global: { stubs: { Header: { template: '<div v-bind="$attrs"><slot /></div>' } } },
+      slots: { header: "<h1>Title</h1>" },
+    });
+
+    expect(wrapper.findComponent({ name: "ButtonClose" }).exists()).toBe(false);
+  });
+
+  it("renders ButtonClose in header when closable is true", () => {
+    const wrapper = mount(Pane, {
+      props: { closable: true },
+      global: { stubs: { Header: { template: '<div v-bind="$attrs"><slot /></div>' } } },
+      slots: { header: "<h1>Title</h1>" },
+    });
+
+    expect(wrapper.findComponent({ name: "ButtonClose" }).exists()).toBe(true);
+  });
+
+  it("emits close when ButtonClose is clicked", async () => {
+    const wrapper = mount(Pane, {
+      props: { closable: true },
+      global: { stubs: { Header: { template: '<div v-bind="$attrs"><slot /></div>' } } },
+      slots: { header: "<h1>Title</h1>" },
+    });
+
+    await wrapper.findComponent({ name: "ButtonClose" }).trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
+  });
+
+  it("renders both header slot content and ButtonClose when closable", () => {
+    const wrapper = mount(Pane, {
+      props: { closable: true },
+      global: { stubs: { Header: { template: '<div v-bind="$attrs"><slot /></div>' } } },
+      slots: { header: "<h1>Title</h1>" },
+    });
+
+    expect(wrapper.get("h1").text()).toBe("Title");
+    expect(wrapper.findComponent({ name: "ButtonClose" }).exists()).toBe(true);
+  });
 });

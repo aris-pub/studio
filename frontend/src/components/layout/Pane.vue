@@ -34,10 +34,13 @@
    * </Pane>
    */
   import { inject } from "vue";
+  import ButtonClose from "@/components/base/ButtonClose.vue";
 
   const props = defineProps({
     customHeader: { type: Boolean, default: false },
+    closable: { type: Boolean, default: false },
   });
+  const emit = defineEmits(["close"]);
   const mobileMode = inject("mobileMode");
 </script>
 
@@ -49,7 +52,8 @@
       </template>
       <template v-else>
         <Header class="text-h4">
-          <slot name="header" />
+          <span class="pane-header-title"><slot name="header" /></span>
+          <ButtonClose v-if="closable" @close="emit('close')" />
         </Header>
       </template>
     </div>
@@ -85,15 +89,10 @@
     padding-inline: 8px;
   }
 
-  .pane-header {
-    height: 48px;
+  .pane-header-title {
     display: flex;
-    justify-content: flex-start;
     align-items: center;
-  }
-
-  .pane-header > .title {
-    margin-left: 4px;
+    flex: 1;
   }
 
   .content:not(:first-child) {

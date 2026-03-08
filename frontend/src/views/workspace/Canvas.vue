@@ -418,13 +418,12 @@
               aria-label="Annotations panel"
               tabindex="-1"
             >
-              <Pane>
+              <Pane :closable="true" @close="annotationOverlayOpen = false">
                 <template #header>
                   <span class="overlay-header-title">
                     <Icon name="MessageFilled" />
                     <h3>Marginalia</h3>
                   </span>
-                  <ButtonClose @close="annotationOverlayOpen = false" />
                 </template>
                 <DockableAnnotations />
               </Pane>
@@ -438,6 +437,7 @@
           v-if="hasAnnotations && !mobileMode && !showAnnotationCards"
           ref="overlay-toggle-ref"
           class="annotation-overlay-toggle"
+          :class="{ 'search-active': showSearch }"
           :aria-label="annotationOverlayOpen ? 'Hide annotations' : `Show ${annotationCount} annotations`"
           @click="annotationOverlayOpen = !annotationOverlayOpen"
         >
@@ -677,7 +677,7 @@
   .annotation-overlay-toggle {
     position: absolute;
     top: 8px;
-    right: 68px;
+    right: 38px;
     z-index: 3;
     display: inline-flex;
     align-items: center;
@@ -693,6 +693,10 @@
       var(--transition-bg-color),
       var(--transition-bd-color),
       box-shadow 0.15s ease;
+  }
+
+  .annotation-overlay-toggle.search-active {
+    top: 56px;
   }
 
   .annotation-overlay-toggle:hover {
@@ -737,10 +741,6 @@
     height: 100%;
     box-shadow: none;
     background-color: var(--surface-page);
-  }
-
-  .annotation-overlay :deep(.pane-header) {
-    justify-content: space-between;
   }
 
   .annotation-overlay :deep(.annotations) {

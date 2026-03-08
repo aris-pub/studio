@@ -40,6 +40,7 @@
   .pane-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     border: var(--border-extrathin) solid var(--border-primary);
     background-color: var(--surface-hover);
     height: 48px;
