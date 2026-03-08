@@ -1,23 +1,14 @@
 <script setup>
-  import { computed, ref, inject, toRaw, useTemplateRef, watch } from "vue";
+  import { computed, inject, toRaw, useTemplateRef } from "vue";
   import {
     IconClock,
-    IconDeviceFloppy,
-    IconCheck,
-    IconExclamationCircle,
     IconWifiOff,
     IconMapPin,
   } from "@tabler/icons-vue";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
   import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 
-  const props = defineProps({
-    saveStatus: {
-      type: String,
-      default: "idle",
-      validator: (value) => ["idle", "pending", "saving", "saved", "error"].includes(value),
-    },
-  });
+  const props = defineProps({});
 
   const file = inject("file", null);
   const cmView = inject("cmView", null);
@@ -65,37 +56,12 @@
     raw.focus();
   }
 
-  // --- Status indicators: "nothing when normal" ---
-  // Only show when something is non-normal. "Saved" flashes briefly then disappears.
-
-  const showSavedFlash = ref(false);
-  let savedTimer = null;
-  watch(
-    () => props.saveStatus,
-    (status) => {
-      if (status === "saved") {
-        showSavedFlash.value = true;
-        clearTimeout(savedTimer);
-        savedTimer = setTimeout(() => (showSavedFlash.value = false), 2000);
-      } else {
-        showSavedFlash.value = false;
-      }
-    }
-  );
-
   const statusIndicator = computed(() => {
     const connected = collabIsConnected?.value ?? true;
     const synced = collabIsSynced?.value ?? true;
 
     if (!connected) return { label: "Offline", icon: "wifi-off", cls: "status-error" };
     if (!synced) return { label: "Syncing\u2026", icon: "clock", cls: "status-warning" };
-    if (props.saveStatus === "error")
-      return { label: "Save failed", icon: "error", cls: "status-error" };
-    if (props.saveStatus === "saving")
-      return { label: "Saving\u2026", icon: "saving", cls: "status-saving" };
-    if (props.saveStatus === "pending")
-      return { label: "Unsaved", icon: "clock", cls: "status-warning" };
-    if (showSavedFlash.value) return { label: "Saved", icon: "check", cls: "status-saved" };
     return null;
   });
 
@@ -108,10 +74,6 @@
     const connected = collabIsConnected?.value ?? true;
     if (!connected) return "Connection lost. Changes will sync when reconnected.";
     if (!(collabIsSynced?.value ?? true)) return "Syncing changes with collaborators\u2026";
-    if (props.saveStatus === "error") return "Failed to save. Will retry automatically.";
-    if (props.saveStatus === "saving") return "Saving changes\u2026";
-    if (props.saveStatus === "pending") return "You have unsaved changes.";
-    if (showSavedFlash.value) return "All changes saved.";
     return "";
   });
 
@@ -135,9 +97,6 @@
     <div v-if="statusIndicator" ref="status-indicator" class="right" :class="statusIndicator.cls">
       <IconWifiOff v-if="statusIndicator.icon === 'wifi-off'" />
       <IconClock v-else-if="statusIndicator.icon === 'clock'" />
-      <IconDeviceFloppy v-else-if="statusIndicator.icon === 'saving'" />
-      <IconCheck v-else-if="statusIndicator.icon === 'check'" />
-      <IconExclamationCircle v-else-if="statusIndicator.icon === 'error'" />
       <span class="status-label">{{ statusIndicator.label }}</span>
     </div>
     <Tooltip
@@ -237,26 +196,7 @@
     color: var(--warning-600);
   }
 
-  .status-saving {
-    color: var(--primary-600);
-  }
-
-  .status-saved {
-    color: var(--success-600);
-    animation: fade-out 2s ease forwards;
-  }
-
   .status-error {
     color: var(--error-600);
-  }
-
-  @keyframes fade-out {
-    0%,
-    70% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-    }
   }
 </style>

@@ -4,22 +4,6 @@ import { mount } from "@vue/test-utils";
 import Editor from "@/views/workspace/Editor.vue";
 import DockableEditor from "@/views/workspace/DockableEditor.vue";
 import * as KSMod from "@/composables/useKeyboardShortcuts.js";
-import * as ESMod from "@/composables/useEditSession.js";
-
-// Mock EditSession composable
-const mockEditSession = {
-  content: ref("# Test Content"),
-  status: ref("idle"),
-  isConnected: ref(false),
-  start: vi.fn().mockResolvedValue(undefined),
-  stop: vi.fn().mockResolvedValue(undefined),
-  manualSave: vi.fn().mockResolvedValue(undefined),
-  compile: vi.fn().mockResolvedValue(undefined),
-};
-
-vi.mock("@/composables/useEditSession.js", () => ({
-  useEditSession: vi.fn(() => mockEditSession),
-}));
 
 vi.mock("@/composables/useKeyboardShortcuts.js", () => ({
   useKeyboardShortcuts: vi.fn(),
@@ -44,9 +28,7 @@ global.File = class File {
 
 describe("Editor Integration Tests", () => {
   let mockApi;
-  let mockUser;
   let mockFile;
-  let useEditSessionSpy;
   let useKeyboardShortcutsSpy;
 
   beforeEach(() => {
@@ -56,19 +38,12 @@ describe("Editor Integration Tests", () => {
       put: vi.fn(),
     };
 
-    mockUser = { id: 1 };
-
     mockFile = ref({
       id: 42,
       source: "# Test Content",
       html: "<h1>Test Content</h1>",
     });
 
-    // Reset EditSession content
-    mockEditSession.content.value = "# Test Content";
-    mockEditSession.status.value = "idle";
-
-    useEditSessionSpy = vi.spyOn(ESMod, "useEditSession").mockReturnValue(mockEditSession);
     useKeyboardShortcutsSpy = vi.spyOn(KSMod, "useKeyboardShortcuts");
 
     vi.clearAllMocks();
@@ -78,6 +53,21 @@ describe("Editor Integration Tests", () => {
     vi.restoreAllMocks();
   });
 
+  const defaultStubs = {
+    EditorCodeMirror: { template: "<div />" },
+    EditorTopbar: { template: "<div />", emits: ["compile", "upload"] },
+    EditorFiles: { template: "<div />", props: ["modelValue"] },
+  };
+
+  const mountEditor = (overrides = {}) =>
+    mount(Editor, {
+      props: { modelValue: mockFile.value },
+      global: {
+        provide: { api: mockApi, user: { id: 1 } },
+        stubs: { ...defaultStubs, ...overrides },
+      },
+    });
+
   describe("DockableEditor", () => {
     it("renders Editor component with file model", () => {
       const wrapper = mount(DockableEditor, {
@@ -85,7 +75,7 @@ describe("Editor Integration Tests", () => {
           modelValue: mockFile.value,
         },
         global: {
-          provide: { api: mockApi, user: mockUser },
+          provide: { api: mockApi, user: { id: 1 } },
           stubs: {
             EditorCodeMirror: { template: "<div />" },
             Editor: {
@@ -111,7 +101,7 @@ describe("Editor Integration Tests", () => {
           },
         },
         global: {
-          provide: { api: mockApi, user: mockUser },
+          provide: { api: mockApi, user: { id: 1 } },
           stubs: {
             EditorCodeMirror: { template: "<div />" },
             Editor: {
@@ -125,8 +115,6 @@ describe("Editor Integration Tests", () => {
       });
 
       const newFile = { ...mockFile.value, source: "Updated content" };
-
-      // Simulate the v-model update directly
       await wrapper.vm.$emit("update:modelValue", newFile);
       await nextTick();
 
@@ -136,77 +124,21 @@ describe("Editor Integration Tests", () => {
 
   describe("Editor Component", () => {
     it("initializes with correct default state", () => {
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />", emits: ["compile", "upload"] },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />", props: ["modelValue"] },
-          },
-        },
-      });
-
+      const wrapper = mountEditor();
       expect(wrapper.exists()).toBe(true);
       expect(wrapper.find(".editor").exists()).toBe(true);
     });
 
-    it("sets up edit session with correct configuration", () => {
-      mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />" },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
-
-      expect(useEditSessionSpy).toHaveBeenCalledWith(42, {
-        implementation: "http",
-        api: mockApi,
-        user: mockUser,
-        debounceTime: 2000,
-        autoSaveInterval: 30000,
-        onCompile: expect.any(Function),
-      });
-    });
-
-    it("handles compilation successfully", async () => {
+    it("handles compilation via compile button", async () => {
       const compiledHtml = "<h1>Compiled Content</h1>";
       mockApi.post.mockResolvedValue({ data: compiledHtml });
+      window.__ytext = { toString: () => "# Test Content" };
 
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
+      const wrapper = mountEditor({
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: "<div />",
+          emits: ["compile", "upload"],
         },
       });
 
@@ -214,7 +146,12 @@ describe("Editor Integration Tests", () => {
       await topbar.vm.$emit("compile");
       await nextTick();
 
-      expect(mockEditSession.compile).toHaveBeenCalled();
+      expect(mockApi.post).toHaveBeenCalledWith("render/private", {
+        source: "# Test Content",
+        file_id: 42,
+      });
+
+      delete window.__ytext;
     });
 
     it("handles file upload successfully", async () => {
@@ -222,47 +159,24 @@ describe("Editor Integration Tests", () => {
       const mockResponse = { data: { id: 123, url: "/assets/test.txt" } };
       mockApi.post.mockResolvedValue(mockResponse);
 
-      // Mock FileReader - text files now use readAsText
       const mockFileReader = {
         readAsText: vi.fn(),
         result: "test content",
         onload: null,
         onerror: null,
       };
-
       global.FileReader = vi.fn(() => mockFileReader);
 
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
+      const wrapper = mountEditor({
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: "<div />",
+          emits: ["compile", "upload"],
         },
       });
 
       const topbar = wrapper.findComponent({ name: "EditorTopbar" });
-
-      // Trigger upload
       topbar.vm.$emit("upload", mockAsset);
-
-      // Simulate FileReader success
       mockFileReader.onload();
       await nextTick();
 
@@ -280,47 +194,24 @@ describe("Editor Integration Tests", () => {
       const mockResponse = { data: { id: 123, url: "/assets/image.png" } };
       mockApi.post.mockResolvedValue(mockResponse);
 
-      // Mock FileReader - binary files use readAsDataURL with base64
       const mockFileReader = {
         readAsDataURL: vi.fn(),
         result: "data:image/png;base64,ZmFrZSBpbWFnZSBkYXRh",
         onload: null,
         onerror: null,
       };
-
       global.FileReader = vi.fn(() => mockFileReader);
 
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
+      const wrapper = mountEditor({
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: "<div />",
+          emits: ["compile", "upload"],
         },
       });
 
       const topbar = wrapper.findComponent({ name: "EditorTopbar" });
-
-      // Trigger upload
       topbar.vm.$emit("upload", mockAsset);
-
-      // Simulate FileReader success
       mockFileReader.onload();
       await nextTick();
 
@@ -337,84 +228,50 @@ describe("Editor Integration Tests", () => {
       const mockAsset = new File(["test"], "test.txt", { type: "text/plain" });
       const uploadError = new Error("Upload failed");
 
-      // Mock FileReader that fails - text files use readAsText
       const mockFileReader = {
         readAsText: vi.fn(),
         result: null,
         onload: null,
         onerror: null,
       };
-
       global.FileReader = vi.fn(() => mockFileReader);
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
+      const wrapper = mountEditor({
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: "<div />",
+          emits: ["compile", "upload"],
         },
       });
 
       const topbar = wrapper.findComponent({ name: "EditorTopbar" });
       topbar.vm.$emit("upload", mockAsset);
-
-      // Simulate FileReader error
       mockFileReader.onerror(uploadError);
       await nextTick();
 
-      // Should handle error gracefully
       expect(wrapper.exists()).toBe(true);
-
       consoleSpy.mockRestore();
     });
 
     it("switches between editor tabs correctly", async () => {
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
+      const wrapper = mountEditor({
+        EditorCodeMirror: {
+          name: "EditorCodeMirror",
+          template: '<div class="editor-codemirror" />',
         },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: {
-              name: "EditorCodeMirror",
-              template: '<div class="editor-codemirror" />',
-            },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: '<div data-testid="editor-topbar" />',
-              props: ["modelValue"],
-              emits: ["update:modelValue"],
-            },
-            EditorSource: { template: '<div class="editor-source" />' },
-            EditorFiles: { template: '<div class="editor-files" />' },
-          },
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: '<div data-testid="editor-topbar" />',
+          props: ["modelValue"],
+          emits: ["update:modelValue"],
         },
+        EditorFiles: { template: '<div class="editor-files" />' },
       });
 
-      // Initially should show EditorCodeMirror (tab 0, USE_CODEMIRROR=true)
       expect(wrapper.findComponent({ name: "EditorCodeMirror" }).exists()).toBe(true);
       expect(wrapper.find(".editor-files").exists()).toBe(false);
 
-      // Switch to EditorFiles (tab 1)
       const topbar = wrapper.findComponent('[data-testid="editor-topbar"]');
       await topbar.vm.$emit("update:modelValue", 1);
       await nextTick();
@@ -423,108 +280,40 @@ describe("Editor Integration Tests", () => {
       expect(wrapper.find(".editor-files").exists()).toBe(true);
     });
 
-    it("sets up keyboard shortcuts correctly", () => {
-      mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />" },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
+    it("sets up keyboard shortcuts with Cmd+S for compile", () => {
+      mountEditor();
 
       expect(useKeyboardShortcutsSpy).toHaveBeenCalledWith({
-        escape: expect.any(Function),
         s: expect.any(Function),
       });
     });
 
-    it("handles escape key to blur editor", async () => {
-      mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />" },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />" },
-          },
-        },
+    it("Cmd+S triggers compile", async () => {
+      mockApi.post.mockResolvedValue({ data: "<h1>ok</h1>" });
+      window.__ytext = { toString: () => "source" };
+
+      mountEditor();
+
+      const shortcutsConfig = useKeyboardShortcutsSpy.mock.calls[0][0];
+      await shortcutsConfig.s();
+
+      expect(mockApi.post).toHaveBeenCalledWith("render/private", {
+        source: "source",
+        file_id: 42,
       });
 
-      // Get the escape handler from keyboard shortcuts
-      const shortcutsConfig = useKeyboardShortcutsSpy.mock.calls[0][0];
-      const escapeHandler = shortcutsConfig.escape;
-
-      // Just verify the handler exists and can be called without error
-      expect(typeof escapeHandler).toBe("function");
-      expect(() => escapeHandler()).not.toThrow();
+      delete window.__ytext;
     });
 
-    it("handles save shortcut", async () => {
-      mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />" },
-            EditorSource: { template: "<div />" },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
-
-      // Get the save handler from keyboard shortcuts
-      const shortcutsConfig = useKeyboardShortcutsSpy.mock.calls[0][0];
-      const saveHandler = shortcutsConfig.s;
-
-      // Simulate save shortcut
-      saveHandler();
-
-      expect(mockEditSession.manualSave).toHaveBeenCalled();
-    });
-
-    it("provides editSession to child components", () => {
-      mockEditSession.status.value = "saving";
-
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: { template: "<div />" },
-            EditorSource: {
-              name: "EditorSource",
-              template: '<div data-testid="editor-source" />',
-            },
-            EditorFiles: { template: "<div />" },
-          },
-        },
-      });
-
-      // EditSession is now provided via inject, not props
+    it("provides compile to child components", () => {
+      const wrapper = mountEditor();
       expect(wrapper.exists()).toBe(true);
     });
 
-    it("handles concurrent operations gracefully", async () => {
-      mockApi.post.mockResolvedValueOnce({ data: { id: 1 } });
+    it("handles concurrent compile and upload", async () => {
+      mockApi.post.mockResolvedValue({ data: { id: 1 } });
+      window.__ytext = { toString: () => "source" };
 
-      // Mock FileReader for the upload operation - support both text and binary
       const mockFileReader = {
         readAsText: vi.fn(),
         readAsDataURL: vi.fn(),
@@ -534,50 +323,30 @@ describe("Editor Integration Tests", () => {
       };
       global.FileReader = vi.fn(() => mockFileReader);
 
-      const wrapper = mount(Editor, {
-        props: {
-          modelValue: mockFile.value,
-        },
-        global: {
-          provide: { api: mockApi, user: mockUser },
-          stubs: {
-            EditorCodeMirror: { template: "<div />" },
-            EditorTopbar: {
-              name: "EditorTopbar",
-              template: "<div />",
-              emits: ["compile", "upload"],
-            },
-            EditorSource: {
-              name: "EditorSource",
-              template: "<div />",
-            },
-            EditorFiles: {
-              name: "EditorFiles",
-              template: "<div />",
-            },
-          },
+      const wrapper = mountEditor({
+        EditorTopbar: {
+          name: "EditorTopbar",
+          template: "<div />",
+          emits: ["compile", "upload"],
         },
       });
 
       const topbar = wrapper.findComponent({ name: "EditorTopbar" });
-
-      // Trigger both compile and upload simultaneously
       const mockAsset = new File(["test"], "test.txt", { type: "text/plain" });
       topbar.vm.$emit("compile");
       topbar.vm.$emit("upload", mockAsset);
 
-      // Simulate FileReader completion for upload
       if (mockFileReader.onload) {
         mockFileReader.onload();
       }
 
       await nextTick();
 
-      // Both operations should be handled without conflicts
-      // Compile uses EditSession, only upload calls API
-      expect(mockEditSession.compile).toHaveBeenCalled();
-      expect(mockApi.post).toHaveBeenCalledTimes(1);
+      // Compile calls render/private, upload calls /assets
+      expect(mockApi.post).toHaveBeenCalledWith("render/private", expect.any(Object));
       expect(wrapper.exists()).toBe(true);
+
+      delete window.__ytext;
     });
   });
 });

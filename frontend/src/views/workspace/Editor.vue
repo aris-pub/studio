@@ -5,15 +5,11 @@
     inject,
     useTemplateRef,
     provide,
-    onMounted,
-    onBeforeUnmount,
   } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-  import { useEditSession } from "@/composables/useEditSession.js";
   import EditorTopbar from "./EditorTopbar.vue";
   import EditorToolbar from "./EditorToolbar.vue";
   import EditorStatusBar from "./EditorStatusBar.vue";
-  import EditorSource from "./EditorSource.vue";
   import EditorCodeMirror from "./EditorCodeMirror.vue";
   import EditorFiles from "./EditorFiles.vue";
   import { IconLock } from "@tabler/icons-vue";
@@ -21,37 +17,25 @@
   const props = defineProps({});
   const file = defineModel({ type: Object, required: true });
 
-  // Feature flag for real-time collaboration (CodeMirror + Y.js)
-  const USE_CODEMIRROR = ref(true);
-
   // Editor topbar state
   const tabIndex = ref(0);
 
-  // EditSession for content management and syncing
   const api = inject("api");
-  const user = inject("user");
   const mobileMode = inject("mobileMode");
 
-  const editSession = useEditSession(file.value.id, {
-    implementation: "http",
-    api,
-    user,
-    debounceTime: 2000,
-    autoSaveInterval: 30000,
-    onCompile: async () => {
-      // Get source from CodeMirror if available, otherwise from editSession
-      let source = editSession.content.value;
-      if (USE_CODEMIRROR.value && window.__ytext) {
-        source = window.__ytext.toString();
-      }
+  // Compile: render the current Y.js source
+  const compile = async () => {
+    let source = "";
+    if (window.__ytext) {
+      source = window.__ytext.toString();
+    }
 
-      const response = await api.post("render/private", {
-        source: source,
-        file_id: file.value.id,
-      });
-      file.value.html = response.data;
-    },
-  });
+    const response = await api.post("render/private", {
+      source,
+      file_id: file.value.id,
+    });
+    file.value.html = response.data;
+  };
 
   // Shared CodeMirror view + cursor position for toolbar and status bar
   const cmView = shallowRef(null);
@@ -69,16 +53,8 @@
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
 
-  // Provide editSession to child components
-  provide("editSession", editSession);
-
-  // Start session on mount, stop on unmount
-  onMounted(() => editSession.start());
-  onBeforeUnmount(() => editSession.stop());
-
-  // Expose status and manualSave for UI
-  const saveStatus = editSession.status;
-  const manualSave = editSession.manualSave;
+  // Provide compile to child components (EditorCodeMirror uses it)
+  provide("compile", compile);
 
   // File asset upload
   const isTextMimeType = (mimeType) => {
@@ -150,15 +126,11 @@
   };
 
   // Compilation trigger
-  const onCompile = () => editSession.compile();
+  const onCompile = () => compile();
 
-  // Keys
-  const editorSourceRef = useTemplateRef("editor-source-ref");
-  const onEscape = () =>
-    editorSourceRef.value === document.activeElement && editorSourceRef.value.blur();
-  const onSaveShortcut = () => manualSave();
+  // Keys — Cmd+S triggers compile (Y.js handles persistence)
+  const onSaveShortcut = () => compile();
   useKeyboardShortcuts({
-    escape: onEscape,
     s: onSaveShortcut,
   });
 </script>
@@ -167,20 +139,14 @@
   <div class="editor">
     <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" />
     <div class="content">
-      <EditorToolbar v-if="USE_CODEMIRROR && tabIndex === 0 && !mobileMode" />
+      <EditorToolbar v-if="tabIndex === 0 && !mobileMode" />
       <div v-if="mobileMode && tabIndex === 0" class="mobile-readonly-banner">
         <IconLock :size="14" aria-hidden="true" />
         Read-only on mobile
       </div>
-      <!-- CodeMirror editor with Y.js real-time collaboration -->
-      <EditorCodeMirror v-if="USE_CODEMIRROR && tabIndex === 0" v-model="file" />
-      <!-- Original textarea editor (fallback) -->
-      <EditorSource v-else-if="tabIndex === 0" ref="editor-source-ref" />
+      <EditorCodeMirror v-if="tabIndex === 0" v-model="file" />
       <EditorFiles v-if="tabIndex === 1" v-model="file" />
-      <EditorStatusBar
-        v-if="USE_CODEMIRROR && tabIndex === 0 && !mobileMode"
-        :save-status="saveStatus"
-      />
+      <EditorStatusBar v-if="tabIndex === 0 && !mobileMode" />
     </div>
   </div>
 </template>

@@ -40,7 +40,7 @@
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
   const user = inject("user");
-  const editSession = inject("editSession", null);
+  const compile = inject("compile", null);
   const mobileMode = inject("mobileMode");
 
   // Shared view and cursor refs from parent Editor.vue
@@ -79,12 +79,11 @@
     if (!user?.value?.name && !user?.value?.email) {
       throw new Error("User information is required for collaboration");
     }
-    const fallbackColor = `#${Math.floor(Math.random() * 16777215)
-      .toString(16)
-      .padStart(6, "0")}`;
+    const color = user.value.avatar_color || "#0E9AE9";
     return {
       name: user.value.name || user.value.email,
-      color: user.value.avatar_color || fallbackColor,
+      color,
+      colorLight: color + "33",
       id: user.value.id,
       avatar_color: user.value.avatar_color,
     };
@@ -250,25 +249,21 @@
         }
 
         // Setup auto-compilation on Y.Doc changes
-        if (editSession) {
+        if (compile) {
           const handleYtextChange = (event, transaction) => {
-            // Ignore remote changes (only trigger compilation for local edits)
             if (transaction.local) {
-              // Clear existing debounce timer
               if (compileDebounceTimeout) {
                 clearTimeout(compileDebounceTimeout);
               }
 
-              // Debounce compilation (2000ms to match editSession debounce)
               compileDebounceTimeout = setTimeout(async () => {
-                await editSession.compile();
+                await compile();
               }, 2000);
             }
           };
 
           ytext.value.observe(handleYtextChange);
 
-          // Store cleanup function to remove observer later
           ytextObserverCleanup = () => {
             ytext.value.unobserve(handleYtextChange);
           };

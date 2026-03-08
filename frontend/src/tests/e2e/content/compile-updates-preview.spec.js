@@ -2,8 +2,8 @@
 /**
  * E2E test for compile button updating preview with Y.js content
  *
- * Regression test for bug where compile button used stale editSession.content
- * instead of current CodeMirror/Y.js content, causing preview to show outdated HTML.
+ * Regression test for bug where compile button showed outdated HTML
+ * instead of current CodeMirror/Y.js content.
  *
  * Tag: @auth
  * Commit: 6bd1bf50
