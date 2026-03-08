@@ -35,6 +35,9 @@ class FileData:
         self._rendered_html = None
         self._sections.clear()
         self._extracted_title = None
+        # Clear dynamically-keyed render caches (e.g. _rendered_structured_with_assets)
+        for attr in [k for k in self.__dict__ if k.startswith("_rendered_")]:
+            delattr(self, attr)
 
 
 @dataclass

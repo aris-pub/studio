@@ -548,6 +548,68 @@ class TestInMemoryFileService:
         assert title1 == title2 == "Cached Title"
 
 
+class TestCacheInvalidation:
+    """Regression: clear_cache must invalidate ALL render caches, including
+    the dynamically-keyed structured/html caches set via setattr."""
+
+    @pytest.fixture
+    def file_service(self):
+        return InMemoryFileService()
+
+    @pytest.mark.asyncio
+    async def test_structured_cache_invalidated_after_source_update(self, file_service):
+        """Updating source must bust the structured render cache so the next
+        get_file_content_structured call returns freshly-rendered HTML."""
+        await file_service.initialize()
+
+        create_data = FileCreateData(
+            title="Cache Bug",
+            source="\n# V1\nOriginal content.\n",
+            owner_id=1,
+        )
+        f = await file_service.create_file(create_data)
+
+        # Prime the structured cache
+        v1 = await file_service.get_file_content_structured(f.id)
+        assert v1 is not None
+        assert "Original content" in v1["body"]
+
+        # Update the source
+        await file_service.update_file(
+            f.id, FileUpdateData(source="\n# V2\nUpdated content.\n")
+        )
+
+        # Fetch structured content again — must reflect the new source
+        v2 = await file_service.get_file_content_structured(f.id)
+        assert "Updated content" in v2["body"], (
+            "Structured cache returned stale V1 content after source update"
+        )
+
+    @pytest.mark.asyncio
+    async def test_html_cache_invalidated_after_source_update(self, file_service):
+        """Same as above but for get_file_html with the dynamic cache key."""
+        await file_service.initialize()
+
+        create_data = FileCreateData(
+            title="Cache Bug HTML",
+            source="\n# V1\nOriginal.\n",
+            owner_id=1,
+        )
+        f = await file_service.create_file(create_data)
+
+        v1 = await file_service.get_file_html(f.id)
+        assert "Original" in v1
+
+        await file_service.update_file(
+            f.id, FileUpdateData(source="\n# V2\nChanged.\n")
+        )
+
+        v2 = await file_service.get_file_html(f.id)
+        assert "Changed" in v2, (
+            "HTML cache returned stale V1 content after source update"
+        )
+
+
 class TestInMemoryFileServiceDatabaseSync:
     """Test database synchronization functionality for InMemoryFileService."""
 
