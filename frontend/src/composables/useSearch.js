@@ -96,6 +96,11 @@ export function useSearch({ manuscriptRef, file, cmView }) {
     });
     view.dispatch({ effects: setSearchQuery.of(sq) });
     sourceMatchCount.value = countCMMatches(view, sq);
+
+    // Position CM on the first match so highlights appear immediately
+    if (sourceMatchCount.value > 0) {
+      cmFindNext(view);
+    }
   }
 
   function search(searchString) {
