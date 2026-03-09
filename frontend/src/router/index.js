@@ -7,6 +7,7 @@ const RegisterView = isUnitTest ? {} : () => import("@/views/register/View.vue")
 const HomeView = isUnitTest ? {} : () => import("@/views/home/View.vue");
 const WorkspaceView = isUnitTest ? {} : () => import("@/views/workspace/View.vue");
 const DemoView = () => import("@/views/demo/View.vue");
+const DebugButtonsView = () => import("@/views/debug/Buttons.vue");
 const AccountView = isUnitTest ? {} : () => import("@/views/account/View.vue");
 const SettingsView = isUnitTest ? {} : () => import("@/views/settings/View.vue");
 const SettingsDocumentView = isUnitTest ? {} : () => import("@/views/settings/DocumentView.vue");
@@ -22,6 +23,7 @@ const routes = [
   { path: "/", component: HomeView },
   { path: "/file/:file_id", component: WorkspaceView },
   { path: "/demo", component: DemoView },
+  { path: "/debug/buttons", component: DebugButtonsView },
   { path: "/verify-email/:token", name: "EmailVerification", component: VerifyEmailView },
   { path: "/account", component: AccountView },
   {
@@ -48,7 +50,9 @@ router.beforeEach((to, from, next) => {
   const publicPages = ["/login", "/register"];
   const isVerificationRoute = to.path.startsWith("/verify-email/");
   const isDemoRoute = to.path.startsWith("/demo");
-  const authRequired = !publicPages.includes(to.path) && !isVerificationRoute && !isDemoRoute;
+  const isDebugRoute = to.path.startsWith("/debug/");
+  const authRequired =
+    !publicPages.includes(to.path) && !isVerificationRoute && !isDemoRoute && !isDebugRoute;
 
   if (!authRequired) return next();
 

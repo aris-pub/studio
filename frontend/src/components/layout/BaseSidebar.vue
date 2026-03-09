@@ -132,7 +132,7 @@
     return {
       text: mobileMode.value || collapsed.value ? "" : "New File",
       placement: mobileMode.value ? "top-end" : "bottom",
-      kind: mobileMode.value ? "primary" : "secondary",
+      kind: "primary",
       class: collapsed.value ? "collapsed" : "",
     };
   });

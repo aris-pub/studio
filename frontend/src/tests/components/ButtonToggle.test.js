@@ -6,13 +6,12 @@ import ButtonToggle from "@/components/base/ButtonToggle.vue";
 describe("ButtonToggle.vue", () => {
   it("renders slot content and toggles active class and emits events on click", async () => {
     const wrapper = mount(ButtonToggle, {
-      props: { text: "Toggle", size: "sm", type: "outline" },
+      props: { text: "Toggle", size: "sm" },
       global: { stubs: ["Icon"] },
       slots: { default: "<span>inner</span>" },
     });
     const btn = wrapper.get("button");
     expect(btn.classes()).toContain("btn-toggle");
-    expect(btn.classes()).toContain("outline");
     expect(btn.classes()).toContain("btn-sm");
     expect(btn.html()).toContain("inner");
 

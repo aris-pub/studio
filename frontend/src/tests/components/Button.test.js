@@ -40,14 +40,16 @@ describe("Button.vue", () => {
     expect(wrapper.find("span.btn-text").text()).toBe("Fav");
   });
 
-  it("applies text-float classes when textFloat prop provided", () => {
+  it("renders float label when textFloat prop provided", () => {
     const wrapper = mount(Button, {
       props: { kind: "primary", text: "Hint", textFloat: "bottom" },
     });
-    expect(wrapper.classes()).toContain("text-float-bottom");
-    expect(wrapper.classes()).toContain("text-float");
-    const span = wrapper.find("span.btn-text");
-    expect(span.classes()).toContain("text-caption");
+    const floatLabel = wrapper.find("span.btn-float-label");
+    expect(floatLabel.exists()).toBe(true);
+    expect(floatLabel.classes()).toContain("float-bottom");
+    expect(floatLabel.classes()).toContain("text-caption");
+    expect(floatLabel.text()).toBe("Hint");
+    expect(wrapper.find("span.btn-text").exists()).toBe(false);
   });
 
   it("adds with-shadow and disabled classes when respective props are true", () => {

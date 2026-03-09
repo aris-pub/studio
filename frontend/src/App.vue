@@ -321,9 +321,16 @@
     }
     const publicPages = ["/login", "/register", "/demo"];
     const isVerificationRoute = to.path.startsWith("/verify-email/");
+    const isDebugRoute = to.path.startsWith("/debug/");
 
     // If user is not authenticated and trying to access a protected page
-    if (!token && !storedUser && !publicPages.includes(to.path) && !isVerificationRoute) {
+    if (
+      !token &&
+      !storedUser &&
+      !publicPages.includes(to.path) &&
+      !isVerificationRoute &&
+      !isDebugRoute
+    ) {
       next("/login");
     } else {
       next();

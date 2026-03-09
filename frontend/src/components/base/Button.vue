@@ -71,7 +71,9 @@
     },
 
     /**
-     * Position for floating text label (requires both icon and text)
+     * Position for a floating text label shown on hover.
+     * When set, the text renders as an absolutely-positioned tooltip
+     * instead of inline content, so the button sizes as if it had no text.
      * @values 'bottom'
      */
     textFloat: {
@@ -109,20 +111,20 @@
   <button
     ref="btn-ref"
     :disabled="disabled"
-    :class="[
-      kind,
-      `btn-${size}`,
-      textFloat ? `text-float-${props.textFloat}` : '',
-      textFloat ? 'text-float' : '',
-      shadow ? 'with-shadow' : '',
-      disabled ? 'disabled' : '',
-    ]"
+    :class="[kind, `btn-${size}`, shadow ? 'with-shadow' : '', disabled ? 'disabled' : '']"
     v-bind="$attrs"
   >
     <template v-if="icon">
       <Icon :name="icon" class="btn-icon" />
     </template>
-    <span v-if="text" class="btn-text" :class="textFloat ? 'text-caption' : 'text-h6'">
+    <span v-if="text && !textFloat" class="btn-text text-h6">
+      {{ text }}
+    </span>
+    <span
+      v-if="text && textFloat"
+      class="btn-float-label text-caption"
+      :class="`float-${textFloat}`"
+    >
       {{ text }}
     </span>
     <!--
@@ -137,155 +139,132 @@
 </template>
 
 <style scoped>
+  /* ── Base ── */
   button {
-    --border-width: var(--border-thin);
+    --bw: var(--border-thin);
 
     position: relative;
     display: flex;
     align-items: center;
-    border: unset;
-    border-radius: 16px;
-    gap: 2px;
+    gap: 4px;
     text-wrap: nowrap;
-    padding-block: 6px;
     outline: none;
-    border-width: var(--border-width);
-    border-style: solid;
-    transition: var(--transition-bg-color), var(--transition-bd-color);
+    border: var(--bw) solid transparent;
+    background-color: transparent;
+    transition:
+      background-color var(--transition-duration) ease,
+      border-color var(--transition-duration) ease,
+      box-shadow var(--transition-duration) ease,
+      color var(--transition-duration) ease,
+      opacity var(--transition-duration) ease;
 
     &:hover {
       cursor: pointer;
     }
     &:focus-visible {
-      outline: var(--border-med) solid var(--border-action);
+      outline: var(--border-thin) solid var(--border-action);
       outline-offset: var(--border-extrathin);
     }
   }
 
+  /* ── Sizes ── */
   button.btn-sm {
+    --v: calc(4px - var(--bw));
+    --h: calc(8px - var(--bw));
     border-radius: 8px;
-    padding-block: 0;
 
-    & > .tabler-icon {
-      /* since all buttons must have border, in this case we
-      * need to decrease the icon margin to achieve 32x32 size */
-      margin: calc(6px - var(--border-width));
+    &:has(.btn-icon):has(.btn-text) {
+      padding: var(--v) var(--h) var(--v) calc(4px - var(--bw));
     }
-
-    &:not(.text-float) {
-      /* if the text is not floating, behave as normal */
-
-      &:has(.btn-icon):has(.btn-text) {
-        padding-left: calc(2px - var(--border-width));
-        padding-right: calc(8px - var(--border-width));
-      }
-
-      &:has(.btn-icon):not(:has(.btn-text)) {
-        padding: 0px;
-      }
-
-      &:not(:has(.btn-icon)):has(.btn-text) {
-        padding-inline: calc(8px - var(--border-width));
-      }
-
-      &:not(:has(.btn-icon)):not(:has(.btn-text)) {
-      }
+    &:has(.btn-icon):not(:has(.btn-text)) {
+      padding: var(--v);
     }
-
-    &.text-float {
-      /* must have icon and text and not have slot */
-      padding: 0;
+    &:not(:has(.btn-icon)):has(.btn-text) {
+      padding: var(--v) var(--h);
+    }
+    &:not(:has(.btn-icon)):not(:has(.btn-text)) {
+      padding: var(--v);
     }
   }
 
   button.btn-md {
+    --v: calc(6px - var(--bw));
+    --h: calc(12px - var(--bw));
     border-radius: 16px;
 
-    &:not(.text-float) {
-      /* if the text is not floating, behave as normal */
-
-      &:has(.btn-icon):has(.btn-text) {
-        padding-left: calc(2px - var(--border-width));
-        padding-right: calc(8px - var(--border-width));
-      }
-
-      &:has(.btn-icon):not(:has(.btn-text)) {
-        padding: calc(8px - var(--border-width));
-      }
-
-      &:not(:has(.btn-icon)):has(.btn-text) {
-      }
-
-      &:not(:has(.btn-icon)):not(:has(.btn-text)) {
-        padding: calc(8px - var(--border-width));
-      }
+    &:has(.btn-icon):has(.btn-text) {
+      padding: var(--v) var(--h) var(--v) calc(6px - var(--bw));
     }
-
-    &.text-float {
-      /* must have both an icon and text */
+    &:has(.btn-icon):not(:has(.btn-text)) {
+      padding: var(--v) calc(6px - var(--bw));
+    }
+    &:not(:has(.btn-icon)):has(.btn-text) {
+      padding: var(--v) var(--h);
+    }
+    &:not(:has(.btn-icon)):not(:has(.btn-text)) {
+      padding: var(--v) calc(6px - var(--bw));
     }
   }
 
   button.btn-lg {
-    padding-inline: calc(24px - var(--border-width));
-    padding-block: calc(24px - var(--border-width));
+    --v: calc(12px - var(--bw));
+    --h: calc(24px - var(--bw));
     border-radius: 24px;
 
-    &:not(.text-float) {
-      /* if the text is not floating, behave as normal */
-
-      &:has(.btn-icon):has(.btn-text) {
-      }
-
-      &:has(.btn-icon):not(:has(.btn-text)) {
-      }
-
-      &:not(:has(.btn-icon)):has(.btn-text) {
-      }
-
-      &:not(:has(.btn-icon)):not(:has(.btn-text)) {
-      }
+    &:has(.btn-icon):has(.btn-text) {
+      padding: var(--v) var(--h) var(--v) calc(16px - var(--bw));
     }
-
-    &.text-float {
+    &:has(.btn-icon):not(:has(.btn-text)) {
+      padding: var(--v);
+    }
+    &:not(:has(.btn-icon)):has(.btn-text) {
+      padding: var(--v) var(--h);
+    }
+    &:not(:has(.btn-icon)):not(:has(.btn-text)) {
+      padding: var(--v);
     }
   }
 
+  /* ── Variants ── */
   button.primary {
-    background-color: var(--surface-action);
-    border-color: var(--surface-action);
-    color: var(--primary-50);
+    background-color: var(--primary-300);
+    border-color: var(--primary-300);
+    color: var(--almost-black);
     box-shadow: var(--shadow-soft), var(--shadow-strong);
 
-    &:hover {
-      background-color: var(--surface-action-hover);
-      border-color: var(--surface-action-hover);
+    &:not(:disabled):hover {
+      background-color: var(--primary-400);
+      border-color: var(--primary-400);
     }
 
     & .btn-icon {
-      color: var(--primary-50);
+      color: var(--almost-black);
     }
   }
 
-  button.primary:active {
-    background-color: var(--surface-hint);
-    border-color: var(--surface-hint);
+  button.primary:not(:disabled):active {
+    background-color: var(--primary-500);
+    border-color: var(--primary-500);
   }
 
   button.secondary {
-    background-color: var(--surface-primary);
-    border-color: var(--border-action);
-    color: var(--primary-600);
+    background-color: var(--gray-200);
+    border-color: transparent;
+    color: var(--extra-dark);
 
-    &:hover {
-      color: var(--text-action-hover);
-      background-color: var(--surface-information);
-      border-color: var(--border-action-hover);
+    &:not(:disabled):hover {
+      background-color: var(--surface-hint);
+      border-color: var(--surface-hint);
+      color: var(--almost-black);
       box-shadow: var(--shadow-strong);
     }
 
     & .btn-icon {
-      color: var(--icon-action);
+      color: var(--extra-dark);
+    }
+
+    &:not(:disabled):hover .btn-icon {
+      color: var(--almost-black);
     }
   }
 
@@ -293,9 +272,9 @@
     box-shadow: var(--shadow-strong);
   }
 
-  button.secondary:active {
-    background-color: var(--surface-hint);
-    border-color: var(--border-action-hover);
+  button.secondary:not(:disabled):active {
+    background-color: var(--blue-300);
+    border-color: var(--blue-300);
   }
 
   button.tertiary {
@@ -303,15 +282,10 @@
     border-color: transparent;
     color: var(--extra-dark);
 
-    &:hover {
-      background-color: var(--surface-hint);
-      border-color: var(--surface-hint);
+    &:not(:disabled):hover {
+      background-color: var(--gray-100);
       color: var(--almost-black);
       box-shadow: var(--shadow-strong);
-
-      & > svg {
-        color: var(--almost-black);
-      }
     }
   }
 
@@ -319,67 +293,75 @@
     box-shadow: var(--shadow-strong);
   }
 
-  button.tertiary.disabled {
-    color: var(--medium);
-
-    & > svg {
-      color: var(--medium);
-    }
-
-    &:hover {
-      background-color: unset;
-      border-color: transparent;
-      box-shadow: none;
-      cursor: unset;
-
-      & > svg {
-        color: var(--medium);
-      }
-    }
-  }
-
-  button.tertiary:active {
-    background-color: var(--surface-action);
-    border-color: var(--surface-action);
-  }
-
-  button .btn-icon {
-    flex-shrink: 0;
-  }
-
-  button.text-float .btn-text {
-    position: absolute;
-    color: var(--extra-dark);
-  }
-
-  button.text-float-bottom .btn-text {
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    display: none;
-  }
-
-  button.text-float:hover .btn-text {
-    display: block;
+  button.tertiary:not(:disabled):active {
+    background-color: var(--gray-200);
   }
 
   button.danger {
-    background-color: var(--red-500);
-    border-color: var(--red-500);
+    background-color: var(--red-600);
+    border-color: var(--red-600);
     color: white;
 
-    &:hover {
-      background-color: var(--red-600);
-      border-color: var(--red-600);
+    &:not(:disabled):hover {
+      background-color: var(--red-700);
+      border-color: var(--red-700);
     }
 
     & .btn-icon {
       color: white;
     }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px white;
+      outline: var(--border-thin) solid var(--border-action);
+      outline-offset: 3px;
+    }
   }
 
-  button.danger:active {
-    background-color: var(--red-700);
-    border-color: var(--red-700);
+  button.danger:not(:disabled):active {
+    background-color: var(--red-300);
+    border-color: var(--red-300);
+    color: var(--almost-black);
+  }
+
+  /* ── Disabled ── */
+  button.primary:disabled,
+  button.secondary:disabled,
+  button.tertiary:disabled,
+  button.danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* ── Shared ── */
+  button .btn-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+  }
+
+  /* ── Float label ── */
+  button .btn-float-label {
+    position: absolute;
+    color: var(--extra-dark);
+    pointer-events: none;
+    display: none;
+    text-wrap: nowrap;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: var(--shadow-strong);
+  }
+
+  button .btn-float-label.float-bottom {
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  button:hover .btn-float-label {
+    display: block;
   }
 </style>
