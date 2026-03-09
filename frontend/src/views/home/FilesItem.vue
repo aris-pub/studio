@@ -396,13 +396,15 @@
     position: absolute;
     visibility: hidden;
     width: 300px;
-    overflow: hidden;
+    height: 0;
+    overflow: visible;
     pointer-events: none;
     z-index: -1;
   }
 
   .item {
     --border-width: var(--border-extrathin);
+    position: relative;
 
     color: var(--extra-dark);
     overflow-y: visible;
