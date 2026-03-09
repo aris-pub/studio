@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, computed, onMounted } from "vue";
+  import { ref, inject, computed, onMounted, watch } from "vue";
   import { downloadBlob } from "@/utils/download.js";
 
   const PRESS_URL = import.meta.env.VITE_PRESS_URL || "https://scroll.press";
@@ -16,16 +16,103 @@
   const fileTitle = computed(() => file.value?.title || "");
   const fileTags = computed(() => (file.value?.tags || []).map((t) => t.name || t).join(", "));
 
-  const ownerName = computed(() => user.value?.name || user.value?.email || "");
-  const ownerInitials = computed(() => {
-    const name = ownerName.value;
-    if (!name) return "?";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const isOwner = computed(
+    () => file.value?.ownerId === user.value?.id || file.value?.role === "OWNER"
+  );
+
+  // Collaborator management
+  const collaborators = ref([]);
+  const inviteEmail = ref("");
+  const inviteRole = ref("EDITOR");
+  const inviteError = ref("");
+  const isAdding = ref(false);
+
+  const roleOptions = [
+    { value: "EDITOR", label: "Editor" },
+    { value: "COMMENTER", label: "Viewer" },
+  ];
+
+  const isValidEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.value.trim()));
+
+  async function fetchCollaborators() {
+    if (!fileId.value || !isOwner.value) return;
+    try {
+      const response = await api.get(`/files/${fileId.value}/permissions`);
+      collaborators.value = response.data.filter((c) => c.role !== "OWNER");
+    } catch {
+      collaborators.value = [];
     }
-    return name.slice(0, 2).toUpperCase();
+  }
+
+  watch(fileId, fetchCollaborators, { immediate: true });
+
+  watch(inviteEmail, () => {
+    inviteError.value = "";
   });
+
+  async function onAddCollaborator() {
+    if (isAdding.value) return;
+
+    const trimmed = inviteEmail.value.trim();
+    if (!trimmed) {
+      inviteError.value = "Enter an email address";
+      return;
+    }
+    if (!isValidEmail.value) {
+      inviteError.value = "Enter a valid email address";
+      return;
+    }
+
+    isAdding.value = true;
+    inviteError.value = "";
+
+    const email = inviteEmail.value.trim().toLowerCase();
+
+    if (email === user.value?.email?.toLowerCase()) {
+      inviteError.value = "You can't invite yourself";
+      isAdding.value = false;
+      return;
+    }
+
+    try {
+      const lookupResp = await api.post("/users/lookup", { email });
+      const targetUserId = lookupResp.data.user_id;
+
+      await api.post(`/files/${fileId.value}/permissions`, {
+        user_id: targetUserId,
+        role: inviteRole.value,
+      });
+
+      inviteEmail.value = "";
+      inviteRole.value = "EDITOR";
+      await fetchCollaborators();
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail || "";
+      if (status === 404) {
+        inviteError.value = "No account found for this email";
+      } else if (status === 400 && detail.includes("already has permission")) {
+        inviteError.value = "This person already has access";
+      } else if (status === 429) {
+        inviteError.value = "Too many lookups. Try again later.";
+      } else {
+        inviteError.value = "Something went wrong. Try again.";
+      }
+    } finally {
+      isAdding.value = false;
+    }
+  }
+
+  async function onRemoveCollaborator(permissionId) {
+    try {
+      await api.delete(`/files/${fileId.value}/permissions/${permissionId}`);
+      collaborators.value = collaborators.value.filter((c) => c.permission_id !== permissionId);
+    } catch {
+      // Row stays visible on error
+    }
+  }
+
+  const ownerName = computed(() => user.value?.name || user.value?.email || "");
 
   async function fetchMetadata() {
     if (!fileId.value) return;
@@ -89,20 +176,61 @@
     <Section>
       <template #title>People</template>
       <template #content>
+        <!-- Owner row -->
         <div class="person-row">
-          <span class="person-avatar" aria-hidden="true">{{ ownerInitials }}</span>
+          <Avatar
+            :user="{ id: user?.id, name: ownerName, avatar_color: user?.avatar_color }"
+            size="md"
+            :tooltip="false"
+          />
           <span class="person-name">{{ ownerName }}</span>
           <span class="person-role">Owner</span>
         </div>
 
-        <div class="invite-group">
-          <input
-            type="email"
-            class="invite-input"
-            placeholder="Invite collaborators (coming soon)"
-            disabled
+        <!-- Collaborator rows -->
+        <div v-for="collab in collaborators" :key="collab.permission_id" class="person-row">
+          <Avatar
+            :user="{
+              id: collab.user_id,
+              name: collab.user_name,
+              avatar_color: collab.avatar_color,
+            }"
+            size="md"
+            :tooltip="false"
           />
-          <p class="invite-hint">Requires the notification system, currently under development.</p>
+          <span class="person-name">{{ collab.user_name || collab.user_email }}</span>
+          <span class="person-role">{{ collab.role === "EDITOR" ? "Editor" : "Viewer" }}</span>
+          <button
+            v-if="isOwner"
+            class="person-remove"
+            :aria-label="`Remove ${collab.user_name}`"
+            @click="onRemoveCollaborator(collab.permission_id)"
+          >
+            <Icon name="X" />
+          </button>
+        </div>
+
+        <!-- Invite controls (owner only) -->
+        <div v-if="isOwner" class="invite-group" @keydown.enter="onAddCollaborator">
+          <BaseInput
+            v-model="inviteEmail"
+            placeholder="Add by email address"
+            direction="column"
+            size="md"
+            :error="inviteError"
+            aria-label="Collaborator email address"
+          />
+          <div class="invite-actions">
+            <SelectBox v-model="inviteRole" :options="roleOptions" />
+            <Button
+              kind="primary"
+              size="sm"
+              text="Add"
+              :disabled="isAdding"
+              aria-label="Add collaborator"
+              @click="onAddCollaborator"
+            />
+          </div>
         </div>
       </template>
     </Section>
@@ -150,27 +278,19 @@
 </template>
 
 <style scoped>
-  /* People rows — modeled on DrawerVersions .version-item */
+  /* People rows */
   .person-row {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 0;
+    gap: 8px;
+    padding: 8px 6px;
+    margin: 0 -6px;
+    border-radius: 6px;
   }
 
-  .person-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--purple-100, #f3e8ff);
-    color: var(--purple-700, #7629c7);
-    font-size: 11px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    line-height: 1;
+  .person-row:hover {
+    background: var(--gray-50);
   }
 
   .person-name {
@@ -186,40 +306,82 @@
   .person-role {
     font-size: 12px;
     color: var(--color-text-tertiary);
+    white-space: nowrap;
     flex-shrink: 0;
   }
 
-  /* Invite field */
-  .invite-group {
+  .person-remove {
+    position: absolute;
+    right: 0;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    min-width: 24px;
+    min-height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    color: var(--gray-400);
+    opacity: 0;
+    transition: opacity 0.15s ease;
   }
 
-  .invite-input {
-    width: 100%;
-    padding: 8px 10px;
+  .person-remove :deep(.tabler-icon) {
+    width: 14px;
+    height: 14px;
+  }
+
+  .person-row:hover .person-remove,
+  .person-remove:focus-visible {
+    opacity: 1;
+  }
+
+  .person-remove:hover {
+    color: var(--red-600);
+  }
+
+  .person-remove:focus-visible {
+    outline: 2px solid var(--primary-200);
+    outline-offset: 2px;
+  }
+
+  @media (hover: none) {
+    .person-remove {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .person-remove {
+      transition: none;
+    }
+  }
+
+  /* Invite controls */
+  .invite-group {
+    margin-top: 16px;
+  }
+
+  .invite-group :deep(.base-input-field::placeholder) {
+    color: var(--gray-400);
+  }
+
+  .invite-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .invite-actions :deep(.select-box) {
+    height: 30px;
     font-size: 13px;
-    border: var(--border-thin) solid var(--border-primary);
-    border-radius: 8px;
-    background: var(--surface-page);
-    color: var(--color-text-tertiary);
-    cursor: not-allowed;
-    box-sizing: border-box;
   }
 
-  .invite-input::placeholder {
-    color: var(--color-text-tertiary);
-  }
-
-  .invite-hint {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  /* Metadata rows — same .row / .label pattern as FileSettings */
+  /* Metadata rows */
   .row {
     display: flex;
     flex-direction: column;

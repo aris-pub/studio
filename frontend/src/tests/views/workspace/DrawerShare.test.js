@@ -13,6 +13,8 @@ vi.mock("@/utils/download.js", () => ({
 
 const mockApi = {
   get: vi.fn(),
+  post: vi.fn(),
+  delete: vi.fn(),
 };
 
 const mockUser = {
@@ -20,12 +22,13 @@ const mockUser = {
     id: 1,
     name: "Ada Lovelace",
     email: "ada@example.com",
+    avatar_color: "#7629c7",
   },
 };
 
 const mockFile = {
   id: 123,
-  owner_id: 1,
+  ownerId: 1,
   title: "Quantum Effects in Neural Networks",
   tags: [
     { id: 1, name: "quantum" },
@@ -38,7 +41,12 @@ describe("DrawerShare", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockApi.get.mockResolvedValue({ data: { html: "<p>We present a novel approach.</p>" } });
+    mockApi.get.mockImplementation((url) => {
+      if (url.includes("/permissions")) return Promise.resolve({ data: [] });
+      if (url.includes("/abstract"))
+        return Promise.resolve({ data: { html: "<p>We present a novel approach.</p>" } });
+      return Promise.resolve({ data: {} });
+    });
   });
 
   afterEach(() => {
@@ -75,9 +83,42 @@ describe("DrawerShare", () => {
           Button: {
             name: "Button",
             template:
-              '<button class="button-stub" @click="$emit(\'click\')" :disabled="disabled" />',
+              '<button class="button-stub" @click="$emit(\'click\')" :disabled="disabled">{{ text }}</button>',
             props: ["kind", "size", "icon", "text", "disabled"],
             emits: ["click"],
+          },
+          Avatar: {
+            name: "Avatar",
+            template: '<span class="avatar-stub" />',
+            props: ["user", "size", "tooltip"],
+          },
+          BaseInput: {
+            name: "BaseInput",
+            template: `<div class="base-input-stub">
+              <input
+                class="invite-input"
+                :value="modelValue"
+                :placeholder="placeholder"
+                @input="$emit('update:modelValue', $event.target.value)"
+              />
+              <span v-if="error" class="invite-error">{{ error }}</span>
+            </div>`,
+            props: ["modelValue", "placeholder", "direction", "size", "error", "ariaLabel"],
+            emits: ["update:modelValue"],
+          },
+          SelectBox: {
+            name: "SelectBox",
+            template: '<span class="select-box-stub">{{ currentLabel }}</span>',
+            props: ["modelValue", "options"],
+            emits: ["update:modelValue"],
+            computed: {
+              currentLabel() {
+                const opt = (this.options || []).find((o) =>
+                  typeof o === "object" ? o.value === this.modelValue : o === this.modelValue
+                );
+                return opt ? (typeof opt === "object" ? opt.label : opt) : "";
+              },
+            },
           },
         },
       },
@@ -110,10 +151,10 @@ describe("DrawerShare", () => {
   });
 
   describe("people section", () => {
-    it("displays owner initials in avatar", () => {
+    it("displays owner with Avatar component", () => {
       wrapper = createWrapper();
-      const avatar = wrapper.find(".person-avatar");
-      expect(avatar.text()).toBe("AL");
+      const avatar = wrapper.findComponent({ name: "Avatar" });
+      expect(avatar.exists()).toBe(true);
     });
 
     it("displays owner name", () => {
@@ -136,26 +177,243 @@ describe("DrawerShare", () => {
       expect(name.text()).toBe("ada@example.com");
     });
 
-    it("shows two-letter initials from email when name is missing", () => {
-      wrapper = createWrapper({
-        user: { value: { id: 1, email: "ada@example.com" } },
-      });
-      const avatar = wrapper.find(".person-avatar");
-      expect(avatar.text()).toBe("AD");
-    });
-
-    it("renders disabled invite input", () => {
+    it("shows invite controls for owner", () => {
       wrapper = createWrapper();
-      const input = wrapper.find(".invite-input");
+      const input = wrapper.findComponent({ name: "BaseInput" });
       expect(input.exists()).toBe(true);
-      expect(input.attributes("disabled")).toBeDefined();
-      expect(input.attributes("placeholder")).toContain("coming soon");
+      expect(input.props("placeholder")).toBe("Add by email address");
     });
 
-    it("shows notification system hint", () => {
+    it("hides invite controls for non-owner", () => {
+      wrapper = createWrapper({
+        user: { value: { id: 2, name: "Bob", email: "bob@example.com" } },
+        file: { ...mockFile, ownerId: 1 },
+      });
+      expect(wrapper.findComponent({ name: "BaseInput" }).exists()).toBe(false);
+    });
+
+    it("shows role selector defaulting to Editor", () => {
       wrapper = createWrapper();
-      const hint = wrapper.find(".invite-hint");
-      expect(hint.text()).toContain("notification system");
+      const select = wrapper.findComponent({ name: "SelectBox" });
+      expect(select.exists()).toBe(true);
+      expect(select.text()).toBe("Editor");
+    });
+
+    it("shows Add button", () => {
+      wrapper = createWrapper();
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const addBtn = buttons.find((b) => b.props("text") === "Add");
+      expect(addBtn).toBeDefined();
+    });
+
+    it("renders collaborator rows from API", async () => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) {
+          return Promise.resolve({
+            data: [
+              {
+                permission_id: 10,
+                user_id: 2,
+                user_name: "Bob Smith",
+                user_email: "bob@example.com",
+                role: "EDITOR",
+              },
+            ],
+          });
+        }
+        if (url.includes("/abstract")) return Promise.resolve({ data: { html: "" } });
+        return Promise.resolve({ data: {} });
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const rows = wrapper.findAll(".person-row");
+      expect(rows).toHaveLength(2);
+      expect(rows[1].find(".person-name").text()).toBe("Bob Smith");
+      expect(rows[1].find(".person-role").text()).toBe("Editor");
+    });
+
+    it("uses Avatar for collaborator rows", async () => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) {
+          return Promise.resolve({
+            data: [
+              {
+                permission_id: 10,
+                user_id: 2,
+                user_name: "Bob",
+                user_email: "bob@example.com",
+                role: "EDITOR",
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const avatars = wrapper.findAllComponents({ name: "Avatar" });
+      expect(avatars).toHaveLength(2);
+    });
+
+    it("shows remove button on collaborator rows for owner", async () => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) {
+          return Promise.resolve({
+            data: [
+              {
+                permission_id: 10,
+                user_id: 2,
+                user_name: "Bob",
+                user_email: "bob@example.com",
+                role: "EDITOR",
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      expect(wrapper.find(".person-remove").exists()).toBe(true);
+    });
+  });
+
+  describe("invite flow", () => {
+    it("adds collaborator on valid email submit", async () => {
+      mockApi.post.mockImplementation((url) => {
+        if (url.includes("/lookup")) return Promise.resolve({ data: { user_id: 5 } });
+        if (url.includes("/permissions")) return Promise.resolve({ data: { id: 20 } });
+        return Promise.resolve({ data: {} });
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("bob@example.com");
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(mockApi.post).toHaveBeenCalledWith("/users/lookup", { email: "bob@example.com" });
+      expect(mockApi.post).toHaveBeenCalledWith("/files/123/permissions", {
+        user_id: 5,
+        role: "EDITOR",
+      });
+    });
+
+    it("shows error for invalid email on submit", async () => {
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("not-an-email");
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.find(".invite-error").text()).toBe("Enter a valid email address");
+    });
+
+    it("shows error for empty input on submit", async () => {
+      wrapper = createWrapper();
+      await flushPromises();
+
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.find(".invite-error").text()).toBe("Enter an email address");
+    });
+
+    it("shows self-invite error", async () => {
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("ada@example.com");
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.find(".invite-error").text()).toBe("You can't invite yourself");
+    });
+
+    it("shows no-account error on 404", async () => {
+      mockApi.post.mockRejectedValue({ response: { status: 404, data: {} } });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("nobody@example.com");
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.find(".invite-error").text()).toBe("No account found for this email");
+    });
+
+    it("shows already-has-access error on 400", async () => {
+      mockApi.post.mockRejectedValue({
+        response: { status: 400, data: { detail: "User already has permission for this file" } },
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("existing@example.com");
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.find(".invite-error").text()).toBe("This person already has access");
+    });
+
+    it("clears error on new input", async () => {
+      wrapper = createWrapper();
+      await flushPromises();
+
+      await wrapper.find(".invite-group").trigger("keydown.enter");
+      await flushPromises();
+      expect(wrapper.find(".invite-error").exists()).toBe(true);
+
+      const input = wrapper.find(".invite-input");
+      await input.setValue("other@example.com");
+      await flushPromises();
+      expect(wrapper.find(".invite-error").exists()).toBe(false);
+    });
+
+    it("removes collaborator on remove button click", async () => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) {
+          return Promise.resolve({
+            data: [
+              {
+                permission_id: 10,
+                user_id: 2,
+                user_name: "Bob",
+                user_email: "bob@example.com",
+                role: "EDITOR",
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+      mockApi.delete.mockResolvedValue({});
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      expect(wrapper.findAll(".person-row")).toHaveLength(2);
+
+      await wrapper.find(".person-remove").trigger("click");
+      await flushPromises();
+
+      expect(mockApi.delete).toHaveBeenCalledWith("/files/123/permissions/10");
+      expect(wrapper.findAll(".person-row")).toHaveLength(1);
     });
   });
 
@@ -190,7 +448,10 @@ describe("DrawerShare", () => {
     });
 
     it("shows empty state when abstract fetch fails", async () => {
-      mockApi.get.mockRejectedValue(new Error("Network error"));
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) return Promise.resolve({ data: [] });
+        return Promise.reject(new Error("Network error"));
+      });
       wrapper = createWrapper();
       await flushPromises();
       const rows = wrapper.findAll(".row");
@@ -227,25 +488,28 @@ describe("DrawerShare", () => {
   describe("publish action", () => {
     it("downloads HTML and opens Press on click", async () => {
       const blobData = new Blob(["<html></html>"], { type: "text/html" });
-      mockApi.get
-        .mockResolvedValueOnce({ data: { html: "<p>Abstract</p>" } })
-        .mockResolvedValueOnce({ data: blobData });
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) return Promise.resolve({ data: [] });
+        if (url.includes("/abstract"))
+          return Promise.resolve({ data: { html: "<p>Abstract</p>" } });
+        if (url.includes("/download")) return Promise.resolve({ data: blobData });
+        return Promise.resolve({ data: {} });
+      });
 
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => {});
 
       wrapper = createWrapper();
       await flushPromises();
 
-      const btn = wrapper.findComponent({ name: "Button" });
-      await btn.trigger("click");
+      const btns = wrapper.findAllComponents({ name: "Button" });
+      const downloadBtn = btns.find((b) => b.props("text") === "Download & Open Press");
+      await downloadBtn.trigger("click");
       await flushPromises();
 
-      // Should have called download endpoint
       expect(mockApi.get).toHaveBeenCalledWith("/files/123/download", {
         responseType: "blob",
       });
 
-      // Should have opened Press in new tab
       expect(openSpy).toHaveBeenCalledWith(
         expect.stringContaining("scroll.press/upload"),
         "_blank"
@@ -256,17 +520,22 @@ describe("DrawerShare", () => {
 
     it("includes title, abstract, and keywords in Press URL", async () => {
       const blobData = new Blob(["<html></html>"], { type: "text/html" });
-      mockApi.get
-        .mockResolvedValueOnce({ data: { html: "<p>My abstract text</p>" } })
-        .mockResolvedValueOnce({ data: blobData });
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) return Promise.resolve({ data: [] });
+        if (url.includes("/abstract"))
+          return Promise.resolve({ data: { html: "<p>My abstract text</p>" } });
+        if (url.includes("/download")) return Promise.resolve({ data: blobData });
+        return Promise.resolve({ data: {} });
+      });
 
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => {});
 
       wrapper = createWrapper();
       await flushPromises();
 
-      const btn = wrapper.findComponent({ name: "Button" });
-      await btn.trigger("click");
+      const btns = wrapper.findAllComponents({ name: "Button" });
+      const downloadBtn = btns.find((b) => b.props("text") === "Download & Open Press");
+      await downloadBtn.trigger("click");
       await flushPromises();
 
       const url = openSpy.mock.calls[0][0];
@@ -280,23 +549,26 @@ describe("DrawerShare", () => {
 
     it("prevents double-click during download", async () => {
       let resolveDownload;
-      mockApi.get.mockResolvedValueOnce({ data: { html: "" } }).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) return Promise.resolve({ data: [] });
+        if (url.includes("/abstract")) return Promise.resolve({ data: { html: "" } });
+        if (url.includes("/download")) {
+          return new Promise((resolve) => {
             resolveDownload = resolve;
-          })
-      );
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
 
       wrapper = createWrapper();
       await flushPromises();
 
-      const btn = wrapper.findComponent({ name: "Button" });
-      await btn.trigger("click");
+      const btns = wrapper.findAllComponents({ name: "Button" });
+      const downloadBtn = btns.find((b) => b.props("text") === "Download & Open Press");
+      await downloadBtn.trigger("click");
 
-      // Button should be disabled during download
-      expect(btn.props("disabled")).toBe(true);
+      expect(downloadBtn.props("disabled")).toBe(true);
 
-      // Resolve to cleanup
       resolveDownload?.({ data: new Blob() });
       await flushPromises();
     });

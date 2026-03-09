@@ -1,11 +1,13 @@
 import base64
 import json
+import time
+from collections import defaultdict, deque
 from datetime import UTC, datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +18,10 @@ from ..models import ProfilePicture, User
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
 
+
+_lookup_timestamps: dict[int, deque] = defaultdict(lambda: deque(maxlen=10))
+_LOOKUP_RATE_LIMIT = 10
+_LOOKUP_WINDOW = 60
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(current_user)])
 
@@ -54,6 +60,42 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
     if not user:
         raise not_found_exception("User", user_id)
     return user
+
+
+class UserLookupRequest(BaseModel):
+    email: str
+
+
+@router.post("/lookup")
+async def lookup_user(
+    request: UserLookupRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    now = time.monotonic()
+    timestamps = _lookup_timestamps[int(user.id)]
+    while timestamps and now - timestamps[0] > _LOOKUP_WINDOW:
+        timestamps.popleft()
+    if len(timestamps) >= _LOOKUP_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many lookups. Try again later.")
+    timestamps.append(now)
+
+    result = await db.execute(
+        select(User).where(
+            func.lower(User.email) == request.email.strip().lower(),
+            User.deleted_at.is_(None),
+        )
+    )
+    found = result.scalar_one_or_none()
+    if not found:
+        raise HTTPException(status_code=404, detail="No account found for this email")
+
+    return {
+        "user_id": found.id,
+        "name": found.name,
+        "initials": found.initials,
+        "avatar_color": found.avatar_color.value if found.avatar_color else None,
+    }
 
 
 class UserUpdate(BaseModel):

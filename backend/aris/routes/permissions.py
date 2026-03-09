@@ -1,10 +1,13 @@
 """API routes for file permission management."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.authorization import require_manage
+from aris.config import settings
 from aris.crud.permissions import (
     create_permission,
     get_file_collaborators,
@@ -13,7 +16,11 @@ from aris.crud.permissions import (
     update_permission_role,
 )
 from aris.deps import current_user, get_db
-from aris.models.models import FileRole, User
+from aris.models.models import File, FileRole, User
+from aris.services.email import get_email_service
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -116,6 +123,25 @@ async def add_collaborator(
         granted_by=user.id,
         db=db,
     )
+
+    # Fire-and-forget invitation email
+    email_service = get_email_service()
+    if email_service:
+        try:
+            invitee = await db.get(User, request.user_id)
+            file = await db.get(File, file_id)
+            if invitee and file:
+                await email_service.send_invitation_email(
+                    to_email=invitee.email,
+                    invitee_name=invitee.name or invitee.email,
+                    inviter_name=user.name or user.email,
+                    file_title=file.title or "Untitled",
+                    role=request.role.value,
+                    frontend_url=settings.FRONTEND_URL,
+                    file_id=file_id,
+                )
+        except Exception:
+            logger.warning("Invitation email failed, permission was still granted", exc_info=True)
 
     return {
         "id": permission.id,

@@ -160,6 +160,7 @@ async def get_file_collaborators(
             "user_id": user.id,
             "user_name": user.name,
             "user_email": user.email,
+            "avatar_color": user.avatar_color,
             "role": permission.role.value,
             "granted_at": permission.granted_at.isoformat() if permission.granted_at else None,
         })
