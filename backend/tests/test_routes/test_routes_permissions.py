@@ -330,3 +330,56 @@ async def test_cannot_add_owner_permission(
 
     # Should either be 422 (validation error) or 400 (business logic error)
     assert response.status_code in [status.HTTP_422_UNPROCESSABLE_ENTITY, status.HTTP_400_BAD_REQUEST]
+
+
+@pytest.mark.asyncio
+async def test_list_collaborators_includes_avatar_color(
+    authenticated_client: AsyncClient, authenticated_user: dict, db_session: AsyncSession
+):
+    """Test that avatar_color field is present in GET /files/{id}/permissions response."""
+    file = await create_file(
+        source="# Test", owner_id=authenticated_user["user_id"], db=db_session
+    )
+
+    response = await authenticated_client.get(f"/files/{file.id}/permissions")
+
+    assert response.status_code == status.HTTP_200_OK
+    collaborators = response.json()
+    assert len(collaborators) >= 1
+    for collaborator in collaborators:
+        assert "avatar_color" in collaborator
+
+
+@pytest.mark.asyncio
+async def test_add_collaborator_sends_invitation_email(
+    authenticated_client: AsyncClient,
+    authenticated_user: dict,
+    second_authenticated_user: dict,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    """Test that invitation email is attempted after successful add_collaborator."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    file = await create_file(
+        source="# Test", owner_id=authenticated_user["user_id"], db=db_session
+    )
+
+    mock_email_service = MagicMock()
+    mock_email_service.send_invitation_email = AsyncMock(return_value=True)
+
+    monkeypatch.setattr(
+        "aris.routes.permissions.get_email_service",
+        lambda: mock_email_service,
+    )
+
+    response = await authenticated_client.post(
+        f"/files/{file.id}/permissions",
+        json={
+            "user_id": second_authenticated_user["user_id"],
+            "role": "EDITOR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    mock_email_service.send_invitation_email.assert_awaited_once()

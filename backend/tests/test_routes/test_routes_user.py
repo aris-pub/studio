@@ -697,3 +697,71 @@ class TestErrorHandling:
         )
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to delete profile picture"
+
+
+class TestUserLookup:
+    """Test class for POST /users/lookup endpoint."""
+
+    async def test_lookup_user_success(self, client: AsyncClient, authenticated_user, auth_headers):
+        """Test successful lookup returns user_id, name, initials, avatar_color."""
+        response = await client.post(
+            "/users/lookup",
+            headers=auth_headers,
+            json={"email": TestConstants.DEFAULT_USER_EMAIL},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == authenticated_user["user_id"]
+        assert data["name"] == TestConstants.DEFAULT_USER_NAME
+        assert data["initials"] == TestConstants.DEFAULT_USER_INITIALS
+        assert "avatar_color" in data
+
+    async def test_lookup_user_not_found(self, client: AsyncClient, auth_headers):
+        """Test 404 for non-existent email."""
+        response = await client.post(
+            "/users/lookup",
+            headers=auth_headers,
+            json={"email": "nonexistent@example.com"},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "No account found for this email"
+
+    async def test_lookup_user_case_insensitive(self, client: AsyncClient, authenticated_user, auth_headers):
+        """Test case-insensitive email matching."""
+        response = await client.post(
+            "/users/lookup",
+            headers=auth_headers,
+            json={"email": TestConstants.DEFAULT_USER_EMAIL.upper()},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == authenticated_user["user_id"]
+
+    async def test_lookup_user_rate_limited(self, client: AsyncClient, authenticated_user, auth_headers):
+        """Test rate limiting: 10 requests OK, 11th returns 429."""
+        from aris.routes.user import _lookup_timestamps
+        _lookup_timestamps.clear()
+
+        for _ in range(10):
+            response = await client.post(
+                "/users/lookup",
+                headers=auth_headers,
+                json={"email": TestConstants.DEFAULT_USER_EMAIL},
+            )
+            assert response.status_code == 200
+
+        response = await client.post(
+            "/users/lookup",
+            headers=auth_headers,
+            json={"email": TestConstants.DEFAULT_USER_EMAIL},
+        )
+        assert response.status_code == 429
+        assert "too many" in response.json()["detail"].lower()
+
+    async def test_lookup_user_requires_auth(self, client: AsyncClient):
+        """Test that lookup requires authentication (401 without token)."""
+        response = await client.post(
+            "/users/lookup",
+            json={"email": "someone@example.com"},
+        )
+        assert response.status_code == 401
