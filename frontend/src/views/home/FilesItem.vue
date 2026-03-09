@@ -35,7 +35,7 @@
    * })
    */
 
-  import { ref, inject, watch, useTemplateRef, computed } from "vue";
+  import { ref, inject, provide, watch, useTemplateRef, computed } from "vue";
   import { useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
@@ -46,6 +46,7 @@
   import FilesItemCollaborators from "./FilesItemCollaborators.vue";
   import FilesItemRole from "./FilesItemRole.vue";
   import ConfirmationModal from "@/components/ConfirmationModal.vue";
+  import ScrollbarMinimap from "@/views/workspace/ScrollbarMinimap.vue";
 
   const logger = getLogger("FilesItem");
 
@@ -76,7 +77,15 @@
         }
       }
 
-      // 2. Load file assets to show thumbnail/preview indicators
+      // 2. Load annotations for minimap display
+      const annResponse = await api
+        .get("/annotations/", { params: { file_id: fileId } })
+        .catch(() => null);
+      if (Array.isArray(annResponse?.data)) {
+        file.value.annotations = annResponse.data;
+      }
+
+      // 3. Load file assets to show thumbnail/preview indicators
       logger.debug("Loading file assets", { fileId });
       const assetsResponse = await api.get(`/files/${fileId}/assets`).catch(() => null);
       if (assetsResponse?.data) {
@@ -154,6 +163,13 @@
   const fileStore = inject("fileStore");
   const xsMode = inject("xsMode");
   const mobileMode = inject("mobileMode");
+
+  // Minimap: provide a manuscriptRef + annotations so ScrollbarMinimap can
+  // compute marks from a hidden rendered copy of the file HTML.
+  const manuscriptRef = useTemplateRef("manuscript-ref");
+  const fileAnnotations = computed(() => file.value?.annotations || []);
+  provide("manuscriptRef", manuscriptRef);
+  provide("annotations", fileAnnotations);
 
   // State
   const hovered = ref(false);
@@ -307,8 +323,14 @@
     @click="select"
     @dblclick="open"
   >
+    <!-- Hidden manuscript for minimap DOM measurement -->
+    <!-- eslint-disable-next-line vue/no-v-html -->
+    <div v-if="file?.html" ref="manuscript-ref" class="minimap-source" v-html="file.html" />
+
     <template v-if="!!file">
-      <template v-if="mode === 'cards'"> </template>
+      <template v-if="mode === 'cards'">
+        <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
+      </template>
 
       <!-- List mode layout: displays file information in a grid row format -->
       <template v-if="mode === 'list'">
@@ -317,8 +339,11 @@
           <FilesItemRole :role="file.role" />
         </div>
 
-        <!-- Tags, spacer, and collaborators (hidden on extra small screens) -->
+        <!-- Minimap, tags, spacer, and collaborators (hidden on extra small screens) -->
         <template v-if="!xsMode">
+          <div class="minimap-cell">
+            <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
+          </div>
           <TagRow :file="file" />
           <div class="spacer"></div>
           <FilesItemCollaborators :file="file" />
@@ -361,6 +386,15 @@
 </template>
 
 <style scoped>
+  .minimap-source {
+    position: absolute;
+    visibility: hidden;
+    width: 300px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+
   .item {
     --border-width: var(--border-extrathin);
 
@@ -375,7 +409,7 @@
   }
 
   .item.list {
-    & > * {
+    & > *:not(.minimap-source) {
       height: 56px;
       padding-right: 8px;
       transition: background 0.15s ease-in-out;
@@ -412,19 +446,51 @@
       border-left: var(--border-med) solid transparent;
     }
 
-    & > .mm-wrapper {
-      width: 100%;
-
-      & :deep(.mm-main) {
-        width: 100%;
-        height: 100%;
-      }
-
-      & :deep(.mm-main svg) {
-        width: 100%;
-        height: 100%;
-      }
+    & .minimap-cell {
+      display: flex;
+      align-items: center;
+      padding-left: 4px;
+      padding-right: 12px;
+      overflow: visible;
     }
+
+    & .minimap-cell :deep(.scrollbar-minimap.compact.horizontal) {
+      width: calc(100% + 24px);
+      margin-left: 12px;
+      height: 16px;
+      border-radius: 3px;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    &:is(.hovered, .current) .minimap-cell :deep(.scrollbar-minimap.compact.horizontal) {
+      background: linear-gradient(
+        135deg,
+        var(--blue-50),
+        color-mix(in srgb, var(--blue-100) 60%, var(--gray-100))
+      );
+      border-color: color-mix(in srgb, var(--blue-300) 50%, var(--gray-300));
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--blue-200) 40%, transparent),
+        0 1px 3px color-mix(in srgb, var(--blue-200) 30%, transparent);
+    }
+
+    &:is(.hovered, .current) .minimap-cell :deep(.mm-section::after) {
+      background-color: var(--blue-400);
+    }
+
+    &:is(.hovered, .current) .minimap-cell :deep(.mm-section.level-1::after) {
+      background-color: var(--blue-500);
+    }
+
+    &:is(.hovered, .current) .minimap-cell :deep(.mm-annotation) {
+      color: var(--blue-400);
+    }
+
   }
 
   .item.cards {

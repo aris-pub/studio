@@ -10,6 +10,7 @@
 
   const columnInfo = {
     Title: { sortable: true, filterable: false, sortKey: "title" },
+    Structure: {},
     Tags: { sortable: false, filterable: true, sortKey: "" },
     Spacer: {},
     Collaborators: { sortable: false, filterable: false, sortKey: "" },

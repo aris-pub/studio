@@ -518,3 +518,179 @@ describe("Minimap replaces native scrollbar (std-b9dz)", () => {
     expect(minimapStyle).toMatch(/\.scrollbar-minimap\.dragging[^}]*cursor:\s*grabbing/s);
   });
 });
+
+// ---- Homepage compact minimap (std-lqa2) ----
+
+import { FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
+
+const filesItemSource = readFileSync(
+  resolve(__dirname, "../../views/home/FilesItem.vue"),
+  "utf-8"
+);
+const filesHeaderSource = readFileSync(
+  resolve(__dirname, "../../views/home/FilesHeader.vue"),
+  "utf-8"
+);
+const filesPaneSource = readFileSync(
+  resolve(__dirname, "../../views/home/FilesPane.vue"),
+  "utf-8"
+);
+
+describe("FEEDBACK_COLORS export", () => {
+  it("is a non-empty object with known reaction types", () => {
+    expect(typeof FEEDBACK_COLORS).toBe("object");
+    expect(Object.keys(FEEDBACK_COLORS)).toEqual(
+      expect.arrayContaining(["bookmark", "star", "heart", "check", "exclamation", "question", "quote"])
+    );
+  });
+
+  it("each value is a CSS custom property", () => {
+    for (const color of Object.values(FEEDBACK_COLORS)) {
+      expect(color).toMatch(/^var\(--/);
+    }
+  });
+});
+
+describe("ScrollbarMinimap — compact mode features (std-lqa2)", () => {
+  it("injects reactions with a default empty ref", () => {
+    expect(minimapScript).toMatch(/inject\(\s*["']reactions["']/);
+  });
+
+  it("imports FEEDBACK_COLORS for compact reaction marks", () => {
+    expect(minimapScript).toContain("FEEDBACK_COLORS");
+  });
+
+  it("posStyle returns left for horizontal, top for vertical", () => {
+    expect(minimapScript).toMatch(/isHorizontal\.value\s*\?\s*\{\s*left:/);
+    expect(minimapScript).toMatch(/:\s*\{\s*top:/);
+  });
+
+  it("compact mode computes annotation marks from anchor_data.node_id", () => {
+    expect(minimapScript).toContain("ann.anchor_data?.node_id");
+    expect(minimapScript).toMatch(/el\.querySelector.*data-nodeid/);
+  });
+
+  it("compact mode computes feedback marks from reactions", () => {
+    expect(minimapScript).toContain("rxn.node_id");
+    expect(minimapScript).toContain("FEEDBACK_COLORS[rxn.reaction_type]");
+    expect(minimapScript).toContain('type: "feedback"');
+  });
+
+  it("compact mode watches reactions for recompute", () => {
+    expect(minimapScript).toMatch(/watch\(reactions,\s*computeCompactMarks/);
+  });
+
+  it("compact horizontal marks disable pointer events", () => {
+    expect(minimapStyle).toMatch(
+      /\.scrollbar-minimap\.compact\s+\.mm-section[\s\S]*?pointer-events:\s*none/
+    );
+  });
+
+  it("horizontal annotation icons are vertically centered", () => {
+    expect(minimapStyle).toMatch(
+      /\.scrollbar-minimap\.horizontal\s+\.mm-annotation[^}]*top:\s*50%/s
+    );
+  });
+
+  it("compact annotation icons use icon size 10", () => {
+    const templateSection = minimapSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+    expect(templateSection).toMatch(/isCompact\s*\?\s*10\s*:\s*20/);
+  });
+});
+
+describe("FilesItem — homepage minimap integration (std-lqa2)", () => {
+  const filesItemScript =
+    filesItemSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+  const filesItemStyle =
+    filesItemSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+  const filesItemTemplate =
+    filesItemSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+
+  it("provides manuscriptRef for compact minimap DOM measurement", () => {
+    expect(filesItemScript).toMatch(/provide\(\s*["']manuscriptRef["']/);
+  });
+
+  it("provides annotations for compact minimap", () => {
+    expect(filesItemScript).toMatch(/provide\(\s*["']annotations["']/);
+  });
+
+  it("fetches annotations from API for minimap", () => {
+    expect(filesItemSource).toContain('.get("/annotations/"');
+  });
+
+  it("renders hidden manuscript div for DOM measurement", () => {
+    expect(filesItemTemplate).toContain('class="minimap-source"');
+    expect(filesItemTemplate).toContain("v-html");
+  });
+
+  it("hidden manuscript is invisible and out of flow", () => {
+    expect(filesItemStyle).toMatch(/\.minimap-source\s*\{[^}]*visibility:\s*hidden/s);
+    expect(filesItemStyle).toMatch(/\.minimap-source\s*\{[^}]*position:\s*absolute/s);
+  });
+
+  it("renders ScrollbarMinimap in compact horizontal mode for list view", () => {
+    expect(filesItemTemplate).toMatch(/ScrollbarMinimap[^>]*mode="compact"[^>]*orientation="horizontal"/);
+  });
+
+  it("minimap cell has padding-right for spacing from Tags column", () => {
+    expect(filesItemStyle).toMatch(/\.minimap-cell\s*\{[^}]*padding-right:\s*12px/s);
+  });
+
+  it("compact minimap track extends 24px wider than cell", () => {
+    expect(filesItemStyle).toMatch(/calc\(100%\s*\+\s*24px\)/);
+  });
+
+  it("default minimap track is neutral gray", () => {
+    expect(filesItemStyle).toMatch(
+      /\.minimap-cell\s+:deep\(\.scrollbar-minimap\.compact\.horizontal\)[^}]*background:\s*var\(--gray-100\)/s
+    );
+  });
+
+  it("hovered/current minimap track lights up blue", () => {
+    expect(filesItemStyle).toContain("--blue-50");
+    expect(filesItemStyle).toContain("--blue-300");
+  });
+
+  it("hovered section marks turn blue", () => {
+    expect(filesItemStyle).toMatch(/\.mm-section::after[^}]*--blue-400/s);
+    expect(filesItemStyle).toMatch(/\.mm-section\.level-1::after[^}]*--blue-500/s);
+  });
+
+  it("hovered annotation marks turn blue", () => {
+    expect(filesItemStyle).toMatch(/\.mm-annotation[^}]*--blue-400/s);
+  });
+});
+
+describe("FilesHeader — Structure column (std-lqa2)", () => {
+  it("has Structure in columnInfo", () => {
+    expect(filesHeaderSource).toMatch(/Structure:\s*\{\}/);
+  });
+
+  it("Structure is NOT rendered as a spacer div", () => {
+    // Only 'Spacer' should render as spacer, not Structure
+    expect(filesHeaderSource).not.toMatch(/name\s*===\s*['"]Structure['"]/);
+  });
+
+  it("Structure column renders via HeaderLabel (falls through to v-else)", () => {
+    // Structure has no sortable/filterable, so HeaderLabel renders plain text
+    const templateSection =
+      filesHeaderSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+    // The spacer condition should only match 'Spacer'
+    expect(templateSection).toMatch(/name\s*===\s*'Spacer'/);
+    expect(templateSection).not.toMatch(/name\s*===\s*'Structure'/);
+  });
+});
+
+describe("FilesPane — grid layout includes minimap column (std-lqa2)", () => {
+  it("non-xs grid includes minimap column (minmax(80px, 1.5fr))", () => {
+    // The full-width grid template must contain the minimap/structure column
+    expect(filesPaneSource).toContain("minmax(80px, 1.5fr)");
+  });
+
+  it("Structure column is hidden on xs screens", () => {
+    expect(filesPaneSource).toMatch(/["']Structure["']/);
+    expect(filesPaneSource).toMatch(
+      /\[.*"Structure".*\].*includes\(columnName\).*xsMode/s
+    );
+  });
+});

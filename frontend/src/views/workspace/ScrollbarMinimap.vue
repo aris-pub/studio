@@ -1,6 +1,10 @@
 <script setup>
-  import { ref, computed, inject, watch, onMounted, onUnmounted } from "vue";
-  import { useMinimapMarks, computeSectionMarks } from "@/composables/useMinimapMarks.js";
+  import { ref, computed, inject, isRef, watch, onMounted, onUnmounted } from "vue";
+  import {
+    useMinimapMarks,
+    computeSectionMarks,
+    FEEDBACK_COLORS,
+  } from "@/composables/useMinimapMarks.js";
   import { IconMessageFilled } from "@tabler/icons-vue";
   import Tooltip from "@/components/base/Tooltip.vue";
 
@@ -25,6 +29,7 @@
 
   const manuscriptRef = inject("manuscriptRef", ref(null));
   const annotations = inject("annotations", ref([]));
+  const reactions = inject("reactions", ref([]));
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const awareness = inject("awareness", ref(null));
   const columnSizes = inject("columnSizes", null);
@@ -37,6 +42,9 @@
   const isCompact = computed(() => props.mode === "compact");
   const isHorizontal = computed(() => props.orientation === "horizontal");
 
+  const posStyle = (fraction) =>
+    isHorizontal.value ? { left: `${fraction * 100}%` } : { top: `${fraction * 100}%` };
+
   // Marks: full computation for workspace, sections-only for compact
   const { marks, computeMarks } = isCompact.value
     ? { marks: ref([]), computeMarks: () => {} }
@@ -44,13 +52,70 @@
 
   const compactMarks = ref([]);
   if (isCompact.value) {
-    watch(
-      () => manuscriptRef?.value,
-      () => {
-        compactMarks.value = computeSectionMarks(manuscriptRef?.value);
-      },
-      { immediate: true }
-    );
+    function computeCompactMarks() {
+      const manuscriptEl = manuscriptRef?.value;
+      const sectionMarks = computeSectionMarks(manuscriptEl);
+      if (!manuscriptEl) {
+        compactMarks.value = sectionMarks;
+        return;
+      }
+
+      // Also compute annotation marks by finding their anchor node in the DOM
+      const el = manuscriptEl.$el || manuscriptEl;
+      const container = el.closest(".inner.right") || el;
+      const annList = annotations && isRef(annotations) ? annotations.value : annotations;
+      const annMarks = [];
+      if (Array.isArray(annList) && container) {
+        const scrollHeight = container.scrollHeight || 1;
+        const containerRect = container.getBoundingClientRect();
+        for (const ann of annList) {
+          if (!ann.anchor_data?.node_id) continue;
+          const block = el.querySelector(`[data-nodeid="${ann.anchor_data.node_id}"]`);
+          if (!block) continue;
+          const blockRect = block.getBoundingClientRect();
+          const top = (blockRect.top - containerRect.top + container.scrollTop) / scrollHeight;
+          const colorName = ann.color || "purple";
+          annMarks.push({
+            top: Math.max(0, Math.min(1, top)),
+            color: `var(--${colorName}-600)`,
+            type: "annotation",
+            id: `ann-${ann.id}`,
+          });
+        }
+      }
+
+      // Feedback (reaction) marks by finding their node in the hidden DOM
+      const rxnList = reactions && isRef(reactions) ? reactions.value : reactions;
+      const fbMarks = [];
+      if (Array.isArray(rxnList) && container) {
+        const scrollHeight = container.scrollHeight || 1;
+        const containerRect = container.getBoundingClientRect();
+        for (const rxn of rxnList) {
+          if (!rxn.node_id) continue;
+          const block = el.querySelector(`[data-nodeid="${rxn.node_id}"]`);
+          if (!block) continue;
+          const blockRect = block.getBoundingClientRect();
+          const top = (blockRect.top - containerRect.top + container.scrollTop) / scrollHeight;
+          fbMarks.push({
+            top: Math.max(0, Math.min(1, top)),
+            color: FEEDBACK_COLORS[rxn.reaction_type] || "var(--gray-500)",
+            type: "feedback",
+            id: `feedback-${rxn.node_id}`,
+            label: rxn.reaction_type?.charAt(0).toUpperCase() + rxn.reaction_type?.slice(1),
+          });
+        }
+      }
+
+      compactMarks.value = [...sectionMarks, ...annMarks, ...fbMarks];
+    }
+
+    watch(() => manuscriptRef?.value, computeCompactMarks, { immediate: true });
+    if (annotations) {
+      watch(annotations, computeCompactMarks, { deep: true });
+    }
+    if (reactions) {
+      watch(reactions, computeCompactMarks, { deep: true });
+    }
   }
 
   const allMarks = computed(() => (isCompact.value ? compactMarks.value : marks.value));
@@ -88,7 +153,11 @@
 
   function onStripPointerDown(event) {
     if (isCompact.value || !scrollContainer.value) return;
-    if (event.target !== stripRef.value && event.target.classList.contains("viewport-indicator") === false) return;
+    if (
+      event.target !== stripRef.value &&
+      event.target.classList.contains("viewport-indicator") === false
+    )
+      return;
     isDragging.value = true;
     stripRef.value.setPointerCapture(event.pointerId);
     scrollToFraction(event);
@@ -168,7 +237,7 @@
       :key="mark.id"
       class="mm-section"
       :class="{ 'level-1': mark.level === 1 }"
-      :style="{ top: `${mark.top * 100}%` }"
+      :style="posStyle(mark.top)"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
@@ -179,12 +248,12 @@
       v-for="mark in annotationMarks"
       :key="mark.id"
       class="mm-annotation"
-      :style="{ top: `${mark.top * 100}%` }"
+      :style="posStyle(mark.top)"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
     >
-      <IconMessageFilled :size="20" />
+      <IconMessageFilled :size="isCompact ? 10 : 20" />
     </div>
 
     <!-- Feedback dots -->
@@ -192,7 +261,7 @@
       v-for="mark in feedbackMarks"
       :key="mark.id"
       class="mm-feedback"
-      :style="{ top: `${mark.top * 100}%`, '--fb-color': mark.color }"
+      :style="{ ...posStyle(mark.top), '--fb-color': mark.color }"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
@@ -203,7 +272,7 @@
       v-for="mark in searchMarks"
       :key="mark.id"
       class="mm-search"
-      :style="{ top: `${mark.top * 100}%` }"
+      :style="posStyle(mark.top)"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
@@ -215,7 +284,7 @@
       :key="mark.id"
       class="mm-presence"
       :style="{
-        top: `clamp(6px, ${mark.top * 100}%, calc(100% - 6px))`,
+        [isHorizontal ? 'left' : 'top']: `clamp(6px, ${mark.top * 100}%, calc(100% - 6px))`,
         backgroundColor: mark.avatarColor || mark.color,
       }"
       @mouseenter="onMarkEnter($event, mark)"
@@ -303,7 +372,9 @@
       height: 3px;
       border-radius: 2px;
       background-color: var(--gray-500);
-      transition: margin-inline 0.15s ease, background-color 0.15s ease;
+      transition:
+        margin-inline 0.15s ease,
+        background-color 0.15s ease;
     }
   }
 
@@ -385,7 +456,10 @@
       height: 2px;
       border-radius: 1px;
       background-color: var(--orange-300);
-      transition: margin-inline 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+      transition:
+        margin-inline 0.15s ease,
+        height 0.15s ease,
+        background-color 0.15s ease;
     }
   }
 
@@ -426,24 +500,49 @@
   .scrollbar-minimap.horizontal .mm-section {
     top: 0;
     height: 100%;
-    width: 16px;
-    left: auto;
+    width: 12px;
     right: auto;
     transform: translateX(-50%);
     display: flex;
     justify-content: center;
-    align-items: stretch;
+    align-items: center;
 
     &::after {
       width: 1px;
-      height: 100%;
+      height: 60%;
       margin-inline: 0;
-      border-radius: 1px;
+      border-radius: 0.5px;
+      background-color: var(--gray-400);
+      transition: background-color 0.2s ease;
     }
   }
 
   .scrollbar-minimap.horizontal .mm-section.level-1::after {
     width: 2px;
+    height: 100%;
     margin-inline: 0;
+    background-color: var(--gray-500);
+  }
+
+  .scrollbar-minimap.horizontal .mm-annotation {
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Compact mode: scale icons to fit the bar, neutral by default */
+  .scrollbar-minimap.compact .mm-annotation {
+    color: var(--gray-400);
+    transition: color 0.2s ease;
+
+    & :deep(svg) {
+      color: inherit;
+    }
+  }
+
+  /* No pointer/click interaction in compact mode */
+  .scrollbar-minimap.compact .mm-section,
+  .scrollbar-minimap.compact .mm-annotation {
+    cursor: default;
+    pointer-events: none;
   }
 </style>

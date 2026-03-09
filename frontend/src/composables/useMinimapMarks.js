@@ -1,6 +1,6 @@
 import { ref, watch, nextTick, isRef, onUnmounted } from "vue";
 
-const FEEDBACK_COLORS = {
+export const FEEDBACK_COLORS = {
   bookmark: "var(--blue-500)",
   star: "var(--yellow-500)",
   heart: "var(--red-400)",
@@ -22,7 +22,7 @@ function measureElement(el, containerEl) {
 export function computeSectionMarks(manuscriptEl) {
   if (!manuscriptEl) return [];
   const el = manuscriptEl.$el || manuscriptEl;
-  const container = el.closest(".inner.right") || el.parentElement;
+  const container = el.closest(".inner.right") || el;
   if (!container) return [];
 
   const sections = el.querySelectorAll("section");
@@ -53,7 +53,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       return;
     }
     const el = manuscriptEl.$el || manuscriptEl;
-    const container = el.closest(".inner.right") || el.parentElement;
+    const container = el.closest(".inner.right") || el;
     if (!container) {
       marks.value = [];
       return;
