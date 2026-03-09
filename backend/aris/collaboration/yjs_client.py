@@ -15,7 +15,7 @@ from sqlalchemy import text as sql_text
 from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
-from aris.deps import ArisSession
+from aris.deps import CollabSession
 
 
 # Collaboration-specific logger
@@ -60,8 +60,10 @@ class YDocClient:
         self.doc: Optional[Doc] = None
         self.text: Optional[Text] = None
 
-        # Persistence state
+        # Persistence state — single save loop with debounce event instead of
+        # cancel+recreate, preventing overlapping DB connections.
         self._save_task: Optional[asyncio.Task] = None
+        self._save_event: asyncio.Event = asyncio.Event()
         self._shutdown = False
         self._ws: Optional[ClientConnection] = None  # Active WebSocket, set during connection
 
@@ -107,9 +109,18 @@ class YDocClient:
 
     async def _connect_and_run(self):
         """Connect to WebSocket server and run until disconnection."""
+        # Cancel any lingering save loop from a previous connection
+        if self._save_task and not self._save_task.done():
+            self._save_task.cancel()
+            try:
+                await self._save_task
+            except asyncio.CancelledError:
+                pass
+        self._save_event.clear()
+
         logger.info(f"Connecting to {self.websocket_url} for file {self.file_id}")
 
-        async with connect(self.websocket_url) as websocket:
+        async with connect(self.websocket_url, open_timeout=10, close_timeout=5) as websocket:
             self._ws = websocket
             self._reconnect_attempt = 0
             # Scope the websockets library's internal logger to this file so that
@@ -171,7 +182,7 @@ class YDocClient:
         assert self.doc is not None, "doc must be initialized before receiving sync"
         assert self.text is not None, "text must be initialized before receiving sync"
         while True:
-            message = await websocket.recv()
+            message = await asyncio.wait_for(websocket.recv(), timeout=15.0)
             if not message:
                 continue
 
@@ -217,15 +228,6 @@ class YDocClient:
         except ConnectionClosed:
             logger.info(f"WebSocket closed for file {self.file_id}")
             raise
-        finally:
-            if self._shutdown:
-                logger.info(f"Shutting down, saving final state for file {self.file_id}")
-                try:
-                    await asyncio.wait_for(self._save_to_db(force=True), timeout=2.0)
-                except asyncio.TimeoutError:
-                    logger.warning(f"Final save timed out for file {self.file_id}")
-                except Exception as e:
-                    logger.warning(f"Final save failed for file {self.file_id}: {e}")
 
     async def _handle_message(self, websocket, message):
         """Handle a single WebSocket message."""
@@ -261,7 +263,7 @@ class YDocClient:
         assert self.doc is not None, "doc must be initialized before loading from DB"
         assert self.text is not None, "text must be initialized before loading from DB"
 
-        async with ArisSession() as session:
+        async with CollabSession() as session:
             try:
                 result = await session.execute(
                     sql_text("SELECT source FROM files WHERE id = :file_id"),
@@ -289,25 +291,22 @@ class YDocClient:
     def _on_doc_change(self, event):
         """Observer callback for document changes (local or remote).
 
-        Uses document-level observer (official pycrdt-websocket pattern) which
-        fires for ALL changes regardless of source - local edits, network sync,
-        or initial load. This eliminates timing gaps and ensures persistence
-        happens for all document updates.
-
-        Skips persistence during sync operations to prevent duplicate saves when
-        backend generates SyncStep2 messages for reconnecting peers.
+        Uses call_soon_threadsafe so it's safe even if pycrdt fires the
+        observer from a non-event-loop thread.
         """
-        # Skip persistence if we're currently processing a sync operation
         if self._in_sync_operation:
-            logger.debug(f"Skipping save during sync operation for file {self.file_id}")
             return
+        try:
+            loop = asyncio.get_event_loop()
+            loop.call_soon_threadsafe(self._signal_save)
+        except RuntimeError:
+            pass
 
-        logger.info(f"[DEBUG] Doc observer triggered for file {self.file_id}")
-        if self._save_task and not self._save_task.done():
-            self._save_task.cancel()
-
-        self._save_task = asyncio.create_task(self._debounced_save())
-
+    def _signal_save(self):
+        """Schedule a save — runs on the event loop thread."""
+        self._save_event.set()
+        if self._save_task is None or self._save_task.done():
+            self._save_task = asyncio.create_task(self._save_loop())
         self._record_edit_for_checkpoint()
 
     def _record_edit_for_checkpoint(self):
@@ -374,7 +373,7 @@ class YDocClient:
         from aris.crud.versions import CHECKPOINT_TYPE_AUTO, create_version
 
         try:
-            async with ArisSession() as session:
+            async with CollabSession() as session:
                 result = await session.execute(
                     sql_text("SELECT owner_id FROM files WHERE id = :file_id"),
                     {"file_id": self.file_id},
@@ -385,7 +384,7 @@ class YDocClient:
                     return
                 owner_id = row[0]
 
-            async with ArisSession() as session:
+            async with CollabSession() as session:
                 await create_version(
                     file_id=self.file_id,
                     user_id=owner_id,
@@ -405,11 +404,24 @@ class YDocClient:
         if self._safety_net_task and not self._safety_net_task.done():
             self._safety_net_task.cancel()
 
-    async def _debounced_save(self):
-        """Wait for debounce period, then save to database."""
+    async def _save_loop(self):
+        """Single persistent loop: wait for change signal, debounce, save serially.
+
+        Only one instance runs per client at a time.  Each save holds a DB
+        connection for the minimum duration, and no two saves overlap.
+        """
         try:
-            await asyncio.sleep(self.debounce_ms / 1000.0)
-            await self._save_to_db()
+            while not self._shutdown:
+                await self._save_event.wait()
+                self._save_event.clear()
+                # Debounce: keep waiting while edits keep arriving
+                while True:
+                    try:
+                        await asyncio.wait_for(self._save_event.wait(), timeout=self.debounce_ms / 1000.0)
+                        self._save_event.clear()
+                    except asyncio.TimeoutError:
+                        break  # No new edits within debounce window — save now
+                await self._save_to_db()
         except asyncio.CancelledError:
             pass
 
@@ -421,7 +433,7 @@ class YDocClient:
         try:
             content = str(self.text)
 
-            async with ArisSession() as session:
+            async with CollabSession() as session:
                 await session.execute(
                     sql_text("UPDATE files SET source = :content WHERE id = :file_id"),
                     {"content": content, "file_id": self.file_id},
@@ -448,10 +460,21 @@ class YDocClient:
 
         self._cancel_checkpoint_tasks()
 
+        # Stop the save loop, then do one final save with no overlap
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()
+            try:
+                await self._save_task
+            except asyncio.CancelledError:
+                pass
+
+        try:
+            await asyncio.wait_for(self._save_to_db(force=True), timeout=2.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"Final save timed out for file {self.file_id}")
+        except Exception as e:
+            logger.warning(f"Final save failed for file {self.file_id}: {e}")
 
         # Close the WebSocket to unblock the message loop immediately
-        # rather than waiting for the server to send the next message.
         if self._ws is not None:
             await self._ws.close()

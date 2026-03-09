@@ -45,6 +45,20 @@ ENGINE = create_async_engine(
     _db_url,
     future=True,
     connect_args=_connect_args,
+    pool_size=10,
+    max_overflow=5,
+    pool_timeout=10,
+)
+
+# Separate pool for Y.js collaboration clients so they cannot starve HTTP handlers.
+COLLAB_ENGINE = create_async_engine(
+    _db_url,
+    future=True,
+    connect_args=_connect_args,
+    pool_size=5,
+    max_overflow=2,
+    pool_timeout=5,
+    pool_pre_ping=True,
 )
 
 if _db_url.startswith("sqlite"):
@@ -54,7 +68,14 @@ if _db_url.startswith("sqlite"):
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
+    @event.listens_for(COLLAB_ENGINE.sync_engine, "connect")
+    def _set_sqlite_pragma_collab(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 ArisSession = async_sessionmaker(ENGINE, expire_on_commit=False)
+CollabSession = async_sessionmaker(COLLAB_ENGINE, expire_on_commit=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

@@ -38,42 +38,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  backend-test:
-    build:
-      context: ..
-      dockerfile: docker/backend/Dockerfile.dev
-      target: dev
-    ports:
-      - "${BACKEND_TEST_PORT:?BACKEND_TEST_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
-      - "1235:1234"  # Different host port for test multiplayer to avoid conflict
-    volumes:
-      - ..:/workspace/studio
-      - ../../rsm:/workspace/rsm
-      - backend_test_venv:/workspace/studio/backend/.venv
-      - rsm_test_venv:/workspace/rsm/.venv
-      - /workspace/studio/multi-player/node_modules_test  # Prevent host/container conflicts
-      - /workspace/rsm/tree-sitter-rsm/node_modules  # Prevent host/container conflicts
-    working_dir: /workspace/studio/backend
-    environment:
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME}
-      - TEST_DB_NAME=${TEST_DB_NAME}
-      - ENV=TEST
-      - DB_URL_LOCAL=sqlite+aiosqlite:///./test_e2e.db
-      - ALEMBIC_DB_URL_LOCAL=sqlite+pysqlite:///./test_e2e.db
-      - TEST_USER_EMAIL=${TEST_USER_EMAIL}
-      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
-      - RESEND_API_KEY=your_resend_api_key_here  # Placeholder value disables email service
-      - FROM_EMAIL=noreply@test.local
-      - ADMIN_EMAIL=
-      - MULTIPLAYER_HOST=localhost
-      - MULTIPLAYER_PORT=1234
-      - YJS_DEBOUNCE_MS=2000
-      - FRONTEND_PORT=${FRONTEND_PORT}
-      - FRONTEND_TEST_PORT=${FRONTEND_TEST_PORT}
-      - SITE_PORT=${SITE_PORT}
-      - STORYBOOK_PORT=${STORYBOOK_PORT}
-    restart: unless-stopped
+  # backend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
+  # This mirrors production where containerized services receive external requests.
 
   frontend:
     build:
@@ -91,29 +57,7 @@ services:
       - VITE_ENV=${ENV:-local}
     command: npm run dev -- --host 0.0.0.0
 
-  frontend-test:
-    build:
-      context: ..
-      dockerfile: docker/frontend/Dockerfile.dev
-      target: dev
-    ports:
-      - "${FRONTEND_TEST_PORT:?FRONTEND_TEST_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules_test  # Separate node_modules for test frontend
-    environment:
-      - BACKEND_PORT=${BACKEND_PORT}
-      - FRONTEND_PORT=${FRONTEND_PORT}
-      - SITE_PORT=${SITE_PORT}
-      - STORYBOOK_PORT=${STORYBOOK_PORT}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
-      - TEST_DB_NAME=${TEST_DB_NAME}
-      - VITE_API_BASE_URL=http://localhost:${BACKEND_TEST_PORT}
-      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_TEST_URL}
-      - VITE_ENV=test
-      - NUXT_BACKEND_URL=http://localhost:${BACKEND_TEST_PORT}
-    command: npm run dev -- --host 0.0.0.0
+  # frontend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
 
   # collab service is now integrated into backend via supervisord
   # This mirrors production deployment where all services run in a single container
@@ -187,7 +131,5 @@ services:
 
 volumes:
   backend_venv:
-  backend_test_venv:
-  rsm_test_venv:
   site_node_modules:
   postgres_data:
