@@ -32,6 +32,7 @@ export class File {
       // UI state
       selected: rawData.selected || false,
       filtered: rawData.filtered || false,
+      unseen: rawData.unseen || false,
       isMountedAt: rawData.isMountedAt || null,
 
       // Rendered content
@@ -182,7 +183,32 @@ export class File {
    * @param {Object} file - The file object
    */
   static openFile(file, router) {
+    File.markSeen(file);
     router.push(`/file/${file.id}`);
+  }
+
+  static markSeen(file) {
+    if (!file.unseen) return;
+    file.unseen = false;
+    try {
+      const seen = JSON.parse(localStorage.getItem("seenFileIds") || "[]");
+      if (!seen.includes(file.id)) {
+        seen.push(file.id);
+        localStorage.setItem("seenFileIds", JSON.stringify(seen));
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+
+  static isUnseen(file) {
+    if (file.role === "OWNER") return false;
+    try {
+      const seen = JSON.parse(localStorage.getItem("seenFileIds") || "[]");
+      return !seen.includes(file.id);
+    } catch {
+      return false;
+    }
   }
 
   /**

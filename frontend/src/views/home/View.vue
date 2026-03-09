@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, computed, watchEffect } from "vue";
+  import { ref, inject, computed, watchEffect, onMounted, onUnmounted } from "vue";
   import { useRouter } from "vue-router";
   import { File } from "@/models/File.js";
   import FilesPane from "./FilesPane.vue";
@@ -7,12 +7,37 @@
   const fileStore = inject("fileStore");
   const router = useRouter();
 
-  // Trigger file/tag loading when navigating to home via SPA (store exists but not yet loaded)
+  const refreshFiles = () => {
+    if (!fileStore.value) return;
+    fileStore.value.loadFiles();
+    fileStore.value.loadTags();
+  };
+
+  // Load on first visit
   watchEffect(() => {
     if (fileStore.value && !fileStore.value.filesLoaded?.value) {
-      fileStore.value.loadFiles();
-      fileStore.value.loadTags();
+      refreshFiles();
     }
+  });
+
+  // Refresh when tab becomes visible again (e.g. user returns after receiving a share invitation)
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible" && fileStore.value?.filesLoaded?.value) {
+      refreshFiles();
+    }
+  };
+
+  onMounted(() => {
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    // Refresh on every navigation to home (not just first load)
+    if (fileStore.value?.filesLoaded?.value) {
+      refreshFiles();
+    }
+  });
+
+  onUnmounted(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
   // Recent files as context sub-items for Home

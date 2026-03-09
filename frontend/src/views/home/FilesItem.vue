@@ -335,12 +335,13 @@
 
     <template v-if="!!file">
       <template v-if="mode === 'cards'">
+        <span v-if="file.unseen" class="unseen-dot" aria-label="New shared file"></span>
         <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
       </template>
 
       <!-- List mode layout: displays file information in a grid row format -->
       <template v-if="mode === 'list'">
-        <div class="title-cell">
+        <div class="title-cell" :class="{ unseen: file.unseen }">
           <FileTitle ref="file-title-ref" :file="file" />
           <FilesItemRole :role="file.role" />
         </div>
@@ -448,6 +449,17 @@
       align-items: center;
       gap: 6px;
       overflow: hidden;
+      position: relative;
+    }
+
+    & .title-cell.unseen::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--blue-400);
+      flex-shrink: 0;
+      transition: opacity 0.3s ease;
     }
 
     & .file-title {
@@ -498,6 +510,17 @@
     &:is(.hovered, .current) .minimap-cell :deep(.mm-annotation) {
       color: var(--blue-400);
     }
+  }
+
+  .unseen-dot {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--blue-400);
+    z-index: 1;
   }
 
   .item.cards {

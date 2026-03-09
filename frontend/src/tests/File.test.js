@@ -111,6 +111,52 @@ describe("File", () => {
     });
   });
 
+  describe("Unseen tracking", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    describe("isUnseen", () => {
+      it("returns false for OWNER files", () => {
+        expect(File.isUnseen({ id: 1, role: "OWNER" })).toBe(false);
+      });
+
+      it("returns true for shared files not yet seen", () => {
+        expect(File.isUnseen({ id: 1, role: "EDITOR" })).toBe(true);
+      });
+
+      it("returns false for shared files already seen", () => {
+        localStorage.setItem("seenFileIds", JSON.stringify([1]));
+        expect(File.isUnseen({ id: 1, role: "EDITOR" })).toBe(false);
+      });
+    });
+
+    describe("markSeen", () => {
+      it("clears unseen flag and persists to localStorage", () => {
+        const file = { id: 42, unseen: true };
+        File.markSeen(file);
+
+        expect(file.unseen).toBe(false);
+        expect(JSON.parse(localStorage.getItem("seenFileIds"))).toContain(42);
+      });
+
+      it("does nothing if file is not unseen", () => {
+        const file = { id: 42, unseen: false };
+        File.markSeen(file);
+
+        expect(localStorage.getItem("seenFileIds")).toBeNull();
+      });
+
+      it("does not duplicate IDs in localStorage", () => {
+        localStorage.setItem("seenFileIds", JSON.stringify([42]));
+        const file = { id: 42, unseen: true };
+        File.markSeen(file);
+
+        expect(JSON.parse(localStorage.getItem("seenFileIds"))).toEqual([42]);
+      });
+    });
+  });
+
   describe("Static Methods", () => {
     describe("update", () => {
       it("updates file properties and queues sync", async () => {
@@ -290,11 +336,21 @@ describe("File", () => {
 
     describe("openFile", () => {
       it("navigates to file route", () => {
-        const file = { id: "test-id" };
+        const file = { id: "test-id", unseen: false };
 
         File.openFile(file, mockRouter);
 
         expect(mockRouter.push).toHaveBeenCalledWith("/file/test-id");
+      });
+
+      it("marks unseen file as seen on open", () => {
+        localStorage.clear();
+        const file = { id: "test-id", unseen: true };
+
+        File.openFile(file, mockRouter);
+
+        expect(file.unseen).toBe(false);
+        expect(JSON.parse(localStorage.getItem("seenFileIds"))).toContain("test-id");
       });
     });
 

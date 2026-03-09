@@ -15,8 +15,7 @@
         v-for="(collab, i) in file.collaborators.slice(0, maxVisible)"
         :key="collab.id"
         :user="collab"
-        size="sm"
-        :style="i > 0 ? { marginLeft: '-4px' } : {}"
+        :style="i > 0 ? { marginLeft: '-8px' } : {}"
       />
       <span v-if="file.collaborators.length > maxVisible" class="overflow-pill">
         +{{ file.collaborators.length - maxVisible }}

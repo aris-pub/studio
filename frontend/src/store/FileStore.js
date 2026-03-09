@@ -43,6 +43,7 @@ export function createFileStore(api, user) {
             ...newFile,
             filtered: existingFile ? existingFile.filtered : false,
             selected: existingFile ? existingFile.selected : false,
+            unseen: existingFile ? existingFile.unseen : File.isUnseen(newFile),
             isMountedAt: existingFile ? existingFile.isMountedAt : false,
             html: existingFile ? existingFile.html : false,
             ownerId: user.id,
