@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ref, defineComponent } from "vue";
 import { mount } from "@vue/test-utils";
 
@@ -23,10 +23,14 @@ const Icon = defineComponent({
   template: "<span />",
 });
 
-function mountIcon(file) {
+function mountIcon(file, { reactionActions, reactions } = {}) {
   return mount(FeedbackIcon, {
     global: {
-      provide: { file },
+      provide: {
+        file,
+        ...(reactionActions && { reactionActions }),
+        ...(reactions && { reactions }),
+      },
       stubs: { ContextMenu, ContextMenuItem, Separator, Icon },
     },
   });
@@ -102,5 +106,64 @@ describe("FeedbackIcon.vue", () => {
 
     wrapper.unmount();
     expect(Object.keys(file.value.icons)).toHaveLength(0);
+  });
+
+  it("calls upsertReaction when data-nodeid is on the .hr element itself", async () => {
+    const upsertReaction = vi.fn();
+    const deleteReaction = vi.fn();
+
+    const container = document.createElement("div");
+    container.innerHTML = '<div class="hr" data-nodeid="para-7"><div class="hr-info"></div></div>';
+    document.body.appendChild(container);
+    const hrInfo = container.querySelector(".hr-info");
+
+    const wrapper = mount(FeedbackIcon, {
+      attachTo: hrInfo,
+      global: {
+        provide: {
+          file,
+          reactionActions: { upsertReaction, deleteReaction },
+          reactions: ref([]),
+        },
+        stubs: { ContextMenu, ContextMenuItem, Separator, Icon },
+      },
+    });
+
+    await wrapper.findAll(".item")[0].trigger("click");
+    expect(upsertReaction).toHaveBeenCalledWith("para-7", "bookmark");
+
+    container.remove();
+    wrapper.unmount();
+  });
+
+  it("calls deleteReaction when deselecting a reaction", async () => {
+    const upsertReaction = vi.fn();
+    const deleteReaction = vi.fn();
+
+    const container = document.createElement("div");
+    container.innerHTML = '<div class="hr" data-nodeid="para-8"><div class="hr-info"></div></div>';
+    document.body.appendChild(container);
+    const hrInfo = container.querySelector(".hr-info");
+
+    const wrapper = mount(FeedbackIcon, {
+      attachTo: hrInfo,
+      global: {
+        provide: {
+          file,
+          reactionActions: { upsertReaction, deleteReaction },
+          reactions: ref([]),
+        },
+        stubs: { ContextMenu, ContextMenuItem, Separator, Icon },
+      },
+    });
+
+    await wrapper.findAll(".item")[0].trigger("click");
+    expect(upsertReaction).toHaveBeenCalledWith("para-8", "bookmark");
+
+    await wrapper.findAll(".item")[0].trigger("click");
+    expect(deleteReaction).toHaveBeenCalledWith("para-8");
+
+    container.remove();
+    wrapper.unmount();
   });
 });

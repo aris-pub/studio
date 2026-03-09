@@ -47,8 +47,10 @@
     if (nodeId) return nodeId;
     const hr = selfRef.value?.closest(".hr");
     if (!hr) return null;
-    const el = hr.querySelector("[data-nodeid]");
-    nodeId = el?.getAttribute("data-nodeid") || null;
+    nodeId =
+      hr.getAttribute("data-nodeid") ||
+      hr.querySelector("[data-nodeid]")?.getAttribute("data-nodeid") ||
+      null;
     return nodeId;
   }
 

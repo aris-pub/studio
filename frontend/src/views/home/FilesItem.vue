@@ -77,12 +77,16 @@
         }
       }
 
-      // 2. Load annotations for minimap display
-      const annResponse = await api
-        .get("/annotations/", { params: { file_id: fileId } })
-        .catch(() => null);
+      // 2. Load annotations and reactions for minimap display
+      const [annResponse, rxnResponse] = await Promise.all([
+        api.get("/annotations/", { params: { file_id: fileId } }).catch(() => null),
+        api.get("/reactions/", { params: { file_id: fileId } }).catch(() => null),
+      ]);
       if (Array.isArray(annResponse?.data)) {
         file.value.annotations = annResponse.data;
+      }
+      if (Array.isArray(rxnResponse?.data)) {
+        file.value.reactions = rxnResponse.data;
       }
 
       // 3. Load file assets to show thumbnail/preview indicators
@@ -168,8 +172,10 @@
   // compute marks from a hidden rendered copy of the file HTML.
   const manuscriptRef = useTemplateRef("manuscript-ref");
   const fileAnnotations = computed(() => file.value?.annotations || []);
+  const fileReactions = computed(() => file.value?.reactions || []);
   provide("manuscriptRef", manuscriptRef);
   provide("annotations", fileAnnotations);
+  provide("reactions", fileReactions);
 
   // State
   const hovered = ref(false);
@@ -490,7 +496,6 @@
     &:is(.hovered, .current) .minimap-cell :deep(.mm-annotation) {
       color: var(--blue-400);
     }
-
   }
 
   .item.cards {

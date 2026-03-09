@@ -524,7 +524,8 @@
     background-color: var(--gray-500);
   }
 
-  .scrollbar-minimap.horizontal .mm-annotation {
+  .scrollbar-minimap.horizontal .mm-annotation,
+  .scrollbar-minimap.horizontal .mm-feedback {
     top: 50%;
     transform: translate(-50%, -50%);
   }
