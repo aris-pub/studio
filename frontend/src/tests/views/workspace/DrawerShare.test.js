@@ -92,6 +92,11 @@ describe("DrawerShare", () => {
             template: '<span class="avatar-stub" />',
             props: ["user", "size", "tooltip"],
           },
+          Badge: {
+            name: "Badge",
+            template: '<span class="badge"><slot /></span>',
+            props: ["variant", "size"],
+          },
           BaseInput: {
             name: "BaseInput",
             template: `<div class="base-input-stub">
@@ -165,8 +170,8 @@ describe("DrawerShare", () => {
 
     it("displays Owner role badge", () => {
       wrapper = createWrapper();
-      const role = wrapper.find(".person-role");
-      expect(role.text()).toBe("Owner");
+      const badge = wrapper.find(".badge");
+      expect(badge.text()).toBe("Owner");
     });
 
     it("falls back to email when name is missing", () => {
@@ -231,7 +236,7 @@ describe("DrawerShare", () => {
       const rows = wrapper.findAll(".person-row");
       expect(rows).toHaveLength(2);
       expect(rows[1].find(".person-name").text()).toBe("Bob Smith");
-      expect(rows[1].find(".person-role").text()).toBe("Editor");
+      expect(rows[1].find(".badge").text()).toBe("Editor");
     });
 
     it("uses Avatar for collaborator rows", async () => {

@@ -184,7 +184,7 @@
             :tooltip="false"
           />
           <span class="person-name">{{ ownerName }}</span>
-          <span class="person-role">Owner</span>
+          <Badge>Owner</Badge>
         </div>
 
         <!-- Collaborator rows -->
@@ -199,7 +199,7 @@
             :tooltip="false"
           />
           <span class="person-name">{{ collab.user_name || collab.user_email }}</span>
-          <span class="person-role">{{ collab.role === "EDITOR" ? "Editor" : "Viewer" }}</span>
+          <Badge>{{ collab.role === "EDITOR" ? "Editor" : "Viewer" }}</Badge>
           <button
             v-if="isOwner"
             class="person-remove"
@@ -301,13 +301,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .person-role {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-    flex-shrink: 0;
   }
 
   .person-remove {

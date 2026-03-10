@@ -281,7 +281,7 @@
                 />
               </div>
               <div class="version-meta">
-                <span class="version-number">v{{ version.version_number }}</span>
+                <Badge size="xs" variant="info">v{{ version.version_number }}</Badge>
                 <span class="version-date">{{ formatDate(version.created_at) }}</span>
               </div>
             </div>
@@ -383,13 +383,6 @@
 
   .version-header {
     margin-bottom: 6px;
-  }
-
-  .version-number {
-    font-weight: 500;
-    color: var(--color-text-tertiary);
-    font-size: 12px;
-    flex-shrink: 0;
   }
 
   .version-name {

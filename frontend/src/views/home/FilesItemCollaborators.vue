@@ -17,9 +17,9 @@
         :user="collab"
         :style="i > 0 ? { marginLeft: '-8px' } : {}"
       />
-      <span v-if="file.collaborators.length > maxVisible" class="overflow-pill">
+      <Badge v-if="file.collaborators.length > maxVisible" size="xs" class="overflow-pill">
         +{{ file.collaborators.length - maxVisible }}
-      </span>
+      </Badge>
     </template>
   </div>
 </template>
@@ -32,12 +32,5 @@
 
   .overflow-pill {
     margin-left: 4px;
-    font-size: 11px;
-    color: var(--gray-600);
-    background: var(--gray-100);
-    border-radius: 8px;
-    padding: 1px 5px;
-    white-space: nowrap;
-    line-height: 1;
   }
 </style>

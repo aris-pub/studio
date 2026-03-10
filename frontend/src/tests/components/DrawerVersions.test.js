@@ -104,6 +104,11 @@ describe("DrawerVersions", () => {
             template: '<div class="context-menu"><slot></slot></div>',
           },
           ContextMenuItem: true,
+          Badge: {
+            name: "Badge",
+            template: '<span class="badge"><slot /></span>',
+            props: ["variant", "size"],
+          },
         },
       },
     });
@@ -161,7 +166,7 @@ describe("DrawerVersions", () => {
 
     it("displays version number and name", () => {
       const firstVersion = wrapper.findAll(".version-item")[0];
-      expect(firstVersion.find(".version-number").text()).toBe("v1");
+      expect(firstVersion.find(".badge").text()).toBe("v1");
 
       const editableText = firstVersion.findComponent(EditableText);
       expect(editableText.exists()).toBe(true);
@@ -170,7 +175,7 @@ describe("DrawerVersions", () => {
 
     it("displays version number with EditableText for versions without names", () => {
       const thirdVersion = wrapper.findAll(".version-item")[2];
-      expect(thirdVersion.find(".version-number").text()).toBe("v3");
+      expect(thirdVersion.find(".badge").text()).toBe("v3");
 
       const editableText = thirdVersion.findComponent(EditableText);
       expect(editableText.exists()).toBe(true);

@@ -239,6 +239,57 @@
         <ButtonToggle :model-value="false" text="Inactive" active-color="purple" />
       </div>
     </section>
+
+    <h1 style="margin-top: 48px">Badge Debug</h1>
+
+    <!-- ── Badge: variants ── -->
+    <section>
+      <h2>Badge — Variants</h2>
+      <div class="row">
+        <span class="label">sm</span>
+        <Badge>Neutral</Badge>
+        <Badge variant="info">Info</Badge>
+        <Badge variant="success">Success</Badge>
+        <Badge variant="warning">Warning</Badge>
+        <Badge variant="danger">Danger</Badge>
+      </div>
+      <div class="row">
+        <span class="label">xs</span>
+        <Badge size="xs">Neutral</Badge>
+        <Badge size="xs" variant="info">Info</Badge>
+        <Badge size="xs" variant="success">Success</Badge>
+        <Badge size="xs" variant="warning">Warning</Badge>
+        <Badge size="xs" variant="danger">Danger</Badge>
+      </div>
+    </section>
+
+    <!-- ── Badge: real-world ── -->
+    <section>
+      <h2>Badge — Real-World Usage</h2>
+      <div class="row">
+        <span class="label">roles</span>
+        <Badge>Owner</Badge>
+        <Badge>Editor</Badge>
+        <Badge>Viewer</Badge>
+      </div>
+      <div class="row">
+        <span class="label">counts</span>
+        <Badge size="xs">+3</Badge>
+        <Badge size="xs">+12</Badge>
+      </div>
+      <div class="row">
+        <span class="label">versions</span>
+        <Badge variant="info">v1</Badge>
+        <Badge variant="info">v2</Badge>
+        <Badge variant="info">v14</Badge>
+      </div>
+      <div class="row">
+        <span class="label">status</span>
+        <Badge variant="success">Online</Badge>
+        <Badge variant="danger">Offline</Badge>
+        <Badge variant="warning">Syncing</Badge>
+      </div>
+    </section>
   </div>
 </template>
 
