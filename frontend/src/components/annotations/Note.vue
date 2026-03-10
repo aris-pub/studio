@@ -1,6 +1,5 @@
 <script setup>
   import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
-  import { IconTrash } from "@tabler/icons-vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
   const props = defineProps({
@@ -202,15 +201,15 @@
           aria-label="Edit annotation"
           @click.stop="onEdit"
         />
-        <button
+        <Button
+          kind="danger-ghost"
+          size="sm"
+          icon="Trash"
           class="delete-btn"
           :class="{ confirming: confirmingDelete }"
           :aria-label="confirmingDelete ? 'Confirm delete' : 'Delete annotation'"
           @click.stop="onDeleteClick"
-        >
-          <IconTrash v-if="!confirmingDelete" class="delete-icon" />
-          <span v-else class="delete-label">Delete</span>
-        </button>
+        />
         <Button
           v-if="note"
           kind="tertiary"
@@ -335,55 +334,6 @@
     & > * {
       opacity: 0;
       transition: opacity 0.2s ease;
-    }
-
-    & :deep(button):not(.delete-btn) {
-      width: 24px;
-      height: 24px;
-    }
-
-    & :deep(.tabler-icon) {
-      color: var(--gray-700);
-      margin: 0 !important;
-      stroke-width: 1.5;
-    }
-  }
-
-  .delete-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 24px;
-    min-width: 24px;
-    padding: 0;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    cursor: pointer;
-    transition:
-      opacity 0.2s ease,
-      min-width 0.15s ease,
-      background-color 0.15s ease,
-      padding 0.15s ease;
-
-    &:hover {
-      background-color: var(--surface-hint);
-      box-shadow: var(--shadow-strong);
-    }
-
-    &:hover .delete-icon {
-      color: var(--almost-black);
-    }
-
-    &.confirming {
-      min-width: 52px;
-      padding: 0 8px;
-      background-color: var(--red-100);
-    }
-
-    &.confirming:hover {
-      background-color: var(--red-200);
-      box-shadow: var(--shadow-strong);
     }
   }
 

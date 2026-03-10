@@ -22,8 +22,8 @@
     o: true,
   });
 
-  const kinds = ["primary", "secondary", "tertiary", "danger"];
-  const sizes = ["sm", "md", "lg"];
+  const kinds = ["primary", "secondary", "tertiary", "danger", "danger-ghost"];
+  const sizes = ["xs", "sm", "md", "lg"];
 </script>
 
 <template>

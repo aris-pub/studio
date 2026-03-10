@@ -180,8 +180,8 @@ describe("Note.vue — WCAG AA contrast for card hierarchy (std-nn1a)", () => {
     expect(noteStyle).toMatch(/\.timestamp[\s\S]*?letter-spacing:\s*0\.06em/);
   });
 
-  it("action icons use gray-700 (not gray-500)", () => {
-    expect(noteStyle).toMatch(/\.tabler-icon[\s\S]*?color:\s*var\(--gray-700\)/);
+  it("action icons inherit color from Button component variants", () => {
+    expect(noteStyle).not.toMatch(/\.actions[\s\S]*?\.tabler-icon[\s\S]*?color:/);
   });
 
   it("delete icon uses gray-700", () => {

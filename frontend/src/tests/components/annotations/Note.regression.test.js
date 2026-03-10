@@ -169,18 +169,14 @@ describe("Note.vue — card structure (std-fv7e)", () => {
 });
 
 describe("Note.vue — delete confirmation pill (std-t3dj)", () => {
-  it("first click shows delete label, not trash icon", async () => {
+  it("first click arms confirmation (adds confirming class)", async () => {
     const { wrapper } = createWrapper(makeAnnotation());
     const deleteBtn = wrapper.find(".delete-btn");
-    expect(deleteBtn.find(".delete-icon").exists()).toBe(true);
-    expect(deleteBtn.find(".delete-label").exists()).toBe(false);
 
     await deleteBtn.trigger("click");
     await nextTick();
 
-    expect(wrapper.find(".delete-icon").exists()).toBe(false);
-    expect(wrapper.find(".delete-label").exists()).toBe(true);
-    expect(wrapper.find(".delete-label").text()).toBe("Delete");
+    expect(deleteBtn.classes()).toContain("confirming");
   });
 
   it("delete button has .confirming class after first click", async () => {
@@ -233,7 +229,6 @@ describe("Note.vue — delete confirmation pill (std-t3dj)", () => {
     await nextTick();
 
     expect(deleteBtn.classes()).not.toContain("confirming");
-    expect(wrapper.find(".delete-icon").exists()).toBe(true);
     vi.useRealTimers();
   });
 });

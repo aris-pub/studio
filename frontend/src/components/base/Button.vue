@@ -40,7 +40,8 @@
     kind: {
       type: String,
       required: true,
-      validator: (value) => ["primary", "secondary", "tertiary", "danger"].includes(value),
+      validator: (value) =>
+        ["primary", "secondary", "tertiary", "danger", "danger-ghost"].includes(value),
     },
 
     /**
@@ -50,7 +51,7 @@
     size: {
       type: String,
       default: "md",
-      validator: (value) => ["sm", "md", "lg"].includes(value),
+      validator: (value) => ["xs", "sm", "md", "lg"].includes(value),
     },
 
     /**
@@ -146,7 +147,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     text-wrap: nowrap;
     outline: none;
     border: var(--bw) solid transparent;
@@ -168,6 +169,21 @@
   }
 
   /* ── Sizes ── */
+  button.btn-xs {
+    border-radius: 6px;
+    padding: 0;
+
+    & .btn-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    & .btn-text,
+    & .btn-float-label {
+      display: none;
+    }
+  }
+
   button.btn-sm {
     --v: calc(4px - var(--bw));
     --h: calc(8px - var(--bw));
@@ -324,11 +340,33 @@
     color: var(--almost-black);
   }
 
+  button.danger-ghost {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--extra-dark);
+
+    &:not(:disabled):hover {
+      background-color: var(--red-100);
+      color: var(--red-700);
+      box-shadow: var(--shadow-strong);
+    }
+
+    &:not(:disabled):hover .btn-icon {
+      color: var(--red-700);
+    }
+  }
+
+  button.danger-ghost:not(:disabled):active {
+    background-color: var(--red-200);
+    color: var(--red-800);
+  }
+
   /* ── Disabled ── */
   button.primary:disabled,
   button.secondary:disabled,
   button.tertiary:disabled,
-  button.danger:disabled {
+  button.danger:disabled,
+  button.danger-ghost:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;

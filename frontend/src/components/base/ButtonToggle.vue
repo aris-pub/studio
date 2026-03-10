@@ -72,7 +72,7 @@
 
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     border: var(--bw) solid transparent;
     background-color: transparent;
     outline: none;
@@ -132,6 +132,20 @@
   }
 
   /* ── Sizes ── */
+  button.btn-xs {
+    border-radius: 6px;
+    padding: 0;
+
+    & .btn-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    & .btn-text {
+      display: none;
+    }
+  }
+
   button.btn-sm {
     --v: calc(4px - var(--bw));
     --h: calc(8px - var(--bw));

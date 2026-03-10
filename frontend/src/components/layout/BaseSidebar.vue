@@ -133,6 +133,7 @@
       text: mobileMode.value || collapsed.value ? "" : "New File",
       placement: mobileMode.value ? "top-end" : "bottom",
       kind: "primary",
+      size: "lg",
       class: collapsed.value ? "collapsed" : "",
     };
   });
@@ -168,7 +169,7 @@
           :placement="ctaAttrs.placement"
         >
           <template #trigger="{ toggle }">
-            <Button :icon="'CirclePlus'" v-bind="ctaAttrs" @click="toggle" />
+            <Button :icon="'CirclePlus'" v-bind="ctaAttrs" class="cta-btn" @click="toggle" />
           </template>
           <ContextMenuItem icon="File" caption="Empty file" @click="emit('newEmptyFile')" />
           <ContextMenuItem icon="Upload" caption="Upload" @click="emit('showFileUploadModal')" />
@@ -225,7 +226,7 @@
           :placement="ctaAttrs.placement"
         >
           <template #trigger="{ toggle }">
-            <Button :icon="'CirclePlus'" v-bind="ctaAttrs" @click="toggle" />
+            <Button :icon="'CirclePlus'" v-bind="ctaAttrs" class="cta-btn" @click="toggle" />
           </template>
           <ContextMenuItem icon="File" caption="Empty file" @click="emit('newEmptyFile')" />
           <ContextMenuItem icon="Upload" caption="Upload" @click="emit('showFileUploadModal')" />
@@ -277,7 +278,7 @@
         :placement="ctaAttrs.placement"
       >
         <template #trigger="{ toggle }">
-          <Button :icon="'CirclePlus'" v-bind="ctaAttrs" @click="toggle" />
+          <Button :icon="'CirclePlus'" v-bind="ctaAttrs" class="cta-btn" @click="toggle" />
         </template>
         <ContextMenuItem icon="File" caption="Empty file" @click="emit('newEmptyFile')" />
         <ContextMenuItem icon="Upload" caption="Upload" @click="emit('showFileUploadModal')" />
@@ -314,13 +315,6 @@
       width: 100%;
     }
 
-    & .cta > .cm-wrapper :deep(button) {
-      padding-left: 24px !important;
-      padding-right: 30px !important;
-      width: 100%;
-      gap: 0px;
-    }
-
     & > #logo img {
       height: 64px;
       margin: 8px 0 0 6px;
@@ -355,9 +349,6 @@
       padding-inline: 8px;
     }
 
-    & > .cta > .cm-wrapper > :deep(button) {
-      width: 48px;
-    }
   }
 
   .sb-wrapper:not(.mobile) {
@@ -497,9 +488,7 @@
     margin-top: 2px;
   }
 
-  .sb-menu > *,
-  .cta > .cm-wrapper > :deep(button) {
-    gap: 4px;
+  .sb-menu > * {
     text-wrap: nowrap;
     white-space: nowrap;
   }
@@ -514,35 +503,24 @@
     transition: padding-inline 0.2s ease 0.1s;
   }
 
-  .cta:not(.mobile) > .cm-wrapper > :deep(button:has(> .btn-text)) {
-  }
+  .cta :deep(.cta-btn) {
+    background-color: var(--primary-500);
+    border-color: var(--primary-500);
+    color: white;
 
-  .cta > .cm-wrapper > :deep(button) {
-    overflow-x: hidden;
-    transition:
-      width var(--transition-duration) ease,
-      padding var(--transition-duration) ease;
-  }
+    &:not(:disabled):hover {
+      background-color: var(--primary-600);
+      border-color: var(--primary-600);
+    }
 
-  .cta > .cm-wrapper > :deep(button > .btn-text) {
-    max-width: calc(var(--sidebar-width) - 16px - 32px);
-    opacity: 1;
-    transition:
-      opacity var(--transition-duration) ease,
-      width var(--transition-duration) ease,
-      max-width var(--transition-duration) ease;
-  }
+    &:not(:disabled):active {
+      background-color: var(--primary-700);
+      border-color: var(--primary-700);
+    }
 
-  .cta > .cm-wrapper > :deep(button.collapsed > .btn-text) {
-    width: 0;
-    opacity: 0;
-    max-width: 0;
-  }
-
-  /* Overwrite Button padding so collapsing transition works well */
-  .cta > .cm-wrapper > :deep(button.collapsed) {
-    padding: calc(8px - var(--border-thin)) !important;
-    gap: 0px;
+    & .btn-icon {
+      color: white;
+    }
   }
 
   .sc-wrapper {
