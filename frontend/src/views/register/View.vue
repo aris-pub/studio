@@ -95,6 +95,7 @@
           <Button
             data-testid="register-button"
             kind="primary"
+            block
             text="Register"
             @click="onRegister"
           />
@@ -167,14 +168,6 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-  }
-
-  .right .bottom button {
-    width: 100%;
-
-    & :deep(.btn-text) {
-      margin: 0 auto;
-    }
   }
 
   .input-text :deep(label) {

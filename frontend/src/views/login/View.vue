@@ -91,6 +91,7 @@
             ref="loginButton"
             data-testid="login-button"
             kind="primary"
+            block
             :text="isLoading ? 'Logging in...' : 'Login'"
             :disabled="isLoading"
             @click="onLogin"
@@ -98,6 +99,7 @@
           <Button
             data-testid="register-link"
             kind="secondary"
+            block
             text="Register"
             @click="router.push('/register')"
           />
@@ -169,21 +171,7 @@
     gap: 16px;
   }
 
-  .right .bottom button {
-    width: 100%;
-    min-height: 44px;
-
-    & :deep(.btn-text) {
-      margin: 0 auto;
-    }
-  }
-
   @media (max-width: 640px) {
-    .right .bottom button {
-      min-height: 48px;
-      font-size: 16px;
-    }
-
     .right .bottom {
       gap: 20px;
     }

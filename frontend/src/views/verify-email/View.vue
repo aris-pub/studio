@@ -77,6 +77,7 @@
               ref="primaryButtonRef"
               data-testid="cta-primary"
               kind="primary"
+              block
               :text="ctaLabel"
               @click="navigateCta"
             />
@@ -105,6 +106,7 @@
               ref="primaryButtonRef"
               data-testid="cta-primary"
               kind="primary"
+              block
               :text="ctaLabel"
               @click="navigateCta"
             />
@@ -131,12 +133,14 @@
               ref="primaryButtonRef"
               data-testid="cta-primary"
               kind="primary"
+              block
               text="Go to account settings"
               @click="router.push('/account')"
             />
             <Button
               data-testid="cta-secondary"
               kind="secondary"
+              block
               text="Go to home"
               @click="router.push('/')"
             />
@@ -214,12 +218,4 @@
     gap: 16px;
   }
 
-  .actions :deep(button) {
-    width: 100%;
-    min-height: 44px;
-  }
-
-  .actions :deep(.btn-text) {
-    margin: 0 auto;
-  }
 </style>

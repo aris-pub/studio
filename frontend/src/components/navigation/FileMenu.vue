@@ -76,10 +76,10 @@
 
   const comp = computed(() => (props.mode === "ContextMenu" ? "ContextMenuItem" : "Button"));
   const menuComponent = computed(() => (props.mode === "ContextMenu" ? ContextMenu : "div"));
-  const childProps = (icon, caption) => {
-    if (props.mode === "ContextMenu") return { icon: icon, caption: caption };
+  const childProps = (icon, caption, { kind } = {}) => {
+    if (props.mode === "ContextMenu") return { icon, caption };
     else if (props.mode === "ButtonRow")
-      return { icon: icon, caption: caption, kind: "tertiary", size: "sm", textFloat: "bottom" };
+      return { icon, caption, kind: kind || "tertiary", size: "sm", textFloat: "bottom" };
   };
 
   const menuRef = useTemplateRef("menu-ref");
@@ -127,8 +127,8 @@
       />
       <component
         :is="comp"
-        v-bind="childProps('TrashX', 'Delete')"
-        class="danger"
+        v-bind="childProps('TrashX', 'Delete', { kind: 'danger-ghost' })"
+        :class="{ danger: mode === 'ContextMenu' }"
         data-testid="file-menu-delete"
         @click.stop="emit('delete')"
       />
@@ -149,18 +149,4 @@
     height: 32px;
   }
 
-  :deep(.danger) {
-    color: var(--text-error);
-  }
-  :deep(.danger:hover) {
-    background-color: var(--surface-error) !important;
-    color: var(--text-error);
-    border-color: var(--surface-error) !important;
-  }
-  :deep(.danger) .tabler-icon {
-    color: var(--icon-error);
-  }
-  :deep(.danger:hover) .tabler-icon {
-    color: var(--icon-error);
-  }
 </style>

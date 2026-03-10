@@ -97,6 +97,15 @@
       type: Boolean,
       default: false,
     },
+
+    /**
+     * Full-width button with centered text and accessible min-height (44px).
+     * Use for auth forms, modals, and other stacked-button layouts.
+     */
+    block: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const btnRef = useTemplateRef("btn-ref");
@@ -112,7 +121,7 @@
   <button
     ref="btn-ref"
     :disabled="disabled"
-    :class="[kind, `btn-${size}`, shadow ? 'with-shadow' : '', disabled ? 'disabled' : '']"
+    :class="[kind, `btn-${size}`, shadow ? 'with-shadow' : '', disabled ? 'disabled' : '', block ? 'btn-block' : '']"
     v-bind="$attrs"
   >
     <template v-if="icon">
@@ -256,6 +265,20 @@
     }
     &:not(:has(.btn-icon)):not(:has(.btn-text)) {
       padding: var(--v);
+    }
+  }
+
+  /* ── Block ── */
+  button.btn-block {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  @media (max-width: 640px) {
+    button.btn-block {
+      min-height: 48px;
+      font-size: 16px;
     }
   }
 

@@ -240,6 +240,16 @@
       </div>
     </section>
 
+    <!-- ── Block buttons ── -->
+    <section>
+      <h2>Block Buttons (auth form style)</h2>
+      <div style="max-width: 384px; display: flex; flex-direction: column; gap: 16px">
+        <Button kind="primary" block text="Login" />
+        <Button kind="secondary" block text="Register" />
+        <Button kind="primary" block text="Logging in..." disabled />
+      </div>
+    </section>
+
     <h1 style="margin-top: 48px">Badge Debug</h1>
 
     <!-- ── Badge: variants ── -->
