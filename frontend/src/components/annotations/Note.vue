@@ -1,6 +1,7 @@
 <script setup>
   import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
+  import Avatar from "@/components/base/Avatar.vue";
 
   const props = defineProps({
     annotation: { type: Object, required: true },
@@ -38,9 +39,19 @@
   const editText = ref("");
   const editInput = ref(null);
   const confirmingDelete = ref(false);
+  const confirmingShare = ref(false);
   let deleteTimeout = null;
+  let shareTimeout = null;
   const annotationActions = inject("annotationActions", null);
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
+  const user = inject("user", ref(null));
+
+  const isShared = computed(() => props.annotation.visibility === "shared");
+  const isOwnAnnotation = computed(() => {
+    const userId = user.value?.id;
+    return userId && props.annotation.owner_id === userId;
+  });
+  const annotationOwner = computed(() => props.annotation.owner);
 
   const isActive = computed(() => activeAnnotationId.value === props.annotation.id);
 
@@ -48,6 +59,23 @@
     const msgs = props.annotation.messages?.filter((m) => !m.deleted_at);
     return msgs?.length ? msgs[0] : null;
   });
+
+  const threadMessages = computed(() => {
+    return props.annotation.messages?.filter((m) => !m.deleted_at) || [];
+  });
+
+  const replyText = ref("");
+  const replyInput = ref(null);
+
+  async function onPostReply() {
+    if (!annotationActions || !replyText.value.trim()) return;
+    try {
+      await annotationActions.addNote(props.annotation.id, replyText.value.trim());
+      replyText.value = "";
+    } catch (err) {
+      console.error("Failed to post reply:", err);
+    }
+  }
 
   const barColor = computed(() => {
     const colors = HIGHLIGHT_COLORS[props.annotation.color] || HIGHLIGHT_COLORS.purple;
@@ -168,11 +196,45 @@
 
   const noteRef = useTemplateRef("note-ref");
   watch(isActive, (active) => {
-    if (active)
-      nextTick(() => noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }));
+    if (active) {
+      nextTick(() => {
+        noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+        if (isShared.value) nextTick(() => replyInput.value?.focus());
+      });
+    }
   });
 
-  onUnmounted(() => clearTimeout(deleteTimeout));
+  let shareArmedAt = 0;
+
+  function onShareClick() {
+    if (confirmingShare.value) {
+      if (Date.now() - shareArmedAt < DEBOUNCE_MS) return;
+      onShare();
+      confirmingShare.value = false;
+      clearTimeout(shareTimeout);
+    } else {
+      confirmingShare.value = true;
+      shareArmedAt = Date.now();
+      clearTimeout(shareTimeout);
+      shareTimeout = setTimeout(() => {
+        confirmingShare.value = false;
+      }, 3000);
+    }
+  }
+
+  async function onShare() {
+    if (!annotationActions) return;
+    try {
+      await annotationActions.updateAnnotation(props.annotation.id, { visibility: "shared" });
+    } catch (err) {
+      console.error("Failed to share annotation:", err);
+    }
+  }
+
+  onUnmounted(() => {
+    clearTimeout(deleteTimeout);
+    clearTimeout(shareTimeout);
+  });
 </script>
 
 <template>
@@ -183,6 +245,7 @@
       active: isActive && !editing,
       editing,
       collapsed: collapsed && note,
+      shared: isShared,
       'search-match': searchMatch,
       'search-match-current': searchMatchCurrent,
     }"
@@ -192,9 +255,26 @@
     @keydown.esc="onEsc"
   >
     <div class="header">
+      <Avatar
+        v-if="isShared && annotationOwner"
+        :user="annotationOwner"
+        size="sm"
+        :tooltip="true"
+      />
+      <span v-if="isShared" class="shared-label">Shared</span>
       <span class="timestamp">{{ timeAgo }}</span>
       <div class="actions">
         <Button
+          v-if="isOwnAnnotation && !isShared"
+          :kind="confirmingShare ? 'primary' : 'tertiary'"
+          size="xs"
+          :icon="confirmingShare ? '' : 'MessageShare'"
+          :text="confirmingShare ? 'Share' : ''"
+          :aria-label="confirmingShare ? 'Confirm share' : 'Share annotation'"
+          @click.stop="onShareClick"
+        />
+        <Button
+          v-if="isOwnAnnotation"
           kind="tertiary"
           size="xs"
           icon="Edit"
@@ -202,6 +282,7 @@
           @click.stop="onEdit"
         />
         <Button
+          v-if="isOwnAnnotation"
           :kind="confirmingDelete ? 'danger' : 'danger-ghost'"
           size="xs"
           :icon="confirmingDelete ? '' : 'Trash'"
@@ -244,6 +325,37 @@
           <Button kind="primary" size="sm" @click.stop="onSaveEdit">Save</Button>
         </div>
       </div>
+
+      <template v-else-if="isShared">
+        <div v-for="msg in threadMessages" :key="msg.id" class="message message--threaded">
+          <Avatar v-if="msg.owner" :user="msg.owner" size="sm" :tooltip="true" />
+          <p class="note-text" v-html="highlightMatch(msg.content)"></p>
+        </div>
+
+        <div v-if="isActive" class="reply-area">
+          <label :for="`note-reply-${annotation.id}`" class="sr-only">Reply</label>
+          <textarea
+            :id="`note-reply-${annotation.id}`"
+            ref="replyInput"
+            v-model="replyText"
+            class="reply-input"
+            rows="1"
+            placeholder="Reply..."
+            @click.stop
+            @keydown.enter.exact.prevent="onPostReply"
+            @keydown.esc.stop="replyText = ''"
+          />
+          <Button
+            v-if="replyText.trim()"
+            kind="primary"
+            size="xs"
+            icon="Send"
+            aria-label="Post reply"
+            class="reply-send"
+            @click.stop="onPostReply"
+          />
+        </div>
+      </template>
 
       <p v-else-if="note" class="note-text" v-html="highlightMatch(note.content)"></p>
     </div>
@@ -312,10 +424,46 @@
       var(--shadow-soft);
   }
 
+  .note.shared {
+    border-radius: 12px;
+    border-left: var(--border-extrathin) solid var(--border-primary);
+    border-top: 3px solid var(--note-color);
+    background-color: var(--surface-hover);
+  }
+
+  .note.shared.active:not(:hover) {
+    border-left-color: var(--border-action);
+  }
+
+  .note.shared:hover,
+  .note.shared:focus-within {
+    border-left-color: var(--border-primary);
+  }
+
+  .note.shared.active:hover {
+    border-left-color: var(--border-action);
+  }
+
+  .note.shared.search-match {
+    border-left-color: var(--yellow-300);
+  }
+
+  .note.shared.search-match-current {
+    border-left-color: var(--orange-300);
+  }
+
   .header {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .shared-label {
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--note-color);
   }
 
   .timestamp {
@@ -381,6 +529,54 @@
     font-weight: var(--weight-medium);
     line-height: 1.4;
     white-space: pre-wrap;
+  }
+
+  .message--threaded {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .message--threaded :deep(.av-wrapper) {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .message--threaded .note-text {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .reply-area {
+    position: relative;
+    margin-top: 8px;
+  }
+
+  .reply-input {
+    width: 100%;
+    border: var(--border-thin) solid var(--border-primary);
+    border-radius: 8px;
+    padding: 6px 10px;
+    padding-right: 32px;
+    font-family: inherit;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    background-color: var(--surface-page);
+    color: var(--extra-dark);
+    transition: var(--transition-bd-color);
+  }
+
+  .reply-input:focus {
+    border-color: var(--border-action);
+  }
+
+  .reply-send {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
   }
 
   .edit-area {

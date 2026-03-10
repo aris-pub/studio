@@ -38,6 +38,7 @@ class AnnotationMessageResponse(BaseModel):
     content: str
     created_at: datetime
     deleted_at: Optional[datetime] = None
+    owner: Optional["AnnotationOwnerResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,6 +56,15 @@ class AnnotationUpdate(BaseModel):
     visibility: Optional[AnnotationVisibility] = None
 
 
+class AnnotationOwnerResponse(BaseModel):
+    id: int
+    name: str
+    initials: Optional[str] = None
+    avatar_color: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AnnotationResponse(BaseModel):
     id: int
     file_id: int
@@ -66,6 +76,7 @@ class AnnotationResponse(BaseModel):
     created_at: datetime
     deleted_at: Optional[datetime] = None
     messages: list[AnnotationMessageResponse] = []
+    owner: Optional[AnnotationOwnerResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,7 +105,7 @@ async def create_annotation(
     result = await db.execute(
         select(Annotation)
         .where(Annotation.id == db_annotation.id)
-        .options(selectinload(Annotation.messages))
+        .options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner))
     )
     return result.scalar_one()
 
@@ -112,7 +123,7 @@ async def get_annotations(
         if not await has_permission(file_id, user.id, PermissionLevel.VIEW, db):
             raise HTTPException(status_code=403, detail="Access denied")
 
-    query = select(Annotation).options(selectinload(Annotation.messages))
+    query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner))
 
     if not include_deleted:
         query = query.where(Annotation.deleted_at.is_(None))
@@ -139,7 +150,7 @@ async def get_annotation(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Annotation).options(selectinload(Annotation.messages)).where(
+    query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner)).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
     )
     result = await db.execute(query)
@@ -165,7 +176,7 @@ async def update_annotation(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Annotation).options(selectinload(Annotation.messages)).where(
+    query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner)).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
     )
     result = await db.execute(query)
@@ -179,6 +190,18 @@ async def update_annotation(
         raise HTTPException(status_code=403, detail="You can only edit your own annotations")
 
     update_data = annotation_update.model_dump(exclude_unset=True)
+
+    # Shared annotations cannot be made private again
+    if (
+        "visibility" in update_data
+        and annotation.visibility == AnnotationVisibility.SHARED
+        and update_data["visibility"] == AnnotationVisibility.PRIVATE
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Shared annotations cannot be made private",
+        )
+
     for field, value in update_data.items():
         setattr(annotation, field, value)
 
@@ -193,7 +216,7 @@ async def delete_annotation(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Annotation).options(selectinload(Annotation.messages)).where(
+    query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner)).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
     )
     result = await db.execute(query)
@@ -202,9 +225,20 @@ async def delete_annotation(
     if not annotation:
         raise HTTPException(status_code=404, detail="Annotation not found")
 
-    # Only the owner can delete their annotation
-    if annotation.owner_id != user.id:
+    is_annotation_owner = annotation.owner_id == user.id
+    is_file_owner = await has_permission(annotation.file_id, user.id, PermissionLevel.MANAGE, db)
+
+    if not is_annotation_owner and not is_file_owner:
         raise HTTPException(status_code=403, detail="You can only delete your own annotations")
+
+    # Shared annotations with notes can only be deleted by the file owner
+    if annotation.visibility == AnnotationVisibility.SHARED:
+        has_notes = any(m for m in annotation.messages if not m.deleted_at)
+        if has_notes and not is_file_owner:
+            raise HTTPException(
+                status_code=403,
+                detail="Shared annotations with notes can only be deleted by the file owner",
+            )
 
     annotation.deleted_at = datetime.now(timezone.utc)  # type: ignore
     await db.commit()
@@ -222,7 +256,7 @@ async def create_annotation_message(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Annotation).options(selectinload(Annotation.messages)).where(
+    query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner)).where(
         and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
     )
     result = await db.execute(query)
@@ -234,18 +268,19 @@ async def create_annotation_message(
     if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
         raise HTTPException(status_code=403, detail="Comment permission required")
 
-    # Each annotation can only have one non-deleted message (the note)
-    count_query = select(AnnotationMessage).where(
-        and_(
-            AnnotationMessage.annotation_id == annotation_id,
-            AnnotationMessage.deleted_at.is_(None),
+    # Private annotations: single note only. Shared annotations: unlimited (thread).
+    if annotation.visibility != AnnotationVisibility.SHARED:
+        count_query = select(AnnotationMessage).where(
+            and_(
+                AnnotationMessage.annotation_id == annotation_id,
+                AnnotationMessage.deleted_at.is_(None),
+            )
         )
-    )
-    count_result = await db.execute(count_query)
-    if len(count_result.scalars().all()) >= 1:
-        raise HTTPException(
-            status_code=400, detail="Annotation already has a note"
-        )
+        count_result = await db.execute(count_query)
+        if len(count_result.scalars().all()) >= 1:
+            raise HTTPException(
+                status_code=400, detail="Annotation already has a note"
+            )
 
     db_message = AnnotationMessage(
         annotation_id=annotation_id,
@@ -254,8 +289,13 @@ async def create_annotation_message(
     )
     db.add(db_message)
     await db.commit()
-    await db.refresh(db_message)
-    return db_message
+
+    result = await db.execute(
+        select(AnnotationMessage)
+        .where(AnnotationMessage.id == db_message.id)
+        .options(selectinload(AnnotationMessage.owner))
+    )
+    return result.scalar_one()
 
 
 @router.get("/{annotation_id}/messages", response_model=list[AnnotationMessageResponse])
@@ -343,8 +383,13 @@ async def update_annotation_message(
 
     message.content = message_update.content  # type: ignore
     await db.commit()
-    await db.refresh(message)
-    return message
+
+    result = await db.execute(
+        select(AnnotationMessage)
+        .where(AnnotationMessage.id == message.id)
+        .options(selectinload(AnnotationMessage.owner))
+    )
+    return result.scalar_one()
 
 
 @router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
