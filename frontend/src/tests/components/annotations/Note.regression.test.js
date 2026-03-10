@@ -169,22 +169,16 @@ describe("Note.vue — card structure (std-fv7e)", () => {
 });
 
 describe("Note.vue — delete confirmation pill (std-t3dj)", () => {
-  it("first click arms confirmation (adds confirming class)", async () => {
+  it("first click arms confirmation (switches to danger pill with Delete text)", async () => {
     const { wrapper } = createWrapper(makeAnnotation());
     const deleteBtn = wrapper.find(".delete-btn");
 
     await deleteBtn.trigger("click");
     await nextTick();
 
-    expect(deleteBtn.classes()).toContain("confirming");
-  });
-
-  it("delete button has .confirming class after first click", async () => {
-    const { wrapper } = createWrapper(makeAnnotation());
-    const deleteBtn = wrapper.find(".delete-btn");
-    await deleteBtn.trigger("click");
-    await nextTick();
-    expect(deleteBtn.classes()).toContain("confirming");
+    const btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
+    expect(btn).toBeTruthy();
+    expect(btn.props("text")).toBe("Delete");
   });
 
   it("second click within debounce window does NOT delete", async () => {
@@ -223,12 +217,15 @@ describe("Note.vue — delete confirmation pill (std-t3dj)", () => {
 
     await deleteBtn.trigger("click");
     await nextTick();
-    expect(deleteBtn.classes()).toContain("confirming");
+
+    let btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
+    expect(btn).toBeTruthy();
 
     vi.advanceTimersByTime(3100);
     await nextTick();
 
-    expect(deleteBtn.classes()).not.toContain("confirming");
+    btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
+    expect(btn).toBeUndefined();
     vi.useRealTimers();
   });
 });

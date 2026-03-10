@@ -196,24 +196,24 @@
       <div class="actions">
         <Button
           kind="tertiary"
-          size="sm"
+          size="xs"
           icon="Edit"
           aria-label="Edit annotation"
           @click.stop="onEdit"
         />
         <Button
-          kind="danger-ghost"
-          size="sm"
-          icon="Trash"
+          :kind="confirmingDelete ? 'danger' : 'danger-ghost'"
+          size="xs"
+          :icon="confirmingDelete ? '' : 'Trash'"
+          :text="confirmingDelete ? 'Delete' : ''"
           class="delete-btn"
-          :class="{ confirming: confirmingDelete }"
           :aria-label="confirmingDelete ? 'Confirm delete' : 'Delete annotation'"
           @click.stop="onDeleteClick"
         />
         <Button
           v-if="note"
           kind="tertiary"
-          size="sm"
+          size="xs"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
           :aria-label="collapsed ? 'Expand annotation' : 'Collapse annotation'"
           @click.stop="toggleCollapse"

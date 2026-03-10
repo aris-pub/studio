@@ -133,16 +133,31 @@
 
   /* ── Sizes ── */
   button.btn-xs {
+    --v: calc(2px - var(--bw));
+    --h: calc(6px - var(--bw));
     border-radius: 6px;
-    padding: 0;
 
     & .btn-icon {
       width: 20px;
       height: 20px;
+      stroke-width: 1.5;
     }
 
     & .btn-text {
-      display: none;
+      font-size: 11px;
+    }
+
+    &:has(.btn-icon):has(.btn-text) {
+      padding: var(--v) var(--h) var(--v) calc(2px - var(--bw));
+    }
+    &:has(.btn-icon):not(:has(.btn-text)) {
+      padding: var(--v);
+    }
+    &:not(:has(.btn-icon)):has(.btn-text) {
+      padding: var(--v) var(--h);
+    }
+    &:not(:has(.btn-icon)):not(:has(.btn-text)) {
+      padding: var(--v);
     }
   }
 
