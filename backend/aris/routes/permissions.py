@@ -15,6 +15,7 @@ from aris.crud.permissions import (
     revoke_permission,
     update_permission_role,
 )
+from aris.crud.user_settings import UserSettingsDB
 from aris.deps import current_user, get_db
 from aris.models.models import File, FileRole, User
 from aris.services.email import get_email_service
@@ -124,22 +125,24 @@ async def add_collaborator(
         db=db,
     )
 
-    # Fire-and-forget invitation email
+    # Fire-and-forget invitation email (respects invitee's notification preferences)
     email_service = get_email_service()
     if email_service:
         try:
             invitee = await db.get(User, request.user_id)
             file = await db.get(File, file_id)
             if invitee and file:
-                await email_service.send_invitation_email(
-                    to_email=invitee.email,
-                    invitee_name=invitee.name or invitee.email,
-                    inviter_name=user.name or user.email,
-                    file_title=file.title or "Untitled",
-                    role=request.role.value,
-                    frontend_url=settings.FRONTEND_URL,
-                    file_id=file_id,
-                )
+                invitee_settings = await UserSettingsDB.get_user_settings(request.user_id, db)
+                if not invitee_settings or invitee_settings.notification_shares:
+                    await email_service.send_invitation_email(
+                        to_email=invitee.email,
+                        invitee_name=invitee.name or invitee.email,
+                        inviter_name=user.name or user.email,
+                        file_title=file.title or "Untitled",
+                        role=request.role.value,
+                        frontend_url=settings.FRONTEND_URL,
+                        file_id=file_id,
+                    )
         except Exception:
             logger.warning("Invitation email failed, permission was still granted", exc_info=True)
 
