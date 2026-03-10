@@ -95,17 +95,16 @@
   // Watch annotations and re-sort after highlights are painted.
   // The highlight renderer also watches annotations and paints on nextTick,
   // so we need a second tick to ensure marks exist in the DOM.
+  // Deep watch catches both additions/removals and in-place item replacements
+  // (e.g. updateAnnotation swapping an object at the same index).
   watch(
-    () => {
-      const list = isRef(annotations) ? annotations.value : annotations;
-      return list?.length ?? 0;
-    },
+    () => (isRef(annotations) ? annotations.value : annotations),
     async () => {
       await nextTick();
       await nextTick();
       trySort();
     },
-    { immediate: true }
+    { immediate: true, deep: true }
   );
 
   // Recompute positions after sort settles
