@@ -241,11 +241,11 @@
     <ButtonDots
       v-if="variant === 'dots'"
       ref="trigger-ref"
+      v-model="show"
       class="context-menu-trigger"
       :aria-expanded="show"
       data-testid="trigger-button"
       v-bind="$attrs"
-      @click="toggle"
     />
 
     <!-- Slot variant trigger -->

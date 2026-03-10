@@ -281,8 +281,8 @@
                 />
               </div>
               <div class="version-meta">
-                <Badge size="xs" variant="info">v{{ version.version_number }}</Badge>
                 <span class="version-date">{{ formatDate(version.created_at) }}</span>
+                <Badge size="sm" variant="info">v{{ version.version_number }}</Badge>
               </div>
             </div>
 
@@ -379,6 +379,7 @@
   .version-info {
     flex: 1;
     min-width: 0;
+    margin-right: 8px;
   }
 
   .version-header {
@@ -405,15 +406,21 @@
 
   .version-meta {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
     font-size: 12px;
     color: var(--color-text-tertiary);
   }
 
-  .version-date::before {
-    content: "•";
-    margin-right: 8px;
-    color: var(--color-text-tertiary);
+  .version-item :deep(.context-menu-trigger) {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .version-item:hover :deep(.context-menu-trigger),
+  .version-item :deep(.context-menu-trigger:has(> .active)),
+  .version-item :deep(.context-menu-trigger.active) {
+    opacity: 1;
   }
 
   .version-item--auto {

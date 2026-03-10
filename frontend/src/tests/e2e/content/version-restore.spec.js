@@ -15,6 +15,7 @@ import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
 import { FileHelpers } from "../utils/file-helpers.js";
 import { getBackendURL } from "../utils/test-config.js";
+import { loginUser, createAuthenticatedContext, cleanupYjs } from "../yjs-helpers.js";
 
 test.describe("Version Restore Tests @auth @version-restore", () => {
   let fileId;
@@ -116,9 +117,67 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     expect(content).not.toContain("Modified Content");
   });
 
-  test("non-owner cannot restore version", async () => {
-    // Requires a second user + file sharing — implement after permission system E2E is wired up
-    test.skip();
+  test("non-owner cannot restore version", async ({ browser, request }) => {
+    test.setTimeout(60000);
+
+    const backendURL = getBackendURL();
+
+    // Register + login a second user
+    await request
+      .post(`${backendURL}/register`, {
+        data: {
+          email: "versiontest2@example.com",
+          name: "Version Test User 2",
+          initials: "VT2",
+          password: "testpass123",
+        },
+      })
+      .catch(() => {});
+    const editorAuth = await loginUser(request, "versiontest2@example.com", "testpass123");
+
+    // Share the file (created by owner in beforeEach) with the second user as EDITOR
+    const { accessToken } = await authHelpers.getStoredTokens();
+    const permResponse = await request.post(`${backendURL}/files/${fileId}/permissions`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      data: { user_id: editorAuth.userData.id, role: "EDITOR" },
+    });
+    if (!permResponse.ok() && permResponse.status() !== 400) {
+      throw new Error(`Failed to add collaborator: ${permResponse.status()}`);
+    }
+
+    // Open the file as the editor in a separate browser context
+    const editor = await createAuthenticatedContext(browser, editorAuth);
+    try {
+      await editor.page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+      await editor.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
+
+      // Open versions drawer
+      await editor.page.click(
+        '[data-testid="workspace-sidebar"] .sb-item:has-text("versions") button'
+      );
+      await editor.page.waitForSelector('[data-testid="version-item"]', { timeout: 10000 });
+
+      // Open the version preview modal (no Escape needed — editor didn't trigger rename mode)
+      await editor.page
+        .locator('[data-testid="version-item"]')
+        .first()
+        .locator(".version-info")
+        .click();
+      await editor.page.waitForSelector('[data-testid="version-preview-modal"]', {
+        timeout: 10000,
+      });
+      await editor.page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
+
+      // Restore button should NOT be visible for non-owner
+      await expect(editor.page.locator('[data-testid="restore-version-button"]')).not.toBeVisible();
+
+      // "Owner only" message should be shown instead
+      await expect(editor.page.locator(".owner-only-note")).toBeVisible();
+      await expect(editor.page.locator(".owner-only-note")).toContainText("owner");
+    } finally {
+      await cleanupYjs(editor.page).catch(() => {});
+      await editor.context.close();
+    }
   });
 
   test("concurrent editor detection shows warning", async () => {

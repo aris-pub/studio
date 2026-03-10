@@ -45,9 +45,16 @@
   const emit = defineEmits(["on", "off"]);
 
   watch(active, (newValue) => (newValue ? emit("on") : emit("off")));
-  const bgColor = computed(() => `var(--${props.activeColor}-300)`);
-  const bgHoverColor = computed(() => `var(--${props.activeColor}-400)`);
-  const pressedColor = computed(() => `var(--${props.activeColor}-500)`);
+  const isRawCss = (v) => v.startsWith("var(") || v.startsWith("#") || v.startsWith("rgb");
+  const bgColor = computed(() =>
+    isRawCss(props.activeColor) ? props.activeColor : `var(--${props.activeColor}-300)`
+  );
+  const bgHoverColor = computed(() =>
+    isRawCss(props.activeColor) ? props.activeColor : `var(--${props.activeColor}-400)`
+  );
+  const pressedColor = computed(() =>
+    isRawCss(props.activeColor) ? props.activeColor : `var(--${props.activeColor}-500)`
+  );
 </script>
 
 <template>
