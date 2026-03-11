@@ -308,7 +308,7 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
       await replyInput.press("Enter");
 
       // Should see two threaded messages now (owner's + collab's)
-      await expect(card.locator(".message--threaded")).toHaveCount(2, { timeout: 5000 });
+      await expect(card.locator(".thread-message")).toHaveCount(2, { timeout: 5000 });
 
       // Reply input should be cleared
       await expect(replyInput).toHaveValue("");
@@ -333,7 +333,7 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
       await expect(card).toBeVisible({ timeout: 10000 });
 
       // Each threaded message should have its own avatar
-      const messages = card.locator(".message--threaded");
+      const messages = card.locator(".thread-message");
       await expect(messages).toHaveCount(2);
       await expect(messages.nth(0).locator(".av-wrapper")).toBeVisible();
       await expect(messages.nth(1).locator(".av-wrapper")).toBeVisible();

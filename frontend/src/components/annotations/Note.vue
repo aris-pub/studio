@@ -123,6 +123,20 @@
     return `${diffDay}d ago`;
   });
 
+  function messageTimeAgo(msg) {
+    if (!msg.created_at) return "";
+    const created = new Date(msg.created_at);
+    const now = new Date();
+    const diffMs = now - created;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}min`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d`;
+  }
+
   function onEsc(e) {
     if (editing.value) {
       onCancelEdit();
@@ -327,33 +341,44 @@
       </div>
 
       <template v-else-if="isShared">
-        <div v-for="msg in threadMessages" :key="msg.id" class="message message--threaded">
-          <Avatar v-if="msg.owner" :user="msg.owner" size="sm" :tooltip="true" />
-          <p class="note-text" v-html="highlightMatch(msg.content)"></p>
-        </div>
+        <div class="thread">
+          <div
+            v-for="(msg, idx) in threadMessages"
+            :key="msg.id"
+            class="thread-message"
+            :class="{ 'thread-message--first': idx === 0 }"
+          >
+            <div class="thread-message-header">
+              <Avatar v-if="msg.owner" :user="msg.owner" size="sm" :tooltip="true" />
+              <span class="thread-author">{{ msg.owner?.name || "Unknown" }}</span>
+              <span class="thread-time">{{ messageTimeAgo(msg) }}</span>
+            </div>
+            <p class="thread-body" v-html="highlightMatch(msg.content)"></p>
+          </div>
 
-        <div v-if="isActive" class="reply-area">
-          <label :for="`note-reply-${annotation.id}`" class="sr-only">Reply</label>
-          <textarea
-            :id="`note-reply-${annotation.id}`"
-            ref="replyInput"
-            v-model="replyText"
-            class="reply-input"
-            rows="1"
-            placeholder="Reply..."
-            @click.stop
-            @keydown.enter.exact.prevent="onPostReply"
-            @keydown.esc.stop="replyText = ''"
-          />
-          <Button
-            v-if="replyText.trim()"
-            kind="primary"
-            size="xs"
-            icon="Send"
-            aria-label="Post reply"
-            class="reply-send"
-            @click.stop="onPostReply"
-          />
+          <div v-if="isActive" class="reply-area">
+            <label :for="`note-reply-${annotation.id}`" class="sr-only">Reply</label>
+            <textarea
+              :id="`note-reply-${annotation.id}`"
+              ref="replyInput"
+              v-model="replyText"
+              class="reply-input"
+              rows="1"
+              placeholder="Reply..."
+              @click.stop
+              @keydown.enter.exact.prevent="onPostReply"
+              @keydown.esc.stop="replyText = ''"
+            />
+            <Button
+              v-if="replyText.trim()"
+              kind="primary"
+              size="xs"
+              icon="Send"
+              aria-label="Post reply"
+              class="reply-send"
+              @click.stop="onPostReply"
+            />
+          </div>
         </div>
       </template>
 
@@ -363,18 +388,21 @@
 </template>
 
 <style scoped>
+  /* ---------------------------------------------------------------
+     PRIVATE MARGINALIA — borderless, transparent, quiet
+     --------------------------------------------------------------- */
   .note {
-    border: var(--border-extrathin) solid var(--border-primary);
-    border-left: 3px solid var(--note-color);
-    border-radius: 4px 12px 12px 4px;
-    padding: 8px 10px 10px;
-    background-color: var(--surface-page);
+    border: none;
+    border-left: 2px solid var(--note-color);
+    border-radius: 0;
+    padding: 4px 8px 6px;
+    background-color: transparent;
     position: relative;
     z-index: 2;
     cursor: pointer;
     outline: none;
     transition:
-      border-color 0.15s ease,
+      background-color 0.15s ease,
       box-shadow 0.15s ease;
   }
 
@@ -384,21 +412,15 @@
   }
 
   .note.active:not(:hover) {
-    border-color: var(--border-action);
-    border-left-color: var(--note-color);
-    box-shadow: 0 0 0 1px var(--border-action);
+    background-color: color-mix(in srgb, var(--note-color) 6%, transparent);
   }
 
   .note.search-match {
-    background-color: color-mix(in srgb, var(--yellow-200) 20%, var(--surface-page));
-    border-color: var(--yellow-300);
-    border-left-color: var(--note-color);
+    background-color: color-mix(in srgb, var(--yellow-200) 20%, transparent);
   }
 
   .note.search-match-current {
-    background-color: color-mix(in srgb, var(--orange-200) 25%, var(--surface-page));
-    border-color: var(--orange-300);
-    border-left-color: var(--note-color);
+    background-color: color-mix(in srgb, var(--orange-200) 25%, transparent);
   }
 
   .note.collapsed .actions > :last-child {
@@ -407,9 +429,8 @@
 
   .note:hover,
   .note:focus-within {
-    border-color: var(--border-primary);
-    border-left-color: var(--note-color);
-    box-shadow: var(--shadow-soft);
+    background-color: color-mix(in srgb, var(--note-color) 4%, transparent);
+    box-shadow: none;
 
     & .actions > * {
       opacity: 1;
@@ -417,41 +438,58 @@
   }
 
   .note.active:hover {
+    background-color: color-mix(in srgb, var(--note-color) 8%, transparent);
+    box-shadow: none;
+  }
+
+  /* ---------------------------------------------------------------
+     SHARED COMMENT THREAD — full card treatment, proper UI element
+     --------------------------------------------------------------- */
+  .note.shared {
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-top: 3px solid var(--note-color);
+    border-radius: 12px;
+    padding: 10px 12px 12px;
+    background-color: var(--surface-page);
+  }
+
+  .note.shared.active:not(:hover) {
     border-color: var(--border-action);
-    border-left-color: var(--note-color);
+    border-top-color: var(--note-color);
+    box-shadow: 0 0 0 1px var(--border-action);
+  }
+
+  .note.shared:hover,
+  .note.shared:focus-within {
+    border-color: var(--border-primary);
+    border-top-color: var(--note-color);
+    background-color: var(--surface-page);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .note.shared.active:hover {
+    border-color: var(--border-action);
+    border-top-color: var(--note-color);
     box-shadow:
       0 0 0 1px var(--border-action),
       var(--shadow-soft);
   }
 
-  .note.shared {
-    border-radius: 12px;
-    border-left: var(--border-extrathin) solid var(--border-primary);
-    border-top: 3px solid var(--note-color);
-    background-color: var(--surface-hover);
-  }
-
-  .note.shared.active:not(:hover) {
-    border-left-color: var(--border-action);
-  }
-
-  .note.shared:hover,
-  .note.shared:focus-within {
-    border-left-color: var(--border-primary);
-  }
-
-  .note.shared.active:hover {
-    border-left-color: var(--border-action);
-  }
-
   .note.shared.search-match {
-    border-left-color: var(--yellow-300);
+    background-color: color-mix(in srgb, var(--yellow-200) 20%, var(--surface-page));
+    border-color: var(--yellow-300);
+    border-top-color: var(--note-color);
   }
 
   .note.shared.search-match-current {
-    border-left-color: var(--orange-300);
+    background-color: color-mix(in srgb, var(--orange-200) 25%, var(--surface-page));
+    border-color: var(--orange-300);
+    border-top-color: var(--note-color);
   }
 
+  /* ---------------------------------------------------------------
+     HEADER
+     --------------------------------------------------------------- */
   .header {
     display: flex;
     align-items: center;
@@ -472,6 +510,11 @@
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+
+  .note:not(.shared) .timestamp {
+    color: var(--gray-700);
+    font-size: 9px;
   }
 
   .actions {
@@ -499,6 +542,9 @@
     white-space: nowrap;
   }
 
+  /* ---------------------------------------------------------------
+     COLLAPSED / CONTENT
+     --------------------------------------------------------------- */
   .collapsed-line {
     margin: 4px 0 0;
     white-space: nowrap;
@@ -510,6 +556,9 @@
     margin-top: 6px;
   }
 
+  /* ---------------------------------------------------------------
+     SELECTED TEXT — different treatment per type
+     --------------------------------------------------------------- */
   .selected-text {
     color: var(--gray-800);
     font-style: italic;
@@ -522,6 +571,24 @@
     overflow: hidden;
   }
 
+  .note:not(.shared) .selected-text {
+    color: var(--gray-700);
+    font-size: 12px;
+    opacity: 0.75;
+    line-height: 1.35;
+  }
+
+  .note.shared .selected-text {
+    padding: 6px 8px;
+    background-color: color-mix(in srgb, var(--note-color) 6%, transparent);
+    border-radius: 6px;
+    border-left: 2px solid var(--note-color);
+    -webkit-line-clamp: 3;
+  }
+
+  /* ---------------------------------------------------------------
+     NOTE TEXT (private annotations only)
+     --------------------------------------------------------------- */
   .note-text {
     margin: 6px 0 0;
     color: var(--extra-dark);
@@ -531,40 +598,95 @@
     white-space: pre-wrap;
   }
 
-  .message--threaded {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-top: 6px;
+  .note:not(.shared) .note-text {
+    margin: 4px 0 0;
+    font-size: 13.5px;
+    line-height: 1.45;
   }
 
-  .message--threaded :deep(.av-wrapper) {
-    margin-top: 2px;
+  /* ---------------------------------------------------------------
+     THREAD (shared comment threads)
+     --------------------------------------------------------------- */
+  .thread {
+    margin-top: 10px;
+    border-top: none;
+    padding-top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .thread-message {
+    padding: 8px 8px;
+    border-radius: 8px;
+    background-color: color-mix(in srgb, var(--gray-800) 3%, transparent);
+  }
+
+  .thread-message + .thread-message {
+    border-top: none;
+  }
+
+  .thread-message--first {
+    background-color: color-mix(in srgb, var(--gray-800) 5%, transparent);
+  }
+
+  .thread-message-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .thread-message-header :deep(.av-wrapper) {
     flex-shrink: 0;
   }
 
-  .message--threaded .note-text {
-    margin: 0;
+  .thread-author {
+    font-size: 12px;
+    font-weight: var(--weight-bold);
+    color: var(--extra-dark);
     flex: 1;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
+  .thread-time {
+    font-size: 10px;
+    color: var(--gray-800);
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  .thread-body {
+    margin: 3px 0 0 22px;
+    color: var(--extra-dark);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+
+  /* ---------------------------------------------------------------
+     REPLY AREA (shared threads)
+     --------------------------------------------------------------- */
   .reply-area {
     position: relative;
-    margin-top: 8px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-primary);
   }
 
   .reply-input {
     width: 100%;
     border: var(--border-thin) solid var(--border-primary);
     border-radius: 8px;
-    padding: 6px 10px;
+    padding: 8px 10px;
     padding-right: 32px;
     font-family: inherit;
     font-size: 13px;
     resize: none;
     outline: none;
-    background-color: var(--surface-page);
+    background-color: color-mix(in srgb, var(--gray-800) 2%, var(--surface-page));
     color: var(--extra-dark);
     transition: var(--transition-bd-color);
   }
@@ -579,6 +701,9 @@
     bottom: 4px;
   }
 
+  /* ---------------------------------------------------------------
+     EDIT AREA (both types)
+     --------------------------------------------------------------- */
   .edit-area {
     display: flex;
     flex-direction: column;
