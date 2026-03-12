@@ -2,6 +2,8 @@
   import { ref, inject, computed, onMounted, nextTick } from "vue";
   import { useRouter } from "vue-router";
   import { createFileStore } from "@/store/FileStore.js";
+  import AuthLayout from "@/components/layout/AuthLayout.vue";
+  import PasswordInput from "@/components/forms/PasswordInput.vue";
 
   const router = useRouter();
   const email = ref("");
@@ -68,139 +70,65 @@
 </script>
 
 <template>
-  <div class="view" @keydown.enter="onLogin">
-    <div class="right">
-      <div class="wrapper">
-        <div class="top">
-          <div class="text-input">
-            <label class="text-label">Email</label>
-            <input v-model="email" data-testid="email-input" type="email" required />
-          </div>
-          <div class="text-input">
-            <label class="text-label">Password</label>
-            <input v-model="password" data-testid="password-input" type="password" required />
-            <div class="footer text-caption"><p>Forgot password?</p></div>
-          </div>
-        </div>
-        <div class="bottom">
-          <div v-if="error" data-testid="login-error" class="error-message">{{ error }}</div>
-          <div v-if="isLoading" data-testid="login-loading" class="loading-indicator">
-            Logging in...
-          </div>
-          <Button
-            ref="loginButton"
-            data-testid="login-button"
-            kind="primary"
-            block
-            :text="isLoading ? 'Logging in...' : 'Login'"
-            :disabled="isLoading"
-            @click="onLogin"
-          />
-          <Button
-            data-testid="register-link"
-            kind="secondary"
-            block
-            text="Register"
-            @click="router.push('/register')"
-          />
-        </div>
-      </div>
+  <AuthLayout
+    heading="Sign in"
+    subheading="Welcome back to RSM Studio"
+    :error="error"
+    @submit="onLogin"
+  >
+    <InputText
+      v-model="email"
+      data-testid="email-input"
+      direction="column"
+      label="Email"
+      type="email"
+      required
+    />
+    <div>
+      <PasswordInput v-model="password" data-testid="password-input" required />
+      <div class="field-footer text-caption"><p>Forgot password?</p></div>
     </div>
-  </div>
+
+    <template #actions>
+      <Button
+        ref="loginButton"
+        data-testid="login-button"
+        kind="primary"
+        block
+        :text="isLoading ? 'Logging in...' : 'Sign in'"
+        :disabled="isLoading"
+        @click="onLogin"
+      />
+    </template>
+
+    <template #footer>
+      <div class="form-footer text-caption">
+        New to Studio?
+        <Button
+          data-testid="register-link"
+          type="button"
+          kind="secondary"
+          size="xs"
+          text="Create an account"
+          @click="router.push('/register')"
+        />
+      </div>
+    </template>
+  </AuthLayout>
 </template>
 
 <style scoped>
-  .view {
-    --transition-duration: 0.3s;
-
-    display: flex;
-    flex-grow: 2;
-    height: 100%;
-    width: 100%;
-  }
-
-  .left {
-    background-color: var(--information-50);
-    height: 100%;
-    width: 50%;
-  }
-
-  .right {
-    background-color: var(--surface-primary);
-    height: 100%;
-    /* width: 50%; */
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .right .wrapper {
-    width: 60%;
-    min-width: 192px;
-    max-width: 384px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 32px;
-    padding: 16px;
-
-    & > * {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .right .wrapper {
-      width: 90%;
-      padding: 20px;
-      gap: 24px;
-    }
-  }
-
-  .right .wrapper .top {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .right .bottom {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  @media (max-width: 640px) {
-    .right .bottom {
-      gap: 20px;
-    }
-  }
-
-  .text-input {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .text-input label {
-    padding-left: 8px;
-  }
-
-  .text-input input {
-    height: 36px;
-    background-color: transparent;
-    border-radius: 12px;
-    border: var(--border-thin) solid var(--border-primary);
-    padding-inline: 8px;
-  }
-
-  .text-input input:focus-visible {
-    background-color: var(--white);
-    border-color: var(--border-action);
-  }
-
-  .text-input .footer {
+  .field-footer {
     margin-top: 4px;
     padding-left: 8px;
+  }
+
+  .form-footer {
+    text-align: center;
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
   }
 </style>

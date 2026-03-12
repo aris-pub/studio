@@ -62,6 +62,22 @@ async def test_register_duplicate_email(client: AsyncClient):
     assert response.json()["detail"] == "Email already registered."
 
 
+async def test_register_password_too_short(client: AsyncClient):
+    """Test registration rejects passwords shorter than 8 characters."""
+    response = await client.post(
+        "/register",
+        json={
+            "email": "shortpw@example.com",
+            "name": "Short PW",
+            "initials": "SP",
+            "password": "abc",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "8 characters" in response.json()["detail"][0]["msg"]
+
+
 async def test_register_invalid_email(client: AsyncClient):
     """Test registration with invalid email format."""
     response = await client.post(

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,7 +35,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     name: str
     initials: str = ""
-    password: str
+    password: str = Field(min_length=8)
 
     model_config = {
         "json_schema_extra": {
