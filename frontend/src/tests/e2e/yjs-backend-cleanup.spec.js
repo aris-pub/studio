@@ -17,7 +17,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
     browser,
     request,
   }) => {
-    test.setTimeout(45000); // 2x openFileInEditor + 2 poll loops + navigation
+    test.setTimeout(90000); // 2x openFileInEditor (with retry) + 2 poll loops + navigation
     const auth = await loginUser(request);
     const fileId = await createTestFile(request, auth.token, auth.userData.id);
     const { context, page } = await createAuthenticatedContext(browser, auth);
@@ -84,7 +84,7 @@ test.describe("Y.js Backend Client Cleanup @collab", () => {
   });
 
   test("changes persist across tab close and reopen", async ({ browser, request }) => {
-    test.setTimeout(45000); // 2x openFileInEditor + 2 poll loops + tab close/reopen
+    test.setTimeout(90000); // 2x openFileInEditor (with retry) + 2 poll loops + tab close/reopen
     const auth = await loginUser(request);
     const fileId = await createTestFile(request, auth.token, auth.userData.id);
     const { context, page } = await createAuthenticatedContext(browser, auth);

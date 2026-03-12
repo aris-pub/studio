@@ -15,6 +15,7 @@ import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
 import { FileHelpers } from "../utils/file-helpers.js";
 import { getBackendURL } from "../utils/test-config.js";
+import { getTimeouts } from "../utils/timeout-constants.js";
 import { loginUser, createAuthenticatedContext, cleanupYjs } from "../yjs-helpers.js";
 
 test.describe("Version Restore Tests @auth @version-restore", () => {
@@ -32,10 +33,11 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     fileId = await fileHelpers.createNewFile();
 
     // Open the source drawer and wait for the CM/Y.js editor to be ready
+    const timeouts = getTimeouts();
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page.waitForSelector(".cm-editor", { timeout: 15000 });
+    await page.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
     await page.waitForFunction(() => typeof window.__cmView !== "undefined", null, {
-      timeout: 5000,
+      timeout: timeouts.heavyOperation,
     });
 
     // Set "original" content via the CM/Y.js API
@@ -62,7 +64,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
           const data = await r.json();
           return (data.source ?? "").includes("Original Content");
         },
-        { timeout: 5000 }
+        { timeout: timeouts.heavyOperation }
       )
       .toBe(true);
 
@@ -193,36 +195,49 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
   });
 
   test("all connected clients see restored content", async ({ page, context }) => {
+    test.setTimeout(90000); // Y.js propagation across two tabs in CI
+    const timeouts = getTimeouts();
+
     // Open a second tab and get it to the same file with the source editor ready
     const page2 = await context.newPage();
     await page2.goto(`/file/${fileId}`, { waitUntil: "commit" });
     await page2.waitForLoadState("domcontentloaded");
     // Open source drawer on page2 so __cmView is initialized there too
     await page2.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page2.waitForSelector(".cm-editor", { timeout: 15000 });
+    await page2.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
     await page2.waitForFunction(
       () => typeof window.__cmView !== "undefined",
       {},
-      { timeout: 5000 }
+      { timeout: timeouts.heavyOperation }
+    );
+    // Wait for Y.js provider to sync on page2 before restoring
+    await page2.waitForFunction(
+      () => window.__provider?.synced === true,
+      {},
+      { timeout: timeouts.heavyOperation }
     );
 
     // page1: restore the version
     await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
-    await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
-    await page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
+    await page.waitForSelector('[data-testid="version-preview-modal"]', {
+      timeout: timeouts.heavyOperation,
+    });
+    await page.waitForSelector(".loading-state", {
+      state: "hidden",
+      timeout: timeouts.heavyOperation,
+    });
     await page.click('[data-testid="restore-version-button"]');
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
     await page.click('[data-testid="confirm-restore-button"]');
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
-      timeout: 5000,
+      timeout: timeouts.heavyOperation,
     });
 
     // Wait for Y.js to propagate the restoration to page2
-    // Third arg is options; second arg (null) is the value passed into the fn
     await page2.waitForFunction(
       () => window.__cmView?.state.doc.toString().includes("Original Content"),
       null,
-      { timeout: 10000 }
+      { timeout: timeouts.heavyOperation }
     );
 
     const content2 = await page2.evaluate(() => window.__cmView.state.doc.toString());

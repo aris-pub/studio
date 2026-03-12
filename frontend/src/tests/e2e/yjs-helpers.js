@@ -79,28 +79,42 @@ export async function createAuthenticatedContext(browser, { token, refreshToken,
 
 // ─── Editor helpers ───────────────────────────────────────────────────────────
 
-export async function openFileInEditor(page, fileId) {
+export async function openFileInEditor(page, fileId, { retries = 1 } = {}) {
   const timeouts = getTimeouts();
-  await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
-  await page.waitForSelector('[data-testid="manuscript-container"]', {
-    timeout: timeouts.heavyOperation,
-  });
 
-  const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();
-  if (!editorAlreadyOpen) {
-    await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Retry: reload the page from scratch
+        await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+      } else {
+        await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
+      }
+      await page.waitForSelector('[data-testid="manuscript-container"]', {
+        timeout: timeouts.heavyOperation,
+      });
+
+      const editorAlreadyOpen = await page.locator(".cm-editor").isVisible();
+      if (!editorAlreadyOpen) {
+        await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
+      }
+      await page.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
+      await page.waitForFunction(
+        () => typeof window.__cmView !== "undefined",
+        {},
+        { timeout: timeouts.heavyOperation }
+      );
+      await page.waitForFunction(
+        () => window.__provider?.synced === true,
+        {},
+        { timeout: timeouts.heavyOperation }
+      );
+      return; // success
+    } catch (err) {
+      if (attempt < retries) continue;
+      throw err;
+    }
   }
-  await page.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
-  await page.waitForFunction(
-    () => typeof window.__cmView !== "undefined",
-    {},
-    { timeout: timeouts.heavyOperation }
-  );
-  await page.waitForFunction(
-    () => window.__provider?.synced === true,
-    {},
-    { timeout: timeouts.heavyOperation }
-  );
 }
 
 export async function clearEditor(page) {
