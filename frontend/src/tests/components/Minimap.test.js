@@ -318,11 +318,10 @@ describe("ScrollbarMinimap.vue — interaction behavior", () => {
     });
   };
 
-  it("annotation mark sets --ann-color CSS variable from mark color", () => {
+  it("annotation mark is positioned via posStyle (top percentage)", () => {
     const wrapper = mountComponent();
     const ann = wrapper.find(".mm-annotation");
-    expect(ann.attributes("style")).toContain("--ann-color");
-    expect(ann.attributes("style")).toContain("var(--purple-600)");
+    expect(ann.attributes("style")).toContain("top: 50%");
   });
 
   it("search marks are positioned independently from section marks", () => {
@@ -465,8 +464,8 @@ describe("Layout regressions — editor/manuscript split", () => {
     expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*margin-left:\s*0/s);
   });
 
-  it("inner.right height accounts for outer padding (not raw 100vh)", () => {
-    expect(canvasSource).toMatch(/&\.right\s*\{[^}]*height:\s*calc\(100vh\s*-\s*32px\)/s);
+  it("inner.right height accounts for outer padding (not raw 100dvh)", () => {
+    expect(canvasSource).toMatch(/&\.right\s*\{[^}]*height:\s*calc\(100dvh\s*-\s*32px\)/s);
   });
 
   it("CodeMirror gutters use smaller font-size", () => {
@@ -523,24 +522,26 @@ describe("Minimap replaces native scrollbar (std-b9dz)", () => {
 
 import { FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
 
-const filesItemSource = readFileSync(
-  resolve(__dirname, "../../views/home/FilesItem.vue"),
-  "utf-8"
-);
+const filesItemSource = readFileSync(resolve(__dirname, "../../views/home/FilesItem.vue"), "utf-8");
 const filesHeaderSource = readFileSync(
   resolve(__dirname, "../../views/home/FilesHeader.vue"),
   "utf-8"
 );
-const filesPaneSource = readFileSync(
-  resolve(__dirname, "../../views/home/FilesPane.vue"),
-  "utf-8"
-);
+const filesPaneSource = readFileSync(resolve(__dirname, "../../views/home/FilesPane.vue"), "utf-8");
 
 describe("FEEDBACK_COLORS export", () => {
   it("is a non-empty object with known reaction types", () => {
     expect(typeof FEEDBACK_COLORS).toBe("object");
     expect(Object.keys(FEEDBACK_COLORS)).toEqual(
-      expect.arrayContaining(["bookmark", "star", "heart", "check", "exclamation", "question", "quote"])
+      expect.arrayContaining([
+        "bookmark",
+        "star",
+        "heart",
+        "check",
+        "exclamation",
+        "question",
+        "quote",
+      ])
     );
   });
 
@@ -599,12 +600,9 @@ describe("ScrollbarMinimap — compact mode features (std-lqa2)", () => {
 });
 
 describe("FilesItem — homepage minimap integration (std-lqa2)", () => {
-  const filesItemScript =
-    filesItemSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
-  const filesItemStyle =
-    filesItemSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
-  const filesItemTemplate =
-    filesItemSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+  const filesItemScript = filesItemSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+  const filesItemStyle = filesItemSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+  const filesItemTemplate = filesItemSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
 
   it("provides manuscriptRef for compact minimap DOM measurement", () => {
     expect(filesItemScript).toMatch(/provide\(\s*["']manuscriptRef["']/);
@@ -629,7 +627,9 @@ describe("FilesItem — homepage minimap integration (std-lqa2)", () => {
   });
 
   it("renders ScrollbarMinimap in compact horizontal mode for list view", () => {
-    expect(filesItemTemplate).toMatch(/ScrollbarMinimap[^>]*mode="compact"[^>]*orientation="horizontal"/);
+    expect(filesItemTemplate).toMatch(
+      /ScrollbarMinimap[^>]*mode="compact"[^>]*orientation="horizontal"/
+    );
   });
 
   it("minimap cell has padding-right for spacing from Tags column", () => {
@@ -673,8 +673,7 @@ describe("FilesHeader — Structure column (std-lqa2)", () => {
 
   it("Structure column renders via HeaderLabel (falls through to v-else)", () => {
     // Structure has no sortable/filterable, so HeaderLabel renders plain text
-    const templateSection =
-      filesHeaderSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+    const templateSection = filesHeaderSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
     // The spacer condition should only match 'Spacer'
     expect(templateSection).toMatch(/name\s*===\s*'Spacer'/);
     expect(templateSection).not.toMatch(/name\s*===\s*'Structure'/);
@@ -689,8 +688,6 @@ describe("FilesPane — grid layout includes minimap column (std-lqa2)", () => {
 
   it("Structure column is hidden on xs screens", () => {
     expect(filesPaneSource).toMatch(/["']Structure["']/);
-    expect(filesPaneSource).toMatch(
-      /\[.*"Structure".*\].*includes\(columnName\).*xsMode/s
-    );
+    expect(filesPaneSource).toMatch(/\[.*"Structure".*\].*includes\(columnName\).*xsMode/s);
   });
 });

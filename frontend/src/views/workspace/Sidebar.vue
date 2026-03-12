@@ -105,7 +105,8 @@
     () => showEditor?.value,
     (isOpen) => {
       const editorItem = items.find((item) => item.name === "DockableEditor");
-      if (editorItem && editorItem.state !== isOpen) editorItem.state = isOpen;
+      if (editorItem && isOpen !== null && isOpen !== undefined && editorItem.state !== isOpen)
+        editorItem.state = isOpen;
     },
     { immediate: true }
   );
@@ -113,7 +114,8 @@
     () => showSearch?.value,
     (isOpen) => {
       const searchItem = items.find((item) => item.name === "DockableSearch");
-      if (searchItem && searchItem.state !== isOpen) searchItem.state = isOpen;
+      if (searchItem && isOpen !== null && isOpen !== undefined && searchItem.state !== isOpen)
+        searchItem.state = isOpen;
     },
     { immediate: true }
   );
@@ -129,6 +131,8 @@
       });
     }
   });
+
+  defineExpose({ items });
 
   // Computed button position to avoid drawer overlap
   const focusButtonLeft = computed(() => {
