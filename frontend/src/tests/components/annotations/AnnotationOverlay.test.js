@@ -127,8 +127,9 @@ describe("Canvas.vue — overlay panel uses established UI components (std-y6e3)
     expect(overlayBlock).toContain("overlay-header-title");
   });
 
-  it("overlay has ButtonClose for dismissal", () => {
-    expect(overlayBlock).toContain("<ButtonClose");
+  it("Pane is closable for dismissal", () => {
+    expect(overlayBlock).toMatch(/:closable="true"/);
+    expect(overlayBlock).toMatch(/@close="/);
   });
 
   it("overlay header shows 'Marginalia' title", () => {

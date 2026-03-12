@@ -42,11 +42,13 @@ const mockFileSave = vi.fn();
 const mockFileDelete = vi.fn();
 const mockFileAddTag = vi.fn();
 const mockFileRemoveTag = vi.fn();
+const mockFileIsUnseen = vi.fn().mockReturnValue(false);
 
 File.save = mockFileSave;
 File.delete = mockFileDelete;
 File.addTag = mockFileAddTag;
 File.removeTag = mockFileRemoveTag;
+File.isUnseen = mockFileIsUnseen;
 
 describe("FileStore", () => {
   let mockApi;
@@ -72,6 +74,7 @@ describe("FileStore", () => {
     mockFileDelete.mockClear();
     mockFileAddTag.mockClear();
     mockFileRemoveTag.mockClear();
+    mockFileIsUnseen.mockClear();
 
     // Reset File constructor mock
     File.mockClear();

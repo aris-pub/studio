@@ -16,6 +16,7 @@ function makeAnnotation(overrides = {}) {
     selected_text: "The possibilities are endless",
     created_at: new Date().toISOString(),
     messages: [],
+    owner_id: 100,
     ...overrides,
   };
 }
@@ -26,6 +27,8 @@ function makeAnnotationWithNote(overrides = {}) {
     ...overrides,
   });
 }
+
+const TEST_USER = { id: 100, name: "Test User" };
 
 function createWrapper(annotation, { activeId = null, actions = {} } = {}) {
   const activeAnnotationId = ref(activeId);
@@ -42,6 +45,7 @@ function createWrapper(annotation, { activeId = null, actions = {} } = {}) {
       provide: {
         annotationActions,
         activeAnnotationId,
+        user: ref(TEST_USER),
       },
     },
   });
@@ -432,6 +436,7 @@ describe("Note.vue — search match highlighting (std-50vp)", () => {
             addNote: vi.fn().mockResolvedValue({}),
           },
           activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
         },
       },
     });
