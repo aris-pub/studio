@@ -110,12 +110,11 @@ For CI/STAGING/PROD: set `ENV=CI/STAGING/PROD` and provide all vars directly in 
 - **ALWAYS use `git mv` to move files** (preserve history)
 - **ALWAYS add blank line at end of files**
 - **NEVER leave whitespace at the end of lines**
-- **Run tests after changes** (`npm test` and `uv run pytest -n8`)
+- **NEVER run the full test suite directly** (e.g. `npm test -- --run`, `uv run pytest`). **ALWAYS use justfile commands**: `just test`, `just check`, `just lint`. For targeted tests, run specific test files only.
 - **Run linters before terminating a task**
 - **Global Components**: All components in `src/components/` auto-registered via `main.js`
 - **For user interaction bugs: ALWAYS use `debug/debug-bug-template.js` to replicate**
 - **Always run e2e tests with --reporter=line**
-- Before starting any service, check if it is already running
 - **Send notifications when tasks complete or need user input**: `osascript -e "display notification \"message\" with title \"Claude Code\""`
 
 ## Language Guidelines
