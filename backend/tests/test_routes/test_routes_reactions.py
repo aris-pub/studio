@@ -1,6 +1,5 @@
 """Test reaction routes."""
 
-import pytest
 from httpx import AsyncClient
 
 

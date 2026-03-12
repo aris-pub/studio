@@ -220,8 +220,11 @@ test.describe("Auto-checkpoint UI @auth", () => {
     const versionItem = page.locator('[data-testid="version-item"]').first();
     await versionItem.locator('[data-testid="trigger-button"]').click();
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.click('button:has-text("Delete")');
+
+    // Confirm in ConfirmationModal
+    await page.waitForSelector('[data-testid="confirmation-modal"]');
+    await page.click('[data-testid="confirm-button"]');
 
     const allItems = page.locator('[data-testid="version-item"]');
     await expect(allItems).toHaveCount(0);

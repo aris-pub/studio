@@ -128,16 +128,13 @@ test.describe("Version Workflow @auth", () => {
     const contextMenuButton = versionItem.locator('[data-testid="trigger-button"]');
     await contextMenuButton.click();
 
-    // Click Delete
+    // Click Delete in context menu
     await page.waitForSelector('button:has-text("Delete")');
-
-    // Set up dialog handler for confirmation
-    page.on("dialog", (dialog) => {
-      expect(dialog.message()).toContain("Delete version");
-      dialog.accept();
-    });
-
     await page.click('button:has-text("Delete")');
+
+    // Confirm in ConfirmationModal
+    await page.waitForSelector('[data-testid="confirmation-modal"]');
+    await page.click('[data-testid="confirm-button"]');
 
     // Verify version was deleted (expect has implicit waiting)
     versionItems = page.locator('[data-testid="version-item"]');
@@ -470,8 +467,11 @@ test.describe("Version Workflow @auth", () => {
     const middleVersion = page.locator('[data-testid="version-item"]:has-text("Version 2")');
     await middleVersion.locator('[data-testid="trigger-button"]').click();
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.click('button:has-text("Delete")');
+
+    // Confirm in ConfirmationModal
+    await page.waitForSelector('[data-testid="confirmation-modal"]');
+    await page.click('[data-testid="confirm-button"]');
 
     // Should have 2 versions remaining
     versionItems = page.locator('[data-testid="version-item"]');
