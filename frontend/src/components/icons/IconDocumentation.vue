@@ -22,7 +22,6 @@
    *   View Docs
    * </a>
    */
-  import {} from "vue";
 </script>
 
 <template>

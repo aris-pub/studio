@@ -337,7 +337,7 @@
   });
 
   watch(activeAnnotationId, (id) => {
-    if (id != null && (!showAnnotationCards.value || focusMode.value)) {
+    if (id !== null && (!showAnnotationCards.value || focusMode.value)) {
       annotationOverlayOpen.value = true;
     }
   });
@@ -533,7 +533,7 @@
     &.left {
       flex: 2;
       max-width: 600px;
-      height: calc(100vh - 32px);
+      height: calc(100dvh - 32px);
       box-sizing: border-box;
       overflow: hidden;
       border-bottom-left-radius: 16px;
@@ -552,7 +552,7 @@
       padding-bottom: 16px;
       display: flex;
       align-items: flex-start;
-      height: calc(100vh - 32px);
+      height: calc(100dvh - 32px);
       outline: none;
       scrollbar-width: none;
       &::-webkit-scrollbar {

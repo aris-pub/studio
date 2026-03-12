@@ -1,35 +1,30 @@
-<script setup>
-  import {} from "vue";
-</script>
+<script setup></script>
 
 <template>
   <Pane>
-    <template #header>Margins</template>
-    <Section variant="enhanced">
-      <template #title>Annotations</template>
-      <template #content>
-        <p>Comments and notes</p>
-        <p>Inline or margins</p>
-        <p>Left, right, auto margin</p>
-      </template>
-    </Section>
-    <Section variant="enhanced">
-      <template #title>Ari</template>
-      <template #content>
-        <p>Agentic research intelligence</p>
-        <p>personality</p>
-        <p>Left, right, auto margin</p>
-      </template>
-    </Section>
-    <Section variant="enhanced">
-      <template #title>Math Tools</template>
-      <template #content>
-        <p>Symbols and results</p>
-        <p>Default state of proof steps</p>
-        <p>Left, right, auto margin</p>
-      </template>
-    </Section>
+    <template #header>
+      <Icon name="LayoutSidebar" />
+      <h3>Margins</h3>
+    </template>
+    <div class="empty-state">
+      <Icon name="LayoutSidebar" class="empty-icon" />
+      <span>Coming soon</span>
+    </div>
   </Pane>
 </template>
 
-<style scoped></style>
+<style scoped>
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 16px;
+    color: var(--text-subtle);
+    font-size: 13px;
+  }
+
+  .empty-icon {
+    opacity: 0.4;
+  }
+</style>

@@ -205,24 +205,24 @@
 <style scoped>
   .modal-title {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 20px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-body);
   }
 
   .confirmation-content {
-    padding: 1rem 0;
+    padding: 16px 0;
   }
 
   .confirmation-message {
-    margin: 0 0 1.5rem 0;
-    color: var(--text-secondary);
+    margin: 0 0 24px 0;
+    color: var(--text-subtle);
     line-height: 1.5;
   }
 
   .confirmation-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 12px;
     justify-content: flex-end;
     align-items: center;
   }
@@ -237,7 +237,7 @@
 
   /* Focus management */
   .confirmation-actions .confirm-button:focus {
-    outline: 2px solid var(--focus-ring);
+    outline: 2px solid var(--border-action);
     outline-offset: 2px;
   }
 
@@ -245,7 +245,7 @@
   @media (max-width: 480px) {
     .confirmation-actions {
       flex-direction: column-reverse;
-      gap: 0.5rem;
+      gap: 8px;
     }
 
     .confirmation-actions .confirm-button,

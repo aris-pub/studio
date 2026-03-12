@@ -107,7 +107,7 @@
       v-bind="$attrs"
     >
       <div class="content">
-        <Pane>
+        <Pane closable @close="emit('close')">
           <template #header>
             <slot name="header" />
           </template>
@@ -125,7 +125,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--overlay-backdrop);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -134,8 +134,8 @@
   }
 
   .content {
-    background: var(--surface-primary, white);
-    border-radius: 12px;
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
     max-width: 500px;
     max-height: 80vh;
     width: 90%;

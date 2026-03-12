@@ -2,6 +2,7 @@
   import { ref, inject, onMounted } from "vue";
   import { useRouter } from "vue-router";
   import { toast } from "@/utils/toast";
+  import PasswordStrength from "@/components/ui/PasswordStrength.vue";
 
   const router = useRouter();
   const name = ref("");
@@ -75,13 +76,16 @@
         <div class="top">
           <InputText v-model="name" data-testid="name-input" direction="column" label="Full name" />
           <InputText v-model="email" data-testid="email-input" direction="column" label="Email" />
-          <InputText
-            v-model="pwd"
-            data-testid="password-input"
-            direction="column"
-            label="Password"
-            type="password"
-          />
+          <div>
+            <InputText
+              v-model="pwd"
+              data-testid="password-input"
+              direction="column"
+              label="Password"
+              type="password"
+            />
+            <PasswordStrength :password="pwd" />
+          </div>
           <InputText
             v-model="pwdAgain"
             data-testid="confirm-password-input"

@@ -81,7 +81,7 @@
     width: 64px;
     text-align: center;
     font-size: 14px;
-    transition: font-weight 0.3s ease;
+    transition: color 0.3s ease;
   }
 
   .sc-wrapper {

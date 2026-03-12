@@ -265,7 +265,7 @@
     outline-offset: var(--border-extrathin);
   }
   .placeholder-text {
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
     font-style: italic;
   }
 </style>

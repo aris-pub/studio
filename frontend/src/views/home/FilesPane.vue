@@ -115,10 +115,6 @@
     align-items: center;
   }
 
-  .pane-header.list > *:first-child,
-  .files.list .item > *:first-child {
-  }
-
   .pane-header.list > *:last-child,
   .files.list .item > *:last-child {
     padding-right: 8px;
@@ -126,9 +122,6 @@
 
   .pane :deep(.content) {
     padding-block: v-bind(panePadding) !important;
-  }
-
-  .files-wrapper.cards {
   }
 
   .files.cards {

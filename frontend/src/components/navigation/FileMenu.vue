@@ -148,5 +148,4 @@
   .fm-wrapper.ButtonRow {
     height: 32px;
   }
-
 </style>

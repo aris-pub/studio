@@ -273,9 +273,9 @@
       gap: 4px;
     }
 
-    &.focused .base-input-field {
+    &.focused .base-input-wrapper {
       border-color: var(--primary-500);
-      outline: 2px solid var(--primary-100);
+      box-shadow: 0 0 0 2px var(--primary-100);
     }
 
     &.error .base-input-field {
@@ -290,7 +290,7 @@
 
   .base-input-label {
     font-weight: var(--weight-medium);
-    color: var(--text-primary);
+    color: var(--text-body);
     font-size: 14px;
   }
 
@@ -306,7 +306,7 @@
       box-shadow 0.2s ease;
 
     &:hover {
-      border-color: var(--border-hover);
+      border-color: var(--border-action-hover);
     }
   }
 
@@ -316,11 +316,11 @@
     border: none;
     background: transparent;
     font-size: 14px;
-    color: var(--text-primary);
+    color: var(--text-body);
     outline: none;
 
     &::placeholder {
-      color: var(--text-secondary);
+      color: var(--text-subtle);
     }
 
     &:disabled {
@@ -337,14 +337,14 @@
     padding: 0 8px;
     display: flex;
     align-items: center;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
   }
 
   .base-input-search-icon {
     padding: 0 0 0 8px;
     display: flex;
     align-items: center;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
   }
 
   .base-input-search-buttons {
@@ -357,7 +357,7 @@
       border: 1px solid var(--border-primary);
       border-radius: 4px;
       background: var(--surface-page);
-      color: var(--text-primary);
+      color: var(--text-body);
       font-size: 12px;
       cursor: pointer;
 
@@ -376,14 +376,14 @@
     padding: 4px;
     border: none;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
     cursor: pointer;
     border-radius: 4px;
     margin-right: 4px;
 
     &:hover {
       background: var(--surface-hover);
-      color: var(--text-primary);
+      color: var(--text-body);
     }
   }
 

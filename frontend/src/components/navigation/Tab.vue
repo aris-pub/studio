@@ -1,6 +1,4 @@
 <script setup>
-  import {} from "vue";
-
   /**
    * Tab - Individual tab button component
    *

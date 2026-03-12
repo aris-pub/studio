@@ -22,7 +22,6 @@
    *   Our Platform Ecosystem
    * </h2>
    */
-  import {} from "vue";
 </script>
 
 <template>

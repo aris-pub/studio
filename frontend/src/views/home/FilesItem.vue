@@ -410,10 +410,13 @@
     color: var(--extra-dark);
     overflow-y: visible;
     transition: var(--transition-bg-color);
-    &:focus,
-    &:focus-visible {
-      background-color: transparent;
+    &:focus {
       outline: none;
+    }
+
+    &:focus-visible {
+      outline: var(--border-med) solid var(--border-action);
+      outline-offset: var(--border-extrathin);
     }
   }
 
@@ -552,7 +555,6 @@
     & > .card-content {
       display: flex;
       flex-direction: column;
-      margin-bottom: 8px;
       margin-bottom: 16px;
     }
 

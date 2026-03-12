@@ -1,23 +1,30 @@
-<script setup>
-  import {} from "vue";
-</script>
+<script setup></script>
 
 <template>
   <Pane>
-    <template #header>Activity</template>
-    <Section variant="enhanced">
-      <template #title>Latest Changes</template>
-      <template #content>
-        <p>As a fun timeline</p>
-      </template>
-    </Section>
-    <Section variant="enhanced">
-      <template #title>Version History</template>
-      <template #content>
-        <p>List with quick actions: view, revert, compare, delete</p>
-      </template>
-    </Section>
+    <template #header>
+      <Icon name="Activity" />
+      <h3>Activity</h3>
+    </template>
+    <div class="empty-state">
+      <Icon name="Activity" class="empty-icon" />
+      <span>Coming soon</span>
+    </div>
   </Pane>
 </template>
 
-<style scoped></style>
+<style scoped>
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 16px;
+    color: var(--text-subtle);
+    font-size: 13px;
+  }
+
+  .empty-icon {
+    opacity: 0.4;
+  }
+</style>

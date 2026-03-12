@@ -75,7 +75,7 @@
   }
 
   .loading-message {
-    color: var(--text-secondary);
+    color: var(--text-subtle);
     font-size: 14px;
     text-align: center;
     max-width: 200px;

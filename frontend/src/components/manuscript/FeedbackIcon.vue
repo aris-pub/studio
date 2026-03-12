@@ -222,8 +222,6 @@
   }
 
   .trigger-btn :deep(.tabler-icon) {
-    width: 20px;
-    height: 20px;
     color: var(--trigger-color);
   }
 

@@ -383,7 +383,7 @@
 
   .label {
     font-size: 12px;
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
   }
 
   .value {
@@ -393,7 +393,7 @@
   }
 
   .value--empty {
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
     font-style: italic;
   }
 
@@ -406,7 +406,7 @@
 
   .publish-hint {
     font-size: 12px;
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
     line-height: 1.4;
     margin: 0;
   }

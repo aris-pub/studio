@@ -20,7 +20,16 @@
 </script>
 
 <template>
-  <div class="topbar" :class="{ active: isActive, full: showTitle && !searchActive, search: searchActive, focus: focusMode, mobile: mobileMode }">
+  <div
+    class="topbar"
+    :class="{
+      active: isActive,
+      full: showTitle && !searchActive,
+      search: searchActive,
+      focus: focusMode,
+      mobile: mobileMode,
+    }"
+  >
     <slot v-if="searchActive" name="search" />
     <template v-else>
       <span v-if="!component && showTitle" class="topbar-section">{{ currentSection }}</span>
@@ -67,9 +76,8 @@
     box-shadow: var(--shadow-soft);
   }
 
-
   .topbar-section {
-    font-family: "Montserrat", sans-serif;
+    font-family: var(--font-heading);
     font-weight: var(--weight-medium);
     font-size: 14px;
     line-height: 1.4;
@@ -88,5 +96,4 @@
     align-items: center;
     gap: 4px;
   }
-
 </style>

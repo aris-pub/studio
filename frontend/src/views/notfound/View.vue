@@ -1,6 +1,4 @@
-<script setup>
-  import {} from "vue";
-</script>
+<script setup></script>
 
 <template>
   <div class="view">

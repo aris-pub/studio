@@ -24,10 +24,12 @@ const mockUser = {
   value: { id: 1, name: "Test User", email: "test@example.com" },
 };
 
-const mockFileStore = {
+const mockFileStoreMethods = {
   createFile: vi.fn(),
   deleteFile: vi.fn(),
 };
+
+const mockFileStore = { value: mockFileStoreMethods };
 
 const mockFile = {
   id: 123,
@@ -227,14 +229,14 @@ describe("DrawerFile", () => {
 
   describe("duplicate", () => {
     it("creates a copy with (Copy) suffix", async () => {
-      mockFileStore.createFile.mockResolvedValue({});
+      mockFileStoreMethods.createFile.mockResolvedValue({});
 
       wrapper = createWrapper();
       const rows = wrapper.findAll(".action-row");
       await rows[2].trigger("click");
       await flushPromises();
 
-      expect(mockFileStore.createFile).toHaveBeenCalledWith(
+      expect(mockFileStoreMethods.createFile).toHaveBeenCalledWith(
         expect.objectContaining({
           id: null,
           owner_id: 1,
@@ -244,14 +246,14 @@ describe("DrawerFile", () => {
     });
 
     it("handles Untitled files", async () => {
-      mockFileStore.createFile.mockResolvedValue({});
+      mockFileStoreMethods.createFile.mockResolvedValue({});
 
       wrapper = createWrapper({ file: { ...mockFile, title: "" } });
       const rows = wrapper.findAll(".action-row");
       await rows[2].trigger("click");
       await flushPromises();
 
-      expect(mockFileStore.createFile).toHaveBeenCalledWith(
+      expect(mockFileStoreMethods.createFile).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Untitled (Copy)",
         })
@@ -260,7 +262,7 @@ describe("DrawerFile", () => {
 
     it("disables button during duplication", async () => {
       let resolveDuplicate;
-      mockFileStore.createFile.mockImplementation(
+      mockFileStoreMethods.createFile.mockImplementation(
         () =>
           new Promise((resolve) => {
             resolveDuplicate = resolve;
@@ -290,7 +292,7 @@ describe("DrawerFile", () => {
     });
 
     it("deletes file and navigates home on confirm", async () => {
-      mockFileStore.deleteFile.mockResolvedValue(true);
+      mockFileStoreMethods.deleteFile.mockResolvedValue(true);
 
       wrapper = createWrapper();
       const deleteRow = wrapper.find(".action-row--danger");
@@ -300,12 +302,14 @@ describe("DrawerFile", () => {
       await modal.vm.$emit("confirm");
       await flushPromises();
 
-      expect(mockFileStore.deleteFile).toHaveBeenCalledWith(expect.objectContaining({ id: 123 }));
+      expect(mockFileStoreMethods.deleteFile).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 123 })
+      );
       expect(pushMock).toHaveBeenCalledWith("/");
     });
 
     it("does not navigate if delete fails", async () => {
-      mockFileStore.deleteFile.mockResolvedValue(false);
+      mockFileStoreMethods.deleteFile.mockResolvedValue(false);
 
       wrapper = createWrapper();
       const deleteRow = wrapper.find(".action-row--danger");

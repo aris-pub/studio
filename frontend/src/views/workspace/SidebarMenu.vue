@@ -187,7 +187,4 @@
       justify-content: center;
     }
   }
-
-  .sb-menu.mobile.xs {
-  }
 </style>

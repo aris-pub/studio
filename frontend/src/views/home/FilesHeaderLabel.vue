@@ -71,7 +71,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    height: calc(40px -- 2 * var(--border-extrathin));
+    height: calc(40px - 2 * var(--border-extrathin));
     color: var(--almost-black);
     width: 100%;
     padding-right: 8px;

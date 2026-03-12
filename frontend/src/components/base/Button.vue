@@ -121,7 +121,13 @@
   <button
     ref="btn-ref"
     :disabled="disabled"
-    :class="[kind, `btn-${size}`, shadow ? 'with-shadow' : '', disabled ? 'disabled' : '', block ? 'btn-block' : '']"
+    :class="[
+      kind,
+      `btn-${size}`,
+      shadow ? 'with-shadow' : '',
+      disabled ? 'disabled' : '',
+      block ? 'btn-block' : '',
+    ]"
     v-bind="$attrs"
   >
     <template v-if="icon">
@@ -357,7 +363,7 @@
   button.danger {
     background-color: var(--red-600);
     border-color: var(--red-600);
-    color: white;
+    color: var(--white);
 
     &:not(:disabled):hover {
       background-color: var(--red-700);
@@ -365,11 +371,11 @@
     }
 
     & .btn-icon {
-      color: white;
+      color: var(--white);
     }
 
     &:focus-visible {
-      box-shadow: 0 0 0 2px white;
+      box-shadow: 0 0 0 2px var(--white);
       outline: var(--border-thin) solid var(--border-action);
       outline-offset: 3px;
     }
@@ -428,7 +434,7 @@
     pointer-events: none;
     display: none;
     text-wrap: nowrap;
-    background: white;
+    background: var(--white);
     padding: 4px 8px;
     border-radius: 4px;
     box-shadow: var(--shadow-strong);

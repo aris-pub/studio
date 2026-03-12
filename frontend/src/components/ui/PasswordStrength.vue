@@ -111,7 +111,7 @@
   }
 
   .strength-fill.weak {
-    background-color: var(--danger-500);
+    background-color: var(--error-500);
   }
 
   .strength-fill.medium {
@@ -129,7 +129,7 @@
   }
 
   .strength-text.weak {
-    color: var(--danger-600);
+    color: var(--error-600);
   }
 
   .strength-text.medium {
@@ -152,7 +152,7 @@
 
   .strength-suggestions li {
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--text-disabled);
     margin-bottom: 2px;
   }
 

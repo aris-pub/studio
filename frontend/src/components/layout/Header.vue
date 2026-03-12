@@ -27,7 +27,6 @@
    *   <!-- ... pane content ... -->
    * </Pane>
    */
-  import {} from "vue";
 </script>
 
 <template>

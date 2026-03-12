@@ -20,7 +20,6 @@
    *   <button>Option 3</button>
    * </div>
    */
-  import {} from "vue";
 </script>
 
 <template>

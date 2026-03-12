@@ -294,10 +294,7 @@
     --transition-duration: 0.3s;
 
     height: 100%;
-    transition:
-      min-width var(--transition-duration) ease-out,
-      max-width var(--transition-duration) ease-out,
-      flex-basis var(--transition-duration) ease-out;
+    transition: flex-basis var(--transition-duration) ease-out;
   }
 
   .sb-wrapper:not(.mobile):not(.collapsed) {
@@ -348,7 +345,6 @@
       padding-block: 10px;
       padding-inline: 8px;
     }
-
   }
 
   .sb-wrapper:not(.mobile) {
@@ -395,7 +391,7 @@
     left: 280px; /* Start backdrop after sidebar width */
     width: calc(100vw - 280px); /* Cover remaining width */
     height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-backdrop);
     z-index: 1001;
     cursor: pointer;
   }
@@ -506,7 +502,7 @@
   .cta :deep(.cta-btn) {
     background-color: var(--primary-500);
     border-color: var(--primary-500);
-    color: white;
+    color: var(--white);
 
     &:not(:disabled):hover {
       background-color: var(--primary-600);
@@ -519,7 +515,7 @@
     }
 
     & .btn-icon {
-      color: white;
+      color: var(--white);
     }
   }
 

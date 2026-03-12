@@ -1,5 +1,4 @@
 <script setup>
-  import {} from "vue";
   import Editor from "./Editor.vue";
 
   const props = defineProps({});

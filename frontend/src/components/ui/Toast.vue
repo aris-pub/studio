@@ -173,14 +173,14 @@
   .toast-message {
     font-weight: var(--weight-medium);
     font-size: 14px;
-    color: var(--text-primary);
+    color: var(--text-body);
     line-height: 1.2;
     white-space: nowrap;
   }
 
   .toast-description {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
     margin-top: 4px;
     line-height: 1.4;
     word-wrap: break-word;

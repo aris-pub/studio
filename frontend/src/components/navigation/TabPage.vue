@@ -1,6 +1,4 @@
 <script setup>
-  import {} from "vue";
-
   /**
    * TabPage - Content container for individual tab pages
    *

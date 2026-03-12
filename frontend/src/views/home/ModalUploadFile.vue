@@ -1,12 +1,9 @@
 <script setup>
   import { ref, computed, inject, useTemplateRef } from "vue";
   import { useRouter } from "vue-router";
-  import useClosable from "@/composables/useClosable.js";
 
   const emit = defineEmits(["close"]);
   const close = () => emit("close");
-
-  useClosable({ onClose: close, closeOnOutsideClick: false });
 
   const fileUpload = useTemplateRef("fileUpload");
   const triggerFileUpload = () => fileUpload.value?.click();
@@ -96,10 +93,9 @@
 </script>
 
 <template>
-  <Modal>
+  <Modal @close="close">
     <template #header>
       <span class="text-h5">Upload File</span>
-      <ButtonClose />
     </template>
     <span>Select a file from your computer</span>
     <span class="text-caption supported-formats"> Supported: .rsm, .md, .tex, .latex, .docx </span>
@@ -158,7 +154,7 @@
   }
 
   .supported-formats {
-    color: var(--color-text-secondary, #888);
+    color: var(--text-subtle);
     display: block;
     margin-top: 4px;
   }
@@ -166,13 +162,13 @@
   .format-hint {
     display: block;
     text-align: center;
-    color: var(--color-text-secondary, #888);
+    color: var(--text-subtle);
   }
 
   .error-message {
     display: block;
     text-align: center;
-    color: var(--color-error, #e53e3e);
+    color: var(--text-error);
   }
 
   .cta {

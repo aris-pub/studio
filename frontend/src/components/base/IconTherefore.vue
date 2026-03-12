@@ -21,7 +21,6 @@
    *   Reasoning
    * </button>
    */
-  import {} from "vue";
 </script>
 
 <template>

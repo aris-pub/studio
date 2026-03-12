@@ -85,11 +85,5 @@
 </style>
 
 <style>
-  .aris-search-highlight {
-    background-color: var(--yellow-300);
-  }
-
-  .aris-search-highlight--current {
-    background-color: var(--orange-300);
-  }
+  @import "@/assets/css/search-highlights.css";
 </style>

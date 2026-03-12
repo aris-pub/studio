@@ -280,7 +280,7 @@
     padding-inline: 6px;
     font-size: 16px;
     font-weight: var(--weight-regular);
-    font-family: "Source Sans 3", sans-serif;
+    font-family: var(--font-body);
     text-transform: none;
   }
 

@@ -1,10 +1,6 @@
 <script setup>
   import { computed, inject, toRaw, useTemplateRef } from "vue";
-  import {
-    IconClock,
-    IconWifiOff,
-    IconMapPin,
-  } from "@tabler/icons-vue";
+  import { IconClock, IconWifiOff, IconMapPin } from "@tabler/icons-vue";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
   import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 
@@ -120,7 +116,7 @@
   }
 
   .statusbar * {
-    font-size: 12px !important;
+    font-size: 12px;
     line-height: 18px;
     display: flex;
     align-items: center;

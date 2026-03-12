@@ -200,7 +200,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-backdrop);
     z-index: 999;
     animation: fadeIn 0.3s ease-out;
   }

@@ -61,7 +61,6 @@
   <Modal @close="emit('close')">
     <template #header>
       <div>Keyboard Shortcuts</div>
-      <ButtonClose />
     </template>
 
     <div

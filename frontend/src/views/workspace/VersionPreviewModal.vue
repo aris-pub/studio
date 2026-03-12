@@ -220,7 +220,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -230,7 +230,7 @@
 
   .modal-container {
     background: var(--white);
-    border-radius: 8px;
+    border-radius: var(--radius-xl);
     width: 100%;
     max-width: 900px;
     max-height: 90vh;
@@ -258,18 +258,18 @@
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-body);
   }
 
   .version-name {
     font-weight: 400;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
   }
 
   .version-meta {
     margin-top: 4px;
     font-size: 13px;
-    color: var(--text-tertiary);
+    color: var(--text-disabled);
   }
 
   .btn-close {
@@ -283,13 +283,18 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
     transition: all 0.2s;
   }
 
   .btn-close:hover:not(:disabled) {
     background: var(--surface-hover);
-    color: var(--text-primary);
+    color: var(--text-body);
+  }
+
+  .btn-close:focus-visible {
+    outline: var(--border-med) solid var(--border-action);
+    outline-offset: var(--border-extrathin);
   }
 
   .btn-close:disabled {
@@ -312,14 +317,14 @@
     justify-content: center;
     height: 100%;
     gap: 16px;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
   }
 
   .spinner {
     width: 32px;
     height: 32px;
     border: 3px solid var(--border-primary);
-    border-top-color: var(--color-primary);
+    border-top-color: var(--surface-action);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -332,8 +337,8 @@
 
   .error-state button {
     padding: 8px 16px;
-    background: var(--color-primary);
-    color: white;
+    background: var(--surface-action);
+    color: var(--white);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -350,7 +355,7 @@
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-subtle);
     margin-bottom: 16px;
     border: 1px solid var(--border-primary);
     z-index: 10;
@@ -365,7 +370,7 @@
     font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
     font-size: 14px;
     line-height: 1.6;
-    color: var(--text-primary);
+    color: var(--text-body);
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -386,7 +391,7 @@
   .confirmation-message {
     margin: 0;
     font-size: 14px;
-    color: var(--text-primary);
+    color: var(--text-body);
   }
 
   .confirmation-actions {
@@ -404,7 +409,7 @@
 
   .owner-only-note {
     font-size: 13px;
-    color: var(--text-tertiary);
+    color: var(--text-disabled);
     font-style: italic;
   }
 
@@ -421,17 +426,17 @@
   }
 
   .btn-primary {
-    background: var(--color-primary);
-    color: white;
+    background: var(--surface-action);
+    color: var(--white);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-hover);
+    background: var(--surface-action-hover);
   }
 
   .btn-secondary {
     background: var(--surface-hover);
-    color: var(--text-primary);
+    color: var(--text-body);
     border: 1px solid var(--border-primary);
   }
 
@@ -440,12 +445,12 @@
   }
 
   .btn-danger {
-    background: var(--color-error);
-    color: white;
+    background: var(--error-500);
+    color: var(--white);
   }
 
   .btn-danger:hover:not(:disabled) {
-    background: var(--color-error-hover);
+    background: var(--error-600);
   }
 
   .btn-primary:disabled,

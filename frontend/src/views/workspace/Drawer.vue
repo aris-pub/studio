@@ -37,27 +37,28 @@
     position: absolute;
     top: -8px;
     bottom: 24px;
-    left: calc(-1 * var(--sidebar-width));
+    left: 64px;
     width: calc(var(--sidebar-width) - 8px);
     border-radius: 16px;
     box-shadow: var(--shadow-soft);
     overflow: hidden;
     opacity: 0;
     overflow-y: auto;
+    transform: translateX(calc(-64px - var(--sidebar-width)));
     transition:
-      left 0.3s ease,
+      transform 0.3s ease,
       opacity 0.3s ease;
   }
 
   .drawer.active {
-    left: 64px;
+    transform: translateX(0);
     opacity: 1;
   }
 
   .drawer.focus,
   .drawer.active.focus {
     opacity: 0 !important;
-    left: calc(-1 * var(--sidebar-width)) !important;
+    transform: translateX(calc(-64px - var(--sidebar-width))) !important;
   }
 
   :deep(.pane) {

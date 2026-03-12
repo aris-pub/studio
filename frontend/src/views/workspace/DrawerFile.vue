@@ -70,7 +70,7 @@
         owner_id: user.value.id,
         title: (file.value.title || "Untitled") + " (Copy)",
       };
-      await fileStore.createFile(fileData);
+      await fileStore.value.createFile(fileData);
     } catch (error) {
       console.error("Duplicate failed:", error);
     } finally {
@@ -86,7 +86,7 @@
   async function handleDeleteConfirm() {
     if (!showDeleteModal.value) return;
     try {
-      const success = await fileStore.deleteFile(file.value);
+      const success = await fileStore.value.deleteFile(file.value);
       if (success) {
         showDeleteModal.value = false;
         router.push("/");
@@ -201,7 +201,7 @@
   }
 
   .action-chevron {
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
   }
 
   .action-row--danger {

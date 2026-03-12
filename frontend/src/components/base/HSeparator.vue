@@ -16,7 +16,6 @@
    *   <span>Item 3</span>
    * </div>
    */
-  import {} from "vue";
 </script>
 
 <template>

@@ -220,39 +220,5 @@
 </style>
 
 <style>
-  .aris-search-highlight {
-    background-color: var(--yellow-300);
-  }
-
-  .aris-search-highlight--current {
-    background-color: var(--orange-300);
-  }
-
-  .aris-search-math-container {
-    background-color: color-mix(in srgb, var(--yellow-200) 25%, transparent);
-    border-radius: 3px;
-  }
-
-  .aris-search-math-container.aris-search-highlight {
-    outline: 2px solid var(--yellow-500);
-    outline-offset: 2px;
-  }
-
-  .aris-search-math-container.aris-search-highlight--current {
-    background-color: color-mix(in srgb, var(--orange-200) 30%, transparent);
-    outline: 2.5px solid var(--orange-500);
-    outline-offset: 2px;
-  }
-
-  math .aris-search-highlight {
-    outline: 2px solid var(--yellow-500);
-    outline-offset: 1px;
-    border-radius: 2px;
-  }
-
-  math .aris-search-highlight--current {
-    outline: 2.5px solid var(--orange-500);
-    outline-offset: 1px;
-    border-radius: 2px;
-  }
+  @import "@/assets/css/search-highlights.css";
 </style>

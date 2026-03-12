@@ -1,6 +1,4 @@
 <script setup>
-  import {} from "vue";
-
   const props = defineProps({});
   const asset = defineModel({ type: Object, required: true });
 </script>

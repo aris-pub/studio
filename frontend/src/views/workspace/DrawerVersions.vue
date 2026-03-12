@@ -7,6 +7,7 @@
   import VersionPreviewModal from "./VersionPreviewModal.vue";
   import ContextMenu from "@/components/navigation/ContextMenu.vue";
   import ContextMenuItem from "@/components/navigation/ContextMenuItem.vue";
+  import ConfirmationModal from "@/components/ConfirmationModal.vue";
 
   const api = inject("api");
   const user = inject("user");
@@ -19,6 +20,8 @@
   const showPreviewModal = ref(false);
   const isSaving = ref(false);
   const activeToast = ref(null);
+  const showDeleteModal = ref(false);
+  const versionToDelete = ref(null);
   const editableRefs = ref({});
 
   // Get current file ID
@@ -156,14 +159,16 @@
   }
 
   // Delete a version
-  async function handleDelete(version) {
-    if (
-      !confirm(
-        `Delete version ${version.version_number}${version.version_name ? ` "${version.version_name}"` : ""}?`
-      )
-    ) {
-      return;
-    }
+  function handleDelete(version) {
+    versionToDelete.value = version;
+    showDeleteModal.value = true;
+  }
+
+  async function confirmDelete() {
+    const version = versionToDelete.value;
+    showDeleteModal.value = false;
+    versionToDelete.value = null;
+    if (!version) return;
 
     try {
       await api.delete(`/files/${fileId.value}/versions/${version.id}`);
@@ -182,6 +187,18 @@
       });
     }
   }
+
+  function cancelDelete() {
+    showDeleteModal.value = false;
+    versionToDelete.value = null;
+  }
+
+  const deleteMessage = computed(() => {
+    const v = versionToDelete.value;
+    if (!v) return "";
+    const name = v.version_name ? ` "${v.version_name}"` : "";
+    return `Delete version ${v.version_number}${name}? This cannot be undone.`;
+  });
 
   // Format date for display
   function formatDate(dateString) {
@@ -320,6 +337,17 @@
       :description="activeToast.description"
       @dismiss="hideToast"
     />
+
+    <ConfirmationModal
+      :show="showDeleteModal"
+      title="Delete Version?"
+      :message="deleteMessage"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+      @close="cancelDelete"
+    />
   </Pane>
 </template>
 
@@ -332,17 +360,17 @@
   .error {
     padding: 16px;
     text-align: center;
-    color: var(--color-text-secondary);
+    color: var(--text-subtle);
   }
 
   .error {
-    color: var(--color-error);
+    color: var(--text-error);
   }
 
   .empty-state {
     padding: 32px 16px;
     text-align: center;
-    color: var(--color-text-secondary);
+    color: var(--text-subtle);
   }
 
   .empty-state p {
@@ -352,7 +380,7 @@
   .empty-hint {
     font-size: 13px;
     margin-top: 8px;
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
   }
 
   .version-list {
@@ -387,7 +415,7 @@
   }
 
   .version-name {
-    color: var(--color-text-primary);
+    color: var(--text-body);
     font-size: 15px;
     font-weight: 600;
     line-height: 1.5;
@@ -397,7 +425,7 @@
   }
 
   .version-name-empty {
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
     font-size: 15px;
     font-weight: 600;
     line-height: 1.5;
@@ -409,7 +437,7 @@
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
   }
 
   .version-item :deep(.context-menu-trigger) {
@@ -432,7 +460,7 @@
   }
 
   .version-type-icon--auto {
-    color: var(--color-text-tertiary);
+    color: var(--text-subtle);
     flex-shrink: 0;
     margin-right: 4px;
   }

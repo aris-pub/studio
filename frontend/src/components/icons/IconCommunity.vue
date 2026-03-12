@@ -22,7 +22,6 @@
    *   Our Community
    * </a>
    */
-  import {} from "vue";
 </script>
 
 <template>
