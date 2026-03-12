@@ -337,7 +337,8 @@ describe("highlightSearchMatches utils", () => {
   describe("clearHighlights", () => {
     it("clears math highlight classes", () => {
       const root = document.createElement("div");
-      root.innerHTML = '<span class="math"><math><mi class="aris-search-highlight">x</mi></math></span>';
+      root.innerHTML =
+        '<span class="math"><math><mi class="aris-search-highlight">x</mi></math></span>';
       clearHighlights(root);
       const mi = root.querySelector("mi");
       expect(mi.classList.contains(highlightClass)).toBe(false);
