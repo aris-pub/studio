@@ -16,7 +16,12 @@ import { AuthHelpers } from "../utils/auth-helpers.js";
 import { FileHelpers } from "../utils/file-helpers.js";
 import { getBackendURL } from "../utils/test-config.js";
 import { getTimeouts } from "../utils/timeout-constants.js";
-import { loginUser, createAuthenticatedContext, cleanupYjs } from "../yjs-helpers.js";
+import {
+  loginUser,
+  createAuthenticatedContext,
+  openFileInEditor,
+  cleanupYjs,
+} from "../yjs-helpers.js";
 
 test.describe("Version Restore Tests @auth @version-restore", () => {
   let fileId;
@@ -198,24 +203,10 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     test.setTimeout(90000); // Y.js propagation across two tabs in CI
     const timeouts = getTimeouts();
 
-    // Open a second tab and get it to the same file with the source editor ready
+    // Open a second tab with the editor fully ready (waits for manuscript,
+    // .cm-editor, __cmView, and provider sync — with retry on failure)
     const page2 = await context.newPage();
-    await page2.goto(`/file/${fileId}`, { waitUntil: "commit" });
-    await page2.waitForLoadState("domcontentloaded");
-    // Open source drawer on page2 so __cmView is initialized there too
-    await page2.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
-    await page2.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
-    await page2.waitForFunction(
-      () => typeof window.__cmView !== "undefined",
-      {},
-      { timeout: timeouts.heavyOperation }
-    );
-    // Wait for Y.js provider to sync on page2 before restoring
-    await page2.waitForFunction(
-      () => window.__provider?.synced === true,
-      {},
-      { timeout: timeouts.heavyOperation }
-    );
+    await openFileInEditor(page2, fileId);
 
     // page1: restore the version
     await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
