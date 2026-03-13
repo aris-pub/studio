@@ -54,7 +54,7 @@
     justify-content: flex-start;
     column-gap: 48px;
     row-gap: 8px;
-    max-width: calc(100% - (100px + 48px));
+    max-width: calc(100% - (96px + 48px));
 
     &.mobile {
       background-color: var(--extra-light);

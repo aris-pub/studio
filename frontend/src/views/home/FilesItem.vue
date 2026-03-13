@@ -268,9 +268,7 @@
       outline: var(--border-med) solid var(--border-action);
       outline-offset: var(--border-extrathin);
     }
-  }
 
-  .item {
     & > *:not(.minimap-source) {
       height: 56px;
       padding-right: 8px;
@@ -300,7 +298,7 @@
     & .title-cell {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       overflow: hidden;
       position: relative;
     }
@@ -331,7 +329,7 @@
       width: calc(100% + 24px);
       margin-left: 12px;
       height: 16px;
-      border-radius: 3px;
+      border-radius: 4px;
       background: var(--gray-100);
       border: 1px solid var(--gray-200);
       transition:
