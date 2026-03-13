@@ -14,9 +14,7 @@
   import { ref, inject, provide, watch, useTemplateRef, computed } from "vue";
   import { useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-  import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { File } from "@/models/File.js";
-  import { getLogger } from "@/utils/logger.js";
   import { downloadBlob } from "@/utils/download.js";
   import Date from "./FilesItemDate.vue";
   import FilesItemCollaborators from "./FilesItemCollaborators.vue";
@@ -24,111 +22,9 @@
   import ConfirmationModal from "@/components/ConfirmationModal.vue";
   import ScrollbarMinimap from "@/views/workspace/ScrollbarMinimap.vue";
 
-  const logger = getLogger("FilesItem");
-
-  // Make this component async by awaiting real file operations
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
   const user = inject("user");
-
-  // Head injection composable for tooltip support
-  const { processStructuredContent } = useHeadInjection(api);
-
-  // Async file validation and enhancement with real API calls
-  if (file.value && file.value.id && api && user?.value?.id) {
-    const fileId = file.value.id;
-    logger.debug("Starting async file enhancement", { fileId, title: file.value.title });
-    const startTime = performance.now();
-
-    try {
-      // Real async operations that justify Suspense usage:
-
-      // 1. Load complete file details if not already present
-      if (!file.value.source || !file.value.abstract) {
-        logger.debug("Loading file details", { fileId });
-        const fileDetailsResponse = await api.get(`/files/${fileId}`).catch(() => null);
-        if (fileDetailsResponse?.data) {
-          Object.assign(file.value, fileDetailsResponse.data);
-          logger.debug("File details loaded successfully", { fileId });
-        }
-      }
-
-      // 2. Load annotations and reactions for minimap display
-      const [annResponse, rxnResponse] = await Promise.all([
-        api.get("/annotations/", { params: { file_id: fileId } }).catch(() => null),
-        api.get("/reactions/", { params: { file_id: fileId } }).catch(() => null),
-      ]);
-      if (Array.isArray(annResponse?.data)) {
-        file.value.annotations = annResponse.data;
-      }
-      if (Array.isArray(rxnResponse?.data)) {
-        file.value.reactions = rxnResponse.data;
-      }
-
-      // 3. Load file assets to show thumbnail/preview indicators
-      logger.debug("Loading file assets", { fileId });
-      const assetsResponse = await api.get(`/files/${fileId}/assets`).catch(() => null);
-      if (assetsResponse?.data) {
-        file.value.assets = assetsResponse.data;
-        file.value.hasAssets = assetsResponse.data.length > 0;
-        logger.debug("File assets loaded", { fileId, assetCount: assetsResponse.data.length });
-      }
-
-      // 3. For files without HTML content, pre-load structured content for faster viewing with tooltip support
-      if (!file.value.html) {
-        logger.debug("Loading file content", { fileId });
-        try {
-          // Try structured format first for tooltip support
-          const structuredResponse = await api.get(`/files/${fileId}/content?format=structured`);
-          if (
-            structuredResponse?.data &&
-            typeof structuredResponse.data === "object" &&
-            structuredResponse.data.body
-          ) {
-            // Got structured response with head/body/init_script
-            file.value.html = structuredResponse.data.body;
-
-            // Process head content for tooltip dependencies
-            await processStructuredContent(structuredResponse.data);
-            file.value._structuredProcessed = true;
-
-            logger.debug("File structured content loaded successfully", { fileId });
-          } else {
-            // Fallback to plain HTML
-            const contentResponse = await api.get(`/files/${fileId}/content`);
-            if (contentResponse?.data) {
-              file.value.html = contentResponse.data;
-              file.value._structuredProcessed = false;
-              logger.debug("File plain content loaded successfully", { fileId });
-            }
-          }
-        } catch (error) {
-          logger.debug("Error loading structured content, trying plain HTML", {
-            fileId,
-            error: error.message,
-          });
-          // Final fallback to plain HTML
-          const contentResponse = await api.get(`/files/${fileId}/content`).catch(() => null);
-          if (contentResponse?.data) {
-            file.value.html = contentResponse.data;
-            file.value._structuredProcessed = false;
-            logger.debug("File content loaded successfully (fallback)", { fileId });
-          }
-        }
-      }
-
-      const duration = performance.now() - startTime;
-      logger.performance("File async enhancement", duration, { fileId });
-    } catch (error) {
-      logger.error("FilesItem async initialization failed", {
-        fileId: file.value.id,
-        error: error.message,
-      });
-      // Component should still render even if async operations fail
-    }
-  }
-
-  const props = defineProps({});
 
   /**
    * File object containing manuscript data and state (already defined above)
@@ -138,8 +34,8 @@
   const xsMode = inject("xsMode");
   const mobileMode = inject("mobileMode");
 
-  // Minimap: provide a manuscriptRef + annotations so ScrollbarMinimap can
-  // compute marks from a hidden rendered copy of the file HTML.
+  // Minimap: provide annotations/reactions so ScrollbarMinimap can render marks.
+  // Data comes from file store (no per-item API calls).
   const manuscriptRef = useTemplateRef("manuscript-ref");
   const fileAnnotations = computed(() => file.value?.annotations || []);
   const fileReactions = computed(() => file.value?.reactions || []);
@@ -302,7 +198,6 @@
         <FilesItemRole :role="file.role" />
       </div>
 
-      <!-- Minimap, tags, spacer, and collaborators (hidden on extra small screens) -->
       <template v-if="!xsMode">
         <div class="minimap-cell">
           <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />

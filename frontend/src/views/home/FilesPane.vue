@@ -4,7 +4,6 @@
   import Topbar from "./FilesTopbar.vue";
   import FilesHeader from "./FilesHeader.vue";
   import FilesItem from "./FilesItem.vue";
-  import LoadingSpinner from "@/components/base/LoadingSpinner.vue";
 
   const props = defineProps({});
   const fileStore = inject("fileStore");
@@ -41,8 +40,7 @@
       : "minmax(144px, 2fr) minmax(80px, 1.5fr) minmax(200px, 1fr) 16px 120px 104px 16px 8px";
   });
   const shouldShowColumn = (columnName) => {
-    if (["Spacer", "Tags", "Collaborators", "Structure"].includes(columnName) && xsMode.value)
-      return false;
+    if (["Spacer", "Tags", "Collaborators", "Structure"].includes(columnName) && xsMode.value) return false;
     return true;
   };
   provide("shouldShowColumn", shouldShowColumn);
@@ -57,24 +55,18 @@
     <div class="files-wrapper">
       <FilesHeader />
 
-      <Suspense>
-        <div
-          v-if="visibleFiles"
-          ref="files-ref"
-          data-testid="files-container"
-          class="files"
-          role="listbox"
-          aria-label="Files"
-        >
-          <template v-for="(file, idx) in visibleFiles" :key="file.id">
-            <FilesItem v-model="visibleFiles[idx]" />
-          </template>
-        </div>
-
-        <template #fallback>
-          <LoadingSpinner message="Loading files..." />
+      <div
+        v-if="visibleFiles"
+        ref="files-ref"
+        data-testid="files-container"
+        class="files"
+        role="listbox"
+        aria-label="Files"
+      >
+        <template v-for="(file, idx) in visibleFiles" :key="file.id">
+          <FilesItem v-model="visibleFiles[idx]" />
         </template>
-      </Suspense>
+      </div>
     </div>
   </Pane>
 </template>

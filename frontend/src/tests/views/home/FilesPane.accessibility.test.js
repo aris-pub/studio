@@ -113,9 +113,6 @@ describe("FilesPane.vue - Accessibility Features", () => {
               },
             },
           },
-          Suspense: {
-            template: "<div><slot></slot></div>",
-          },
           ...overrides.stubs,
         },
       },
@@ -331,28 +328,6 @@ describe("FilesPane.vue - Accessibility Features", () => {
   });
 
   describe("Screen Reader Announcements", () => {
-    it("provides informative loading state", () => {
-      const wrapper = createWrapper({
-        provide: {
-          fileStore: ref({ files: null }),
-        },
-        stubs: {
-          Suspense: {
-            template: '<div><slot name="fallback"></slot></div>',
-          },
-          LoadingSpinner: {
-            template:
-              '<div class="loading-container"><div class="loading-message">{{ message }}</div></div>',
-            props: ["message"],
-          },
-        },
-      });
-
-      const loadingElement = wrapper.find(".loading-container");
-      expect(loadingElement.exists()).toBe(true);
-      expect(loadingElement.text()).toBe("Loading files...");
-    });
-
     it("announces file count changes", async () => {
       const wrapper = createWrapper();
 
