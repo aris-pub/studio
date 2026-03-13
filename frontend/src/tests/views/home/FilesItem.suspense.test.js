@@ -83,7 +83,6 @@ describe("FilesItem.vue - Suspense and Async Behavior", () => {
     return mount(AsyncFilesItem, {
       props: {
         modelValue: mockFile.value,
-        mode: "list",
         ...overrides.props,
       },
       global: {
@@ -281,7 +280,6 @@ describe("FilesItem.vue - Suspense and Async Behavior", () => {
       const wrapper = mount(AsyncFilesItem, {
         props: {
           modelValue: mockFile.value,
-          mode: "list",
         },
         global: {
           provide: mockProvides,
@@ -312,8 +310,6 @@ describe("FilesItem.vue - Suspense and Async Behavior", () => {
       // After resolution, component should be fully functional
       const fileItem = wrapper.find(".item");
       expect(fileItem.exists()).toBe(true);
-      expect(fileItem.classes()).toContain("list");
-
       // Loading fallback should be gone
       expect(wrapper.find('[data-testid="loading-fallback"]').exists()).toBe(false);
     });
@@ -323,7 +319,7 @@ describe("FilesItem.vue - Suspense and Async Behavior", () => {
         template: `
           <Suspense>
             <div>
-              <FilesItem v-for="file in files" :key="file.id" :modelValue="file" mode="list" />
+              <FilesItem v-for="file in files" :key="file.id" :modelValue="file" />
             </div>
             <template #fallback>
               <div data-testid="loading-multiple">Loading files...</div>

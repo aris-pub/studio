@@ -51,12 +51,11 @@ describe("FilesPane.vue", () => {
           },
           Topbar: {
             template: '<div data-testid="topbar"></div>',
-            emits: ["list", "cards"],
           },
           // Remove FilesHeader stub - test with real component
           FilesItem: {
             template: '<div class="file-item" data-testid="file-item"></div>',
-            props: ["modelValue", "mode"],
+            props: ["modelValue"],
           },
           // Stub child components that FilesHeader needs
           FilesHeaderLabel: {
@@ -137,91 +136,6 @@ describe("FilesPane.vue", () => {
     });
   });
 
-  describe("View Mode Management", () => {
-    it("defaults to list mode", () => {
-      const wrapper = createWrapper();
-
-      const filesWrapper = wrapper.find(".files-wrapper");
-      const filesContainer = wrapper.find(".files");
-
-      expect(filesWrapper.classes()).toContain("list");
-      expect(filesContainer.classes()).toContain("list");
-    });
-
-    it("switches to cards mode when topbar emits cards event", async () => {
-      const wrapper = createWrapper({
-        stubs: {
-          Topbar: {
-            template: '<div data-testid="topbar" @click="$emit(\'cards\')"></div>',
-            emits: ["list", "cards"],
-          },
-        },
-      });
-
-      await wrapper.find('[data-testid="topbar"]').trigger("click");
-      await nextTick();
-
-      const filesWrapper = wrapper.find(".files-wrapper");
-      const filesContainer = wrapper.find(".files");
-
-      expect(filesWrapper.classes()).toContain("cards");
-      expect(filesContainer.classes()).toContain("cards");
-    });
-
-    it("switches back to list mode when topbar emits list event", async () => {
-      const wrapper = createWrapper({
-        stubs: {
-          Topbar: {
-            template: '<div data-testid="topbar" @click="toggleMode"></div>',
-            emits: ["list", "cards"],
-            methods: {
-              toggleMode() {
-                this.$emit("cards");
-                this.$nextTick(() => this.$emit("list"));
-              },
-            },
-          },
-        },
-      });
-
-      await wrapper.find('[data-testid="topbar"]').trigger("click");
-      await nextTick();
-
-      const filesWrapper = wrapper.find(".files-wrapper");
-      expect(filesWrapper.classes()).toContain("list");
-    });
-
-    it("passes current mode to FilesHeader component", async () => {
-      const wrapper = createWrapper();
-
-      const filesHeader = wrapper.findComponent({ name: "FilesHeader" });
-      expect(filesHeader.props("mode")).toBe("list");
-
-      // Switch to cards mode
-      wrapper.vm.mode = "cards";
-      await nextTick();
-
-      expect(filesHeader.props("mode")).toBe("cards");
-    });
-
-    it("passes current mode to FilesItem components", async () => {
-      const wrapper = createWrapper();
-
-      const fileItems = wrapper.findAllComponents('[data-testid="file-item"]');
-      fileItems.forEach((item) => {
-        expect(item.props("mode")).toBe("list");
-      });
-
-      // Switch to cards mode
-      wrapper.vm.mode = "cards";
-      await nextTick();
-
-      fileItems.forEach((item) => {
-        expect(item.props("mode")).toBe("cards");
-      });
-    });
-  });
-
   describe("Responsive Behavior", () => {
     it("applies correct padding for normal screen size", () => {
       const wrapper = createWrapper();
@@ -262,10 +176,10 @@ describe("FilesPane.vue", () => {
     it("shows all columns in normal mode", () => {
       const wrapper = createWrapper();
 
-      expect(wrapper.vm.shouldShowColumn("Title", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Tags", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Spacer", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Date", "list")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Title")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Tags")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Spacer")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Date")).toBe(true);
     });
 
     it("hides Tags and Spacer columns in extra small mode", () => {
@@ -275,10 +189,10 @@ describe("FilesPane.vue", () => {
         },
       });
 
-      expect(wrapper.vm.shouldShowColumn("Title", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Tags", "list")).toBe(false);
-      expect(wrapper.vm.shouldShowColumn("Spacer", "list")).toBe(false);
-      expect(wrapper.vm.shouldShowColumn("Date", "list")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Title")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Tags")).toBe(false);
+      expect(wrapper.vm.shouldShowColumn("Spacer")).toBe(false);
+      expect(wrapper.vm.shouldShowColumn("Date")).toBe(true);
     });
 
     it("provides shouldShowColumn function to child components", () => {

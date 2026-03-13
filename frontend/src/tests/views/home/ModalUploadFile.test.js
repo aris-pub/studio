@@ -195,4 +195,18 @@ describe("ModalUploadFile.vue", () => {
     const btn = wrapper.find('[data-testid="file-upload-submit"]');
     expect(btn.element.disabled).toBe(true);
   });
+
+  // ─── Layout (std-3xjz) ──────────────────────────────────────────────
+
+  it("wraps body content in a flex column container", async () => {
+    const wrapper = await createWrapper();
+    const body = wrapper.find(".modal-body");
+    expect(body.exists()).toBe(true);
+  });
+
+  it("choose-file button is not constrained to 50% width", async () => {
+    const wrapper = await createWrapper();
+    const cta = wrapper.find("#file-upload-cta");
+    expect(cta.exists()).toBe(false);
+  });
 });

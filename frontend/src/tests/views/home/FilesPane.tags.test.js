@@ -72,11 +72,11 @@ describe("FilesPane.vue - Tag Functionality", () => {
           },
           Topbar: {
             template: '<div data-testid="topbar"></div>',
-            emits: ["list", "cards"],
+            emits: [],
           },
           FilesHeader: {
             template: '<div data-testid="files-header"></div>',
-            props: ["mode"],
+            props: [],
           },
           FilesItem: {
             template: `
@@ -89,7 +89,7 @@ describe("FilesPane.vue - Tag Functionality", () => {
                 </div>
               </div>
             `,
-            props: ["modelValue", "mode"],
+            props: ["modelValue"],
           },
           Suspense: {
             template: "<div><slot></slot></div>",
@@ -245,40 +245,6 @@ describe("FilesPane.vue - Tag Functionality", () => {
       expect(remainingFileTags).toHaveLength(2);
       expect(remainingFileTags[0].text()).toBe("analysis");
       expect(remainingFileTags[1].text()).toBe("research");
-    });
-  });
-
-  describe("Tag Integration with View Modes", () => {
-    it("displays tags correctly in list mode", async () => {
-      const wrapper = createWrapper();
-
-      // Start in list mode
-      expect(wrapper.vm.mode).toBe("list");
-
-      const fileItems = wrapper.findAll('[data-testid="file-item"]');
-      const firstFileTags = fileItems[0].findAll(".tag");
-      expect(firstFileTags).toHaveLength(2);
-    });
-
-    it("displays tags correctly in cards mode", async () => {
-      const wrapper = createWrapper({
-        stubs: {
-          Topbar: {
-            template: '<div data-testid="topbar" @click="$emit(\'cards\')"></div>',
-            emits: ["list", "cards"],
-          },
-        },
-      });
-
-      // Switch to cards mode
-      await wrapper.find('[data-testid="topbar"]').trigger("click");
-      await nextTick();
-
-      expect(wrapper.vm.mode).toBe("cards");
-
-      const fileItems = wrapper.findAll('[data-testid="file-item"]');
-      const firstFileTags = fileItems[0].findAll(".tag");
-      expect(firstFileTags).toHaveLength(2);
     });
   });
 

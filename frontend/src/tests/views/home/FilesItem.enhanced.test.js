@@ -93,7 +93,6 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
     const wrapper = mount(AsyncFilesItem, {
       props: {
         modelValue: mockFile.value,
-        mode: "list",
         ...overrides.props,
       },
       global: {
@@ -219,12 +218,6 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       const wrapper = await createWrapper();
 
       const item = wrapper.find(".item");
-      expect(item.classes()).toContain("current");
-
-      // Trigger component update
-      await wrapper.setProps({ mode: "cards" });
-      await nextTick();
-
       expect(item.classes()).toContain("current");
     });
 
@@ -534,23 +527,7 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
     });
   });
 
-  describe("View Mode Compatibility", () => {
-    it("renders correctly in list mode", async () => {
-      const wrapper = await createWrapper({ props: { mode: "list" } });
-
-      expect(wrapper.findComponent(FilesItem).props("mode")).toBe("list");
-      expect(wrapper.html()).toContain("list");
-      expect(wrapper.find('[data-testid="tag-row"]').exists()).toBe(true);
-      expect(wrapper.find('[data-testid="file-date"]').exists()).toBe(true);
-    });
-
-    it("renders correctly in cards mode", async () => {
-      const wrapper = await createWrapper({ props: { mode: "cards" } });
-
-      expect(wrapper.findComponent(FilesItem).props("mode")).toBe("cards");
-      expect(wrapper.html()).toContain("cards");
-    });
-
+  describe("File Menu Visibility", () => {
     it("shows file menu when file is selected", async () => {
       mockFile.value.selected = true;
       const wrapper = await createWrapper();

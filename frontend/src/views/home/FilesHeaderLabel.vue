@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, watch } from "vue";
+  import { ref, watch, computed } from "vue";
   import { IconArrowsSort, IconArrowNarrowDown, IconArrowNarrowUp } from "@tabler/icons-vue";
 
   const props = defineProps({
@@ -11,6 +11,11 @@
 
   // Sortable column: cycle through asc and desc on click
   const sortState = defineModel({ type: String, default: "" });
+  const ariaSortValue = computed(() => {
+    if (sortState.value === "asc") return "ascending";
+    if (sortState.value === "desc") return "descending";
+    return "none";
+  });
   const nextSortState = () => {
     if (!props.sortable) return;
     sortState.value = sortState.value === "asc" ? "desc" : "asc";
@@ -31,9 +36,10 @@
   <template v-if="sortable">
     <button
       type="button"
-      role="button"
       class="col-header"
       :class="[name.toLowerCase().replace(/ /g, '-'), 'sortable']"
+      :aria-sort="ariaSortValue"
+      :aria-label="`Sort by ${name}`"
       @click.stop="nextSortState"
       @keydown.enter.stop.prevent="nextSortState"
       @keydown.space.stop.prevent="nextSortState"
@@ -48,9 +54,9 @@
   <template v-else-if="filterable">
     <button
       type="button"
-      role="button"
       class="col-header"
       :class="[name.toLowerCase().replace(' ', '-'), 'filterable']"
+      :aria-label="`Filter by ${name}`"
       @mouseenter="filterableSVGColor = 'var(--medium)'"
       @mouseleave="filterableSVGColor = 'transparent'"
     >

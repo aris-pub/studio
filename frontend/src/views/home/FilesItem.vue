@@ -2,37 +2,13 @@
   /**
    * FilesItem - Interactive file item component for displaying research manuscripts
    *
-   * A versatile file display component that renders individual RSM research manuscripts
-   * in either list or card layout modes. Provides interactive features including hover
-   * states, keyboard navigation, file menu actions, and visual feedback for selection
-   * and focus states. Integrates with the file management system for operations like
-   * rename, duplicate, and delete.
-   *
-   * Features keyboard shortcuts (Enter/Space to open, . for menu), responsive design,
-   * and accessibility support with proper ARIA roles and focus management.
+   * Renders an individual RSM manuscript as a list row with interactive features
+   * including hover states, keyboard navigation, file menu actions, and visual
+   * feedback for selection and focus states.
    *
    * @displayName FilesItem
    * @example
-   * // Basic list mode usage
-   * <FilesItem v-model="fileObject" mode="list" />
-   *
-   * @example
-   * // Card mode with reactive file object
-   * <FilesItem
-   *   v-model="manuscript"
-   *   mode="cards"
-   * />
-   *
-   * @example
-   * // File object structure
-   * const fileObject = ref({
-   *   id: "file-123",
-   *   title: "Research Paper Title",
-   *   selected: false,
-   *   focused: false,
-   *   tags: ["biology", "research"],
-   *   lastModified: "2023-12-01T10:30:00Z"
-   * })
+   * <FilesItem v-model="fileObject" />
    */
 
   import { ref, inject, provide, watch, useTemplateRef, computed } from "vue";
@@ -152,13 +128,7 @@
     }
   }
 
-  const props = defineProps({
-    /**
-     * Display mode for the file item
-     * @values 'list', 'cards'
-     */
-    mode: { type: String, default: "list" },
-  });
+  const props = defineProps({});
 
   /**
    * File object containing manuscript data and state (already defined above)
@@ -314,12 +284,11 @@
   -->
   <div
     class="item"
-    role="button"
+    role="option"
     tabindex="0"
+    :aria-selected="isCurrent"
     :data-testid="`file-item-${file?.id || 'unknown'}`"
     :class="{
-      list: mode === 'list',
-      cards: mode === 'cards',
       current: isCurrent,
       hovered: hovered,
       mobile: mobileMode,
@@ -334,47 +303,39 @@
     <div v-if="file?.html" ref="manuscript-ref" class="minimap-source" v-html="file.html" />
 
     <template v-if="!!file">
-      <template v-if="mode === 'cards'">
-        <span v-if="file.unseen" class="unseen-dot" aria-label="New shared file"></span>
-        <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
+      <div class="title-cell" :class="{ unseen: file.unseen }">
+        <FileTitle ref="file-title-ref" :file="file" />
+        <FilesItemRole :role="file.role" />
+      </div>
+
+      <!-- Minimap, tags, spacer, and collaborators (hidden on extra small screens) -->
+      <template v-if="!xsMode">
+        <div class="minimap-cell">
+          <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
+        </div>
+        <TagRow :file="file" />
+        <div class="spacer"></div>
+        <FilesItemCollaborators :file="file" />
       </template>
 
-      <!-- List mode layout: displays file information in a grid row format -->
-      <template v-if="mode === 'list'">
-        <div class="title-cell" :class="{ unseen: file.unseen }">
-          <FileTitle ref="file-title-ref" :file="file" />
-          <FilesItemRole :role="file.role" />
-        </div>
+      <!-- File modification date -->
+      <Date :file="file" />
 
-        <!-- Minimap, tags, spacer, and collaborators (hidden on extra small screens) -->
-        <template v-if="!xsMode">
-          <div class="minimap-cell">
-            <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
-          </div>
-          <TagRow :file="file" />
-          <div class="spacer"></div>
-          <FilesItemCollaborators :file="file" />
-        </template>
-
-        <!-- File modification date -->
-        <Date :file="file" />
-
-        <!--
+      <!--
           File action menu (hidden when file is selected to prevent interference with selection UI)
           Emits rename, duplicate, and delete events handled by parent callbacks
         -->
-        <FileMenu
-          ref="menu-ref"
-          @rename="onRename"
-          @duplicate="onDuplicate"
-          @delete="onDelete"
-          @download="onDownload"
-          @download-pdf="onDownloadPdf"
-        />
+      <FileMenu
+        ref="menu-ref"
+        @rename="onRename"
+        @duplicate="onDuplicate"
+        @delete="onDelete"
+        @download="onDownload"
+        @download-pdf="onDownloadPdf"
+      />
 
-        <!-- Grid layout spacer to complete the row -->
-        <span class="spacer"></span>
-      </template>
+      <!-- Grid layout spacer to complete the row -->
+      <span class="spacer"></span>
     </template>
 
     <!-- Delete confirmation modal -->
@@ -420,7 +381,7 @@
     }
   }
 
-  .item.list {
+  .item {
     & > *:not(.minimap-source) {
       height: 56px;
       padding-right: 8px;
@@ -512,96 +473,6 @@
 
     &:is(.hovered, .current) .minimap-cell :deep(.mm-annotation) {
       color: var(--blue-400);
-    }
-  }
-
-  .unseen-dot {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--blue-400);
-    z-index: 1;
-  }
-
-  .item.cards {
-    border-radius: 16px;
-    padding-block: 16px;
-    margin-bottom: 16px;
-    padding: 16px;
-    border: var(--border-thin) solid var(--border-primary);
-    background-color: var(--surface-page);
-    display: flex;
-    flex-direction: column;
-
-    &.hovered:not(.current) {
-      border-color: var(--gray-400);
-      box-shadow: var(--shadow-strong);
-    }
-
-    &.current {
-      border-color: var(--gray-400);
-      background-color: var(--gray-75);
-      box-shadow: var(--shadow-soft);
-    }
-
-    & > .card-header {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    & > .card-content {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 16px;
-    }
-
-    & > .card-footer {
-      display: flex;
-      flex-wrap: wrap;
-      column-gap: 8px;
-      row-gap: 8px;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    & .card-footer-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    & .file-title {
-      font-size: 18px;
-      margin-top: 8px;
-    }
-
-    & > .dots,
-    & > .file-title,
-    & > .last-edited,
-    & > .owner {
-      display: inline-block;
-    }
-
-    & > .dots,
-    & > .owner {
-      float: right;
-    }
-
-    & :deep(.manuscriptwrapper) {
-      margin-top: 8px !important;
-      padding-block: 0px !important;
-    }
-
-    & :deep(.manuscriptwrapper .abstract > h3) {
-      display: none;
-    }
-
-    & > .last-edited {
-      height: 32px;
-      align-content: center;
     }
   }
 
