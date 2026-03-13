@@ -66,6 +66,7 @@ export function createFileStore(api, user) {
     const newFile = new File(
       {
         ...fileData,
+        owner_id: user.id,
         last_edited_at: new Date().toISOString(),
       },
       store
