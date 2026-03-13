@@ -1,6 +1,6 @@
 [build]
   publish = ".output/public"
-  command = "npm run generate"
+  command = "npm run copy-assets && nuxt generate"
 
 [dev]
   command = "npm run dev"

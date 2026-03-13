@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "copy-assets": "mkdir -p public/brand && cp -r ../brand/logos/studio/* public/brand/",
+    "copy-assets": "mkdir -p public/brand && cp -r ../brand/logos/studio/* public/brand/ 2>/dev/null || true",
     "prebuild": "npm run copy-assets",
     "predev": "npm run copy-assets",
     "pregenerate": "npm run copy-assets",
