@@ -40,8 +40,7 @@
       : "minmax(144px, 2fr) minmax(80px, 1.5fr) minmax(200px, 1fr) 16px 120px 104px 16px 8px";
   });
   const shouldShowColumn = (columnName) => {
-    if (["Spacer", "Tags", "Collaborators", "Structure"].includes(columnName) && xsMode.value)
-      return false;
+    if (["Spacer", "Tags", "Collaborators", "Structure"].includes(columnName) && xsMode.value) return false;
     return true;
   };
   provide("shouldShowColumn", shouldShowColumn);
