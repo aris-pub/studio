@@ -111,7 +111,7 @@
 
 <template>
   <div class="modal-backdrop" data-testid="version-preview-modal" @click="handleBackdropClick">
-    <div class="modal-container">
+    <div class="modal-container" @click.stop>
       <!-- Header -->
       <div class="modal-header">
         <div class="version-info">

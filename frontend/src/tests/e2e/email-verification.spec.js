@@ -66,7 +66,6 @@ test.describe("Email Verification Flow @auth-flows", () => {
     await page.fill('[data-testid="name-input"]', `Verify User ${ts}`);
     await page.fill('[data-testid="email-input"]', testEmail);
     await page.fill('[data-testid="password-input"]', "testpass123");
-    await page.fill('[data-testid="confirm-password-input"]', "testpass123");
 
     await Promise.all([
       page.waitForResponse((r) => r.url().includes("/register") && r.request().method() === "POST"),

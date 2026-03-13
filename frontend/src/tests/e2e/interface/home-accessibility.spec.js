@@ -22,8 +22,8 @@ test.describe("Home View Accessibility @auth @desktop-only", () => {
     const firstFile = fileItems.first();
 
     if ((await firstFile.count()) > 0) {
-      // File items should have button role
-      await expect(firstFile).toHaveAttribute("role", "button");
+      // File items have option role (ARIA listbox pattern)
+      await expect(firstFile).toHaveAttribute("role", "option");
       await expect(firstFile).toHaveAttribute("tabindex", "0");
     }
   });

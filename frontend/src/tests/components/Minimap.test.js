@@ -612,8 +612,8 @@ describe("FilesItem — homepage minimap integration (std-lqa2)", () => {
     expect(filesItemScript).toMatch(/provide\(\s*["']annotations["']/);
   });
 
-  it("fetches annotations from API for minimap", () => {
-    expect(filesItemSource).toContain('.get("/annotations/"');
+  it("reads annotations from file store (no per-item API calls)", () => {
+    expect(filesItemSource).toContain("file.value?.annotations");
   });
 
   it("renders hidden manuscript div for DOM measurement", () => {
