@@ -157,11 +157,6 @@
 
   // File menu callbacks
   const open = () => File.openFile(file.value, router);
-  const select = () => {
-    if (fileStore?.value && fileStore.value.selectFile) {
-      fileStore.value.selectFile(file.value);
-    }
-  };
   const menuRef = useTemplateRef("menu-ref");
   const fileTitleRef = useTemplateRef("file-title-ref");
   const onRename = () => fileTitleRef.value?.startEditing();
@@ -295,8 +290,7 @@
     }"
     @mouseenter="hovered = !keyboardNavActive"
     @mouseleave="hovered = false"
-    @click="select"
-    @dblclick="open"
+    @click="open"
   >
     <!-- Hidden manuscript for minimap DOM measurement -->
     <!-- eslint-disable-next-line vue/no-v-html -->

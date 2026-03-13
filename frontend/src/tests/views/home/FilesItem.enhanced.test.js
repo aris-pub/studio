@@ -175,16 +175,15 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
   };
 
   describe("File Selection State Synchronization", () => {
-    it("syncs selection state correctly when file is selected", async () => {
+    it("opens file on click instead of selecting", async () => {
       const wrapper = await createWrapper();
 
       const item = wrapper.find(".item");
-      expect(item.classes()).not.toContain("current");
-      expect(mockFile.value.selected).toBe(false);
-
-      // Trigger selection by clicking the item (which calls select internally)
       await item.trigger("click");
-      expect(mockFileStore.value.selectFile).toHaveBeenCalledWith(mockFile.value);
+
+      // Click should open, not select
+      expect(mockOpenFile).toHaveBeenCalledWith(mockFile.value, expect.any(Object));
+      expect(mockFileStore.value.selectFile).not.toHaveBeenCalled();
     });
 
     it("applies current class when file is selected", async () => {
@@ -221,16 +220,13 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       expect(item.classes()).toContain("current");
     });
 
-    it("handles rapid selection changes", async () => {
+    it("opens file on single click", async () => {
       const wrapper = await createWrapper();
 
-      // Trigger rapid clicks to test selection handling
       const item = wrapper.find(".item");
       await item.trigger("click");
-      await item.trigger("click");
-      await item.trigger("click");
 
-      expect(mockFileStore.value.selectFile).toHaveBeenCalledTimes(3);
+      expect(mockOpenFile).toHaveBeenCalledWith(mockFile.value, expect.any(Object));
     });
 
     it("prevents selection when file store is unavailable", async () => {
@@ -595,13 +591,13 @@ describe("FilesItem.vue - Enhanced Functionality", () => {
       }).not.toThrow();
     });
 
-    it("handles double-click correctly", async () => {
+    it("does not use double-click (single click opens)", async () => {
       const wrapper = await createWrapper();
 
-      // Call open method directly since dblclick event needs proper setup
-      wrapper.findComponent(FilesItem).vm.open();
+      const item = wrapper.find(".item");
+      await item.trigger("click");
 
-      expect(mockOpenFile).toHaveBeenCalledWith(mockFile.value, expect.any(Object));
+      expect(mockOpenFile).toHaveBeenCalledTimes(1);
     });
 
     it("keeps context menu when file is selected", async () => {
