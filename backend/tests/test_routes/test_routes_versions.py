@@ -352,3 +352,29 @@ async def test_version_permissions_commenter_can_view(
         f"/files/{file.id}/versions/{version.id}/preview"
     )
     assert preview_response.status_code == 200
+
+
+async def test_create_version_after_soft_delete(
+    authenticated_client: AsyncClient, authenticated_user, db_session
+):
+    """Test creating a version after a previous version was soft-deleted."""
+    file = await create_file("# Content", owner_id=authenticated_user["user_id"], db=db_session)
+
+    # Create and then delete a version
+    r1 = await authenticated_client.post(
+        f"/files/{file.id}/versions/named", json={"version_name": "V1"}
+    )
+    assert r1.status_code == 200
+    version_id = r1.json()["id"]
+
+    delete_response = await authenticated_client.delete(
+        f"/files/{file.id}/versions/{version_id}"
+    )
+    assert delete_response.status_code == 200
+
+    # Creating a new version must not collide with the soft-deleted one
+    r2 = await authenticated_client.post(
+        f"/files/{file.id}/versions/named", json={"version_name": "V2"}
+    )
+    assert r2.status_code == 200
+    assert r2.json()["version_number"] == 2
