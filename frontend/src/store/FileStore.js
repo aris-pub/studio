@@ -111,14 +111,6 @@ export function createFileStore(api, user) {
     files.value.sort(compareFunc);
   };
 
-  /**
-   * Reset files to their default order (as returned by the API)
-   */
-  const resetSort = () => {
-    const orderMap = new Map(defaultFileOrder.value.map((id, i) => [id, i]));
-    files.value.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
-  };
-
   // Named filter layers — each layer holds a predicate that returns true to hide
   const _filterLayers = {};
 
@@ -127,6 +119,14 @@ export function createFileStore(api, user) {
     files.value.forEach((file) => {
       file.filtered = layers.length > 0 && layers.some((fn) => fn(file));
     });
+  };
+
+  /**
+   * Reset files to their default order (as returned by the API)
+   */
+  const resetSort = () => {
+    const orderMap = new Map(defaultFileOrder.value.map((id, i) => [id, i]));
+    files.value.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
   };
 
   /**
