@@ -97,76 +97,80 @@
     <template #header>
       <span class="text-h5">Upload File</span>
     </template>
-    <span>Select a file from your computer</span>
-    <span class="text-caption supported-formats"> Supported: .rsm, .md, .tex, .latex, .docx </span>
-    <input
-      ref="fileUpload"
-      data-testid="file-upload-input"
-      type="file"
-      :accept="ACCEPTED_EXTENSIONS"
-      hidden
-      @change="onFileChange"
-    />
-    <Button
-      id="file-upload-cta"
-      data-testid="file-upload-choose-button"
-      kind="secondary"
-      :text="selectedFile ? selectedFile.name : 'Choose file'"
-      icon="Upload"
-      class="btn-md"
-      :disabled="uploading"
-      @click="triggerFileUpload"
-    />
-    <span v-if="formatHint" class="format-hint text-caption" data-testid="format-hint">
-      {{ formatHint }}
-    </span>
-    <span v-if="error" class="error-message text-caption" data-testid="upload-error">
-      {{ error }}
-    </span>
-    <div class="cta">
-      <Button
-        kind="tertiary"
-        text="cancel"
-        data-testid="file-upload-cancel"
-        class="btn-md"
-        :disabled="uploading"
-        @click="close"
+    <div class="modal-body">
+      <span>Select a file from your computer</span>
+      <span class="text-caption supported-formats">
+        Supported: .rsm, .md, .tex, .latex, .docx
+      </span>
+      <input
+        ref="fileUpload"
+        data-testid="file-upload-input"
+        type="file"
+        :accept="ACCEPTED_EXTENSIONS"
+        hidden
+        @change="onFileChange"
       />
-      <Button
-        kind="primary"
-        :text="uploading ? 'Importing…' : 'Upload'"
-        :disabled="!selectedFile || uploading"
-        data-testid="file-upload-submit"
-        class="btn-md"
-        @click="upload"
-      />
+      <div class="choose-file">
+        <Button
+          data-testid="file-upload-choose-button"
+          kind="secondary"
+          :text="selectedFile ? selectedFile.name : 'Choose file'"
+          icon="Upload"
+          class="btn-md"
+          :disabled="uploading"
+          @click="triggerFileUpload"
+        />
+      </div>
+      <span v-if="formatHint" class="format-hint text-caption" data-testid="format-hint">
+        {{ formatHint }}
+      </span>
+      <span v-if="error" class="error-message text-caption" data-testid="upload-error">
+        {{ error }}
+      </span>
+      <div class="cta">
+        <Button
+          kind="tertiary"
+          text="cancel"
+          data-testid="file-upload-cancel"
+          class="btn-md"
+          :disabled="uploading"
+          @click="close"
+        />
+        <Button
+          kind="primary"
+          :text="uploading ? 'Importing…' : 'Upload'"
+          :disabled="!selectedFile || uploading"
+          data-testid="file-upload-submit"
+          class="btn-md"
+          @click="upload"
+        />
+      </div>
     </div>
   </Modal>
 </template>
 
 <style scoped>
-  #file-upload-cta {
-    margin: 0 auto;
-    width: 50%;
+  .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .choose-file {
     display: flex;
     justify-content: center;
-    margin-block: 8px;
   }
 
   .supported-formats {
     color: var(--text-subtle);
-    display: block;
-    margin-top: 4px;
   }
 
   .format-hint {
-    display: block;
     text-align: center;
     color: var(--text-subtle);
   }
 
   .error-message {
-    display: block;
     text-align: center;
     color: var(--text-error);
   }

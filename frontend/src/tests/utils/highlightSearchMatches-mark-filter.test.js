@@ -44,9 +44,7 @@ describe("highlightSearchMatches mark filter", () => {
   });
 
   it("finds text spanning into and out of annotation marks", () => {
-    const el = createContainer(
-      '<p>hello <mark data-annotation-id="1">world</mark></p>'
-    );
+    const el = createContainer('<p>hello <mark data-annotation-id="1">world</mark></p>');
 
     const matches = highlightSearchMatches(el, "hello world");
     expect(matches.length).toBe(1);

@@ -271,20 +271,46 @@ describe("FilesHeaderLabel.vue", () => {
   });
 
   describe("Accessibility", () => {
-    it("has proper ARIA attributes for sortable buttons", () => {
+    it("does not have redundant role='button' on native <button>", () => {
       const wrapper = createWrapper({ sortable: true });
-
       const button = wrapper.find("button");
-      expect(button.attributes("role")).toBe("button");
-      expect(button.attributes("type")).toBe("button");
+      expect(button.attributes("role")).toBeUndefined();
     });
 
-    it("has proper ARIA attributes for filterable buttons", () => {
+    it("does not have redundant role='button' on filterable <button>", () => {
       const wrapper = createWrapper({ sortable: false, filterable: true });
-
       const button = wrapper.find("button");
-      expect(button.attributes("role")).toBe("button");
-      expect(button.attributes("type")).toBe("button");
+      expect(button.attributes("role")).toBeUndefined();
+    });
+
+    it("has aria-sort='ascending' when sorted asc", async () => {
+      const wrapper = createWrapper({ sortable: true, modelValue: "asc" });
+      const button = wrapper.find("button");
+      expect(button.attributes("aria-sort")).toBe("ascending");
+    });
+
+    it("has aria-sort='descending' when sorted desc", async () => {
+      const wrapper = createWrapper({ sortable: true, modelValue: "desc" });
+      const button = wrapper.find("button");
+      expect(button.attributes("aria-sort")).toBe("descending");
+    });
+
+    it("has aria-sort='none' when unsorted", () => {
+      const wrapper = createWrapper({ sortable: true });
+      const button = wrapper.find("button");
+      expect(button.attributes("aria-sort")).toBe("none");
+    });
+
+    it("has aria-label on sortable button", () => {
+      const wrapper = createWrapper({ sortable: true, name: "Last Edit" });
+      const button = wrapper.find("button");
+      expect(button.attributes("aria-label")).toBe("Sort by Last Edit");
+    });
+
+    it("has aria-label on filterable button", () => {
+      const wrapper = createWrapper({ sortable: false, filterable: true, name: "Tags" });
+      const button = wrapper.find("button");
+      expect(button.attributes("aria-label")).toBe("Filter by Tags");
     });
 
     it("supports keyboard navigation", async () => {
@@ -306,7 +332,6 @@ describe("FilesHeaderLabel.vue", () => {
 
       const button = wrapper.find("button");
       expect(button.classes()).toContain("col-header");
-      // Focus styles are applied via CSS, tested in component
     });
   });
 

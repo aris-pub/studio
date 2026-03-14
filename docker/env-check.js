@@ -128,6 +128,11 @@ function validateEnvironment() {
 }
 
 function main() {
+  if (process.env.NETLIFY === 'true') {
+    console.log('🔄 Netlify build detected — skipping env validation (backend vars not needed for static site)');
+    return;
+  }
+
   try {
     loadEnvironment();
     validateEnvironment();

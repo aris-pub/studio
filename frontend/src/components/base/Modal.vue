@@ -106,7 +106,7 @@
       aria-describedby="modal-content"
       v-bind="$attrs"
     >
-      <div class="content">
+      <div class="content" @click.stop>
         <Pane closable @close="emit('close')">
           <template #header>
             <slot name="header" />

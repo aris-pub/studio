@@ -77,7 +77,6 @@ describe("FilesPane.vue - Accessibility Features", () => {
           },
           Topbar: {
             template: '<div data-testid="topbar" role="toolbar"></div>',
-            emits: ["list", "cards"],
           },
           FilesHeader: {
             template: `
@@ -87,14 +86,13 @@ describe("FilesPane.vue - Accessibility Features", () => {
                 <span>Date</span>
               </div>
             `,
-            props: ["mode"],
           },
           FilesItem: {
             template: `
               <div
-                class="file-item"
+                class="file-item item"
                 data-testid="file-item"
-                role="button"
+                role="option"
                 tabindex="0"
                 :aria-label="'File: ' + modelValue.title"
                 :aria-selected="modelValue.selected"
@@ -107,16 +105,13 @@ describe("FilesPane.vue - Accessibility Features", () => {
                 </span>
               </div>
             `,
-            props: ["modelValue", "mode"],
+            props: ["modelValue"],
             emits: ["open"],
             computed: {
               tagsList() {
                 return this.modelValue.tags?.map((t) => t.name).join(", ") || "No tags";
               },
             },
-          },
-          Suspense: {
-            template: "<div><slot></slot></div>",
           },
           ...overrides.stubs,
         },
@@ -132,18 +127,24 @@ describe("FilesPane.vue - Accessibility Features", () => {
       expect(pane.attributes("role")).toBe("main");
     });
 
-    it("provides accessible file list structure", () => {
+    it("files container has role='listbox'", () => {
       const wrapper = createWrapper();
 
       const filesContainer = wrapper.find('[data-testid="files-container"]');
       expect(filesContainer.exists()).toBe(true);
+      expect(filesContainer.attributes("role")).toBe("listbox");
+      expect(filesContainer.attributes("aria-label")).toBe("Files");
+    });
+
+    it("provides accessible file list structure", () => {
+      const wrapper = createWrapper();
 
       const fileItems = wrapper.findAll('[data-testid="file-item"]');
       expect(fileItems).toHaveLength(2); // Only visible files
 
       // Each file item should have proper ARIA attributes
       fileItems.forEach((item) => {
-        expect(item.attributes("role")).toBe("button");
+        expect(item.attributes("role")).toBe("option");
         expect(item.attributes("tabindex")).toBe("0");
         expect(item.attributes("aria-label")).toContain("File:");
         expect(item.attributes("aria-selected")).toBeDefined();
@@ -327,28 +328,6 @@ describe("FilesPane.vue - Accessibility Features", () => {
   });
 
   describe("Screen Reader Announcements", () => {
-    it("provides informative loading state", () => {
-      const wrapper = createWrapper({
-        provide: {
-          fileStore: ref({ files: null }),
-        },
-        stubs: {
-          Suspense: {
-            template: '<div><slot name="fallback"></slot></div>',
-          },
-          LoadingSpinner: {
-            template:
-              '<div class="loading-container"><div class="loading-message">{{ message }}</div></div>',
-            props: ["message"],
-          },
-        },
-      });
-
-      const loadingElement = wrapper.find(".loading-container");
-      expect(loadingElement.exists()).toBe(true);
-      expect(loadingElement.text()).toBe("Loading files...");
-    });
-
     it("announces file count changes", async () => {
       const wrapper = createWrapper();
 
@@ -407,24 +386,6 @@ describe("FilesPane.vue - Accessibility Features", () => {
 
       expect(wrapper.vm.numFiles).toBe(3);
     });
-
-    it("maintains keyboard navigation during view mode changes", async () => {
-      const wrapper = createWrapper({
-        stubs: {
-          Topbar: {
-            template: '<div data-testid="topbar" @click="$emit(\'cards\')"></div>',
-            emits: ["list", "cards"],
-          },
-        },
-      });
-
-      // Switch to cards mode
-      await wrapper.find('[data-testid="topbar"]').trigger("click");
-      await nextTick();
-
-      // Keyboard navigation should still work
-      expect(wrapper.vm.visibleFiles).toHaveLength(2);
-    });
   });
 
   describe("Responsive Accessibility", () => {
@@ -438,23 +399,23 @@ describe("FilesPane.vue - Accessibility Features", () => {
       // Should still have accessible file items
       const fileItems = wrapper.findAll('[data-testid="file-item"]');
       fileItems.forEach((item) => {
-        expect(item.attributes("role")).toBe("button");
+        expect(item.attributes("role")).toBe("option");
         expect(item.attributes("aria-label")).toContain("File:");
       });
 
       // shouldShowColumn should hide certain columns
-      expect(wrapper.vm.shouldShowColumn("Tags", "list")).toBe(false);
-      expect(wrapper.vm.shouldShowColumn("Title", "list")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Tags")).toBe(false);
+      expect(wrapper.vm.shouldShowColumn("Title")).toBe(true);
     });
 
     it("adapts column visibility for screen readers", () => {
       const wrapper = createWrapper();
 
       // Normal mode - all columns visible
-      expect(wrapper.vm.shouldShowColumn("Title", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Tags", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Date", "list")).toBe(true);
-      expect(wrapper.vm.shouldShowColumn("Spacer", "list")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Title")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Tags")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Date")).toBe(true);
+      expect(wrapper.vm.shouldShowColumn("Spacer")).toBe(true);
     });
 
     it("provides appropriate grid spacing for accessibility", () => {
@@ -497,7 +458,7 @@ describe("FilesPane.vue - Accessibility Features", () => {
                 <span>{{ modelValue.title }}</span>
               </div>
             `,
-            props: ["modelValue", "mode"],
+            props: ["modelValue"],
           },
         },
       });

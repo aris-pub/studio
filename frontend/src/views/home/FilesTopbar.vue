@@ -1,12 +1,6 @@
 <script setup>
-  import { ref, inject, computed, watch, useTemplateRef } from "vue";
+  import { inject, useTemplateRef } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
-
-  const emit = defineEmits(["list", "cards"]);
-
-  /* View mode segmented control */
-  const controlState = ref(0);
-  watch(controlState, (newVal) => emit(newVal === 0 ? "list" : "cards"));
 
   /* Search */
   const fileStore = inject("fileStore");
@@ -38,8 +32,6 @@
   // Keyboard shortcuts
   useKeyboardShortcuts(
     {
-      "v,l": { fn: () => (controlState.value = 0), description: "view as list" },
-      "v,c": { fn: () => (controlState.value = 1), description: "view as cards" },
       "/": { fn: () => searchBar.value.focusInput(), description: "search" },
     },
     true,
@@ -49,9 +41,6 @@
 
 <template>
   <div class="tb-wrapper">
-    <!-- <div class="tb-control">
-         <SegmentedControl v-model="controlState" :icons="segmentedControlIcons" :default-active="0" />
-         </div> -->
     <div class="tb-search">
       <SearchBar ref="search-bar-ref" @submit="onSearchSubmit" />
     </div>
@@ -74,11 +63,6 @@
 
   .tb-wrapper .tb-search {
     flex: 1;
-  }
-
-  .tb-control {
-    align-content: center;
-    flex: 0;
   }
 
   .tb-search {

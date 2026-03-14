@@ -29,7 +29,7 @@
 
   // Check if current user is file owner
   const isOwner = computed(() => {
-    return user.value && file.value?.owner_id === user.value.id;
+    return user.value && file.value?.ownerId === user.value.id;
   });
 
   // Check if modal should be shown

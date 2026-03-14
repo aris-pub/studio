@@ -70,15 +70,13 @@ describe("FilesPane.vue - Suspense and Async Behavior", () => {
           },
           Topbar: {
             template: '<div data-testid="topbar"></div>',
-            emits: ["list", "cards"],
           },
           FilesHeader: {
             template: '<div data-testid="files-header"></div>',
-            props: ["mode"],
           },
           FilesItem: {
             template: '<div class="file-item" data-testid="file-item">{{ modelValue.title }}</div>',
-            props: ["modelValue", "mode"],
+            props: ["modelValue"],
           },
           // Don't stub Suspense - let it work naturally
           ...overrides.stubs,
@@ -303,25 +301,6 @@ describe("FilesPane.vue - Suspense and Async Behavior", () => {
 
       // Should have transitioned properly
       expect(transitionStates.length).toBeGreaterThan(0);
-    });
-
-    it("should handle Suspense with view mode changes", async () => {
-      const wrapper = createWrapper();
-
-      // Wait for initial load
-      await nextTick();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Change view mode
-      wrapper.vm.mode = "cards";
-      await nextTick();
-
-      // Should handle mode change with async components
-      const filesContainer = wrapper.find('[data-testid="files-container"]');
-      expect(filesContainer.exists()).toBe(true);
-      if (filesContainer.exists()) {
-        expect(filesContainer.classes()).toContain("cards");
-      }
     });
   });
 

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "copy-assets": "mkdir -p public/brand && cp -r ../brand/logos/studio/* public/brand/",
+    "copy-assets": "mkdir -p public/brand && cp -r ../brand/logos/studio/* public/brand/ 2>/dev/null || true",
     "prebuild": "npm run copy-assets",
     "predev": "npm run copy-assets",
     "pregenerate": "npm run copy-assets",
@@ -11,7 +11,7 @@
     "dev": "node ../docker/env-check.js && nuxt dev",
     "generate": "node ../docker/env-check.js && nuxt generate",
     "preview": "node ../docker/env-check.js && nuxt preview",
-    "postinstall": "nuxt prepare && npx playwright install chromium --with-deps",
+    "postinstall": "nuxt prepare && ([ \"$NETLIFY\" = \"true\" ] || npx playwright install chromium --with-deps)",
     "lint": "eslint . --fix",
     "test": "node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs",
     "test:run": "node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs run",

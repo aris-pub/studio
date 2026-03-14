@@ -74,7 +74,7 @@ describe("FilesItem.vue — unified .current state", () => {
     };
 
     const wrapper = mount(AsyncFilesItem, {
-      props: { modelValue: file.value, mode: "list", ...overrides.props },
+      props: { modelValue: file.value, ...overrides.props },
       global: {
         provide: { ...mockProvides, fileStore, ...overrides.provide },
         stubs: { ...stubs, ...overrides.stubs },
@@ -277,27 +277,6 @@ describe("FilesItem.vue — unified .current state", () => {
       const item = w.find(".item");
       expect(item.classes()).toContain("current");
       expect(item.classes()).not.toContain("active");
-    });
-  });
-
-  // ─── Cards mode ────────────────────────────────────────────────
-
-  describe("cards mode", () => {
-    it("applies .current in cards mode when selected", async () => {
-      const file = makeFile({ selected: true });
-      const store = makeFileStore([file.value]);
-      const w = await mountItem(file, store, { props: { mode: "cards" } });
-      const item = w.find(".item");
-      expect(item.classes()).toContain("current");
-      expect(item.classes()).toContain("cards");
-      expect(item.classes()).not.toContain("active");
-    });
-
-    it("applies .current in cards mode when focused", async () => {
-      const file = makeFile({ focused: true });
-      const store = makeFileStore([file.value]);
-      const w = await mountItem(file, store, { props: { mode: "cards" } });
-      expect(w.find(".item").classes()).toContain("current");
     });
   });
 });

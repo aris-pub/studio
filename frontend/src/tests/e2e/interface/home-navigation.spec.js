@@ -111,30 +111,6 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
     await expect(page.locator('[data-testid="context-menu"]').first()).toBeVisible();
   });
 
-  test("view mode shortcut v,l switches to list view", async ({ page }) => {
-    // Wait for files to load (auth already done in beforeEach)
-    await page.waitForSelector('[data-testid="files-container"]');
-
-    // Switch to list view
-    await page.keyboard.press("v");
-    await page.keyboard.press("l");
-
-    const filesContainer = page.locator('[data-testid="files-container"]');
-    await expect(filesContainer).toHaveClass(/list/);
-  });
-
-  test("view mode shortcut v,c switches to cards view", async ({ page }) => {
-    // Wait for files to load (auth already done in beforeEach)
-    await page.waitForSelector('[data-testid="files-container"]');
-
-    // Switch to cards view
-    await page.keyboard.press("v");
-    await page.keyboard.press("c");
-
-    const filesContainer = page.locator('[data-testid="files-container"]');
-    await expect(filesContainer).toHaveClass(/cards/);
-  });
-
   test("search shortcut / focuses search input", async ({ page }) => {
     // Wait for files to load (auth already done in beforeEach)
     await page.waitForSelector('[data-testid="files-container"]');
@@ -173,33 +149,4 @@ test.describe("Home View Navigation & Keyboard @auth @desktop-only", () => {
       expect(newFiles.length).toBeGreaterThan(files.length);
     }
   );
-
-  test("navigation works in both list and cards view modes", async ({ page, browserName }) => {
-    // Known issue: WebKit crashes when switching view modes during keyboard input
-    // The v,c shortcut triggers mass DOM destruction while CDP is dispatching keypress events
-    // See: https://github.com/microsoft/playwright/issues/22903
-    test.skip(
-      browserName === "webkit",
-      "WebKit CDP crashes during view mode switch with keyboard input"
-    );
-
-    // Wait for files to load (auth already done in beforeEach)
-    await page.waitForSelector('[data-testid="files-container"]');
-
-    // Test in list mode
-    await page.keyboard.press("v");
-    await page.keyboard.press("l");
-    await page.keyboard.press("j");
-
-    const files = await page.locator('[data-testid^="file-item-"]').all();
-    await expect(files[0]).toHaveClass(/current/);
-
-    // Switch to cards mode
-    await page.keyboard.press("v");
-    await page.keyboard.press("c");
-
-    // Navigation should still work
-    await page.keyboard.press("j");
-    await expect(files[1]).toHaveClass(/current/);
-  });
 });

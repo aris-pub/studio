@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ref, nextTick } from "vue";
-import { mount } from "@vue/test-utils";
+import { mount, RouterLinkStub } from "@vue/test-utils";
 import RegisterView from "@/views/register/View.vue";
+import AuthLayout from "@/components/layout/AuthLayout.vue";
 import InputText from "@/components/forms/InputText.vue";
+import PasswordInput from "@/components/forms/PasswordInput.vue";
 import Button from "@/components/base/Button.vue";
+import Logo from "@/components/base/Logo.vue";
 
 const pushMock = vi.fn();
 vi.mock("vue-router", () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -14,7 +17,7 @@ vi.mock("@/utils/toast", () => ({ toast: { info: toastInfoMock } }));
 describe("RegisterView", () => {
   let wrapper;
   const user = ref(null);
-  const api = { post: vi.fn() };
+  const api = { post: vi.fn(), defaults: { baseURL: "" } };
 
   beforeEach(() => {
     pushMock.mockClear();
@@ -24,7 +27,8 @@ describe("RegisterView", () => {
     localStorage.clear();
     wrapper = mount(RegisterView, {
       global: {
-        components: { InputText, Button },
+        components: { AuthLayout, InputText, PasswordInput, Button, Logo },
+        stubs: { RouterLink: RouterLinkStub },
         provide: { api, user },
       },
     });
@@ -33,18 +37,7 @@ describe("RegisterView", () => {
   it("shows an error when fields are empty", async () => {
     await wrapper.findComponent(Button).trigger("click");
     await nextTick();
-    expect(wrapper.find(".error-message").text()).toBe("Please fill in all fields.");
-  });
-
-  it("shows an error when passwords do not match", async () => {
-    const inputs = wrapper.findAll("input");
-    await inputs[0].setValue("Alice");
-    await inputs[1].setValue("alice@test.com");
-    await inputs[2].setValue("pass1");
-    await inputs[3].setValue("pass2");
-    await wrapper.findComponent(Button).trigger("click");
-    await nextTick();
-    expect(wrapper.find(".error-message").text()).toBe("Passwords do not match.");
+    expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Please fill in all fields.");
   });
 
   it("registers and redirects on successful register", async () => {
@@ -56,12 +49,12 @@ describe("RegisterView", () => {
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
     await inputs[2].setValue("secret");
-    await inputs[3].setValue("secret");
     await wrapper.vm.onRegister();
     expect(api.post).toHaveBeenCalledWith("/register", {
       name: "Bob",
       email: "bob@test.com",
       password: "secret",
+      initials: "B",
     });
     expect(localStorage.getItem("accessToken")).toBe("tok");
     expect(JSON.parse(localStorage.getItem("user"))).toEqual(registeredUser);
@@ -78,7 +71,6 @@ describe("RegisterView", () => {
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
     await inputs[2].setValue("secret");
-    await inputs[3].setValue("secret");
     await wrapper.vm.onRegister();
     expect(toastInfoMock).toHaveBeenCalledOnce();
     const [message, options] = toastInfoMock.mock.calls[0];
@@ -89,9 +81,6 @@ describe("RegisterView", () => {
   });
 
   it("stores accessToken from snake_case backend response key", async () => {
-    // Regression: register view previously destructured { accessToken } (camelCase) but the
-    // backend returns access_token (snake_case), causing localStorage to store "undefined"
-    // and the 401 interceptor to immediately redirect the newly-registered user to /login.
     const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
     api.post.mockResolvedValue({
       data: { access_token: "real-tok", refresh_token: "real-refresh", user: registeredUser },
@@ -100,7 +89,6 @@ describe("RegisterView", () => {
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
     await inputs[2].setValue("secret");
-    await inputs[3].setValue("secret");
     await wrapper.vm.onRegister();
     expect(localStorage.getItem("accessToken")).toBe("real-tok");
     expect(localStorage.getItem("accessToken")).not.toBe("undefined");
@@ -108,14 +96,140 @@ describe("RegisterView", () => {
   });
 
   it("does not show toast when registration fails", async () => {
-    api.post.mockRejectedValue({ response: { data: { message: "Email already registered." } } });
+    api.post.mockRejectedValue({ response: { data: { detail: "Email already registered." } } });
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
     await inputs[2].setValue("secret");
-    await inputs[3].setValue("secret");
     await wrapper.vm.onRegister();
     expect(toastInfoMock).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("disables button and shows loading text during registration", async () => {
+    let resolvePost;
+    api.post.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolvePost = r;
+        })
+    );
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secret");
+
+    const registerPromise = wrapper.vm.onRegister();
+    await nextTick();
+
+    const btn = wrapper.findComponent(Button);
+    expect(btn.props("disabled")).toBe(true);
+    expect(btn.props("text")).toBe("Creating account...");
+
+    resolvePost({
+      data: { access_token: "tok", refresh_token: "ref", user: { id: 1 } },
+    });
+    await registerPromise;
+    await nextTick();
+
+    expect(btn.props("disabled")).toBe(false);
+    expect(btn.props("text")).toBe("Create account");
+  });
+
+  it("displays the Logo component", () => {
+    expect(wrapper.find(".logo").exists()).toBe(true);
+  });
+
+  it("shows a Create your account heading", () => {
+    const heading = wrapper.find("h1");
+    expect(heading.exists()).toBe(true);
+    expect(heading.text()).toBe("Create your account");
+  });
+
+  it("has a brand panel", () => {
+    expect(wrapper.find(".brand-panel").exists()).toBe(true);
+  });
+
+  it("wraps the form in a card container", () => {
+    expect(wrapper.find(".form-card").exists()).toBe(true);
+  });
+
+  it("wraps fields in a form element", () => {
+    expect(wrapper.find("form").exists()).toBe(true);
+  });
+
+  it("marks error container with role=alert and aria-live", async () => {
+    await wrapper.findComponent(Button).trigger("click");
+    await nextTick();
+    const errorEl = wrapper.find('[data-testid="auth-error"]');
+    expect(errorEl.attributes("role")).toBe("alert");
+    expect(errorEl.attributes("aria-live")).toBe("assertive");
+  });
+
+  it("styles error as an alert container", async () => {
+    await wrapper.findComponent(Button).trigger("click");
+    await nextTick();
+    const errorEl = wrapper.find('[data-testid="auth-error"]');
+    expect(errorEl.classes()).toContain("error-alert");
+  });
+
+  it("renders login link and navigates on click", async () => {
+    const link = wrapper.find('[data-testid="login-link"]');
+    expect(link.exists()).toBe(true);
+    await link.trigger("click");
+    expect(pushMock).toHaveBeenCalledWith("/login");
+  });
+
+  it("toggles password visibility", async () => {
+    const pwdInput = wrapper.find('[data-testid="password-input"]');
+    expect(pwdInput.attributes("type")).toBe("password");
+    await wrapper.find('[data-testid="toggle-password"]').trigger("click");
+    expect(wrapper.find('[data-testid="password-input"]').attributes("type")).toBe("text");
+  });
+
+  it("does not have a confirm password field", () => {
+    expect(wrapper.find('[data-testid="confirm-password-input"]').exists()).toBe(false);
+  });
+
+  it("labels the name field as Display name", () => {
+    const nameInput = wrapper.findComponent(InputText);
+    expect(nameInput.props("label")).toBe("Display name");
+  });
+
+  it("auto-derives initials from name and sends with registration", async () => {
+    const registeredUser = { id: 1, name: "Jane Doe", initials: "JD", email: "jane@test.com" };
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Jane Doe");
+    await inputs[1].setValue("jane@test.com");
+    await inputs[2].setValue("secretpw");
+    await wrapper.vm.onRegister();
+    expect(api.post).toHaveBeenCalledWith("/register", {
+      name: "Jane Doe",
+      email: "jane@test.com",
+      password: "secretpw",
+      initials: "JD",
+    });
+  });
+
+  it("shows Terms of Service and Privacy Policy acknowledgment", () => {
+    const legal = wrapper.find(".form-legal");
+    expect(legal.exists()).toBe(true);
+    expect(legal.text()).toContain("Terms of Service");
+    expect(legal.text()).toContain("Privacy Policy");
+  });
+
+  it("displays backend error from .detail key (FastAPI convention)", async () => {
+    api.post.mockRejectedValue({
+      response: { data: { detail: "Email already registered." } },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secret");
+    await wrapper.vm.onRegister();
+    expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Email already registered.");
   });
 });

@@ -126,14 +126,17 @@
   input {
     background: transparent;
     border: none;
-    padding-block: 4px;
-    padding-inline: 8px;
+    padding-block: 10px;
+    padding-inline: 12px;
     margin: 0;
     outline: none;
-    width: fit-content;
+    width: 100%;
     height: 100%;
     border: var(--border-extrathin) solid var(--border-primary);
     border-radius: 8px;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
   }
 
   input:focus {

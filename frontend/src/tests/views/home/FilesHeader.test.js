@@ -15,11 +15,7 @@ describe("FilesHeader.vue", () => {
       filterFiles: vi.fn(),
     });
 
-    mockShouldShowColumn = vi.fn((columnName, mode) => {
-      // Default behavior: show all columns except hide Tags/Spacer in some cases
-      if (["Tags", "Spacer"].includes(columnName) && mode === "xs") {
-        return false;
-      }
+    mockShouldShowColumn = vi.fn(() => {
       return true;
     });
 
@@ -37,7 +33,6 @@ describe("FilesHeader.vue", () => {
   const createWrapper = (props = {}, overrides = {}) => {
     return mount(FilesHeader, {
       props: {
-        mode: "list",
         ...props,
       },
       global: {
@@ -76,13 +71,6 @@ describe("FilesHeader.vue", () => {
       const wrapper = createWrapper();
 
       expect(wrapper.find(".header").exists()).toBe(true);
-      expect(wrapper.find(".header").classes()).toContain("list");
-    });
-
-    it("applies correct CSS class based on mode prop", () => {
-      const wrapper = createWrapper({ mode: "cards" });
-
-      expect(wrapper.find(".header").classes()).toContain("cards");
     });
 
     it("renders all visible columns", () => {
@@ -101,30 +89,23 @@ describe("FilesHeader.vue", () => {
       expect(spacers.length).toBeGreaterThan(0);
     });
 
-    it("adds final spacer for list mode", () => {
-      const wrapper = createWrapper({ mode: "list" });
+    it("renders final spacer", () => {
+      const wrapper = createWrapper();
 
       const finalSpacer = wrapper.find(".spacer-1");
       expect(finalSpacer.exists()).toBe(true);
-    });
-
-    it("does not add final spacer for cards mode", () => {
-      const wrapper = createWrapper({ mode: "cards" });
-
-      const finalSpacer = wrapper.find(".spacer-1");
-      expect(finalSpacer.exists()).toBe(false);
     });
   });
 
   describe("Column Visibility", () => {
     it("calls shouldShowColumn for each column", () => {
-      createWrapper({ mode: "list" });
+      createWrapper();
 
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Title", "list");
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Tags", "list");
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Spacer", "list");
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Collaborators", "list");
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Last edit", "list");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Title");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Tags");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Spacer");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Collaborators");
+      expect(mockShouldShowColumn).toHaveBeenCalledWith("Last edit");
     });
 
     it("hides columns when shouldShowColumn returns false", () => {
@@ -137,14 +118,6 @@ describe("FilesHeader.vue", () => {
       expect(wrapper.find('[data-testid="header-Title"]').exists()).toBe(true);
       expect(wrapper.find('[data-testid="header-Tags"]').exists()).toBe(false);
       expect(wrapper.find('[data-testid="header-Last edit"]').exists()).toBe(true);
-    });
-
-    it("shows different columns for different modes", () => {
-      // Create wrapper with cards mode to trigger shouldShowColumn calls
-      createWrapper({ mode: "cards" });
-
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Title", "cards");
-      expect(mockShouldShowColumn).toHaveBeenCalledWith("Tags", "cards");
     });
   });
 
@@ -401,16 +374,6 @@ describe("FilesHeader.vue", () => {
   });
 
   describe("Reactive Updates", () => {
-    it("updates when mode prop changes", async () => {
-      const wrapper = createWrapper({ mode: "list" });
-
-      expect(wrapper.find(".header").classes()).toContain("list");
-
-      await wrapper.setProps({ mode: "cards" });
-
-      expect(wrapper.find(".header").classes()).toContain("cards");
-    });
-
     it("re-evaluates column visibility when shouldShowColumn changes", async () => {
       mockShouldShowColumn.mockReturnValue(true);
       const wrapper = createWrapper();

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
-import { ref, nextTick } from "vue";
+import { ref } from "vue";
 import FilesTopbar from "@/views/home/FilesTopbar.vue";
 
 // Mock useKeyboardShortcuts
@@ -71,49 +71,6 @@ describe("FilesTopbar.vue", () => {
     });
   });
 
-  describe("View Mode Control", () => {
-    it("defaults to list mode (controlState = 0)", () => {
-      const wrapper = createWrapper();
-
-      expect(wrapper.vm.controlState).toBe(0);
-    });
-
-    it("emits 'list' event when controlState changes to 0", async () => {
-      const wrapper = createWrapper();
-
-      wrapper.vm.controlState = 1; // Switch to cards
-      await nextTick();
-      wrapper.vm.controlState = 0; // Switch back to list
-      await nextTick();
-
-      expect(wrapper.emitted().list).toBeTruthy();
-    });
-
-    it("emits 'cards' event when controlState changes to 1", async () => {
-      const wrapper = createWrapper();
-
-      wrapper.vm.controlState = 1;
-      await nextTick();
-
-      expect(wrapper.emitted().cards).toBeTruthy();
-    });
-
-    it("emits events when controlState changes", async () => {
-      const wrapper = createWrapper();
-
-      wrapper.vm.controlState = 1;
-      await nextTick();
-
-      expect(wrapper.emitted().cards).toBeTruthy();
-      expect(wrapper.emitted().cards).toHaveLength(1);
-
-      wrapper.vm.controlState = 0;
-      await nextTick();
-
-      expect(wrapper.emitted().list).toBeTruthy();
-    });
-  });
-
   describe("Search Functionality", () => {
     it("handles search submission correctly", () => {
       const wrapper = createWrapper();
@@ -180,44 +137,11 @@ describe("FilesTopbar.vue", () => {
 
       expect(useKeyboardShortcuts).toHaveBeenCalledWith(
         {
-          "v,l": { fn: expect.any(Function), description: "view as list" },
-          "v,c": { fn: expect.any(Function), description: "view as cards" },
           "/": { fn: expect.any(Function), description: "search" },
         },
         true,
         "Home view"
       );
-    });
-
-    it("keyboard shortcut 'v,l' switches to list mode", async () => {
-      const { useKeyboardShortcuts } = await import("@/composables/useKeyboardShortcuts.js");
-
-      const wrapper = createWrapper();
-
-      // Get the registered shortcuts
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Simulate 'v,l' shortcut
-      wrapper.vm.controlState = 1; // Start in cards mode
-      await nextTick();
-
-      shortcuts["v,l"].fn();
-
-      expect(wrapper.vm.controlState).toBe(0);
-    });
-
-    it("keyboard shortcut 'v,c' switches to cards mode", async () => {
-      const { useKeyboardShortcuts } = await import("@/composables/useKeyboardShortcuts.js");
-
-      const wrapper = createWrapper();
-
-      // Get the registered shortcuts
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Simulate 'v,c' shortcut
-      shortcuts["v,c"].fn();
-
-      expect(wrapper.vm.controlState).toBe(1);
     });
 
     it("keyboard shortcut '/' focuses search input", async () => {
@@ -300,7 +224,6 @@ describe("FilesTopbar.vue", () => {
     it("initializes with correct default values", () => {
       const wrapper = createWrapper();
 
-      expect(wrapper.vm.controlState).toBe(0);
       expect(typeof wrapper.vm.onSearchSubmit).toBe("function");
     });
 
@@ -309,24 +232,6 @@ describe("FilesTopbar.vue", () => {
 
       // Should not throw on unmount
       expect(() => wrapper.unmount()).not.toThrow();
-    });
-  });
-
-  describe("Reactivity", () => {
-    it("reacts to controlState changes", async () => {
-      const wrapper = createWrapper();
-
-      const initialEmittedCount = wrapper.emitted().list?.length || 0;
-
-      wrapper.vm.controlState = 1;
-      await nextTick();
-
-      expect(wrapper.emitted().cards).toBeTruthy();
-
-      wrapper.vm.controlState = 0;
-      await nextTick();
-
-      expect(wrapper.emitted().list?.length).toBeGreaterThan(initialEmittedCount);
     });
   });
 
@@ -426,126 +331,6 @@ describe("FilesTopbar.vue", () => {
     });
   });
 
-  describe("Enhanced Keyboard Shortcuts", () => {
-    it("registers all expected keyboard shortcuts with correct descriptions", async () => {
-      const { useKeyboardShortcuts } = vi.mocked(
-        await import("@/composables/useKeyboardShortcuts.js")
-      );
-
-      // Create wrapper first to trigger useKeyboardShortcuts call
-      createWrapper();
-
-      const registeredShortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      expect(registeredShortcuts).toMatchObject({
-        "v,l": { description: "view as list" },
-        "v,c": { description: "view as cards" },
-        "/": { description: "search" },
-      });
-
-      // Verify it's registered with correct parameters
-      expect(useKeyboardShortcuts).toHaveBeenCalledWith(
-        expect.any(Object),
-        true, // isActive
-        "Home view" // scope
-      );
-    });
-
-    it("handles keyboard shortcuts when component is inactive", async () => {
-      // Create wrapper but assume component becomes inactive
-      createWrapper();
-
-      const { useKeyboardShortcuts } = vi.mocked(
-        await import("@/composables/useKeyboardShortcuts.js")
-      );
-
-      // Verify shortcuts were registered as active
-      expect(useKeyboardShortcuts).toHaveBeenCalledWith(
-        expect.any(Object),
-        true, // Component should register as active
-        "Home view"
-      );
-    });
-
-    it("executes view mode shortcuts correctly with state verification", async () => {
-      const { useKeyboardShortcuts } = vi.mocked(
-        await import("@/composables/useKeyboardShortcuts.js")
-      );
-
-      const wrapper = createWrapper();
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Test v,l shortcut (switch to list)
-      wrapper.vm.controlState = 1; // Start in cards mode
-      await nextTick();
-
-      shortcuts["v,l"].fn();
-      await nextTick(); // Wait for watcher to emit event
-      expect(wrapper.vm.controlState).toBe(0);
-      expect(wrapper.emitted().list).toBeTruthy();
-
-      // Test v,c shortcut (switch to cards)
-      shortcuts["v,c"].fn();
-      await nextTick(); // Wait for watcher to emit event
-      expect(wrapper.vm.controlState).toBe(1);
-      expect(wrapper.emitted().cards).toBeTruthy();
-    });
-
-    it("handles search shortcut when SearchBar is not ready", async () => {
-      const { useKeyboardShortcuts } = await import("@/composables/useKeyboardShortcuts.js");
-
-      createWrapper({
-        stubs: {
-          SearchBar: {
-            template: '<div data-testid="search-bar"></div>',
-            // Intentionally missing focusInput method
-          },
-        },
-      });
-
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Should throw when trying to focus non-existent method
-      expect(() => shortcuts["/"].fn()).toThrow();
-    });
-
-    it("maintains keyboard shortcut scope throughout component lifecycle", async () => {
-      const wrapper = createWrapper();
-      const { useKeyboardShortcuts } = vi.mocked(
-        await import("@/composables/useKeyboardShortcuts.js")
-      );
-
-      // Verify scope is maintained
-      expect(useKeyboardShortcuts).toHaveBeenCalledWith(
-        expect.any(Object),
-        true,
-        "Home view" // Consistent scope
-      );
-
-      // Component should not re-register shortcuts on updates
-      wrapper.vm.controlState = 1;
-      expect(useKeyboardShortcuts).toHaveBeenCalledTimes(1);
-    });
-
-    it("handles simultaneous shortcut presses gracefully", async () => {
-      const wrapper = createWrapper();
-      const { useKeyboardShortcuts } = vi.mocked(
-        await import("@/composables/useKeyboardShortcuts.js")
-      );
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Simulate rapid shortcut presses
-      shortcuts["v,l"].fn();
-      shortcuts["v,c"].fn();
-      shortcuts["v,l"].fn();
-
-      await nextTick();
-
-      // Should end up in list mode (last shortcut wins)
-      expect(wrapper.vm.controlState).toBe(0);
-    });
-  });
-
   describe("Search Performance and Memory", () => {
     it("does not leak memory with repeated searches", () => {
       const wrapper = createWrapper();
@@ -575,48 +360,6 @@ describe("FilesTopbar.vue", () => {
 
       // Filter should complete within reasonable time (adjust threshold as needed)
       expect(endTime - startTime).toBeLessThan(100); // 100ms threshold
-    });
-  });
-
-  describe("Integration Edge Cases", () => {
-    it("maintains view mode state during search operations", async () => {
-      const wrapper = createWrapper();
-
-      // Switch to cards mode
-      wrapper.vm.controlState = 1;
-      await nextTick();
-
-      // Perform search
-      wrapper.vm.onSearchSubmit("test query");
-
-      // View mode should remain unchanged
-      expect(wrapper.vm.controlState).toBe(1);
-    });
-
-    it("handles component re-mounting with preserved state", () => {
-      let wrapper = createWrapper();
-      wrapper.vm.controlState = 1;
-      wrapper.unmount();
-
-      // Re-mount component
-      wrapper = createWrapper();
-
-      // Should start with default state again
-      expect(wrapper.vm.controlState).toBe(0);
-    });
-
-    it("handles concurrent search and view mode changes", async () => {
-      const wrapper = createWrapper();
-
-      // Simulate concurrent operations
-      wrapper.vm.onSearchSubmit("concurrent test");
-      wrapper.vm.controlState = 1;
-      await nextTick();
-
-      // Both operations should complete successfully
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledOnce();
-      expect(wrapper.vm.controlState).toBe(1);
-      expect(wrapper.emitted().cards).toBeTruthy();
     });
   });
 });

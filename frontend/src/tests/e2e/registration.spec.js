@@ -29,7 +29,6 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     await page.fill('[data-testid="name-input"]', testUser.name);
     await page.fill('[data-testid="email-input"]', testUser.email);
     await page.fill('[data-testid="password-input"]', testUser.password);
-    await page.fill('[data-testid="confirm-password-input"]', testUser.password);
 
     // Submit registration form
     await page.click('[data-testid="register-button"]');
@@ -60,33 +59,16 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     // Should remain on registration page
     await expect(page).toHaveURL("/register");
 
-    // Test password mismatch validation
-    await page.fill('[data-testid="name-input"]', "Test User");
-    await page.fill('[data-testid="email-input"]', `test${timestamp}@example.com`);
-    await page.fill('[data-testid="password-input"]', "password123");
-    await page.fill('[data-testid="confirm-password-input"]', "differentpassword");
-
-    await page.click('[data-testid="register-button"]');
-
-    // Should show validation error and remain on registration page
-    await expect(page.locator('[data-testid="registration-error"]')).toBeVisible();
-    await expect(page.locator('[data-testid="registration-error"]')).toContainText(
-      "Passwords do not match"
-    );
-    await expect(page).toHaveURL("/register");
-
     // Test partial form submission (missing required fields)
-    await page.goto("/login");
-    await page.click('[data-testid="register-link"]');
     await page.fill('[data-testid="name-input"]', "Test User");
     await page.fill('[data-testid="email-input"]', `test${timestamp}@example.com`);
-    // Leave password fields empty
+    // Leave password field empty
 
     await page.click('[data-testid="register-button"]');
 
     // Should show validation error and remain on registration page
-    await expect(page.locator('[data-testid="registration-error"]')).toBeVisible();
-    await expect(page.locator('[data-testid="registration-error"]')).toContainText(
+    await expect(page.locator('[data-testid="auth-error"]')).toBeVisible();
+    await expect(page.locator('[data-testid="auth-error"]')).toContainText(
       "Please fill in all fields"
     );
     await expect(page).toHaveURL("/register");
@@ -113,7 +95,6 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     await page.fill('[data-testid="name-input"]', testUser.name);
     await page.fill('[data-testid="email-input"]', testUser.email);
     await page.fill('[data-testid="password-input"]', testUser.password);
-    await page.fill('[data-testid="confirm-password-input"]', testUser.password);
     await page.click('[data-testid="register-button"]');
 
     // Wait for either success redirect or error message
@@ -135,11 +116,10 @@ test.describe("Registration Flow Tests @auth-flows", () => {
     await page.fill('[data-testid="name-input"]', `Another User ${timestamp}`);
     await page.fill('[data-testid="email-input"]', duplicateEmail);
     await page.fill('[data-testid="password-input"]', "differentpassword");
-    await page.fill('[data-testid="confirm-password-input"]', "differentpassword");
     await page.click('[data-testid="register-button"]');
 
     // Should show server error for duplicate email
-    await expect(page.locator('[data-testid="registration-error"]')).toBeVisible();
+    await expect(page.locator('[data-testid="auth-error"]')).toBeVisible();
     await expect(page).toHaveURL("/register");
     await expect(page.locator('[data-testid="name-input"]')).toBeVisible();
   });

@@ -1,18 +1,30 @@
 <script setup>
-  import { ref, inject, onMounted } from "vue";
+  import { ref, computed, inject, onMounted } from "vue";
   import { useRouter } from "vue-router";
   import { toast } from "@/utils/toast";
+  import AuthLayout from "@/components/layout/AuthLayout.vue";
+  import PasswordInput from "@/components/forms/PasswordInput.vue";
   import PasswordStrength from "@/components/ui/PasswordStrength.vue";
 
   const router = useRouter();
   const name = ref("");
   const email = ref("");
   const pwd = ref("");
-  const pwdAgain = ref("");
   const error = ref("");
+  const isLoading = ref(false);
 
   const api = inject("api");
   const user = inject("user");
+
+  const derivedInitials = computed(() => {
+    return name.value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 3);
+  });
 
   onMounted(() => {
     const token = localStorage.getItem("accessToken");
@@ -25,20 +37,18 @@
 
   const onRegister = async () => {
     error.value = "";
-    if (!name.value || !email.value || !pwd.value || !pwdAgain.value) {
+    if (!name.value || !email.value || !pwd.value) {
       error.value = "Please fill in all fields.";
       return;
     }
-    if (pwd.value !== pwdAgain.value) {
-      error.value = "Passwords do not match.";
-      return;
-    }
 
+    isLoading.value = true;
     try {
       const response = await api.post("/register", {
         name: name.value,
         email: email.value,
         password: pwd.value,
+        initials: derivedInitials.value,
       });
 
       const { access_token, refresh_token, user: registeredUser } = response.data;
@@ -53,132 +63,81 @@
       });
       router.push("/");
     } catch (err) {
-      if (err.response?.data?.message) {
-        error.value = err.response.data.message;
+      if (err.response?.data?.detail) {
+        error.value = err.response.data.detail;
       } else {
         error.value = "Registration failed. Please try again.";
       }
+    } finally {
+      isLoading.value = false;
     }
   };
 </script>
 
 <template>
-  <div class="view">
-    <!-- <div class="left">
-         <div class="logo"></div>
-         <div class="tagline">
-         <p>Scientific publishing.</p>
-         <p>Web-native. Human-first</p>
-         </div>
-         </div> -->
-    <div class="right">
-      <div class="wrapper">
-        <div class="top">
-          <InputText v-model="name" data-testid="name-input" direction="column" label="Full name" />
-          <InputText v-model="email" data-testid="email-input" direction="column" label="Email" />
-          <div>
-            <InputText
-              v-model="pwd"
-              data-testid="password-input"
-              direction="column"
-              label="Password"
-              type="password"
-            />
-            <PasswordStrength :password="pwd" />
-          </div>
-          <InputText
-            v-model="pwdAgain"
-            data-testid="confirm-password-input"
-            direction="column"
-            label="Confirm password"
-            type="password"
-          />
-        </div>
-        <div class="bottom">
-          <div v-if="error" data-testid="registration-error" class="error-message">{{ error }}</div>
-          <Button
-            data-testid="register-button"
-            kind="primary"
-            block
-            text="Register"
-            @click="onRegister"
-          />
-          <div class="footer text-caption">
-            <p>
-              Already registered?
-              <span
-                data-testid="login-link"
-                style="cursor: pointer; text-decoration: underline"
-                @click="router.push('/login')"
-              >
-                Login here.
-              </span>
-            </p>
-          </div>
-        </div>
-      </div>
+  <AuthLayout
+    heading="Create your account"
+    subheading="Start writing web-native research"
+    :error="error"
+    @submit="onRegister"
+  >
+    <InputText v-model="name" data-testid="name-input" direction="column" label="Display name" />
+    <InputText v-model="email" data-testid="email-input" direction="column" label="Email" />
+    <div>
+      <PasswordInput v-model="pwd" data-testid="password-input" />
+      <PasswordStrength :password="pwd" />
     </div>
-  </div>
+
+    <template #actions>
+      <Button
+        data-testid="register-button"
+        kind="primary"
+        block
+        :text="isLoading ? 'Creating account...' : 'Create account'"
+        :disabled="isLoading"
+        @click="onRegister"
+      />
+    </template>
+
+    <template #footer>
+      <div class="form-legal text-caption">
+        By creating an account, you agree to our
+        <a href="/terms" target="_blank">Terms of Service</a> and
+        <a href="/privacy" target="_blank">Privacy Policy</a>.
+      </div>
+      <div class="form-footer text-caption">
+        Already have an account?
+        <Button
+          data-testid="login-link"
+          type="button"
+          kind="secondary"
+          size="xs"
+          text="Sign in"
+          @click="router.push('/login')"
+        />
+      </div>
+    </template>
+  </AuthLayout>
 </template>
 
 <style scoped>
-  .view {
-    --transition-duration: 0.3s;
-
-    display: flex;
-    flex-grow: 2;
-    height: 100%;
-    width: 100%;
+  .form-legal {
+    text-align: center;
+    line-height: 1.5;
+    color: var(--gray-500);
   }
 
-  .left {
-    background-color: var(--information-50);
-    height: 100%;
-    width: 50%;
+  .form-legal a {
+    color: var(--gray-700);
+    text-decoration: underline;
   }
 
-  .right {
-    background-color: var(--surface-primary);
-    height: 100%;
-    /* width: 50%; */
-    width: 100%;
+  .form-footer {
+    text-align: center;
+    color: var(--gray-600);
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .right .wrapper {
-    width: 60%;
-    min-width: 192px;
-    max-width: 384px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 32px;
-
-    & > * {
-      width: 100%;
-    }
-  }
-
-  .right .wrapper .top {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .right .bottom {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .input-text :deep(label) {
-    padding-left: 8px;
-  }
-
-  .input-text :deep(input) {
-    width: 100%;
+    justify-content: center;
+    gap: 4px;
   }
 </style>

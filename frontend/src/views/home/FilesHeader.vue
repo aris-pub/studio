@@ -2,9 +2,7 @@
   import { reactive, inject } from "vue";
   import HeaderLabel from "./FilesHeaderLabel.vue";
 
-  const props = defineProps({
-    mode: { type: String, default: "list" },
-  });
+  const props = defineProps({});
   const fileStore = inject("fileStore");
   const xsMode = inject("xsMode");
 
@@ -52,9 +50,9 @@
 </script>
 
 <template>
-  <Header :class="mode">
+  <Header>
     <template v-for="name in Object.keys(columnInfo)" :key="name">
-      <template v-if="shouldShowColumn(name, mode)">
+      <template v-if="shouldShowColumn(name)">
         <div v-if="name === 'Spacer'" class="spacer"></div>
         <HeaderLabel
           v-else
@@ -68,7 +66,7 @@
       </template>
     </template>
     <!-- to complete the grid -->
-    <span v-if="mode === 'list'" class="spacer spacer-1"></span>
+    <span class="spacer spacer-1"></span>
   </Header>
 </template>
 
@@ -77,7 +75,7 @@
     padding-inline: 0;
   }
 
-  .pane-header.list {
+  .pane-header {
     & > *:first-child {
       padding-left: calc(16px - var(--border-med));
       border-top-left-radius: var(--border-radius);
@@ -89,19 +87,6 @@
       padding-right: 8px;
       border-top-right-radius: var(--border-radius);
       border-bottom-right-radius: var(--border-radius);
-    }
-  }
-
-  .pane-header.cards {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 16px;
-    padding-inline: 8px;
-
-    & > .col-header {
-      width: fit-content;
-      padding-inline: 8px;
     }
   }
 </style>

@@ -53,11 +53,10 @@ async def create_version(
     result = await db.execute(select(File).where(File.id == file_id))
     file = result.scalar_one()
 
-    # Get the next version number
+    # Get the next version number (include soft-deleted to avoid unique constraint violations)
     result = await db.execute(
         select(func.max(FileVersion.version_number))
         .where(FileVersion.file_id == file_id)
-        .where(FileVersion.deleted_at.is_(None))
     )
     max_version: int | None = result.scalar()
     next_version_number = (max_version or 0) + 1
