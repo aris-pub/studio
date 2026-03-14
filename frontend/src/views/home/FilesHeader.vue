@@ -45,7 +45,7 @@
       fileStore.value.filterFiles((file) => {
         const filterTagIds = tags.map((t) => t.id);
         const fileTagIds = file.tags.map((t) => t.id);
-        return filterTagIds.some((id) => !fileTagIds.includes(id));
+        return filterTagIds.every((id) => !fileTagIds.includes(id));
       });
     }
   };
