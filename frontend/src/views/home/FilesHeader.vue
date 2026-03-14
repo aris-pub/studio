@@ -28,6 +28,8 @@
       fileStore.value.sortFiles((a, b) => a[sortKey].localeCompare(b[sortKey]));
     } else if (mode === "desc") {
       fileStore.value.sortFiles((a, b) => b[sortKey].localeCompare(a[sortKey]));
+    } else {
+      fileStore.value.resetSort();
     }
     for (const name in columnState) {
       if (name === columnName) continue;
@@ -43,7 +45,7 @@
       fileStore.value.applyFilter("tags", (file) => {
         const filterTagIds = tags.map((t) => t.id);
         const fileTagIds = file.tags.map((t) => t.id);
-        return filterTagIds.some((id) => !fileTagIds.includes(id));
+        return filterTagIds.every((id) => !fileTagIds.includes(id));
       });
     }
   };

@@ -101,6 +101,7 @@ describe("FileStore", () => {
         "createFile",
         "deleteFile",
         "sortFiles",
+        "resetSort",
         "applyFilter",
         "clearFilter",
         "filterFiles",

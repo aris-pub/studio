@@ -7,6 +7,15 @@
 
   const props = defineProps({});
   const fileStore = inject("fileStore");
+  const newEmptyFile = inject("newEmptyFile", () => {});
+  const showFileUploadModal = inject("showFileUploadModal", () => {});
+
+  const hasZeroFiles = computed(() => {
+    const store = fileStore.value;
+    if (!store) return false;
+    const loaded = store.filesLoaded?.value ?? store.filesLoaded;
+    return loaded && Array.isArray(store.files) && store.files.length === 0;
+  });
 
   // Topbar ref for accessing ownership filter state
   const topbarRef = useTemplateRef("topbar-ref");
@@ -62,28 +71,58 @@
     </template>
 
     <div class="files-wrapper">
-      <FilesHeader />
+      <template v-if="hasZeroFiles">
+        <div class="empty-state" data-testid="empty-state">
+          <Icon name="Files" class="empty-state-icon" />
+          <p class="empty-state-title">No files yet</p>
+          <p class="empty-state-subtitle">
+            Create a new file or upload an existing document to get started.
+          </p>
+          <div class="empty-state-actions">
+            <button
+              class="empty-state-btn primary"
+              data-testid="empty-state-create"
+              @click="newEmptyFile"
+            >
+              <Icon name="FilePlus" />
+              Create file
+            </button>
+            <button
+              class="empty-state-btn"
+              data-testid="empty-state-upload"
+              @click="showFileUploadModal"
+            >
+              <Icon name="Upload" />
+              Upload
+            </button>
+          </div>
+        </div>
+      </template>
 
-      <div
-        v-if="visibleFiles.length > 0"
-        ref="files-ref"
-        data-testid="files-container"
-        class="files"
-        role="listbox"
-        aria-label="Files"
-      >
-        <template v-for="(file, idx) in visibleFiles" :key="file.id">
-          <FilesItem v-model="visibleFiles[idx]" />
-        </template>
-      </div>
+      <template v-else>
+        <FilesHeader />
 
-      <div v-else-if="showSharedEmptyState" class="empty-state" data-testid="shared-empty-state">
-        <Icon name="UsersGroup" class="empty-state-icon" />
-        <p class="empty-state-title text-default">No shared files yet</p>
-        <p class="empty-state-description text-subtle">
-          Files shared with you by collaborators will appear here.
-        </p>
-      </div>
+        <div
+          v-if="visibleFiles.length > 0"
+          ref="files-ref"
+          data-testid="files-container"
+          class="files"
+          role="listbox"
+          aria-label="Files"
+        >
+          <template v-for="(file, idx) in visibleFiles" :key="file.id">
+            <FilesItem v-model="visibleFiles[idx]" />
+          </template>
+        </div>
+
+        <div v-else-if="showSharedEmptyState" class="empty-state" data-testid="shared-empty-state">
+          <Icon name="UsersGroup" class="empty-state-icon" />
+          <p class="empty-state-title">No shared files yet</p>
+          <p class="empty-state-description">
+            Files shared with you by collaborators will appear here.
+          </p>
+        </div>
+      </template>
     </div>
   </Pane>
 </template>
@@ -140,25 +179,72 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 1;
-    padding: 48px 24px;
+    height: 100%;
     gap: 8px;
+    padding: 48px 24px;
+    text-align: center;
   }
 
   .empty-state-icon {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     color: var(--text-subtle);
     margin-bottom: 8px;
   }
 
   .empty-state-title {
-    font-weight: 500;
+    font-size: var(--h4-size);
+    font-weight: var(--weight-semi);
+    color: var(--text-body);
     margin: 0;
   }
 
+  .empty-state-subtitle,
   .empty-state-description {
     color: var(--text-subtle);
     margin: 0;
+    max-width: 320px;
+  }
+
+  .empty-state-subtitle {
+    margin-bottom: 16px;
+  }
+
+  .empty-state-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .empty-state-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: var(--border-extrathin) solid var(--border-primary);
+    background: var(--surface-primary);
+    color: var(--text-body);
+    font-size: var(--font-size);
+    cursor: pointer;
+    transition: var(--transition-bg-color), var(--transition-bd-color);
+  }
+
+  .empty-state-btn:hover {
+    background: var(--surface-hover);
+  }
+
+  .empty-state-btn.primary {
+    background: var(--surface-action);
+    color: var(--white);
+    border-color: var(--surface-action);
+  }
+
+  .empty-state-btn.primary:hover {
+    background: var(--surface-action-hover, var(--blue-700));
+  }
+
+  .empty-state-btn :deep(.tabler-icon) {
+    width: 18px;
+    height: 18px;
   }
 </style>

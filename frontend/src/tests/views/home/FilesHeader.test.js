@@ -11,6 +11,7 @@ describe("FilesHeader.vue", () => {
   beforeEach(() => {
     mockFileStore = ref({
       sortFiles: vi.fn(),
+      resetSort: vi.fn(),
       clearFilters: vi.fn(),
       filterFiles: vi.fn(),
       applyFilter: vi.fn(),
@@ -208,6 +209,28 @@ describe("FilesHeader.vue", () => {
       expect(result).toBeGreaterThan(0); // A should come after B in desc order
     });
 
+    it("resets to default order when sort mode is empty", async () => {
+      const wrapper = createWrapper(
+        {},
+        {
+          stubs: {
+            HeaderLabel: {
+              template:
+                '<div class="header-label" :data-testid="`header-${name}`" @click="$emit(\'sort\', \'\')"></div>',
+              props: ["name", "sortable", "filterable", "modelValue"],
+              emits: ["sort", "filter"],
+            },
+          },
+        }
+      );
+
+      const titleHeader = wrapper.findComponent('[data-testid="header-Title"]');
+      await titleHeader.trigger("click");
+
+      expect(mockFileStore.value.resetSort).toHaveBeenCalledOnce();
+      expect(mockFileStore.value.sortFiles).not.toHaveBeenCalled();
+    });
+
     it("clears other column states when sorting", async () => {
       const wrapper = createWrapper();
 
@@ -329,7 +352,7 @@ describe("FilesHeader.vue", () => {
       const fileWithNoTags = { tags: [] };
 
       expect(filterFunction(fileWithBothTags)).toBe(false); // Has both tags, should NOT be filtered
-      expect(filterFunction(fileWithOneTag)).toBe(true); // Has one tag, should be filtered
+      expect(filterFunction(fileWithOneTag)).toBe(false); // Has one matching tag, should NOT be filtered (OR logic)
       expect(filterFunction(fileWithNoTags)).toBe(true); // Has no tags, should be filtered
     });
   });

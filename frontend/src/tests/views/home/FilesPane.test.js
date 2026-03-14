@@ -134,6 +134,89 @@ describe("FilesPane.vue", () => {
       const fileItems = wrapper.findAll('[data-testid="file-item"]');
       expect(fileItems).toHaveLength(0);
     });
+
+    it("shows empty state with actions when user has zero files", async () => {
+      const wrapper = createWrapper({
+        provide: {
+          fileStore: ref({
+            files: [],
+            filesLoaded: ref(true),
+          }),
+        },
+      });
+
+      await nextTick();
+
+      const emptyState = wrapper.find('[data-testid="empty-state"]');
+      expect(emptyState.exists()).toBe(true);
+      expect(emptyState.text()).toContain("No files yet");
+
+      const createBtn = wrapper.find('[data-testid="empty-state-create"]');
+      const uploadBtn = wrapper.find('[data-testid="empty-state-upload"]');
+      expect(createBtn.exists()).toBe(true);
+      expect(uploadBtn.exists()).toBe(true);
+    });
+
+    it("does not show empty state when files exist", async () => {
+      const wrapper = createWrapper();
+
+      await nextTick();
+
+      const emptyState = wrapper.find('[data-testid="empty-state"]');
+      expect(emptyState.exists()).toBe(false);
+    });
+
+    it("does not show empty state before files are loaded", async () => {
+      const wrapper = createWrapper({
+        provide: {
+          fileStore: ref({
+            files: [],
+            filesLoaded: ref(false),
+          }),
+        },
+      });
+
+      await nextTick();
+
+      const emptyState = wrapper.find('[data-testid="empty-state"]');
+      expect(emptyState.exists()).toBe(false);
+    });
+
+    it("calls newEmptyFile when create button is clicked", async () => {
+      const newEmptyFile = vi.fn();
+      const wrapper = createWrapper({
+        provide: {
+          fileStore: ref({
+            files: [],
+            filesLoaded: ref(true),
+          }),
+          newEmptyFile,
+        },
+      });
+
+      await nextTick();
+
+      await wrapper.find('[data-testid="empty-state-create"]').trigger("click");
+      expect(newEmptyFile).toHaveBeenCalled();
+    });
+
+    it("calls showFileUploadModal when upload button is clicked", async () => {
+      const showFileUploadModal = vi.fn();
+      const wrapper = createWrapper({
+        provide: {
+          fileStore: ref({
+            files: [],
+            filesLoaded: ref(true),
+          }),
+          showFileUploadModal,
+        },
+      });
+
+      await nextTick();
+
+      await wrapper.find('[data-testid="empty-state-upload"]').trigger("click");
+      expect(showFileUploadModal).toHaveBeenCalled();
+    });
   });
 
   describe("Responsive Behavior", () => {

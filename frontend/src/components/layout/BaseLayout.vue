@@ -113,6 +113,11 @@
   const showModal = ref(false);
   const isHome = computed(() => route.fullPath === "/");
 
+  provide("newEmptyFile", newEmptyFile);
+  provide("showFileUploadModal", () => {
+    showModal.value = true;
+  });
+
   // UserMenu keyboard shortcut removed - now handled by UserMenuDrawer
 
   // Handle sidebar item actions
