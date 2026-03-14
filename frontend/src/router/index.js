@@ -16,6 +16,8 @@ const SettingsPreferencesView = isUnitTest
   : () => import("@/views/settings/PreferencesView.vue");
 const NotFoundView = isUnitTest ? {} : () => import("@/views/notfound/View.vue");
 const VerifyEmailView = isUnitTest ? {} : () => import("@/views/verify-email/View.vue");
+const ForgotPasswordView = isUnitTest ? {} : () => import("@/views/forgot-password/View.vue");
+const ResetPasswordView = isUnitTest ? {} : () => import("@/views/reset-password/View.vue");
 
 const routes = [
   { path: "/login", component: LoginView },
@@ -25,6 +27,8 @@ const routes = [
   { path: "/demo", component: DemoView },
   { path: "/debug/buttons", component: DebugButtonsView },
   { path: "/verify-email/:token", name: "EmailVerification", component: VerifyEmailView },
+  { path: "/forgot-password", component: ForgotPasswordView },
+  { path: "/reset-password/:token", component: ResetPasswordView },
   { path: "/account", component: AccountView },
   {
     path: "/settings",
@@ -47,12 +51,17 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const publicPages = ["/login", "/register"];
+  const publicPages = ["/login", "/register", "/forgot-password"];
   const isVerificationRoute = to.path.startsWith("/verify-email/");
+  const isResetPasswordRoute = to.path.startsWith("/reset-password/");
   const isDemoRoute = to.path.startsWith("/demo");
   const isDebugRoute = to.path.startsWith("/debug/");
   const authRequired =
-    !publicPages.includes(to.path) && !isVerificationRoute && !isDemoRoute && !isDebugRoute;
+    !publicPages.includes(to.path) &&
+    !isVerificationRoute &&
+    !isResetPasswordRoute &&
+    !isDemoRoute &&
+    !isDebugRoute;
 
   if (!authRequired) return next();
 

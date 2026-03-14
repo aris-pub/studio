@@ -153,6 +153,10 @@ class User(Base):
     email_verification_token = Column(String, nullable=True)
     email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Password reset fields
+    password_reset_token = Column(String, nullable=True)
+    password_reset_sent_at = Column(DateTime(timezone=True), nullable=True)
+
     files = relationship("File", back_populates="owner")
     tags = relationship("Tag", back_populates="owner", cascade="all, delete-orphan")
     file_settings = relationship(
@@ -206,6 +210,20 @@ class User(Base):
 
         token = secrets.token_urlsafe(24)[:32]  # Ensure exactly 32 chars
         self.email_verification_token = token
+        return token
+
+    def generate_password_reset_token(self) -> str:
+        """Generate a new password reset token.
+
+        Returns
+        -------
+        str
+            32-character URL-safe token.
+        """
+        import secrets
+
+        token = secrets.token_urlsafe(24)[:32]
+        self.password_reset_token = token
         return token
 
     def verify_token(self, token: str) -> bool:
