@@ -54,7 +54,7 @@ describe("DrawerVersions", () => {
 
   const mockFile = {
     id: 123,
-    owner_id: 1,
+    ownerId: 1,
     title: "Test File",
   };
 
@@ -355,7 +355,7 @@ describe("DrawerVersions", () => {
     });
 
     it("sets isOwner to false when user does not own file", async () => {
-      wrapper = createWrapper({ file: { ...mockFile, owner_id: 999 } });
+      wrapper = createWrapper({ file: { ...mockFile, ownerId: 999 } });
       await wrapper.vm.$nextTick();
 
       expect(wrapper.vm.isOwner).toBe(false);

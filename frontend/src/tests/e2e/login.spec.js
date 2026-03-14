@@ -45,7 +45,7 @@ test.describe("Login Flow Tests @auth-flows", () => {
     await page.click('[data-testid="login-button"]');
 
     // Verify error message is displayed
-    await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
+    await expect(page.locator('[data-testid="auth-error"]')).toBeVisible();
 
     // Verify user remains on login page
     await authHelpers.expectToBeOnLoginPage();
@@ -92,7 +92,7 @@ test.describe("Login Flow Tests @auth-flows", () => {
     await authHelpers.login(TEST_CREDENTIALS.valid.email, TEST_CREDENTIALS.valid.password);
 
     // Verify generic error message is shown
-    await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
+    await expect(page.locator('[data-testid="auth-error"]')).toBeVisible();
 
     // Verify user remains on login page
     await authHelpers.expectToBeOnLoginPage();

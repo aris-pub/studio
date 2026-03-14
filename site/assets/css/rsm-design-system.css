@@ -250,6 +250,7 @@
   --border-med: 4px;
   --border-thin: 2px;
   --border-extrathin: 1px;
+  --border-radius: var(--border-med);
 
   /* Border radius scale */
   --radius-sm: 4px;

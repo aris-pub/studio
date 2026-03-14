@@ -23,7 +23,7 @@ test.describe("Home View Accessibility @auth @desktop-only", () => {
 
     if ((await firstFile.count()) > 0) {
       // File items should have button role
-      await expect(firstFile).toHaveAttribute("role", "button");
+      await expect(firstFile).toHaveAttribute("role", "option");
       await expect(firstFile).toHaveAttribute("tabindex", "0");
     }
   });
