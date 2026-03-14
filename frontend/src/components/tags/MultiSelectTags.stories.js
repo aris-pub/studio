@@ -390,7 +390,7 @@ export const InteractiveWorkflow = {
           filteredFiles.value = workspaceFiles.value;
         } else {
           filteredFiles.value = workspaceFiles.value.filter((file) => {
-            return filterTags.value.every((filterTag) =>
+            return filterTags.value.some((filterTag) =>
               file.selectedTags.some((fileTag) => fileTag.id === filterTag.id)
             );
           });

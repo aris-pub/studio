@@ -327,7 +327,7 @@ describe("FilesHeader.vue", () => {
       const fileWithNoTags = { tags: [] };
 
       expect(filterFunction(fileWithBothTags)).toBe(false); // Has both tags, should NOT be filtered
-      expect(filterFunction(fileWithOneTag)).toBe(true); // Has one tag, should be filtered
+      expect(filterFunction(fileWithOneTag)).toBe(false); // Has one matching tag, should NOT be filtered (OR logic)
       expect(filterFunction(fileWithNoTags)).toBe(true); // Has no tags, should be filtered
     });
   });
