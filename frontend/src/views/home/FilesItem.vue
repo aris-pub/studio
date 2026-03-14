@@ -331,7 +331,7 @@
       width: calc(100% + 24px);
       margin-left: 12px;
       height: 16px;
-      border-radius: 3px;
+      border-radius: var(--radius-sm);
       background: var(--gray-100);
       border: 1px solid var(--gray-200);
       transition:

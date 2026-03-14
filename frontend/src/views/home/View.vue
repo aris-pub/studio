@@ -79,6 +79,6 @@
     position: relative;
     flex-grow: 1;
     height: 100%;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
   }
 </style>

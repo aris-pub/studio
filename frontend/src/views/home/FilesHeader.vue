@@ -78,15 +78,15 @@
   .pane-header {
     & > *:first-child {
       padding-left: calc(16px - var(--border-med));
-      border-top-left-radius: var(--border-radius);
-      border-bottom-left-radius: var(--border-radius);
+      border-top-left-radius: var(--radius-sm);
+      border-bottom-left-radius: var(--radius-sm);
       border-left: var(--border-med) solid transparent;
     }
 
     & > *:last-child {
       padding-right: 8px;
-      border-top-right-radius: var(--border-radius);
-      border-bottom-right-radius: var(--border-radius);
+      border-top-right-radius: var(--radius-sm);
+      border-bottom-right-radius: var(--radius-sm);
     }
   }
 </style>
