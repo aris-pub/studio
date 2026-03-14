@@ -10,6 +10,7 @@ import { File } from "@/models/File.js";
 export function createFileStore(api, user) {
   // Reactive state
   const files = ref([]);
+  const defaultFileOrder = ref([]);
   const numFiles = computed(() => files.value?.length || 0);
   const tags = ref([]);
   const filesLoaded = ref(false);
@@ -51,6 +52,7 @@ export function createFileStore(api, user) {
           store
         );
       });
+      defaultFileOrder.value = files.value.map((f) => f.id);
       filesLoaded.value = true;
     } catch (error) {
       console.error("Error loading files:", error);
@@ -107,6 +109,14 @@ export function createFileStore(api, user) {
    */
   const sortFiles = (compareFunc) => {
     files.value.sort(compareFunc);
+  };
+
+  /**
+   * Reset files to their default order (as returned by the API)
+   */
+  const resetSort = () => {
+    const orderMap = new Map(defaultFileOrder.value.map((id, i) => [id, i]));
+    files.value.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
   };
 
   /**
@@ -276,6 +286,7 @@ export function createFileStore(api, user) {
     createFile,
     deleteFile,
     sortFiles,
+    resetSort,
     filterFiles,
     clearFilters,
     selectFile,
