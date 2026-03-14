@@ -147,6 +147,24 @@ async def test_soft_delete_user_sets_deleted_at_value(db_session, test_user):
     assert isinstance(deleted.deleted_at, datetime)
 
 
+async def test_get_user_files_includes_abstract_and_keywords(db_session, test_user):
+    from unittest.mock import patch
+
+    from aris.crud.file import create_file
+
+    file = await create_file(
+        "source", test_user.id, "Title", abstract="My abstract", db=db_session
+    )
+    file.keywords = "quantum, physics"
+    await db_session.flush()
+
+    with patch("aris.crud.user.extract_title", return_value="Title"):
+        files = await get_user_files(test_user.id, with_tags=False, db=db_session)
+
+    assert files[0]["abstract"] == "My abstract"
+    assert files[0]["keywords"] == "quantum, physics"
+
+
 async def test_get_user_files_with_tags_returns_tags(db_session, test_user):
     from unittest.mock import patch
 

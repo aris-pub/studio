@@ -18,10 +18,19 @@
 
       // Split search into terms and match any term
       const searchTerms = trimmedSearch.toLowerCase().split(/\s+/);
-      const fileTitle = file.title.toLowerCase();
+
+      // Build searchable text from all relevant fields
+      const searchableFields = [
+        file.title || "",
+        file.abstract || "",
+        file.keywords || "",
+        ...(file.tags || []).map((t) => t.name || ""),
+        ...(file.collaborators || []).map((c) => c.name || ""),
+      ];
+      const searchableText = searchableFields.join(" ").toLowerCase();
 
       // Show file if it contains any search term
-      const hasMatch = searchTerms.some((term) => fileTitle.includes(term));
+      const hasMatch = searchTerms.some((term) => searchableText.includes(term));
 
       // Return true to hide, false to show
       return !hasMatch;
