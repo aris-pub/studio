@@ -18,7 +18,7 @@
   });
   const nextSortState = () => {
     if (!props.sortable) return;
-    sortState.value = sortState.value === "asc" ? "desc" : "asc";
+    sortState.value = sortState.value === "asc" ? "desc" : sortState.value === "desc" ? "" : "asc";
     emit("sort", sortState.value);
   };
 
