@@ -35,6 +35,19 @@ class UserLogin(BaseModel):
     }
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Forgot-password request body."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset-password request body."""
+
+    token: str
+    new_password: str = Field(min_length=8)
+
+
 class UserCreate(BaseModel):
     """User registration data."""
 
@@ -264,3 +277,60 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
             "email_verified": new_user.email_verified,
         },
     }
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Request a password reset link.
+
+    Always returns 200 regardless of whether the email exists to prevent
+    account enumeration.
+    """
+    result = await db.execute(
+        select(User).where(User.email == body.email, User.deleted_at.is_(None))
+    )
+    user = result.scalars().first()
+
+    if user:
+        token = user.generate_password_reset_token()
+        user.password_reset_sent_at = datetime.now(UTC)  # type: ignore
+        await db.commit()
+
+        email_service = get_email_service()
+        if email_service:
+            await email_service.send_password_reset_email(
+                to_email=user.email,
+                name=user.name,
+                token=token,
+                frontend_url=settings.FRONTEND_URL,
+            )
+
+    return {"message": "If that email is registered, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset a user's password using a valid reset token."""
+    result = await db.execute(
+        select(User).where(
+            User.password_reset_token == body.token,
+            User.deleted_at.is_(None),
+        )
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
+
+    user.password_hash = hash_password(body.new_password)  # type: ignore
+    user.password_reset_token = None  # type: ignore
+    user.password_reset_sent_at = None  # type: ignore
+    await db.commit()
+
+    return {"message": "Password has been reset."}

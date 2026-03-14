@@ -187,6 +187,81 @@ The Aris Program — https://aris.pub
             logger.error(f"Failed to send verification email to {to_email}: {str(e)}")
             return False
 
+    async def send_password_reset_email(
+        self,
+        to_email: str,
+        name: str,
+        token: str,
+        frontend_url: str,
+    ) -> bool:
+        """Send a password reset link to the user."""
+        reset_link = f"{frontend_url}/reset-password/{token}"
+        logger.info(f"Sending password reset email to {to_email}")
+        try:
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Reset your password — RSM Studio</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #027AC7; margin: 0;">RSM Studio</h1>
+                </div>
+
+                <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 30px; border-left: 4px solid #027AC7;">
+                    <p style="font-size: 16px; margin: 0 0 20px 0;">Hi {name},</p>
+                    <p style="font-size: 16px; margin: 0 0 24px 0;">We received a request to reset your password. Click below to choose a new one.</p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_link}" style="background: #027AC7; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Reset my password</a>
+                    </div>
+
+                    <p style="font-size: 13px; color: #6b7280; margin: 20px 0 0 0;">
+                        Or copy and paste this link:<br>
+                        <a href="{reset_link}" style="color: #027AC7; word-break: break-all;">{reset_link}</a>
+                    </p>
+                </div>
+
+                <div style="text-align: center; color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <p>If you didn't request a password reset, you can safely ignore this email.</p>
+                    <p style="font-size: 12px;">
+                        <a href="https://aris.pub" style="color: #027AC7; text-decoration: none;">The Aris Program</a> — Academic publishing for the post-PDF era.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+
+            text_content = f"""Hi {name},
+
+We received a request to reset your password. Visit the link below to choose a new one.
+
+{reset_link}
+
+If you didn't request a password reset, you can safely ignore this email.
+
+The Aris Program — https://aris.pub
+"""
+
+            params = {
+                "from": f"RSM Studio <{self.config.from_email}>",
+                "to": [to_email],
+                "subject": "Reset your password — RSM Studio",
+                "html": html_content,
+                "text": text_content,
+            }
+
+            resend.Emails.send(params)  # type: ignore
+            logger.info(f"Password reset email sent to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {to_email}: {str(e)}")
+            return False
+
     async def send_signup_notification(
         self,
         signup_email: str,

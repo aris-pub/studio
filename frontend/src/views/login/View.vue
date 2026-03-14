@@ -86,7 +86,9 @@
     />
     <div>
       <PasswordInput v-model="password" data-testid="password-input" required />
-      <div class="field-footer text-caption"><p>Forgot password?</p></div>
+      <div class="field-footer text-caption">
+        <router-link to="/forgot-password" class="forgot-link">Forgot password?</router-link>
+      </div>
     </div>
 
     <template #actions>
@@ -121,6 +123,15 @@
   .field-footer {
     margin-top: 4px;
     padding-left: 8px;
+  }
+
+  .forgot-link {
+    color: var(--primary-500);
+    text-decoration: none;
+  }
+
+  .forgot-link:hover {
+    text-decoration: underline;
   }
 
   .form-footer {
