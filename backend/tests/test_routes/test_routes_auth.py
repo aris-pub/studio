@@ -261,3 +261,77 @@ async def test_login_missing_fields(client: AsyncClient):
     )
 
     assert response.status_code == 422  # Validation error
+
+
+# --- Deploy preview restriction tests ---
+
+DEPLOY_PREVIEW_ORIGIN = "https://deploy-preview-42--rsm-studio-site.netlify.app"
+
+
+async def test_deploy_preview_login_rejects_non_test_user(client: AsyncClient):
+    """Deploy preview origins can only log in as the test user."""
+    response = await client.post(
+        "/login",
+        json={"email": "hacker@evil.com", "password": "whatever"},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+    )
+    assert response.status_code == 403
+    assert "test account" in response.json()["detail"].lower()
+
+
+async def test_deploy_preview_login_allows_test_user(client: AsyncClient, db_session):
+    """Deploy preview origins can log in as the test user."""
+    from aris.config import settings
+    from aris.models import User
+    from aris.security import hash_password
+
+    test_user = User(
+        email=settings.TEST_USER_EMAIL,
+        name="Test User",
+        password_hash=hash_password("testpass123"),
+    )
+    db_session.add(test_user)
+    await db_session.commit()
+
+    response = await client.post(
+        "/login",
+        json={"email": settings.TEST_USER_EMAIL, "password": "testpass123"},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+    )
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+
+async def test_deploy_preview_register_blocked(client: AsyncClient):
+    """Deploy preview origins cannot register new accounts."""
+    response = await client.post(
+        "/register",
+        json={
+            "email": "new@example.com",
+            "name": "New User",
+            "initials": "NU",
+            "password": "testpass123",
+        },
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+    )
+    assert response.status_code == 403
+    assert "deploy preview" in response.json()["detail"].lower()
+
+
+async def test_non_preview_origin_login_unrestricted(client: AsyncClient):
+    """Non-deploy-preview origins are not restricted to test user."""
+    await client.post(
+        "/register",
+        json={
+            "email": "normal@example.com",
+            "name": "Normal User",
+            "initials": "NU",
+            "password": "testpass123",
+        },
+    )
+    response = await client.post(
+        "/login",
+        json={"email": "normal@example.com", "password": "testpass123"},
+        headers={"origin": "https://app.rsm.studio"},
+    )
+    assert response.status_code == 200

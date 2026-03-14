@@ -6,6 +6,7 @@ including creation, status checking, and unsubscription.
 
 import html
 import json
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -149,6 +150,13 @@ async def create_signup_endpoint(
     Validates input data and creates a new signup record. Returns the created
     signup information with sanitized data.
     """
+    origin = request.headers.get("origin", "")
+    if re.match(r"^https://deploy-preview-\d+--rsm-studio-site\.netlify\.app$", origin):
+        raise HTTPException(
+            status_code=403,
+            detail="Signup is disabled on deploy previews.",
+        )
+
     logger.info(f"Creating signup for email: {signup_data.email}")
     try:
         # Extract client information for compliance

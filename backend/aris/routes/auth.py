@@ -1,6 +1,7 @@
+import re
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,10 @@ from ..logging_config import get_logger
 from ..models import User
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
+
+_DEPLOY_PREVIEW_RE = re.compile(
+    r"^https://deploy-preview-\d+--rsm-studio-site\.netlify\.app$"
+)
 
 
 logger = get_logger(__name__)
@@ -113,11 +118,13 @@ async def me(user: User = Depends(current_user)):
     description="Authenticate a user with email and password to receive access tokens.",
     response_description="JWT access and refresh tokens",
 )
-async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     """Authenticate user and return access tokens.
 
     Parameters
     ----------
+    request : Request
+        The incoming HTTP request (used to check Origin header).
     user_data : UserLogin
         Login credentials containing email and password.
     db : AsyncSession
@@ -132,12 +139,23 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     ------
     HTTPException
         400 error if credentials are invalid or user not found.
+        403 error if deploy preview login attempted with non-test user.
 
     Notes
     -----
     Verifies password using bcrypt and creates both access and refresh tokens.
     Only allows login for non-deleted users.
+    Deploy preview origins are restricted to the test user account only.
     """
+    origin = request.headers.get("origin", "")
+    if _DEPLOY_PREVIEW_RE.match(origin):
+        test_email = settings.TEST_USER_EMAIL
+        if user_data.email != test_email:
+            raise HTTPException(
+                status_code=403,
+                detail="Deploy preview access is restricted to the test account.",
+            )
+
     logger.debug(f"Login attempt for email: {user_data.email}")
     
     result = await db.execute(
@@ -169,7 +187,7 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     description="Create a new user account and receive authentication tokens.",
     response_description="User account details with authentication tokens",
 )
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user account.
 
     Parameters
@@ -195,6 +213,13 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     Returns both access and refresh tokens for immediate authentication.
     Includes user profile data in response for client initialization.
     """
+    origin = request.headers.get("origin", "")
+    if _DEPLOY_PREVIEW_RE.match(origin):
+        raise HTTPException(
+            status_code=403,
+            detail="Registration is disabled on deploy previews.",
+        )
+
     logger.info(f"Registration attempt for email: {user_data.email}")
     result = await db.execute(select(User).where(User.email == user_data.email))
     existing_user = result.scalars().first()

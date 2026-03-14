@@ -301,6 +301,7 @@ if os.getenv('STORYBOOK_PORT'):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://deploy-preview-\d+--rsm-studio-site\.netlify\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
