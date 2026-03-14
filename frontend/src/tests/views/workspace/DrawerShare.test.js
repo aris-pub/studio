@@ -239,6 +239,32 @@ describe("DrawerShare", () => {
       expect(rows[1].find(".badge").text()).toBe("Editor");
     });
 
+    it("renders 'Commenter' badge for COMMENTER role", async () => {
+      mockApi.get.mockImplementation((url) => {
+        if (url.includes("/permissions")) {
+          return Promise.resolve({
+            data: [
+              {
+                permission_id: 11,
+                user_id: 3,
+                user_name: "Carol",
+                user_email: "carol@example.com",
+                role: "COMMENTER",
+              },
+            ],
+          });
+        }
+        if (url.includes("/abstract")) return Promise.resolve({ data: { html: "" } });
+        return Promise.resolve({ data: {} });
+      });
+
+      wrapper = createWrapper();
+      await flushPromises();
+
+      const rows = wrapper.findAll(".person-row");
+      expect(rows[1].find(".badge").text()).toBe("Commenter");
+    });
+
     it("uses Avatar for collaborator rows", async () => {
       mockApi.get.mockImplementation((url) => {
         if (url.includes("/permissions")) {

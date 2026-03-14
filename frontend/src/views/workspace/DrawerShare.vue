@@ -29,7 +29,7 @@
 
   const roleOptions = [
     { value: "EDITOR", label: "Editor" },
-    { value: "COMMENTER", label: "Viewer" },
+    { value: "COMMENTER", label: "Commenter" },
   ];
 
   const isValidEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.value.trim()));
@@ -199,7 +199,7 @@
             :tooltip="false"
           />
           <span class="person-name">{{ collab.user_name || collab.user_email }}</span>
-          <Badge>{{ collab.role === "EDITOR" ? "Editor" : "Viewer" }}</Badge>
+          <Badge>{{ collab.role === "EDITOR" ? "Editor" : "Commenter" }}</Badge>
           <button
             v-if="isOwner"
             class="person-remove"

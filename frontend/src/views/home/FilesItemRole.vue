@@ -5,7 +5,7 @@
 
   const labels = {
     EDITOR: "Editor",
-    COMMENTER: "Viewer",
+    COMMENTER: "Commenter",
   };
 </script>
 

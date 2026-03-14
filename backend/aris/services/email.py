@@ -324,7 +324,7 @@ Message:
 
         safe_title = escape(file_title)
         file_url = f"{frontend_url}/workspace/{file_id}"
-        role_label = "an Editor" if role == "EDITOR" else "a Viewer"
+        role_label = "an Editor" if role == "EDITOR" else "a Commenter"
         logger.info(f"Sending invitation email to {to_email} for file {file_id}")
 
         try:
