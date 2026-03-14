@@ -92,7 +92,7 @@ describe("FilesHeaderLabel.vue", () => {
       expect(noSortIcon.exists()).toBe(true);
     });
 
-    it("cycles through sort states on click", async () => {
+    it("cycles through sort states on click: asc → desc → reset", async () => {
       const wrapper = createWrapper({ sortable: true });
 
       const button = wrapper.find("button");
@@ -108,6 +108,13 @@ describe("FilesHeaderLabel.vue", () => {
       // Second click: should go to 'desc'
       await button.trigger("click");
       expect(wrapper.emitted().sort[1]).toEqual(["desc"]);
+
+      // Update v-model
+      await wrapper.setProps({ modelValue: "desc" });
+
+      // Third click: should reset to ''
+      await button.trigger("click");
+      expect(wrapper.emitted().sort[2]).toEqual([""]);
     });
 
     it("responds to keyboard events", async () => {
@@ -256,6 +263,9 @@ describe("FilesHeaderLabel.vue", () => {
 
       await wrapper.setProps({ modelValue: "desc" });
       expect(wrapper.vm.sortState).toBe("desc");
+
+      await wrapper.setProps({ modelValue: "" });
+      expect(wrapper.vm.sortState).toBe("");
     });
 
     it("emits update:modelValue when sort state changes", async () => {
@@ -383,7 +393,7 @@ describe("FilesHeaderLabel.vue", () => {
 
       const button = wrapper.find("button");
 
-      // Rapid clicks
+      // Rapid clicks cycle: "" → asc → desc → ""
       await button.trigger("click");
       await button.trigger("click");
       await button.trigger("click");
@@ -391,7 +401,7 @@ describe("FilesHeaderLabel.vue", () => {
       expect(wrapper.emitted().sort).toHaveLength(3);
       expect(wrapper.emitted().sort[0]).toEqual(["asc"]);
       expect(wrapper.emitted().sort[1]).toEqual(["desc"]);
-      expect(wrapper.emitted().sort[2]).toEqual(["asc"]);
+      expect(wrapper.emitted().sort[2]).toEqual([""]);
     });
 
     it("handles both sortable and filterable being false", () => {

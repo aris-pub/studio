@@ -11,6 +11,7 @@ describe("FilesHeader.vue", () => {
   beforeEach(() => {
     mockFileStore = ref({
       sortFiles: vi.fn(),
+      resetSort: vi.fn(),
       clearFilters: vi.fn(),
       filterFiles: vi.fn(),
     });
@@ -204,6 +205,28 @@ describe("FilesHeader.vue", () => {
       const sortFunction = mockFileStore.value.sortFiles.mock.calls[0][0];
       const result = sortFunction({ title: "A" }, { title: "B" });
       expect(result).toBeGreaterThan(0); // A should come after B in desc order
+    });
+
+    it("resets to default order when sort mode is empty", async () => {
+      const wrapper = createWrapper(
+        {},
+        {
+          stubs: {
+            HeaderLabel: {
+              template:
+                '<div class="header-label" :data-testid="`header-${name}`" @click="$emit(\'sort\', \'\')"></div>',
+              props: ["name", "sortable", "filterable", "modelValue"],
+              emits: ["sort", "filter"],
+            },
+          },
+        }
+      );
+
+      const titleHeader = wrapper.findComponent('[data-testid="header-Title"]');
+      await titleHeader.trigger("click");
+
+      expect(mockFileStore.value.resetSort).toHaveBeenCalledOnce();
+      expect(mockFileStore.value.sortFiles).not.toHaveBeenCalled();
     });
 
     it("clears other column states when sorting", async () => {
