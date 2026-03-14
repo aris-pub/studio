@@ -101,6 +101,8 @@ describe("FileStore", () => {
         "createFile",
         "deleteFile",
         "sortFiles",
+        "applyFilter",
+        "clearFilter",
         "filterFiles",
         "clearFilters",
         "selectFile",
@@ -287,6 +289,81 @@ describe("FileStore", () => {
       store.files.value.forEach((file) => {
         expect(file.filtered).toBe(false);
       });
+    });
+  });
+
+  describe("Named Filter Layers", () => {
+    beforeEach(() => {
+      store.files.value = [
+        { id: 1, title: "My Doc", role: "OWNER", filtered: false, tags: [{ id: 10 }] },
+        { id: 2, title: "Shared Doc", role: "EDITOR", filtered: false, tags: [{ id: 20 }] },
+        { id: 3, title: "Another Mine", role: "OWNER", filtered: false, tags: [{ id: 10 }] },
+      ];
+    });
+
+    it("applies a named filter layer", () => {
+      store.applyFilter("ownership", (file) => file.role !== "OWNER");
+
+      expect(store.files.value[0].filtered).toBe(false);
+      expect(store.files.value[1].filtered).toBe(true);
+      expect(store.files.value[2].filtered).toBe(false);
+    });
+
+    it("combines multiple filter layers with AND logic (hidden if ANY layer hides)", () => {
+      store.applyFilter("ownership", (file) => file.role !== "OWNER");
+      store.applyFilter("search", (file) => !file.title.includes("Another"));
+
+      // File 1: ownership=show, search=hide → hidden
+      expect(store.files.value[0].filtered).toBe(true);
+      // File 2: ownership=hide, search=hide → hidden
+      expect(store.files.value[1].filtered).toBe(true);
+      // File 3: ownership=show, search=show → visible
+      expect(store.files.value[2].filtered).toBe(false);
+    });
+
+    it("clears a single filter layer without affecting others", () => {
+      store.applyFilter("ownership", (file) => file.role !== "OWNER");
+      store.applyFilter("search", (file) => !file.title.includes("Another"));
+
+      store.clearFilter("search");
+
+      // Only ownership filter remains
+      expect(store.files.value[0].filtered).toBe(false);
+      expect(store.files.value[1].filtered).toBe(true);
+      expect(store.files.value[2].filtered).toBe(false);
+    });
+
+    it("clearFilters removes all layers", () => {
+      store.applyFilter("ownership", (file) => file.role !== "OWNER");
+      store.applyFilter("search", (file) => !file.title.includes("Another"));
+
+      store.clearFilters();
+
+      store.files.value.forEach((file) => {
+        expect(file.filtered).toBe(false);
+      });
+    });
+
+    it("legacy filterFiles uses default layer", () => {
+      store.filterFiles((file) => file.title.startsWith("A"));
+
+      expect(store.files.value[0].filtered).toBe(false);
+      expect(store.files.value[1].filtered).toBe(false);
+      expect(store.files.value[2].filtered).toBe(true);
+    });
+
+    it("clearFilter on non-existent layer is a no-op", () => {
+      store.applyFilter("search", (file) => !file.title.includes("My Doc"));
+
+      // File 1 "My Doc" → show, File 2 "Shared Doc" → hide, File 3 "Another Mine" → hide
+      expect(store.files.value[0].filtered).toBe(false);
+      expect(store.files.value[1].filtered).toBe(true);
+
+      store.clearFilter("nonexistent");
+
+      // search filter should still be active — nothing changed
+      expect(store.files.value[0].filtered).toBe(false);
+      expect(store.files.value[1].filtered).toBe(true);
     });
   });
 

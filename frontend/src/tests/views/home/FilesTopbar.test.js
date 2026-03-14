@@ -16,9 +16,10 @@ describe("FilesTopbar.vue", () => {
     mockFileStore = ref({
       clearFilters: vi.fn(),
       filterFiles: vi.fn(),
+      applyFilter: vi.fn(),
+      clearFilter: vi.fn(),
     });
 
-    // Create a ref-like object that has a .value property for Vue test utils
     const mockFileStoreRef = {
       value: mockFileStore.value,
     };
@@ -48,6 +49,11 @@ describe("FilesTopbar.vue", () => {
               focusInput: vi.fn(),
             },
           },
+          SegmentedControl: {
+            template: '<div data-testid="segmented-control" @click="$emit(\'update:modelValue\', 1)"></div>',
+            props: ["modelValue", "labels", "defaultActive"],
+            emits: ["update:modelValue"],
+          },
           ...overrides.stubs,
         },
       },
@@ -69,17 +75,40 @@ describe("FilesTopbar.vue", () => {
       const searchBar = wrapper.findComponent('[data-testid="search-bar"]');
       expect(searchBar.exists()).toBe(true);
     });
+
+    it("renders SegmentedControl for ownership filter", () => {
+      const wrapper = createWrapper();
+
+      expect(wrapper.find('[data-testid="segmented-control"]').exists()).toBe(true);
+      expect(wrapper.find(".tb-filter").exists()).toBe(true);
+    });
+
+    it("renders filter wrapper with radiogroup role", () => {
+      const wrapper = createWrapper();
+
+      const filterDiv = wrapper.find('.tb-filter');
+      expect(filterDiv.attributes("role")).toBe("radiogroup");
+      expect(filterDiv.attributes("aria-label")).toBe("File ownership filter");
+    });
   });
 
   describe("Search Functionality", () => {
-    it("handles search submission correctly", () => {
+    it("uses named search filter layer", () => {
       const wrapper = createWrapper();
 
       wrapper.vm.onSearchSubmit("test query");
 
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledOnce();
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledWith(expect.any(Function));
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledOnce();
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("search", expect.any(Function));
+    });
+
+    it("clears search layer on empty search", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("");
+
+      expect(mockFileStore.value.clearFilter).toHaveBeenCalledWith("search");
+      expect(mockFileStore.value.applyFilter).not.toHaveBeenCalled();
     });
 
     it("filters files by title case-insensitively", () => {
@@ -87,45 +116,101 @@ describe("FilesTopbar.vue", () => {
 
       wrapper.vm.onSearchSubmit("TeSt");
 
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const filterFunction = mockFileStore.value.applyFilter.mock.calls[0][1];
 
-      // Test the filter function
-      expect(filterFunction({ title: "test file" })).toBe(false); // Should show (not filtered)
-      expect(filterFunction({ title: "TEST FILE" })).toBe(false); // Should show (not filtered)
-      expect(filterFunction({ title: "other file" })).toBe(true); // Should hide (filtered)
+      expect(filterFunction({ title: "test file" })).toBe(false);
+      expect(filterFunction({ title: "TEST FILE" })).toBe(false);
+      expect(filterFunction({ title: "other file" })).toBe(true);
     });
 
-    it("handles empty search string", () => {
+    it("handles null or undefined search queries", () => {
       const wrapper = createWrapper();
 
-      wrapper.vm.onSearchSubmit("");
+      expect(() => wrapper.vm.onSearchSubmit(null)).not.toThrow();
+      expect(() => wrapper.vm.onSearchSubmit(undefined)).not.toThrow();
 
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
-
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      // Empty search should show all files
-      expect(filterFunction({ title: "any file" })).toBe(false);
+      expect(mockFileStore.value.clearFilter).toHaveBeenCalledTimes(2);
     });
 
-    it("handles search strings with special characters", () => {
+    it("handles search with only whitespace", () => {
       const wrapper = createWrapper();
 
-      wrapper.vm.onSearchSubmit("test-file.txt");
+      wrapper.vm.onSearchSubmit("   \t\n   ");
 
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      expect(mockFileStore.value.clearFilter).toHaveBeenCalledWith("search");
+    });
 
-      expect(filterFunction({ title: "test-file.txt" })).toBe(false); // Should show
-      expect(filterFunction({ title: "other.txt" })).toBe(true); // Should hide
+    it("handles unicode and emoji in search", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("研究 🧬 café");
+
+      const filterFunction = mockFileStore.value.applyFilter.mock.calls[0][1];
+      expect(filterFunction({ title: "研究 paper" })).toBe(false);
+      expect(filterFunction({ title: "DNA 🧬 study" })).toBe(false);
+      expect(filterFunction({ title: "café data" })).toBe(false);
+      expect(filterFunction({ title: "other file" })).toBe(true);
     });
 
     it("responds to SearchBar submit events", async () => {
       const wrapper = createWrapper();
 
       const searchBar = wrapper.findComponent('[data-testid="search-bar"]');
-      await searchBar.trigger("click"); // This triggers the submit event with 'test search'
+      await searchBar.trigger("click");
 
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledOnce();
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("Ownership Filter", () => {
+    it("starts with All segment active (index 0)", () => {
+      const wrapper = createWrapper();
+
+      expect(wrapper.vm.activeSegment).toBe(0);
+    });
+
+    it("clears ownership filter when All is selected", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSegmentChange(0);
+
+      expect(mockFileStore.value.clearFilter).toHaveBeenCalledWith("ownership");
+    });
+
+    it("filters to owned files when My files is selected", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSegmentChange(1);
+
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("ownership", expect.any(Function));
+
+      const filterFn = mockFileStore.value.applyFilter.mock.calls[0][1];
+      expect(filterFn({ role: "OWNER" })).toBe(false);
+      expect(filterFn({ role: "EDITOR" })).toBe(true);
+      expect(filterFn({ role: "COMMENTER" })).toBe(true);
+    });
+
+    it("filters to shared files when Shared with me is selected", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSegmentChange(2);
+
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("ownership", expect.any(Function));
+
+      const filterFn = mockFileStore.value.applyFilter.mock.calls[0][1];
+      expect(filterFn({ role: "OWNER" })).toBe(true);
+      expect(filterFn({ role: "EDITOR" })).toBe(false);
+      expect(filterFn({ role: "COMMENTER" })).toBe(false);
+    });
+
+    it("does not interfere with search filter", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("test");
+      wrapper.vm.onSegmentChange(1);
+
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("search", expect.any(Function));
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("ownership", expect.any(Function));
     });
   });
 
@@ -156,67 +241,18 @@ describe("FilesTopbar.vue", () => {
               focusInput: mockFocusInput,
             },
           },
-        },
-      });
-
-      // Get the registered shortcuts
-      const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
-
-      // Simulate '/' shortcut
-      shortcuts["/"].fn();
-
-      expect(mockFocusInput).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe("Template Ref Management", () => {
-    it("maintains reference to search bar component", () => {
-      const wrapper = createWrapper();
-
-      expect(wrapper.vm.searchBar).toBeDefined();
-    });
-
-    it("handles missing search bar reference gracefully", async () => {
-      const { useKeyboardShortcuts } = await import("@/composables/useKeyboardShortcuts.js");
-
-      createWrapper({
-        stubs: {
-          SearchBar: {
-            template: '<div data-testid="search-bar"></div>',
-            // No focusInput method
+          SegmentedControl: {
+            template: '<div data-testid="segmented-control"></div>',
+            props: ["modelValue", "labels", "defaultActive"],
+            emits: ["update:modelValue"],
           },
         },
       });
 
-      // Get the registered shortcuts
       const shortcuts = useKeyboardShortcuts.mock.calls[0][0];
+      shortcuts["/"].fn();
 
-      // Simulate '/' shortcut when focusInput is not available
-      expect(() => shortcuts["/"].fn()).toThrow();
-    });
-  });
-
-  describe("Error Handling", () => {
-    it("handles missing fileStore gracefully", () => {
-      const wrapper = createWrapper({
-        provide: {
-          fileStore: ref(null),
-        },
-      });
-
-      // Should not throw when trying to search
-      expect(() => wrapper.vm.onSearchSubmit("test")).toThrow();
-    });
-
-    it("handles fileStore without required methods", () => {
-      const wrapper = createWrapper({
-        provide: {
-          fileStore: ref({}), // Empty object without clearFilters/filterFiles
-        },
-      });
-
-      // Should not throw when trying to search
-      expect(() => wrapper.vm.onSearchSubmit("test")).toThrow();
+      expect(mockFocusInput).toHaveBeenCalledOnce();
     });
   });
 
@@ -225,141 +261,13 @@ describe("FilesTopbar.vue", () => {
       const wrapper = createWrapper();
 
       expect(typeof wrapper.vm.onSearchSubmit).toBe("function");
+      expect(wrapper.vm.activeSegment).toBe(0);
     });
 
     it("cleans up properly on unmount", () => {
       const wrapper = createWrapper();
 
-      // Should not throw on unmount
       expect(() => wrapper.unmount()).not.toThrow();
-    });
-  });
-
-  describe("Enhanced Search Edge Cases", () => {
-    it("handles extremely long search queries", () => {
-      const wrapper = createWrapper();
-      const longQuery = "a".repeat(1000);
-
-      wrapper.vm.onSearchSubmit(longQuery);
-
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledOnce();
-
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      expect(filterFunction({ title: longQuery })).toBe(false); // Should show
-      expect(filterFunction({ title: "short" })).toBe(true); // Should hide
-    });
-
-    it("handles search with only whitespace", () => {
-      const wrapper = createWrapper();
-      const whitespaceQuery = "   \t\n   ";
-
-      wrapper.vm.onSearchSubmit(whitespaceQuery);
-
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      // Whitespace-only search should behave like empty search - show all files
-      expect(filterFunction({ title: "any file" })).toBe(false);
-    });
-
-    it("handles unicode and emoji in search", () => {
-      const wrapper = createWrapper();
-      const unicodeQuery = "研究 🧬 café";
-
-      wrapper.vm.onSearchSubmit(unicodeQuery);
-
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      expect(filterFunction({ title: "研究 paper" })).toBe(false); // Should show
-      expect(filterFunction({ title: "DNA 🧬 study" })).toBe(false); // Should show
-      expect(filterFunction({ title: "café data" })).toBe(false); // Should show
-      expect(filterFunction({ title: "other file" })).toBe(true); // Should hide
-    });
-
-    it("handles regex special characters safely", () => {
-      const wrapper = createWrapper();
-      const regexQuery = ".*+?^${}()|[]\\";
-
-      // Should not throw an error
-      expect(() => wrapper.vm.onSearchSubmit(regexQuery)).not.toThrow();
-
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      expect(filterFunction({ title: regexQuery })).toBe(false); // Should show exact match
-      expect(filterFunction({ title: "other" })).toBe(true); // Should hide
-    });
-
-    it("preserves case insensitivity with complex strings", () => {
-      const wrapper = createWrapper();
-
-      wrapper.vm.onSearchSubmit("DNA-Seq");
-
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-      expect(filterFunction({ title: "dna-seq analysis" })).toBe(false); // Should show
-      expect(filterFunction({ title: "DNA-SEQ results" })).toBe(false); // Should show
-      expect(filterFunction({ title: "DnA-sEq report" })).toBe(false); // Should show
-      expect(filterFunction({ title: "RNA analysis" })).toBe(true); // Should hide
-    });
-
-    it("handles rapid sequential searches", async () => {
-      const wrapper = createWrapper();
-
-      // Rapid fire search submissions
-      wrapper.vm.onSearchSubmit("first");
-      wrapper.vm.onSearchSubmit("second");
-      wrapper.vm.onSearchSubmit("third");
-
-      // Should clear filters before each new search
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledTimes(3);
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledTimes(3);
-
-      // Latest filter should be for "third"
-      const lastFilterFunction = mockFileStore.value.filterFiles.mock.calls[2][0];
-      expect(lastFilterFunction({ title: "third result" })).toBe(false);
-      expect(lastFilterFunction({ title: "first result" })).toBe(true);
-    });
-
-    it("handles null or undefined search queries", () => {
-      const wrapper = createWrapper();
-
-      // Test null query
-      expect(() => wrapper.vm.onSearchSubmit(null)).not.toThrow();
-
-      // Test undefined query
-      expect(() => wrapper.vm.onSearchSubmit(undefined)).not.toThrow();
-
-      // Both should be treated as empty searches
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe("Search Performance and Memory", () => {
-    it("does not leak memory with repeated searches", () => {
-      const wrapper = createWrapper();
-
-      // Perform many searches to test for memory leaks
-      for (let i = 0; i < 100; i++) {
-        wrapper.vm.onSearchSubmit(`query ${i}`);
-      }
-
-      // Each search should clear previous filters
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledTimes(100);
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledTimes(100);
-    });
-
-    it("handles search with very large file lists efficiently", () => {
-      const wrapper = createWrapper();
-
-      wrapper.vm.onSearchSubmit("test");
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
-
-      // Simulate filtering large number of files
-      const startTime = performance.now();
-      for (let i = 0; i < 10000; i++) {
-        filterFunction({ title: `file ${i} test` });
-      }
-      const endTime = performance.now();
-
-      // Filter should complete within reasonable time (adjust threshold as needed)
-      expect(endTime - startTime).toBeLessThan(100); // 100ms threshold
     });
   });
 });

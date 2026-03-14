@@ -8,6 +8,9 @@
   const props = defineProps({});
   const fileStore = inject("fileStore");
 
+  // Topbar ref for accessing ownership filter state
+  const topbarRef = useTemplateRef("topbar-ref");
+
   // Selected file
   const filesRef = useTemplateRef("files-ref");
   const visibleFiles = computed(
@@ -31,6 +34,11 @@
     }
   );
 
+  // Empty state for "Shared with me"
+  const showSharedEmptyState = computed(() => {
+    return visibleFiles.value.length === 0 && topbarRef.value?.activeSegment === 2;
+  });
+
   // Breakpoints
   const xsMode = inject("xsMode");
   const panePadding = computed(() => (xsMode.value ? "8px" : "16px"));
@@ -50,14 +58,14 @@
 <template>
   <Pane :custom-header="true">
     <template #header>
-      <Topbar />
+      <Topbar ref="topbar-ref" />
     </template>
 
     <div class="files-wrapper">
       <FilesHeader />
 
       <div
-        v-if="visibleFiles"
+        v-if="visibleFiles.length > 0"
         ref="files-ref"
         data-testid="files-container"
         class="files"
@@ -67,6 +75,14 @@
         <template v-for="(file, idx) in visibleFiles" :key="file.id">
           <FilesItem v-model="visibleFiles[idx]" />
         </template>
+      </div>
+
+      <div v-else-if="showSharedEmptyState" class="empty-state" data-testid="shared-empty-state">
+        <Icon name="UsersGroup" class="empty-state-icon" />
+        <p class="empty-state-title text-default">No shared files yet</p>
+        <p class="empty-state-description text-subtle">
+          Files shared with you by collaborators will appear here.
+        </p>
       </div>
     </div>
   </Pane>
@@ -117,5 +133,32 @@
   .tags {
     display: flex;
     gap: 8px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 48px 24px;
+    gap: 8px;
+  }
+
+  .empty-state-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--text-subtle);
+    margin-bottom: 8px;
+  }
+
+  .empty-state-title {
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .empty-state-description {
+    color: var(--text-subtle);
+    margin: 0;
   }
 </style>

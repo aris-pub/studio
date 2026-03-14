@@ -13,6 +13,8 @@ describe("FilesHeader.vue", () => {
       sortFiles: vi.fn(),
       clearFilters: vi.fn(),
       filterFiles: vi.fn(),
+      applyFilter: vi.fn(),
+      clearFilter: vi.fn(),
     });
 
     mockShouldShowColumn = vi.fn(() => {
@@ -273,7 +275,7 @@ describe("FilesHeader.vue", () => {
       const tagsHeader = wrapper.findComponent('[data-testid="header-Tags"]');
       await tagsHeader.trigger("click");
 
-      expect(mockFileStore.value.clearFilters).toHaveBeenCalledOnce();
+      expect(mockFileStore.value.clearFilter).toHaveBeenCalledWith("tags");
     });
 
     it("applies tag filters correctly", async () => {
@@ -282,10 +284,10 @@ describe("FilesHeader.vue", () => {
       const tagsHeader = wrapper.findComponent('[data-testid="header-Tags"]');
       await tagsHeader.trigger("click");
 
-      expect(mockFileStore.value.filterFiles).toHaveBeenCalledWith(expect.any(Function));
+      expect(mockFileStore.value.applyFilter).toHaveBeenCalledWith("tags", expect.any(Function));
 
       // Test the filter function
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const filterFunction = mockFileStore.value.applyFilter.mock.calls[0][1];
 
       const fileWithTag = { tags: [{ id: "tag1" }] };
       const fileWithoutTag = { tags: [{ id: "tag2" }] };
@@ -320,7 +322,7 @@ describe("FilesHeader.vue", () => {
       const tagsHeader = wrapper.findComponent('[data-testid="header-Tags"]');
       await tagsHeader.trigger("click");
 
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const filterFunction = mockFileStore.value.applyFilter.mock.calls[0][1];
 
       const fileWithBothTags = { tags: [{ id: "tag1" }, { id: "tag2" }] };
       const fileWithOneTag = { tags: [{ id: "tag1" }] };
@@ -365,7 +367,7 @@ describe("FilesHeader.vue", () => {
 
       wrapper.vm.handleColumnFilterEvent("Tags", [{ id: "tag1" }]);
 
-      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const filterFunction = mockFileStore.value.applyFilter.mock.calls[0][1];
 
       // Test with file missing tags property
       expect(() => filterFunction({})).toThrow();

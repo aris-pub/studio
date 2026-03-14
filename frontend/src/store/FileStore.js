@@ -109,20 +109,50 @@ export function createFileStore(api, user) {
     files.value.sort(compareFunc);
   };
 
+  // Named filter layers — each layer holds a predicate that returns true to hide
+  const _filterLayers = {};
+
+  const _reapplyFilters = () => {
+    const layers = Object.values(_filterLayers);
+    files.value.forEach((file) => {
+      file.filtered = layers.length > 0 && layers.some((fn) => fn(file));
+    });
+  };
+
   /**
-   * Filter files with the provided filter function
+   * Apply a named filter layer. A file is hidden if ANY layer returns true.
+   * @param {String} layer - Layer name (e.g. "search", "tags", "ownership")
+   * @param {Function} filterFunc - Returns true to hide, false to show
+   */
+  const applyFilter = (layer, filterFunc) => {
+    _filterLayers[layer] = filterFunc;
+    _reapplyFilters();
+  };
+
+  /**
+   * Remove a named filter layer and recompute.
+   * @param {String} layer - Layer name to remove
+   */
+  const clearFilter = (layer) => {
+    delete _filterLayers[layer];
+    _reapplyFilters();
+  };
+
+  /**
+   * Filter files with the provided filter function (legacy — uses "default" layer)
    * @param {Function} filterFunc - Filter function
    */
   const filterFiles = (filterFunc) => {
-    files.value.forEach((file) => {
-      file.filtered = filterFunc(file);
-    });
+    applyFilter("default", filterFunc);
   };
 
   /**
    * Clear all filters
    */
   const clearFilters = () => {
+    for (const key of Object.keys(_filterLayers)) {
+      delete _filterLayers[key];
+    }
     files.value.forEach((file) => {
       file.filtered = false;
     });
@@ -276,6 +306,8 @@ export function createFileStore(api, user) {
     createFile,
     deleteFile,
     sortFiles,
+    applyFilter,
+    clearFilter,
     filterFiles,
     clearFilters,
     selectFile,
