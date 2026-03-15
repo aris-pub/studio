@@ -242,6 +242,23 @@ describe("RegisterView", () => {
     expect(legal.text()).toContain("Privacy Policy");
   });
 
+  it("sets rel=noopener noreferrer on Terms and Privacy links", () => {
+    const links = wrapper.findAll(".form-legal a");
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.attributes("rel")).toBe("noopener noreferrer");
+    }
+  });
+
+  it("announces to screen readers that legal links open in a new window", () => {
+    const links = wrapper.findAll(".form-legal a");
+    for (const link of links) {
+      const srText = link.find(".sr-only");
+      expect(srText.exists()).toBe(true);
+      expect(srText.text()).toBe("(opens in new tab)");
+    }
+  });
+
   it("displays backend error from .detail key (FastAPI convention)", async () => {
     api.post.mockRejectedValue({
       response: { data: { detail: "Email already registered." } },
