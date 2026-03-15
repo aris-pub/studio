@@ -253,4 +253,59 @@ describe("RegisterView", () => {
     await wrapper.vm.onRegister();
     expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Email already registered.");
   });
+
+  it("extracts human-readable message from Pydantic validation error array", async () => {
+    api.post.mockRejectedValue({
+      response: {
+        data: {
+          detail: [
+            {
+              type: "string_too_short",
+              loc: ["body", "password"],
+              msg: "String should have at least 8 characters",
+              input: "asdf",
+              ctx: { min_length: 8 },
+            },
+          ],
+        },
+      },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("asdf");
+    await wrapper.vm.onRegister();
+    expect(wrapper.find('[data-testid="auth-error"]').text()).toBe(
+      "String should have at least 8 characters"
+    );
+  });
+
+  it("joins multiple Pydantic validation error messages", async () => {
+    api.post.mockRejectedValue({
+      response: {
+        data: {
+          detail: [
+            {
+              type: "string_too_short",
+              loc: ["body", "password"],
+              msg: "String should have at least 8 characters",
+            },
+            {
+              type: "value_error",
+              loc: ["body", "email"],
+              msg: "Value is not a valid email address",
+            },
+          ],
+        },
+      },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bad");
+    await inputs[2].setValue("asdf");
+    await wrapper.vm.onRegister();
+    const errorText = wrapper.find('[data-testid="auth-error"]').text();
+    expect(errorText).toContain("String should have at least 8 characters");
+    expect(errorText).toContain("Value is not a valid email address");
+  });
 });
