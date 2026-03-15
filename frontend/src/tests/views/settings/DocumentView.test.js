@@ -151,6 +151,19 @@ describe("DocumentView", () => {
     });
   });
 
+  describe("Heading Hierarchy", () => {
+    it("uses h1 as the top-level heading for proper WCAG hierarchy", () => {
+      const heading = wrapper.find('[data-testid="pane-header"] h1');
+      expect(heading.exists()).toBe(true);
+      expect(heading.text()).toBe("Document Display");
+    });
+
+    it("does not use h3 for the page heading", () => {
+      const h3 = wrapper.find('[data-testid="pane-header"] h3');
+      expect(h3.exists()).toBe(false);
+    });
+  });
+
   describe("Component Rendering", () => {
     it("renders the main pane", () => {
       expect(wrapper.find('[data-testid="pane"]').exists()).toBe(true);

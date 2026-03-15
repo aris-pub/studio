@@ -57,7 +57,7 @@
   <Pane>
     <template #header>
       <IconSettings2 />
-      <h3>Preferences</h3>
+      <h1>Preferences</h1>
     </template>
 
     <Section variant="enhanced">
