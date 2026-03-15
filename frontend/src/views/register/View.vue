@@ -41,6 +41,10 @@
       error.value = "Please fill in all fields.";
       return;
     }
+    if (pwd.value.length < 8) {
+      error.value = "Password must be at least 8 characters.";
+      return;
+    }
 
     isLoading.value = true;
     try {
