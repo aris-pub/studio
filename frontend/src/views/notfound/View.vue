@@ -1,4 +1,8 @@
-<script setup></script>
+<script setup>
+  import { useRouter } from "vue-router";
+
+  const router = useRouter();
+</script>
 
 <template>
   <div class="view">
@@ -14,9 +18,7 @@
       </p>
     </div>
     <div class="footer">
-      <Button kind="primary" class="cta">
-        <RouterLink to="/">Go back home</RouterLink>
-      </Button>
+      <Button kind="primary" text="Go back home" @click="router.push('/')" />
     </div>
   </div>
 </template>
@@ -37,10 +39,5 @@
 
   .view > * {
     margin-bottom: 16px;
-  }
-
-  .cta > a {
-    color: var(--almost-white);
-    text-decoration: none;
   }
 </style>
