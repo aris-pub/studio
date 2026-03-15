@@ -30,8 +30,8 @@ describe("AccountView", () => {
     HomeLayout: { template: "<div><slot/></div>" },
     Pane: { template: "<div><slot/></div>" },
     Section: {
-      template: '<div><slot name="title"/><slot name="content"/><slot name="footer"/></div>',
-      props: ["variant", "theme"],
+      template: '<div><component :is="headingTag || \'div\'"><slot name="title"/></component><slot name="content"/><slot name="footer"/></div>',
+      props: ["variant", "theme", "headingTag"],
     },
     IconUserCircle: true,
     InputText: { template: '<input v-bind="$attrs" />' },
@@ -78,6 +78,28 @@ describe("AccountView", () => {
     expect(wrapper.find(".user-name").text()).toBe("Alice");
     expect(wrapper.text()).toContain("alice@example.com");
     expect(wrapper.text()).toContain("Member since");
+  });
+
+  describe("Heading Hierarchy (WCAG 1.3.1)", () => {
+    it("renders user name as h1", () => {
+      const h1 = wrapper.find("h1.user-name");
+      expect(h1.exists()).toBe(true);
+    });
+
+    it("renders section titles as h2 elements", () => {
+      const h2s = wrapper.findAll("h2");
+      expect(h2s.length).toBe(5);
+    });
+
+    it("does not skip heading levels (h1 followed by h2, not h3)", () => {
+      const headings = wrapper.findAll("h1, h2, h3, h4, h5, h6");
+      const levels = headings.map((h) => parseInt(h.element.tagName[1]));
+
+      for (let i = 1; i < levels.length; i++) {
+        const gap = levels[i] - levels[i - 1];
+        expect(gap).toBeLessThanOrEqual(1);
+      }
+    });
   });
 
   it("calls api.put with updated profile and updates user ref on save", async () => {
