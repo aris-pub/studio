@@ -6,9 +6,10 @@
   const router = useRouter();
   const api = inject("api");
 
-  // 'loading' | 'success' | 'alreadyVerified' | 'error'
+  // 'loading' | 'success' | 'alreadyVerified' | 'error' | 'serverError'
   const state = ref("loading");
   const primaryButtonRef = ref(null);
+  const retryButtonRef = ref(null);
 
   const isAuthenticated = computed(() => !!localStorage.getItem("accessToken"));
 
@@ -18,7 +19,12 @@
     router.push(isAuthenticated.value ? "/" : "/login");
   }
 
-  onMounted(async () => {
+  function isTokenError(status) {
+    return status === 404 || status === 410;
+  }
+
+  async function verifyToken() {
+    state.value = "loading";
     try {
       await api.post(`/users/verify-email/${route.params.token}`);
 
@@ -35,16 +41,26 @@
 
       state.value = "success";
     } catch (err) {
-      state.value = err?.response?.status === 400 ? "alreadyVerified" : "error";
+      const status = err?.response?.status;
+      if (status === 400) {
+        state.value = "alreadyVerified";
+      } else if (isTokenError(status)) {
+        state.value = "error";
+      } else {
+        state.value = "serverError";
+      }
     }
 
     await nextTick();
     primaryButtonRef.value?.$el?.focus();
-  });
+    retryButtonRef.value?.$el?.focus();
+  }
+
+  onMounted(verifyToken);
 </script>
 
 <template>
-  <div class="view">
+  <main class="view">
     <div class="right">
       <div class="wrapper">
         <!-- Loading -->
@@ -113,8 +129,8 @@
           </div>
         </template>
 
-        <!-- Expired / invalid (404 or other) -->
-        <template v-else>
+        <!-- Expired / invalid token (404 / 410) -->
+        <template v-else-if="state === 'error'">
           <div data-testid="state-error" class="state-content" role="alert" aria-live="assertive">
             <div
               class="state-icon"
@@ -146,9 +162,45 @@
             />
           </div>
         </template>
+
+        <!-- Server / network error (5xx, timeout, CORS, etc.) -->
+        <template v-else-if="state === 'serverError'">
+          <div
+            data-testid="state-server-error"
+            class="state-content"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div
+              class="state-icon"
+              style="background-color: var(--warning-100); color: var(--warning-600)"
+            >
+              <Icon name="AlertTriangle" />
+            </div>
+            <h2 class="text-h5">Something went wrong</h2>
+            <p>We couldn't reach the server. Please try again in a moment.</p>
+          </div>
+          <div class="actions">
+            <Button
+              ref="retryButtonRef"
+              data-testid="cta-retry"
+              kind="primary"
+              block
+              text="Try again"
+              @click="verifyToken"
+            />
+            <Button
+              data-testid="cta-secondary"
+              kind="secondary"
+              block
+              text="Go to home"
+              @click="router.push('/')"
+            />
+          </div>
+        </template>
       </div>
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>

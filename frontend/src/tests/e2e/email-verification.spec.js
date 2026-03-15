@@ -232,4 +232,66 @@ test.describe("Email Verification Flow @auth-flows", () => {
     await page.click('[data-testid="cta-primary"]');
     await expect(page).toHaveURL("/login", { timeout: timeouts.navigation });
   });
+
+  // ---------------------------------------------------------------------------
+  // 5. Server error state — mock backend returning 500
+  // ---------------------------------------------------------------------------
+
+  test("shows server-error state when backend returns 500 @auth-flows", async ({ page }) => {
+    const timeouts = getTimeouts();
+
+    await page.route("**/users/verify-email/**", (route) => {
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Internal server error" }),
+      });
+    });
+
+    await page.goto("/verify-email/some-token");
+
+    await expect(page.locator('[data-testid="state-server-error"]')).toBeVisible({
+      timeout: timeouts.contentLoad,
+    });
+
+    await expect(page.locator('[data-testid="state-server-error"] h2')).toHaveText(
+      "Something went wrong"
+    );
+    await expect(page.locator('[data-testid="cta-retry"]')).toBeVisible();
+    await expect(page.locator('[data-testid="cta-secondary"]')).toContainText("home");
+  });
+
+  test("server-error retry button re-attempts verification @auth-flows", async ({ page }) => {
+    const timeouts = getTimeouts();
+    let callCount = 0;
+
+    await page.route("**/users/verify-email/**", (route) => {
+      callCount++;
+      if (callCount === 1) {
+        route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "Internal server error" }),
+        });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Email verified successfully" }),
+        });
+      }
+    });
+
+    await page.goto("/verify-email/some-token");
+
+    await expect(page.locator('[data-testid="state-server-error"]')).toBeVisible({
+      timeout: timeouts.contentLoad,
+    });
+
+    await page.click('[data-testid="cta-retry"]');
+
+    await expect(page.locator('[data-testid="state-success"]')).toBeVisible({
+      timeout: timeouts.contentLoad,
+    });
+  });
 });
