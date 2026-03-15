@@ -292,6 +292,9 @@
 
     try {
       await api.delete(`/users/${user.value.id}`);
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
       toast.success("Account deleted successfully");
       window.location.href = "/";
     } catch (error) {

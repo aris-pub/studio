@@ -394,6 +394,51 @@ describe("AccountView", () => {
     });
   });
 
+  describe("Account Deletion", () => {
+    it("clears localStorage auth state before redirecting", async () => {
+      localStorage.setItem("accessToken", "test-token");
+      localStorage.setItem("refreshToken", "test-refresh");
+      localStorage.setItem("user", JSON.stringify({ id: 1 }));
+
+      // Stub location.href to prevent actual navigation
+      const locationSpy = vi.spyOn(window, "location", "get").mockReturnValue({
+        ...window.location,
+        set href(_) {},
+        get href() {
+          return "http://localhost/account";
+        },
+      });
+
+      wrapper.vm.deleteConfirmText = "DELETE";
+      await wrapper.vm.onDeleteAccount();
+
+      expect(api.delete).toHaveBeenCalledWith("/users/1");
+      expect(localStorage.getItem("accessToken")).toBeNull();
+      expect(localStorage.getItem("refreshToken")).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
+
+      locationSpy.mockRestore();
+    });
+
+    it("does not clear localStorage on deletion failure", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      localStorage.setItem("accessToken", "test-token");
+      localStorage.setItem("refreshToken", "test-refresh");
+      localStorage.setItem("user", JSON.stringify({ id: 1 }));
+
+      api.delete.mockRejectedValue(new Error("Server error"));
+
+      wrapper.vm.deleteConfirmText = "DELETE";
+      await wrapper.vm.onDeleteAccount();
+
+      expect(localStorage.getItem("accessToken")).toBe("test-token");
+      expect(localStorage.getItem("refreshToken")).toBe("test-refresh");
+      expect(localStorage.getItem("user")).not.toBeNull();
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
   describe("Browser Navigation Protection", () => {
     beforeEach(() => {
       // Mock window events

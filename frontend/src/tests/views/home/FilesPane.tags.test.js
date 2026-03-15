@@ -47,6 +47,8 @@ describe("FilesPane.vue - Tag Functionality", () => {
       ],
       filterFiles: vi.fn(),
       clearFilters: vi.fn(),
+      applyFilter: vi.fn(),
+      clearFilter: vi.fn(),
     });
 
     mockProvides = {

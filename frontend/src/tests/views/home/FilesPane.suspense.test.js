@@ -137,9 +137,13 @@ describe("FilesPane.vue - Suspense and Async Behavior", () => {
       await nextTick();
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Should render empty container without errors
+      // Should not render files container when no visible files
       const filesContainer = wrapper.find('[data-testid="files-container"]');
-      expect(filesContainer.exists()).toBe(true);
+      expect(filesContainer.exists()).toBe(false);
+
+      // Should have no file items
+      const fileItems = wrapper.findAll('[data-testid="file-item"]');
+      expect(fileItems.length).toBe(0);
     });
 
     it("should handle null file store gracefully", async () => {
@@ -151,9 +155,9 @@ describe("FilesPane.vue - Suspense and Async Behavior", () => {
 
       await nextTick();
 
-      // Should still render files container even with null files (empty array)
+      // Should not render files container with null files
       const filesContainer = wrapper.find('[data-testid="files-container"]');
-      expect(filesContainer.exists()).toBe(true);
+      expect(filesContainer.exists()).toBe(false);
 
       // Should have no file items
       const fileItems = wrapper.findAll('[data-testid="file-item"]');

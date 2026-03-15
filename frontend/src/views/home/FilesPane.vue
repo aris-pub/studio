@@ -10,6 +10,9 @@
   const newEmptyFile = inject("newEmptyFile", () => {});
   const showFileUploadModal = inject("showFileUploadModal", () => {});
 
+  // Topbar ref for accessing ownership filter state
+  const topbarRef = useTemplateRef("topbar-ref");
+
   const hasZeroFiles = computed(() => {
     const store = fileStore.value;
     if (!store) return false;
@@ -40,6 +43,11 @@
     }
   );
 
+  // Empty state for "Shared with me"
+  const showSharedEmptyState = computed(() => {
+    return visibleFiles.value.length === 0 && topbarRef.value?.activeSegment === 2;
+  });
+
   // Breakpoints
   const xsMode = inject("xsMode");
   const panePadding = computed(() => (xsMode.value ? "8px" : "16px"));
@@ -59,7 +67,7 @@
 <template>
   <Pane :custom-header="true">
     <template #header>
-      <Topbar />
+      <Topbar ref="topbar-ref" />
     </template>
 
     <div class="files-wrapper">
@@ -95,7 +103,7 @@
         <FilesHeader />
 
         <div
-          v-if="visibleFiles"
+          v-if="visibleFiles.length > 0"
           ref="files-ref"
           data-testid="files-container"
           class="files"
@@ -105,6 +113,14 @@
           <template v-for="(file, idx) in visibleFiles" :key="file.id">
             <FilesItem v-model="visibleFiles[idx]" />
           </template>
+        </div>
+
+        <div v-else-if="showSharedEmptyState" class="empty-state" data-testid="shared-empty-state">
+          <Icon name="UsersGroup" class="empty-state-icon" />
+          <p class="empty-state-title">No shared files yet</p>
+          <p class="empty-state-description text-subtle">
+            Files shared with you by collaborators will appear here.
+          </p>
         </div>
       </template>
     </div>
@@ -225,5 +241,10 @@
   .empty-state-btn :deep(.tabler-icon) {
     width: 18px;
     height: 18px;
+  }
+
+  .empty-state-description {
+    color: var(--text-subtle);
+    margin: 0;
   }
 </style>
