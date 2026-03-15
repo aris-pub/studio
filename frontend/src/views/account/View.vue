@@ -695,7 +695,7 @@
 
   .user-email {
     font-size: 16px;
-    color: var(--gray-600);
+    color: var(--gray-800);
     margin: 0 0 12px 0;
   }
 
@@ -710,7 +710,7 @@
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: var(--gray-500);
+    color: var(--gray-800);
   }
 
   /* Form Styling */
