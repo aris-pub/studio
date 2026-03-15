@@ -35,6 +35,11 @@ describe("AccountView", () => {
     },
     IconUserCircle: true,
     InputText: { template: '<input v-bind="$attrs" />' },
+    PasswordInput: {
+      template: '<div class="password-field"><input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><button type="button" data-testid="toggle-password">Show</button></div>',
+      props: ["modelValue", "label"],
+      emits: ["update:modelValue"],
+    },
     Button: { template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot/></button>' },
     Icon: { template: '<span class="icon-mock"></span>' },
   };
@@ -451,6 +456,18 @@ describe("AccountView", () => {
       expect(localStorage.getItem("user")).not.toBeNull();
 
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("Password Section uses PasswordInput", () => {
+    it("renders three PasswordInput components for password fields", () => {
+      const passwordFields = wrapper.findAll(".password-field");
+      expect(passwordFields.length).toBe(3);
+    });
+
+    it("renders toggle-password buttons for show/hide functionality", () => {
+      const toggleButtons = wrapper.findAll('[data-testid="toggle-password"]');
+      expect(toggleButtons.length).toBe(3);
     });
   });
 
