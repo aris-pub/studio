@@ -44,7 +44,7 @@
 </script>
 
 <template>
-  <div class="view">
+  <main class="view">
     <div class="right">
       <div class="wrapper">
         <!-- Loading -->
@@ -148,7 +148,7 @@
         </template>
       </div>
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>
