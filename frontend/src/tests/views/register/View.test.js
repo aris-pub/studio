@@ -48,12 +48,12 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
     await wrapper.vm.onRegister();
     expect(api.post).toHaveBeenCalledWith("/register", {
       name: "Bob",
       email: "bob@test.com",
-      password: "secret",
+      password: "secretpw",
       initials: "B",
     });
     expect(localStorage.getItem("accessToken")).toBe("tok");
@@ -70,7 +70,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
     await wrapper.vm.onRegister();
     expect(toastInfoMock).toHaveBeenCalledOnce();
     const [message, options] = toastInfoMock.mock.calls[0];
@@ -88,7 +88,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
     await wrapper.vm.onRegister();
     expect(localStorage.getItem("accessToken")).toBe("real-tok");
     expect(localStorage.getItem("accessToken")).not.toBe("undefined");
@@ -100,7 +100,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
     await wrapper.vm.onRegister();
     expect(toastInfoMock).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
 
     const registerPromise = wrapper.vm.onRegister();
     await nextTick();
@@ -249,7 +249,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("secret");
+    await inputs[2].setValue("secretpw");
     await wrapper.vm.onRegister();
     expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Email already registered.");
   });
@@ -273,11 +273,36 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
-    await inputs[2].setValue("asdf");
+    await inputs[2].setValue("longpassword");
     await wrapper.vm.onRegister();
     expect(wrapper.find('[data-testid="auth-error"]').text()).toBe(
       "String should have at least 8 characters"
     );
+  });
+
+  it("shows inline error when password is shorter than 8 characters", async () => {
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("short");
+    await wrapper.vm.onRegister();
+    expect(wrapper.find('[data-testid="auth-error"]').text()).toBe(
+      "Password must be at least 8 characters."
+    );
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("does not show password length error for exactly 8 characters", async () => {
+    const registeredUser = { id: 1, name: "Bob", initials: "B", email: "bob@test.com" };
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("exactly8");
+    await wrapper.vm.onRegister();
+    expect(api.post).toHaveBeenCalled();
   });
 
   it("joins multiple Pydantic validation error messages", async () => {
@@ -302,7 +327,7 @@ describe("RegisterView", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bad");
-    await inputs[2].setValue("asdf");
+    await inputs[2].setValue("longpassword");
     await wrapper.vm.onRegister();
     const errorText = wrapper.find('[data-testid="auth-error"]').text();
     expect(errorText).toContain("String should have at least 8 characters");
