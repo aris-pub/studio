@@ -1,7 +1,6 @@
 #!/bin/bash
 # Health check script for multi-service container
-# Verifies that critical services (backend, multiplayer) are running
-# NOTE: LSP excluded until tree-sitter-rsm native bindings work in production
+# Verifies that all services (backend, multiplayer, lsp) are running
 
 set -e
 
@@ -30,6 +29,7 @@ check_service() {
 FAILED=0
 check_service "backend" || FAILED=1
 check_service "multiplayer" || FAILED=1
+check_service "lsp" || FAILED=1
 
 if [ $FAILED -eq 0 ]; then
     echo "All services are healthy"
