@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { ref } from "vue";
 import AccountView from "@/views/account/View.vue";
 import Button from "@/components/base/Button.vue";
+import InputText from "@/components/forms/InputText.vue";
 import { toast } from "@/utils/toast.js";
 
 // Mock toast utility
@@ -32,14 +33,16 @@ const MockPane = {
 
 const MockInputText = {
   name: "InputText",
-  props: ["modelValue", "label", "type", "disabled", "direction"],
+  inheritAttrs: false,
+  props: ["modelValue", "label", "type", "disabled", "direction", "autocomplete"],
   emits: ["update:modelValue"],
   template: `<div class="input-text">
     <label v-if="label">{{ label }}</label>
-    <input 
-      :type="type || 'text'" 
-      :value="modelValue" 
+    <input
+      :type="type || 'text'"
+      :value="modelValue"
       :disabled="disabled"
+      :autocomplete="autocomplete"
       @input="$emit('update:modelValue', $event.target.value)"
     />
   </div>`,
@@ -452,6 +455,62 @@ describe("SecurityView Email Verification", () => {
 
       // Should not crash when user is null
       expect(wrapper.exists()).toBe(true);
+    });
+  });
+
+  describe("Password Autocomplete Attributes (WCAG 1.3.5)", () => {
+    beforeEach(() => {
+      mockUser = ref({
+        id: 1,
+        name: "Test User",
+        initials: "TU",
+        email: "test@example.com",
+        email_verified: true,
+        created_at: "2024-01-01T00:00:00Z",
+      });
+
+      wrapper = mount(AccountView, {
+        global: {
+          provide: {
+            user: mockUser,
+            api: mockApi,
+            refreshUser: mockRefreshUser,
+          },
+          components: {
+            Icon: MockIcon,
+            Button: Button,
+            Pane: MockPane,
+            Section: MockSection,
+            InputText: InputText,
+            PasswordStrength: MockPasswordStrength,
+            BaseLayout: MockBaseLayout,
+          },
+        },
+      });
+    });
+
+    it("sets autocomplete='current-password' on the current password field", () => {
+      const passwordInputs = wrapper.findAll("input[type='password']");
+      const currentPasswordInput = passwordInputs.find(
+        (input) => input.attributes("autocomplete") === "current-password"
+      );
+      expect(currentPasswordInput).toBeTruthy();
+    });
+
+    it("sets autocomplete='new-password' on the new password field", () => {
+      const passwordInputs = wrapper.findAll("input[type='password']");
+      const newPasswordInputs = passwordInputs.filter(
+        (input) => input.attributes("autocomplete") === "new-password"
+      );
+      expect(newPasswordInputs).toHaveLength(2);
+    });
+
+    it("has correct autocomplete values for all three password fields", () => {
+      const passwordInputs = wrapper.findAll("input[type='password']");
+      expect(passwordInputs).toHaveLength(3);
+
+      const autocompleteValues = passwordInputs.map((input) => input.attributes("autocomplete"));
+      expect(autocompleteValues).toEqual(["current-password", "new-password", "new-password"]);
     });
   });
 });
