@@ -188,11 +188,57 @@ describe("VerifyEmailView", () => {
     expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true);
   });
 
-  it("shows error state on unexpected error", async () => {
-    const wrapper = mountView(vi.fn().mockRejectedValue(new Error("Network error")));
+  it("shows error state on 410", async () => {
+    const err = { response: { status: 410 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
     await flushPromises();
 
     expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Server error state (5xx / network)
+  // ---------------------------------------------------------------------------
+
+  it("shows server-error state on network error (no response)", async () => {
+    const wrapper = mountView(vi.fn().mockRejectedValue(new Error("Network error")));
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="state-server-error"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false);
+  });
+
+  it("shows server-error state on 500", async () => {
+    const err = { response: { status: 500 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="state-server-error"]').exists()).toBe(true);
+  });
+
+  it("shows server-error state on 503", async () => {
+    const err = { response: { status: 503 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="state-server-error"]').exists()).toBe(true);
+  });
+
+  it("renders correct heading and body in server-error state", async () => {
+    const wrapper = mountView(vi.fn().mockRejectedValue(new Error("Network error")));
+    await flushPromises();
+
+    const el = wrapper.find('[data-testid="state-server-error"]');
+    expect(el.find("h2").text()).toBe("Something went wrong");
+    expect(el.find("p").text()).toContain("try again");
+  });
+
+  it("renders retry and home buttons in server-error state", async () => {
+    const wrapper = mountView(vi.fn().mockRejectedValue(new Error("Network error")));
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="cta-retry"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="cta-secondary"]').text()).toContain("home");
   });
 
   it("renders correct heading and body in error state", async () => {
