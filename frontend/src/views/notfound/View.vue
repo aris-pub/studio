@@ -1,6 +1,8 @@
 <script setup>
+  import { useRouter } from "vue-router";
   import { ref, onMounted, nextTick } from "vue";
 
+  const router = useRouter();
   const headingRef = ref(null);
 
   onMounted(async () => {
@@ -24,9 +26,7 @@
       </p>
     </div>
     <div class="footer">
-      <Button kind="primary" class="cta">
-        <RouterLink to="/">Go back home</RouterLink>
-      </Button>
+      <Button kind="primary" text="Go back home" @click="router.push('/')" />
     </div>
   </main>
 </template>
@@ -47,11 +47,6 @@
 
   .view > * {
     margin-bottom: 16px;
-  }
-
-  .cta > a {
-    color: var(--almost-white);
-    text-decoration: none;
   }
 
   h1:focus {

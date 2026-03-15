@@ -1,13 +1,17 @@
-import { describe, it, expect } from "vitest";
-import { mount, RouterLinkStub } from "@vue/test-utils";
+import { describe, it, expect, vi } from "vitest";
+import { mount } from "@vue/test-utils";
 import NotFoundView from "@/views/notfound/View.vue";
 import Button from "@/components/base/Button.vue";
+
+const mockPush = vi.fn();
+vi.mock("vue-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 
 function mountView() {
   return mount(NotFoundView, {
     global: {
       components: { Button },
-      stubs: { RouterLink: RouterLinkStub },
     },
     attachTo: document.body,
   });
@@ -20,13 +24,25 @@ describe("NotFoundView", () => {
     expect(wrapper.find("h2.text-h2").text()).toBe("Page not found");
   });
 
-  it("renders a button linking back to home", () => {
+  it("renders a primary button with 'Go back home' text", () => {
     const wrapper = mountView();
     const button = wrapper.findComponent(Button);
     expect(button.exists()).toBe(true);
-    const link = button.findComponent(RouterLinkStub);
-    expect(link.props("to")).toBe("/");
-    expect(link.text()).toBe("Go back home");
+    expect(button.props("kind")).toBe("primary");
+    expect(button.props("text")).toBe("Go back home");
+  });
+
+  it("navigates to home on button click", async () => {
+    mockPush.mockClear();
+    const wrapper = mountView();
+    await wrapper.findComponent(Button).trigger("click");
+    expect(mockPush).toHaveBeenCalledWith("/");
+  });
+
+  it("does not nest interactive elements (a inside button)", () => {
+    const wrapper = mountView();
+    const button = wrapper.find("button");
+    expect(button.find("a").exists()).toBe(false);
   });
 
   it("uses a <main> landmark as root element", () => {
