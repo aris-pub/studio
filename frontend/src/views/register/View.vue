@@ -82,7 +82,7 @@
     @submit="onRegister"
   >
     <InputText v-model="name" data-testid="name-input" direction="column" label="Display name" />
-    <InputText v-model="email" data-testid="email-input" direction="column" label="Email" />
+    <InputText v-model="email" data-testid="email-input" direction="column" label="Email" type="email" />
     <div>
       <PasswordInput v-model="pwd" data-testid="password-input" />
       <PasswordStrength :password="pwd" />
