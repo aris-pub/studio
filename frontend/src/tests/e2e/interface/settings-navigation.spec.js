@@ -40,7 +40,7 @@ test.describe("Settings Navigation @auth @desktop-only", () => {
     // Click on Preferences sub-item
     await page.click('.sub-items-container >> text="Preferences"');
     await expect(page).toHaveURL("/settings/preferences");
-    await expect(page.locator("h3").first()).toContainText("Preferences");
+    await expect(page.locator("h1").first()).toContainText("Preferences");
   });
 
   test("should show active state for current settings sub-section", async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe("Settings Navigation @auth @desktop-only", () => {
     await expect(settingsItem).toHaveClass(/active/);
 
     // Should show correct page content
-    await expect(page.locator("h3").first()).toContainText("Preferences");
+    await expect(page.locator("h1").first()).toContainText("Preferences");
   });
 
   test("should handle keyboard navigation in sub-items", async ({ page }) => {
