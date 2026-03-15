@@ -121,3 +121,6 @@ playwright-report/
 
 # Beads (stealth mode - not in VC)
 .beads/
+
+# HNS agent harness worktrees
+.hns/
