@@ -265,7 +265,8 @@ async def test_login_missing_fields(client: AsyncClient):
 
 # --- Deploy preview restriction tests ---
 
-DEPLOY_PREVIEW_ORIGIN = "https://deploy-preview-42--rsm-studio-site.netlify.app"
+DEPLOY_PREVIEW_ORIGIN_SITE = "https://deploy-preview-42--rsm-studio-site.netlify.app"
+DEPLOY_PREVIEW_ORIGIN_FRONTEND = "https://deploy-preview-246--rsm-studio-frontend.netlify.app"
 
 
 async def test_deploy_preview_login_rejects_non_test_user(client: AsyncClient):
@@ -273,7 +274,7 @@ async def test_deploy_preview_login_rejects_non_test_user(client: AsyncClient):
     response = await client.post(
         "/login",
         json={"email": "hacker@evil.com", "password": "whatever"},
-        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN_SITE},
     )
     assert response.status_code == 403
     assert "test account" in response.json()["detail"].lower()
@@ -296,7 +297,7 @@ async def test_deploy_preview_login_allows_test_user(client: AsyncClient, db_ses
     response = await client.post(
         "/login",
         json={"email": settings.TEST_USER_EMAIL, "password": "testpass123"},
-        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN_SITE},
     )
     assert response.status_code == 200
     assert "access_token" in response.json()
@@ -312,10 +313,21 @@ async def test_deploy_preview_register_blocked(client: AsyncClient):
             "initials": "NU",
             "password": "testpass123",
         },
-        headers={"origin": DEPLOY_PREVIEW_ORIGIN},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN_SITE},
     )
     assert response.status_code == 403
     assert "deploy preview" in response.json()["detail"].lower()
+
+
+async def test_deploy_preview_frontend_origin_rejects_non_test_user(client: AsyncClient):
+    """Frontend deploy preview origins are also restricted."""
+    response = await client.post(
+        "/login",
+        json={"email": "hacker@evil.com", "password": "whatever"},
+        headers={"origin": DEPLOY_PREVIEW_ORIGIN_FRONTEND},
+    )
+    assert response.status_code == 403
+    assert "test account" in response.json()["detail"].lower()
 
 
 async def test_non_preview_origin_login_unrestricted(client: AsyncClient):

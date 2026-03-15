@@ -151,7 +151,7 @@ async def create_signup_endpoint(
     signup information with sanitized data.
     """
     origin = request.headers.get("origin", "")
-    if re.match(r"^https://deploy-preview-\d+--rsm-studio-site\.netlify\.app$", origin):
+    if re.match(r"^https://deploy-preview-\d+--rsm-studio-(site|frontend)\.netlify\.app$", origin):
         raise HTTPException(
             status_code=403,
             detail="Signup is disabled on deploy previews.",
