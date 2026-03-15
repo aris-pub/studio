@@ -241,17 +241,17 @@ describe("VerifyEmailView", () => {
     expect(wrapper.find('[data-testid="cta-secondary"]').text()).toContain("home");
   });
 
-  it("renders correct heading and body in error state", async () => {
+  it("renders correct heading in error state", async () => {
     const err = { response: { status: 404 } };
     const wrapper = mountView(vi.fn().mockRejectedValue(err));
     await flushPromises();
 
     const el = wrapper.find('[data-testid="state-error"]');
     expect(el.find("h2").text()).toBe("Link expired");
-    expect(el.find("p").text()).toContain("account settings");
   });
 
-  it("renders account settings and home buttons in error state", async () => {
+  it("renders account settings and home buttons in error state when authenticated", async () => {
+    localStorage.setItem("accessToken", "some-jwt");
     const err = { response: { status: 404 } };
     const wrapper = mountView(vi.fn().mockRejectedValue(err));
     await flushPromises();
@@ -260,13 +260,32 @@ describe("VerifyEmailView", () => {
     expect(wrapper.find('[data-testid="cta-secondary"]').text()).toContain("home");
   });
 
-  it("navigates to /account when primary error CTA clicked", async () => {
+  it("renders sign-in and home buttons in error state when unauthenticated", async () => {
+    const err = { response: { status: 404 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="cta-primary"]').text()).toContain("Sign in");
+    expect(wrapper.find('[data-testid="cta-secondary"]').text()).toContain("home");
+  });
+
+  it("navigates to /account when primary error CTA clicked while authenticated", async () => {
+    localStorage.setItem("accessToken", "some-jwt");
     const err = { response: { status: 404 } };
     const wrapper = mountView(vi.fn().mockRejectedValue(err));
     await flushPromises();
 
     await wrapper.find('[data-testid="cta-primary"]').trigger("click");
     expect(pushMock).toHaveBeenCalledWith("/account");
+  });
+
+  it("navigates to /login when primary error CTA clicked while unauthenticated", async () => {
+    const err = { response: { status: 404 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    await wrapper.find('[data-testid="cta-primary"]').trigger("click");
+    expect(pushMock).toHaveBeenCalledWith("/login");
   });
 
   it("navigates to / when secondary error CTA clicked", async () => {
@@ -276,6 +295,26 @@ describe("VerifyEmailView", () => {
 
     await wrapper.find('[data-testid="cta-secondary"]').trigger("click");
     expect(pushMock).toHaveBeenCalledWith("/");
+  });
+
+  it("shows auth-appropriate body copy in error state when unauthenticated", async () => {
+    const err = { response: { status: 404 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    const el = wrapper.find('[data-testid="state-error"]');
+    expect(el.find("p").text()).toContain("sign in");
+    expect(el.find("p").text()).not.toContain("account settings");
+  });
+
+  it("shows auth-appropriate body copy in error state when authenticated", async () => {
+    localStorage.setItem("accessToken", "some-jwt");
+    const err = { response: { status: 404 } };
+    const wrapper = mountView(vi.fn().mockRejectedValue(err));
+    await flushPromises();
+
+    const el = wrapper.find('[data-testid="state-error"]');
+    expect(el.find("p").text()).toContain("account settings");
   });
 
   // ---------------------------------------------------------------------------
