@@ -36,6 +36,17 @@ describe("VerifyEmailView", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // Accessibility landmarks
+  // ---------------------------------------------------------------------------
+
+  it("has a main landmark as the root element", () => {
+    const apiPost = vi.fn(() => new Promise(() => {}));
+    const wrapper = mountView(apiPost);
+
+    expect(wrapper.element.tagName).toBe("MAIN");
+  });
+
+  // ---------------------------------------------------------------------------
   // Loading state
   // ---------------------------------------------------------------------------
 
