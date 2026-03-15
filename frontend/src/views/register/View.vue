@@ -81,6 +81,7 @@
     :error="error"
     @submit="onRegister"
   >
+
     <InputText
       v-model="name"
       data-testid="name-input"

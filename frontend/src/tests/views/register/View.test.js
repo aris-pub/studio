@@ -211,6 +211,12 @@ describe("RegisterView", () => {
     expect(nameInput.props("label")).toBe("Display name");
   });
 
+  it("sets type=email on the email input for validation and accessibility", () => {
+    const inputTexts = wrapper.findAllComponents(InputText);
+    const emailInput = inputTexts.find((c) => c.props("label") === "Email");
+    expect(emailInput.props("type")).toBe("email");
+  });
+
   it("auto-derives initials from name and sends with registration", async () => {
     const registeredUser = { id: 1, name: "Jane Doe", initials: "JD", email: "jane@test.com" };
     api.post.mockResolvedValue({
