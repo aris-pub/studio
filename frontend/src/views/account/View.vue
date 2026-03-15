@@ -363,6 +363,7 @@
                 class="avatar-upload"
                 size="sm"
                 :disabled="isUploadingAvatar"
+                aria-label="Upload profile picture"
                 @click="onUpload"
               />
               <input

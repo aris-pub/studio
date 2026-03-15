@@ -16,9 +16,10 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
   test("avatar upload workflow", async ({ page }) => {
     await page.goto("/account");
 
-    // Verify upload button is present
+    // Verify upload button is present and accessible
     const uploadButton = page.locator(".avatar-upload");
     await expect(uploadButton).toBeVisible();
+    await expect(uploadButton).toHaveAttribute("aria-label", "Upload profile picture");
 
     // Set up file chooser listener BEFORE clicking to avoid Firefox page closure
     // (Firefox treats file pickers as modals that trigger window close events)

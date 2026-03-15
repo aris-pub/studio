@@ -104,6 +104,11 @@ describe("AccountView", () => {
     expect(user.value).toMatchObject(newData);
   });
 
+  it("avatar upload button has aria-label for screen readers", () => {
+    const uploadButton = wrapper.find(".avatar-upload");
+    expect(uploadButton.attributes("aria-label")).toBe("Upload profile picture");
+  });
+
   describe("Avatar Upload", () => {
     it("rejects non-image files with error message", async () => {
       const mockFile = new File(["test"], "test.pdf", { type: "application/pdf" });
