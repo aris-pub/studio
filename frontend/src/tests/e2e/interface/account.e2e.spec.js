@@ -91,6 +91,24 @@ test.describe("Account View E2E Tests @auth @desktop-only", () => {
     await expect(passwordSection).toBeVisible();
   });
 
+  test("clearing a profile field shows unsaved changes warning", async ({ page }) => {
+    await page.goto("/account");
+
+    const affiliationInput = page
+      .locator(".input-text")
+      .filter({ hasText: "Affiliation" })
+      .locator("input");
+    await expect(affiliationInput).toBeVisible();
+
+    // Type something then clear it — should show unsaved changes warning
+    await affiliationInput.fill("Temp University");
+    await affiliationInput.fill("");
+
+    const warning = page.locator(".status-message.warning");
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText("You have unsaved changes");
+  });
+
   test("affiliation field functionality", async ({ page }) => {
     await page.goto("/account");
 

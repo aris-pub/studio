@@ -325,6 +325,20 @@ describe("AccountView", () => {
       expect(wrapper.vm.hasUnsavedProfileChanges).toBe(false);
     });
 
+    it("detects empty string as a change (clearing a field)", async () => {
+      expect(wrapper.vm.hasUnsavedProfileChanges).toBe(false);
+
+      wrapper.vm.newAffiliation = "";
+      expect(wrapper.vm.hasUnsavedProfileChanges).toBe(true);
+    });
+
+    it("does not detect setting same value as current user as a change", async () => {
+      expect(wrapper.vm.hasUnsavedProfileChanges).toBe(false);
+
+      wrapper.vm.newName = "Alice";
+      expect(wrapper.vm.hasUnsavedProfileChanges).toBe(false);
+    });
+
     it("tracks overall unsaved changes", async () => {
       expect(wrapper.vm.hasUnsavedProfileChanges).toBe(false);
 
@@ -343,6 +357,37 @@ describe("AccountView", () => {
 
       expect(wrapper.find(".status-message.warning").exists()).toBe(true);
       expect(wrapper.find(".status-message.warning").text()).toContain("You have unsaved changes");
+    });
+  });
+
+  describe("Profile Save Payload", () => {
+    it("sends empty string when user clears a field", async () => {
+      const updateData = { ...user.value, affiliation: "" };
+      api.put.mockResolvedValue({ data: updateData });
+
+      wrapper.vm.newAffiliation = "";
+      await wrapper.vm.onSaveProfile();
+
+      expect(api.put).toHaveBeenCalledWith(
+        "/users/1",
+        expect.objectContaining({ affiliation: "" })
+      );
+    });
+
+    it("uses original value for fields the user has not touched", async () => {
+      api.put.mockResolvedValue({ data: { ...user.value, name: "Bob" } });
+
+      wrapper.vm.newName = "Bob";
+      await wrapper.vm.onSaveProfile();
+
+      expect(api.put).toHaveBeenCalledWith(
+        "/users/1",
+        expect.objectContaining({
+          name: "Bob",
+          initials: "AL",
+          email: "alice@example.com",
+        })
+      );
     });
   });
 

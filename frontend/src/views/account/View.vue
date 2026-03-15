@@ -17,10 +17,10 @@
 
   const hasUnsavedProfileChanges = computed(() => {
     return !!(
-      (newName.value && newName.value !== user.value?.name) ||
-      (newInitials.value && newInitials.value !== user.value?.initials) ||
-      (newEmail.value && newEmail.value !== user.value?.email) ||
-      (newAffiliation.value && newAffiliation.value !== user.value?.affiliation)
+      (newName.value !== null && newName.value !== user.value?.name) ||
+      (newInitials.value !== null && newInitials.value !== user.value?.initials) ||
+      (newEmail.value !== null && newEmail.value !== user.value?.email) ||
+      (newAffiliation.value !== null && newAffiliation.value !== user.value?.affiliation)
     );
   });
 
@@ -29,10 +29,10 @@
     isSaving.value = true;
     try {
       const payload = {
-        name: newName.value || user.value.name,
-        initials: newInitials.value || user.value.initials,
-        email: newEmail.value || user.value.email,
-        affiliation: newAffiliation.value || user.value.affiliation,
+        name: newName.value !== null ? newName.value : user.value.name,
+        initials: newInitials.value !== null ? newInitials.value : user.value.initials,
+        email: newEmail.value !== null ? newEmail.value : user.value.email,
+        affiliation: newAffiliation.value !== null ? newAffiliation.value : user.value.affiliation,
       };
 
       const res = await api.put(`/users/${user.value.id}`, payload);
