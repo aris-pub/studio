@@ -1,6 +1,7 @@
 <script setup>
   import { ref, reactive, onMounted, inject } from "vue";
   import { IconSettings2 } from "@tabler/icons-vue";
+  import { toast } from "@/utils/toast.js";
 
   const api = inject("api");
 
@@ -32,6 +33,9 @@
       Object.assign(settings, response.data);
     } catch (error) {
       console.error("Failed to load user settings:", error);
+      toast.error("Failed to load preferences", {
+        description: "Your default settings are being used. Please try refreshing the page.",
+      });
     }
   });
 
@@ -47,6 +51,9 @@
       }, 2000);
     } catch (error) {
       console.error("Failed to save user settings:", error);
+      toast.error("Failed to save preferences", {
+        description: "Please check your connection and try again.",
+      });
     } finally {
       loading.value = false;
     }

@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import PreferencesView from "@/views/settings/PreferencesView.vue";
+import { toast } from "@/utils/toast.js";
+
+vi.mock("@/utils/toast.js", () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
 
 describe("PreferencesView", () => {
   let wrapper;
@@ -229,6 +237,9 @@ describe("PreferencesView", () => {
       await errorWrapper.vm.$nextTick();
 
       expect(consoleSpy).toHaveBeenCalledWith("Failed to load user settings:", expect.any(Error));
+      expect(toast.error).toHaveBeenCalledWith("Failed to load preferences", {
+        description: "Your default settings are being used. Please try refreshing the page.",
+      });
       consoleSpy.mockRestore();
     });
   });
@@ -285,6 +296,9 @@ describe("PreferencesView", () => {
 
       expect(wrapper.vm.loading).toBe(false);
       expect(consoleSpy).toHaveBeenCalledWith("Failed to save user settings:", expect.any(Error));
+      expect(toast.error).toHaveBeenCalledWith("Failed to save preferences", {
+        description: "Please check your connection and try again.",
+      });
       consoleSpy.mockRestore();
     });
   });
