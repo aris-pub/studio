@@ -13,6 +13,7 @@ function mountView() {
     global: {
       components: { Button },
     },
+    attachTo: document.body,
   });
 }
 
@@ -42,5 +43,28 @@ describe("NotFoundView", () => {
     const wrapper = mountView();
     const button = wrapper.find("button");
     expect(button.find("a").exists()).toBe(false);
+  });
+
+  it("uses a <main> landmark as root element", () => {
+    const wrapper = mountView();
+    expect(wrapper.element.tagName).toBe("MAIN");
+  });
+
+  it("sets document title to indicate error page", () => {
+    mountView();
+    expect(document.title).toContain("Page not found");
+  });
+
+  it("moves focus to the heading on mount", async () => {
+    const wrapper = mountView();
+    await wrapper.vm.$nextTick();
+    const h1 = wrapper.find("h1").element;
+    expect(document.activeElement).toBe(h1);
+  });
+
+  it("marks the heading with role=alert for screen reader announcement", () => {
+    const wrapper = mountView();
+    const heading = wrapper.find("h1");
+    expect(heading.attributes("role")).toBe("alert");
   });
 });

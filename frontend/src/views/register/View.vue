@@ -63,8 +63,11 @@
       });
       router.push("/");
     } catch (err) {
-      if (err.response?.data?.detail) {
-        error.value = err.response.data.detail;
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        error.value = detail.map((e) => e.msg).join(". ");
+      } else if (detail) {
+        error.value = detail;
       } else {
         error.value = "Registration failed. Please try again.";
       }
@@ -81,7 +84,6 @@
     :error="error"
     @submit="onRegister"
   >
-
     <InputText
       v-model="name"
       data-testid="name-input"
