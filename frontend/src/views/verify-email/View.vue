@@ -5,6 +5,7 @@
   const route = useRoute();
   const router = useRouter();
   const api = inject("api");
+  const user = inject("user", null);
 
   // 'loading' | 'success' | 'alreadyVerified' | 'error'
   const state = ref("loading");
@@ -25,12 +26,16 @@
       const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
-          const user = JSON.parse(userStr);
-          user.email_verified = true;
-          localStorage.setItem("user", JSON.stringify(user));
+          const stored = JSON.parse(userStr);
+          stored.email_verified = true;
+          localStorage.setItem("user", JSON.stringify(stored));
         } catch {
           // malformed localStorage entry — leave it alone
         }
+      }
+
+      if (user?.value) {
+        user.value.email_verified = true;
       }
 
       state.value = "success";

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
 import Button from "@/components/base/Button.vue";
 import Icon from "@/components/base/Icon.vue";
@@ -15,11 +16,14 @@ vi.mock("vue-router", () => ({
 // Imported after mocks are in place
 const { default: VerifyEmailView } = await import("@/views/verify-email/View.vue");
 
-function mountView(apiPost) {
+function mountView(apiPost, { user } = {}) {
   return mount(VerifyEmailView, {
     global: {
       components: { Button, Icon, LoadingSpinner },
-      provide: { api: { post: apiPost } },
+      provide: {
+        api: { post: apiPost },
+        ...(user !== undefined ? { user } : {}),
+      },
     },
     attachTo: document.body,
   });
@@ -86,6 +90,15 @@ describe("VerifyEmailView", () => {
 
     const stored = JSON.parse(localStorage.getItem("user"));
     expect(stored.email_verified).toBe(true);
+  });
+
+  it("updates the injected reactive user ref on success", async () => {
+    const user = ref({ id: 1, email_verified: false });
+    localStorage.setItem("user", JSON.stringify({ id: 1, email_verified: false }));
+    mountView(vi.fn().mockResolvedValue({}), { user });
+    await flushPromises();
+
+    expect(user.value.email_verified).toBe(true);
   });
 
   it("does not throw if localStorage has no user on success", async () => {
@@ -224,6 +237,16 @@ describe("VerifyEmailView", () => {
   // ---------------------------------------------------------------------------
   // No unintended side effects
   // ---------------------------------------------------------------------------
+
+  it("does not modify the injected reactive user ref on error", async () => {
+    const user = ref({ id: 1, email_verified: false });
+    localStorage.setItem("user", JSON.stringify({ id: 1, email_verified: false }));
+    const err = { response: { status: 404 } };
+    mountView(vi.fn().mockRejectedValue(err), { user });
+    await flushPromises();
+
+    expect(user.value.email_verified).toBe(false);
+  });
 
   it("does not modify localStorage on error", async () => {
     localStorage.setItem("user", JSON.stringify({ id: 1, email_verified: false }));
