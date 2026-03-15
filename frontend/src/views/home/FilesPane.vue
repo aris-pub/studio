@@ -117,7 +117,7 @@
 
         <div v-else-if="showSharedEmptyState" class="empty-state" data-testid="shared-empty-state">
           <Icon name="UsersGroup" class="empty-state-icon" />
-          <p class="empty-state-title">No shared files yet</p>
+          <p class="empty-state-title text-default">No shared files yet</p>
           <p class="empty-state-description text-subtle">
             Files shared with you by collaborators will appear here.
           </p>
@@ -179,7 +179,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    flex: 1;
     gap: 8px;
     padding: 48px 24px;
     text-align: center;

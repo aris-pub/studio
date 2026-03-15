@@ -191,6 +191,21 @@ describe("RegisterView", () => {
     expect(wrapper.find('[data-testid="confirm-password-input"]').exists()).toBe(false);
   });
 
+  it("marks all fields as required for native browser validation", () => {
+    const nameInput = wrapper.find('[data-testid="name-input"]');
+    const emailInput = wrapper.find('[data-testid="email-input"]');
+    const passwordInput = wrapper.find('[data-testid="password-input"]');
+
+    expect(nameInput.attributes("required")).toBeDefined();
+    expect(emailInput.attributes("required")).toBeDefined();
+    expect(passwordInput.attributes("required")).toBeDefined();
+  });
+
+  it("uses email type on the email field", () => {
+    const emailInput = wrapper.find('[data-testid="email-input"]');
+    expect(emailInput.attributes("type")).toBe("email");
+  });
+
   it("labels the name field as Display name", () => {
     const nameInput = wrapper.findComponent(InputText);
     expect(nameInput.props("label")).toBe("Display name");
