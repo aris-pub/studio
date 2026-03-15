@@ -494,6 +494,7 @@
               v-model="currentPassword"
               label="Current Password"
               type="password"
+              autocomplete="current-password"
               :disabled="isChangingPassword"
               direction="column"
             />
@@ -502,6 +503,7 @@
                 v-model="newPassword"
                 label="New Password"
                 type="password"
+                autocomplete="new-password"
                 :disabled="isChangingPassword"
                 direction="column"
               />
@@ -511,6 +513,7 @@
               v-model="confirmPassword"
               label="Confirm New Password"
               type="password"
+              autocomplete="new-password"
               :disabled="isChangingPassword"
               direction="column"
             />
