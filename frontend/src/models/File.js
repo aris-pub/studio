@@ -20,6 +20,8 @@ export class File {
       // File metadata
       id: rawData.id || null,
       title: rawData.title,
+      abstract: rawData.abstract || "",
+      keywords: rawData.keywords || "",
       source: rawData.source || "",
       last_edited_at: rawData.last_edited_at || new Date().toISOString(),
       tags: rawData.tags || [],

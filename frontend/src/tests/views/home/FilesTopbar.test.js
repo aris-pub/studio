@@ -89,10 +89,81 @@ describe("FilesTopbar.vue", () => {
 
       const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
 
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
       // Test the filter function
-      expect(filterFunction({ title: "test file" })).toBe(false); // Should show (not filtered)
-      expect(filterFunction({ title: "TEST FILE" })).toBe(false); // Should show (not filtered)
-      expect(filterFunction({ title: "other file" })).toBe(true); // Should hide (filtered)
+      expect(filterFunction({ ...base, title: "test file" })).toBe(false); // Should show (not filtered)
+      expect(filterFunction({ ...base, title: "TEST FILE" })).toBe(false); // Should show (not filtered)
+      expect(filterFunction({ ...base, title: "other file" })).toBe(true); // Should hide (filtered)
+    });
+
+    it("matches against abstract text", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("neural");
+
+      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
+
+      expect(filterFunction({ ...base, abstract: "A study on neural networks" })).toBe(false);
+      expect(filterFunction({ ...base, abstract: "A study on databases" })).toBe(true);
+    });
+
+    it("matches against tag names", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("physics");
+
+      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
+
+      expect(filterFunction({ ...base, tags: [{ name: "physics" }, { name: "math" }] })).toBe(false);
+      expect(filterFunction({ ...base, tags: [{ name: "chemistry" }] })).toBe(true);
+    });
+
+    it("matches against collaborator names", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("alice");
+
+      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
+
+      expect(filterFunction({ ...base, collaborators: [{ name: "Alice Smith" }] })).toBe(false);
+      expect(filterFunction({ ...base, collaborators: [{ name: "Bob Jones" }] })).toBe(true);
+    });
+
+    it("matches against keywords", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("quantum");
+
+      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
+
+      expect(filterFunction({ ...base, keywords: "quantum, entanglement" })).toBe(false);
+      expect(filterFunction({ ...base, keywords: "classical, mechanics" })).toBe(true);
+    });
+
+    it("matches across any field (OR logic)", () => {
+      const wrapper = createWrapper();
+
+      wrapper.vm.onSearchSubmit("needle");
+
+      const filterFunction = mockFileStore.value.filterFiles.mock.calls[0][0];
+      const base = { title: "", abstract: "", keywords: "", tags: [], collaborators: [] };
+
+      // Match in title
+      expect(filterFunction({ ...base, title: "needle in title" })).toBe(false);
+      // Match in abstract
+      expect(filterFunction({ ...base, abstract: "needle in abstract" })).toBe(false);
+      // Match in tags
+      expect(filterFunction({ ...base, tags: [{ name: "needle-tag" }] })).toBe(false);
+      // Match in collaborators
+      expect(filterFunction({ ...base, collaborators: [{ name: "needle person" }] })).toBe(false);
+      // Match in keywords
+      expect(filterFunction({ ...base, keywords: "needle, thread" })).toBe(false);
+      // No match anywhere
+      expect(filterFunction({ ...base })).toBe(true);
     });
 
     it("handles empty search string", () => {

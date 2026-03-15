@@ -281,6 +281,8 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
         {
             "id": doc.id,
             "title": titles[doc],
+            "abstract": doc.abstract or "",
+            "keywords": doc.keywords or "",
             "source": doc.source,
             "last_edited_at": doc.last_edited_at,
             "role": roles[doc].value,
