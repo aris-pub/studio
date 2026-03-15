@@ -51,7 +51,7 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const publicPages = ["/login", "/register", "/forgot-password"];
+  const publicPages = ["/login", "/register", "/forgot-password", "/404"];
   const isVerificationRoute = to.path.startsWith("/verify-email/");
   const isResetPasswordRoute = to.path.startsWith("/reset-password/");
   const isDemoRoute = to.path.startsWith("/demo");

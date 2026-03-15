@@ -45,14 +45,16 @@ describe("router configuration", () => {
     expect(router.currentRoute.value.path).toBe("/");
   });
 
-  it("redirects unknown routes to login without token, and to NotFound with token", async () => {
-    await router.push("/some/random/path");
-    expect(router.currentRoute.value.path).toBe("/login");
-
-    localStorage.setItem("accessToken", "token");
+  it("redirects unknown routes to 404 even without a token", async () => {
     await router.push("/some/random/path");
     expect(router.currentRoute.value.name).toBe("NotFound");
     expect(router.currentRoute.value.path).toBe("/404");
+  });
+
+  it("allows access to /404 without a token", async () => {
+    await router.push("/404");
+    expect(router.currentRoute.value.path).toBe("/404");
+    expect(router.currentRoute.value.name).toBe("NotFound");
   });
 
   describe("404 routing behavior", () => {
