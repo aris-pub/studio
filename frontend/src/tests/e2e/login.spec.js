@@ -138,6 +138,12 @@ test.describe("Login Flow Tests @auth-flows", () => {
     await authHelpers.expectToBeLoggedIn();
   });
 
+  test("no 'Forgot password?' text is displayed on the login page", async ({ page }) => {
+    await page.goto("/login");
+    await authHelpers.expectToBeOnLoginPage();
+    await expect(page.getByText("Forgot password?")).not.toBeVisible();
+  });
+
   test("dev mode auto-fill - pre-filled credentials in development", async ({ page }) => {
     // This test checks if dev mode pre-fills credentials
     // Skip if not in development mode
