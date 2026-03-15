@@ -344,6 +344,26 @@ describe("AccountView", () => {
       expect(wrapper.find(".status-message.warning").exists()).toBe(true);
       expect(wrapper.find(".status-message.warning").text()).toContain("You have unsaved changes");
     });
+
+    it("unsaved profile changes warning has aria-live and role=status for screen readers", async () => {
+      wrapper.vm.newName = "Changed Name";
+      await nextTick();
+
+      const warnings = wrapper.findAll(".status-message.warning");
+      const profileWarning = warnings[0];
+      expect(profileWarning.attributes("role")).toBe("status");
+      expect(profileWarning.attributes("aria-live")).toBe("polite");
+    });
+
+    it("unsaved password changes warning has aria-live and role=status for screen readers", async () => {
+      wrapper.vm.currentPassword = "old-pass";
+      await nextTick();
+
+      const warnings = wrapper.findAll(".status-message.warning");
+      const passwordWarning = warnings[0];
+      expect(passwordWarning.attributes("role")).toBe("status");
+      expect(passwordWarning.attributes("aria-live")).toBe("polite");
+    });
   });
 
   describe("Form Reset/Discard", () => {

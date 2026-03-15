@@ -441,7 +441,7 @@
             </Button>
           </div>
 
-          <div v-if="hasUnsavedProfileChanges" class="status-message warning">
+          <div v-if="hasUnsavedProfileChanges" class="status-message warning" role="status" aria-live="polite">
             <Icon name="AlertCircle" size="16" />
             <span>You have unsaved changes</span>
           </div>
@@ -532,7 +532,7 @@
             />
           </div>
 
-          <div v-if="hasUnsavedPasswordChanges" class="status-message warning">
+          <div v-if="hasUnsavedPasswordChanges" class="status-message warning" role="status" aria-live="polite">
             <Icon name="AlertCircle" size="16" />
             <span>You have unsaved password changes</span>
           </div>
