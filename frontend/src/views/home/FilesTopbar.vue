@@ -1,25 +1,21 @@
 <script setup>
-  import { inject, useTemplateRef } from "vue";
+  import { inject, ref, useTemplateRef } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
 
-  /* Search */
   const fileStore = inject("fileStore");
-  const onSearchSubmit = (searchString) => {
-    fileStore.value.clearFilters();
 
-    // Handle null/undefined and trim whitespace
+  /* Search */
+  const onSearchSubmit = (searchString) => {
     const trimmedSearch = (searchString || "").trim();
 
-    fileStore.value.filterFiles((file) => {
-      // If search is empty/whitespace, don't filter anything (show all files)
-      if (!trimmedSearch) {
-        return false;
-      }
+    if (!trimmedSearch) {
+      fileStore.value.clearFilter("search");
+      return;
+    }
 
-      // Split search into terms and match any term
+    fileStore.value.applyFilter("search", (file) => {
       const searchTerms = trimmedSearch.toLowerCase().split(/\s+/);
 
-      // Build searchable text from all relevant fields
       const searchableFields = [
         file.title || "",
         file.abstract || "",
@@ -29,14 +25,26 @@
       ];
       const searchableText = searchableFields.join(" ").toLowerCase();
 
-      // Show file if it contains any search term
       const hasMatch = searchTerms.some((term) => searchableText.includes(term));
-
-      // Return true to hide, false to show
       return !hasMatch;
     });
   };
   const searchBar = useTemplateRef("search-bar-ref");
+
+  /* Ownership filter */
+  const SEGMENTS = ["All", "My files", "Shared with me"];
+  const activeSegment = ref(0);
+
+  const onSegmentChange = (idx) => {
+    activeSegment.value = idx;
+    if (idx === 0) {
+      fileStore.value.clearFilter("ownership");
+    } else if (idx === 1) {
+      fileStore.value.applyFilter("ownership", (file) => file.role !== "OWNER");
+    } else if (idx === 2) {
+      fileStore.value.applyFilter("ownership", (file) => file.role === "OWNER");
+    }
+  };
 
   // Keyboard shortcuts
   useKeyboardShortcuts(
@@ -46,12 +54,22 @@
     true,
     "Home view"
   );
+
+  defineExpose({ onSearchSubmit, activeSegment });
 </script>
 
 <template>
   <div class="tb-wrapper">
     <div class="tb-search">
       <SearchBar ref="search-bar-ref" @submit="onSearchSubmit" />
+    </div>
+    <div class="tb-filter" role="radiogroup" aria-label="File ownership filter">
+      <SegmentedControl
+        v-model="activeSegment"
+        :labels="SEGMENTS"
+        :default-active="0"
+        @update:model-value="onSegmentChange"
+      />
     </div>
   </div>
 </template>
@@ -61,6 +79,7 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
+    align-items: center;
     column-gap: 48px;
     row-gap: 8px;
     max-width: calc(100% - (100px + 48px));
