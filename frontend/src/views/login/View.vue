@@ -84,10 +84,7 @@
       type="email"
       required
     />
-    <div>
-      <PasswordInput v-model="password" data-testid="password-input" required />
-      <div class="field-footer text-caption"><p>Forgot password?</p></div>
-    </div>
+    <PasswordInput v-model="password" data-testid="password-input" required />
 
     <template #actions>
       <Button
@@ -118,11 +115,6 @@
 </template>
 
 <style scoped>
-  .field-footer {
-    margin-top: 4px;
-    padding-left: 8px;
-  }
-
   .form-footer {
     text-align: center;
     color: var(--gray-600);
