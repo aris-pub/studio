@@ -13,6 +13,7 @@ from ..models import User
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
 
+
 _DEPLOY_PREVIEW_RE = re.compile(
     r"^https://deploy-preview-\d+--rsm-studio-(site|frontend)\.netlify\.app$"
 )
