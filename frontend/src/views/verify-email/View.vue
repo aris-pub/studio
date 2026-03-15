@@ -139,9 +139,13 @@
               <Icon name="CircleX" />
             </div>
             <h2 class="text-h5">Link expired</h2>
-            <p>
+            <p v-if="isAuthenticated">
               This link may have expired or already been used. You can request a new one from your
               account settings.
+            </p>
+            <p v-else>
+              This link may have expired or already been used. Please sign in to request a new
+              verification email.
             </p>
           </div>
           <div class="actions">
@@ -150,8 +154,8 @@
               data-testid="cta-primary"
               kind="primary"
               block
-              text="Go to account settings"
-              @click="router.push('/account')"
+              :text="isAuthenticated ? 'Go to account settings' : 'Sign in'"
+              @click="router.push(isAuthenticated ? '/account' : '/login')"
             />
             <Button
               data-testid="cta-secondary"
