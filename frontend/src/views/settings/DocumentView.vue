@@ -129,6 +129,16 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
     min-width: 0;
   }
 
+  @media (max-width: 768px) {
+    .settings-main {
+      flex-direction: column;
+    }
+
+    .pane-settings {
+      max-width: none;
+    }
+  }
+
   .info {
     display: flex;
     align-items: center;
