@@ -81,10 +81,23 @@
     :error="error"
     @submit="onRegister"
   >
-    <InputText v-model="name" data-testid="name-input" direction="column" label="Display name" />
-    <InputText v-model="email" data-testid="email-input" direction="column" label="Email" />
+    <InputText
+      v-model="name"
+      data-testid="name-input"
+      direction="column"
+      label="Display name"
+      required
+    />
+    <InputText
+      v-model="email"
+      data-testid="email-input"
+      direction="column"
+      label="Email"
+      type="email"
+      required
+    />
     <div>
-      <PasswordInput v-model="pwd" data-testid="password-input" />
+      <PasswordInput v-model="pwd" data-testid="password-input" required />
       <PasswordStrength :password="pwd" />
     </div>
 
