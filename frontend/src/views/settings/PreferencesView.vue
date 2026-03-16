@@ -1,11 +1,11 @@
 <script setup>
-  import { ref, reactive, onMounted, inject } from "vue";
+  import { ref, reactive, computed, onMounted, inject } from "vue";
   import { IconSettings2 } from "@tabler/icons-vue";
   import { toast } from "@/utils/toast.js";
 
   const api = inject("api");
 
-  const settings = reactive({
+  const defaults = {
     autoSaveInterval: 30,
     autoCompileDelay: 1000,
     focusModeAutoHide: true,
@@ -22,15 +22,29 @@
     allowAnonymousFeedback: false,
     soundNotifications: true,
     mobileMenuBehavior: "standard",
-  });
+  };
+
+  const settings = reactive({ ...defaults });
+  const savedSettings = ref({ ...defaults });
 
   const loading = ref(false);
   const saved = ref(false);
+
+  const hasUnsavedChanges = computed(() => {
+    const saved_ = savedSettings.value;
+    return Object.keys(defaults).some((key) => settings[key] !== saved_[key]);
+  });
+
+  const resetSettings = () => {
+    Object.assign(settings, savedSettings.value);
+    toast.info("Changes discarded");
+  };
 
   onMounted(async () => {
     try {
       const response = await api.get("/user-settings");
       Object.assign(settings, response.data);
+      savedSettings.value = { ...settings };
     } catch (error) {
       console.error("Failed to load user settings:", error);
       toast.error("Failed to load preferences", {
@@ -45,6 +59,7 @@
 
     try {
       await api.post("/user-settings", settings);
+      savedSettings.value = { ...settings };
       saved.value = true;
       setTimeout(() => {
         saved.value = false;
@@ -236,6 +251,9 @@
     </Section>
 
     <div class="settings-actions">
+      <Button kind="tertiary" :disabled="loading || !hasUnsavedChanges" @click="resetSettings">
+        Reset
+      </Button>
       <Button
         :disabled="loading"
         kind="primary"
@@ -325,6 +343,9 @@
   }
 
   .settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
     margin-top: 16px;
   }
 
