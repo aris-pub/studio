@@ -156,11 +156,11 @@
   .form-legal {
     text-align: center;
     line-height: 1.5;
-    color: var(--gray-500);
+    color: var(--gray-800);
   }
 
   .form-legal a {
-    color: var(--gray-700);
+    color: var(--gray-900);
     text-decoration: underline;
   }
 
