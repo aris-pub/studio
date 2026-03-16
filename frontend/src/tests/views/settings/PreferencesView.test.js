@@ -42,7 +42,7 @@ describe("PreferencesView", () => {
           Button: {
             name: "Button",
             props: ["disabled", "kind"],
-            template: '<button data-testid="button"><slot /></button>',
+            template: '<button data-testid="button" @click="$emit(\'click\')"><slot /></button>',
           },
           Checkbox: {
             name: "Checkbox",
@@ -59,6 +59,12 @@ describe("PreferencesView", () => {
             name: "Icon",
             props: ["name", "size"],
             template: '<svg data-testid="icon" />',
+          },
+          SelectBox: {
+            name: "SelectBox",
+            props: ["modelValue", "options", "label"],
+            template:
+              '<div data-testid="select-box"><span class="select-label">{{ label }}</span></div>',
           },
         },
       },
@@ -89,9 +95,31 @@ describe("PreferencesView", () => {
     });
 
     it("renders the save button", () => {
-      const button = wrapper.findComponent({ name: "Button" });
-      expect(button.exists()).toBe(true);
-      expect(button.text()).toContain("Save Settings");
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const saveButton = buttons.find((b) => b.text().includes("Save Settings"));
+      expect(saveButton).toBeDefined();
+    });
+  });
+
+  describe("SelectBox Usage", () => {
+    it("uses SelectBox components instead of native selects", () => {
+      const nativeSelects = wrapper.findAll("select");
+      expect(nativeSelects.length).toBe(0);
+    });
+
+    it("renders five SelectBox components for dropdown settings", () => {
+      const selectBoxes = wrapper.findAll('[data-testid="select-box"]');
+      expect(selectBoxes.length).toBe(5);
+    });
+
+    it("passes label props to SelectBox components", () => {
+      const selectBoxes = wrapper.findAllComponents({ name: "SelectBox" });
+      const labels = selectBoxes.map((sb) => sb.props("label"));
+      expect(labels).toContain("Auto-save interval");
+      expect(labels).toContain("Auto-compile delay");
+      expect(labels).toContain("Notification method");
+      expect(labels).toContain("Email digest frequency");
+      expect(labels).toContain("Mobile menu behavior");
     });
   });
 
@@ -265,7 +293,8 @@ describe("PreferencesView", () => {
     });
 
     it("saves settings when save button is clicked", async () => {
-      const button = wrapper.findComponent({ name: "Button" });
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const button = buttons.find((b) => b.text().includes("Save Settings"));
       await button.trigger("click");
 
       expect(mockApi.post).toHaveBeenCalledWith(
@@ -281,12 +310,44 @@ describe("PreferencesView", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockApi.post.mockRejectedValue(new Error("Save failed"));
 
-      const button = wrapper.findComponent({ name: "Button" });
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const button = buttons.find((b) => b.text().includes("Save Settings"));
       await button.trigger("click");
       await wrapper.vm.$nextTick();
 
       expect(consoleSpy).toHaveBeenCalledWith("Failed to save user settings:", expect.any(Error));
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Reset Button", () => {
+    it("renders a reset button", () => {
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const resetButton = buttons.find((b) => b.text().includes("Reset"));
+      expect(resetButton).toBeDefined();
+    });
+
+    it("reset button is disabled when no changes have been made", () => {
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const resetButton = buttons.find((b) => b.text().includes("Reset"));
+      expect(resetButton.props("disabled")).toBe(true);
+    });
+
+    it("reverts settings when reset is clicked", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+
+      // Click reset
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const resetButton = buttons.find((b) => b.text().includes("Reset"));
+      await resetButton.trigger("click");
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+      expect(wrapper.vm.settings.autoSaveInterval).toBe(30);
     });
   });
 });

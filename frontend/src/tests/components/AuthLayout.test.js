@@ -80,6 +80,11 @@ describe("AuthLayout", () => {
     expect(wrapper.find(".error-alert").exists()).toBe(false);
   });
 
+  it("disables native HTML5 validation so custom error handling takes over", () => {
+    const wrapper = mountLayout();
+    expect(wrapper.find("form").attributes("novalidate")).toBeDefined();
+  });
+
   it("wraps form panel in a main landmark", () => {
     const wrapper = mountLayout();
     const main = wrapper.find("main");

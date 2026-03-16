@@ -14,6 +14,8 @@
   const user = inject("user");
   const fileStore = inject("fileStore");
 
+  const loadingAnnouncement = computed(() => (isLoading.value ? "Logging in\u2026" : ""));
+
   const isDev = inject("isDev");
   const loginButton = ref(null);
   const emailPlaceholder = computed(() =>
@@ -43,8 +45,13 @@
   });
 
   const onLogin = async () => {
-    isLoading.value = true;
     error.value = "";
+    if (!email.value || !password.value) {
+      error.value = "Please fill in all fields.";
+      return;
+    }
+
+    isLoading.value = true;
     try {
       const response = await api.post("/login", {
         email: email.value,
@@ -62,7 +69,14 @@
 
       router.push("/");
     } catch (err) {
-      error.value = err.response?.data?.detail || err.message || "Login failed";
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        error.value = detail.map((e) => e.msg ?? e.message ?? String(e)).join(". ");
+      } else if (typeof detail === "string") {
+        error.value = detail;
+      } else {
+        error.value = err.message || "Login failed";
+      }
     } finally {
       isLoading.value = false;
     }
@@ -93,31 +107,44 @@
     />
 
     <template #actions>
+      <span data-testid="login-status" class="sr-only" role="status" aria-live="polite">{{
+        loadingAnnouncement
+      }}</span>
       <Button
         ref="loginButton"
         data-testid="login-button"
+        type="submit"
         kind="primary"
         block
         :text="isLoading ? 'Logging in...' : 'Sign in'"
         :disabled="isLoading"
-        @click="onLogin"
       />
     </template>
 
     <template #footer>
       <div class="form-footer text-caption">
         New to Studio?
-        <RouterLink
-          data-testid="register-link"
-          to="/register"
-          class="register-link"
-        >Create an account</RouterLink>
+        <RouterLink data-testid="register-link" to="/register" class="register-link"
+          >Create an account</RouterLink
+        >
       </div>
     </template>
   </AuthLayout>
 </template>
 
 <style scoped>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .form-footer {
     text-align: center;
     color: var(--gray-600);
