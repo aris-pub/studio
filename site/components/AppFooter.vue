@@ -8,7 +8,7 @@
         <a href="/legal">Legal (Impressum)</a>
       </div>
       <div class="footer-copyright">
-        © 2025 RSM Studio. Part of
+        © 2026 RSM Studio. Part of
         <a href="https://aris.pub" target="_blank" rel="noopener noreferrer">The Aris Program</a>
       </div>
     </div>

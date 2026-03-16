@@ -43,10 +43,7 @@
     color: var(--extra-dark);
     padding: 32px;
     text-align: center;
-  }
-
-  .view > * {
-    margin-bottom: 16px;
+    gap: 16px;
   }
 
   h1:focus {

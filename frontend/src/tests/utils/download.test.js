@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { downloadBlob } from "@/utils/download.js";
+import { downloadBlob, sanitizeFilename } from "@/utils/download.js";
 
 describe("download.js", () => {
   let mockLink;
@@ -27,6 +27,49 @@ describe("download.js", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe("sanitizeFilename", () => {
+    it("returns simple names unchanged", () => {
+      expect(sanitizeFilename("Jane Doe")).toBe("Jane Doe");
+    });
+
+    it("replaces slashes with hyphens", () => {
+      expect(sanitizeFilename("AC/DC")).toBe("AC-DC");
+    });
+
+    it("replaces backslashes with hyphens", () => {
+      expect(sanitizeFilename("path\\to\\name")).toBe("path-to-name");
+    });
+
+    it("replaces colons with hyphens", () => {
+      expect(sanitizeFilename("Title: Subtitle")).toBe("Title- Subtitle");
+    });
+
+    it("replaces multiple unsafe characters and collapses runs", () => {
+      expect(sanitizeFilename("a//b::c")).toBe("a-b-c");
+    });
+
+    it("strips leading and trailing hyphens from sanitization", () => {
+      expect(sanitizeFilename("/leading")).toBe("leading");
+      expect(sanitizeFilename("trailing/")).toBe("trailing");
+    });
+
+    it("replaces angle brackets and pipe", () => {
+      expect(sanitizeFilename("a<b>c|d")).toBe("a-b-c-d");
+    });
+
+    it("replaces question marks and asterisks", () => {
+      expect(sanitizeFilename("what?*")).toBe("what");
+    });
+
+    it("replaces double quotes", () => {
+      expect(sanitizeFilename('say "hello"')).toBe("say -hello");
+    });
+
+    it("handles names with only unsafe characters", () => {
+      expect(sanitizeFilename("///")).toBe("");
+    });
   });
 
   describe("downloadBlob", () => {
