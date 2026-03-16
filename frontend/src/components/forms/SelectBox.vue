@@ -13,9 +13,9 @@
    *   direction="column"
    * />
    */
-  import { ref, computed, watch, useTemplateRef } from "vue";
+  import { ref, computed, watch, useTemplateRef, nextTick } from "vue";
+  import { useFloating, autoUpdate, offset, flip, shift } from "@floating-ui/vue";
   import { IconChevronDown } from "@tabler/icons-vue";
-  import ContextMenu from "@/components/navigation/ContextMenu.vue";
 
   const props = defineProps({
     modelValue: { type: [String, Number], default: null },
@@ -40,7 +40,15 @@
   );
   defineOptions({ inheritAttrs: false });
 
-  const menuRef = useTemplateRef("menu-ref");
+  const isOpen = ref(false);
+  const controlRef = useTemplateRef("control-ref");
+  const listboxRef = useTemplateRef("listbox-ref");
+
+  const { floatingStyles } = useFloating(controlRef, listboxRef, {
+    placement: "bottom-start",
+    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
 
   const normalizedOptions = computed(() =>
     props.options.map((opt) =>
@@ -53,46 +61,82 @@
     return found ? found.label : "";
   });
 
+  const toggle = () => {
+    isOpen.value = !isOpen.value;
+    if (isOpen.value) {
+      nextTick(() => document.addEventListener("click", handleOutsideClick));
+      document.addEventListener("keydown", handleKeydown);
+    }
+  };
+
+  const close = () => {
+    if (!isOpen.value) return;
+    isOpen.value = false;
+    document.removeEventListener("click", handleOutsideClick);
+    document.removeEventListener("keydown", handleKeydown);
+  };
+
   const selectOption = (value) => {
     localValue.value = value;
-    menuRef.value?.toggle();
+    close();
+  };
+
+  const handleOutsideClick = (event) => {
+    const control = controlRef.value;
+    const listbox = listboxRef.value;
+    if (control && !control.contains(event.target) && listbox && !listbox.contains(event.target)) {
+      close();
+    }
+  };
+
+  const handleKeydown = (event) => {
+    if (event.key === "Escape") {
+      close();
+    }
   };
 </script>
 
 <template>
   <div class="select-box" :class="[direction, { labeled: label }]">
     <label v-if="label" class="select-label">{{ label }}</label>
-    <ContextMenu ref="menu-ref" variant="slot" placement="bottom-start" menu-class="select-dropdown">
-      <template #trigger="{ toggle, isOpen }">
-        <button
-          type="button"
-          class="select-control"
-          :class="{ open: isOpen }"
-          v-bind="$attrs"
-          @click="toggle"
-        >
-          <span class="current-label">{{ currentLabel }}</span>
-          <IconChevronDown class="select-chevron" :class="{ rotated: isOpen }" :size="16" />
-        </button>
-      </template>
+    <button
+      ref="control-ref"
+      type="button"
+      class="select-control"
+      :class="{ open: isOpen }"
+      v-bind="$attrs"
+      @click="toggle"
+    >
+      <span class="current-label">{{ currentLabel }}</span>
+      <IconChevronDown class="select-chevron" :class="{ rotated: isOpen }" :size="16" />
+    </button>
+    <div
+      v-if="isOpen"
+      ref="listbox-ref"
+      class="select-listbox"
+      role="listbox"
+      :style="floatingStyles"
+    >
       <button
         v-for="opt in normalizedOptions"
         :key="opt.value"
         type="button"
         class="select-option"
         :class="{ active: opt.value === localValue }"
-        role="menuitem"
+        role="option"
+        :aria-selected="opt.value === localValue"
         @click="selectOption(opt.value)"
       >
         {{ opt.label }}
       </button>
-    </ContextMenu>
+    </div>
   </div>
 </template>
 
 <style scoped>
   .select-box {
     display: flex;
+    position: relative;
   }
 
   .select-box.labeled {
@@ -164,6 +208,16 @@
     transform: rotate(180deg);
   }
 
+  .select-listbox {
+    z-index: 999;
+    background-color: var(--surface-primary);
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 8px;
+    padding-block: 4px;
+    min-width: 100%;
+    box-shadow: var(--shadow-soft);
+  }
+
   .select-option {
     display: block;
     width: 100%;
@@ -185,17 +239,5 @@
   .select-option.active {
     font-weight: var(--weight-medium, 500);
     color: var(--text-action);
-  }
-</style>
-
-<style>
-  .select-dropdown.context-menu {
-    border-radius: 8px;
-    padding-block: 4px;
-    min-width: 120px;
-  }
-
-  .select-dropdown.context-menu > *:not(:last-child) {
-    margin-bottom: 0;
   }
 </style>

@@ -1,5 +1,4 @@
 import SelectBox from "./SelectBox.vue";
-import ContextMenu from "../navigation/ContextMenu.vue";
 import { action } from "@storybook/addon-actions";
 
 export default {
@@ -31,12 +30,6 @@ export default {
     direction: "row",
     options: ["option1", "option2", "option3"],
   },
-  decorators: [
-    (story) => ({
-      components: { story, ContextMenu },
-      template: "<story />",
-    }),
-  ],
 };
 
 export const Default = {};
