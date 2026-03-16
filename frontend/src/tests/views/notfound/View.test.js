@@ -67,4 +67,13 @@ describe("NotFoundView", () => {
     const heading = wrapper.find("h1");
     expect(heading.attributes("role")).toBe("alert");
   });
+
+  it("does not use margin-bottom on child elements for spacing", () => {
+    const wrapper = mountView();
+    const main = wrapper.find("main.view");
+    const children = main.element.children;
+    for (const child of children) {
+      expect(child.style.marginBottom).toBe("");
+    }
+  });
 });
