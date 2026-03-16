@@ -229,6 +229,11 @@ describe("LoginView", () => {
     expect(statusRegion.classes()).toContain("sr-only");
   });
 
+  it("login button has type=button to prevent dual submit", () => {
+    const btn = wrapper.find('[data-testid="login-button"]');
+    expect(btn.attributes("type")).toBe("button");
+  });
+
   it("pre-populates credentials when isDev is true", async () => {
     vi.stubEnv("VITE_DEV_LOGIN_EMAIL", "dev@example.com");
     vi.stubEnv("VITE_DEV_LOGIN_PASSWORD", "devpassword");

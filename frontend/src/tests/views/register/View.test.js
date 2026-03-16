@@ -363,6 +363,28 @@ describe("RegisterView", () => {
     expect(api.post).toHaveBeenCalledTimes(1);
   });
 
+  it("register button has type=button to prevent dual submit", () => {
+    const btn = wrapper.find('[data-testid="register-button"]');
+    expect(btn.attributes("type")).toBe("button");
+  });
+
+  it("clicking register button fires handler exactly once", async () => {
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secretpw");
+
+    const registeredUser = { id: 1, name: "Bob", initials: "B", email: "bob@test.com" };
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
+
+    await wrapper.find('[data-testid="register-button"]').trigger("click");
+    await nextTick();
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
   it("joins multiple Pydantic validation error messages", async () => {
     api.post.mockRejectedValue({
       response: {

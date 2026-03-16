@@ -101,6 +101,7 @@
       <Button
         ref="loginButton"
         data-testid="login-button"
+        type="button"
         kind="primary"
         block
         :text="isLoading ? 'Logging in...' : 'Sign in'"
