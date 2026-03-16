@@ -52,7 +52,7 @@ describe("NotFoundView", () => {
 
   it("sets document title to indicate error page", () => {
     mountView();
-    expect(document.title).toContain("Page not found");
+    expect(document.title).toBe("Page not found - RSM Studio");
   });
 
   it("moves focus to the heading on mount", async () => {

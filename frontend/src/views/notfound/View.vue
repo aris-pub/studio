@@ -6,7 +6,7 @@
   const headingRef = ref(null);
 
   onMounted(async () => {
-    document.title = "Page not found — Aris";
+    document.title = "Page not found - RSM Studio";
     await nextTick();
     headingRef.value?.focus();
   });
