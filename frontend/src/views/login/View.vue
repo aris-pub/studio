@@ -27,7 +27,12 @@
 
   onMounted(() => {
     const token = localStorage.getItem("accessToken");
-    const storedUser = JSON.parse(localStorage.getItem("user"));
+    let storedUser = null;
+    try {
+      storedUser = JSON.parse(localStorage.getItem("user"));
+    } catch {
+      localStorage.removeItem("user");
+    }
     if (token && storedUser) {
       if (!user.value) user.value = storedUser;
       router.push("/");
