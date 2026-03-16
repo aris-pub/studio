@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 import PreferencesView from "@/views/settings/PreferencesView.vue";
 
 describe("PreferencesView", () => {
@@ -78,6 +79,87 @@ describe("PreferencesView", () => {
       const button = wrapper.findComponent({ name: "Button" });
       expect(button.exists()).toBe(true);
       expect(button.text()).toContain("Save Settings");
+    });
+  });
+
+  describe("Unsaved Changes Detection", () => {
+    it("detects unsaved changes when a setting differs from saved values", async () => {
+      await nextTick();
+
+      // Initially no unsaved changes
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+
+      // Modify a setting
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+    });
+
+    it("clears unsaved state after successful save", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+
+      // Trigger save
+      const button = wrapper.findComponent({ name: "Button" });
+      await button.trigger("click");
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+    });
+
+    it("detects changes across multiple setting types", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.focusModeAutoHide = false;
+      wrapper.vm.settings.notificationPreference = "email";
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+    });
+  });
+
+  describe("Browser Navigation Protection", () => {
+    beforeEach(() => {
+      window.addEventListener = vi.fn();
+      window.removeEventListener = vi.fn();
+    });
+
+    it("adds beforeunload listener when there are unsaved changes", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      expect(window.addEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+    });
+
+    it("removes beforeunload listener when changes are reverted", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      // Revert to original
+      wrapper.vm.settings.autoSaveInterval = 30;
+      await nextTick();
+
+      expect(window.removeEventListener).toHaveBeenCalledWith(
+        "beforeunload",
+        expect.any(Function)
+      );
+    });
+
+    it("removes beforeunload listener on component unmount", async () => {
+      await nextTick();
+      wrapper.unmount();
+      expect(window.removeEventListener).toHaveBeenCalledWith(
+        "beforeunload",
+        expect.any(Function)
+      );
     });
   });
 

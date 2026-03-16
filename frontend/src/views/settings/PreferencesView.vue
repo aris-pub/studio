@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, reactive, onMounted, inject } from "vue";
+  import { ref, reactive, computed, onMounted, onUnmounted, watch, inject } from "vue";
   import { IconSettings2 } from "@tabler/icons-vue";
   import { toast } from "@/utils/toast.js";
 
@@ -24,8 +24,31 @@
     mobileMenuBehavior: "standard",
   });
 
+  const savedSettings = ref({});
   const loading = ref(false);
   const saved = ref(false);
+
+  const hasUnsavedChanges = computed(() => {
+    const keys = Object.keys(savedSettings.value);
+    if (keys.length === 0) return false;
+    return keys.some((key) => settings[key] !== savedSettings.value[key]);
+  });
+
+  const handleBeforeUnload = (e) => {
+    if (hasUnsavedChanges.value) {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    }
+  };
+
+  watch(hasUnsavedChanges, (hasChanges) => {
+    if (hasChanges) {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    } else {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    }
+  });
 
   onMounted(async () => {
     try {
@@ -37,6 +60,11 @@
         description: "Your default settings are being used. Please try refreshing the page.",
       });
     }
+    savedSettings.value = { ...settings };
+  });
+
+  onUnmounted(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
   });
 
   const saveSettings = async () => {
@@ -45,6 +73,7 @@
 
     try {
       await api.post("/user-settings", settings);
+      savedSettings.value = { ...settings };
       saved.value = true;
       setTimeout(() => {
         saved.value = false;
