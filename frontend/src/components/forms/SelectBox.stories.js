@@ -1,7 +1,5 @@
 import SelectBox from "./SelectBox.vue";
 import ContextMenu from "../navigation/ContextMenu.vue";
-import ContextMenuItem from "../navigation/ContextMenuItem.vue";
-import ButtonToggle from "../base/ButtonToggle.vue";
 import { action } from "@storybook/addon-actions";
 
 export default {
@@ -35,7 +33,7 @@ export default {
   },
   decorators: [
     (story) => ({
-      components: { story, ContextMenu, ContextMenuItem, ButtonToggle },
+      components: { story, ContextMenu },
       template: "<story />",
     }),
   ],

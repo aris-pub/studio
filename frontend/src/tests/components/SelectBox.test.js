@@ -7,23 +7,26 @@ import SelectBox from "@/components/forms/SelectBox.vue";
 describe("SelectBox.vue", () => {
   const TeleportStub = { props: ["to"], template: "<div><slot/></div>" };
   const ContextMenuStub = {
-    props: ["variant", "placement"],
+    props: ["variant", "placement", "menuClass"],
     template: `
       <div class="cm-wrapper">
-        <slot name="trigger" :toggle="() => {}"></slot>
+        <slot name="trigger" :toggle="toggle" :is-open="false"></slot>
         <div class="cm-menu"><slot/></div>
       </div>
     `,
+    setup(_, { expose }) {
+      const toggle = () => {};
+      expose({ toggle });
+      return { toggle };
+    },
   };
-  const ButtonToggleStub = {
-    props: ["icon"],
-    template: '<button class="cm-btn" v-bind="$attrs">Toggle</button>',
+
+  const stubs = {
+    Teleport: TeleportStub,
+    ContextMenu: ContextMenuStub,
   };
-  const itemStub = {
-    props: { caption: { type: String } },
-    template: '<button class="item"><span class="cmi-caption">{{ caption }}</span></button>',
-  };
-  it("renders current label and trigger button in row direction with options and attributes", async () => {
+
+  it("renders current label and trigger in row direction with options and attributes", async () => {
     const wrapper = mount(SelectBox, {
       props: {
         modelValue: "b",
@@ -34,26 +37,19 @@ describe("SelectBox.vue", () => {
         ],
       },
       attrs: { disabled: true },
-      global: {
-        stubs: {
-          Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
-        },
-      },
+      global: { stubs },
     });
+
     const container = wrapper.get(".select-box");
     expect(container.classes()).toContain("row");
+
     const currentLabel = wrapper.get(".current-label");
     expect(currentLabel.text()).toBe("Option B");
-    await nextTick();
-    const trigger = wrapper.get(".cm-btn");
+
+    const trigger = wrapper.get(".select-control");
     expect(trigger.attributes("disabled")).toBeDefined();
 
-    await trigger.trigger("click");
-    await nextTick();
-    const items = wrapper.findAll(".cm-menu .item .cmi-caption");
+    const items = wrapper.findAll(".select-option");
     expect(items).toHaveLength(2);
     expect(items[0].text()).toBe("Option A");
     expect(items[1].text()).toBe("Option B");
@@ -66,30 +62,21 @@ describe("SelectBox.vue", () => {
         direction: "column",
         options: [{ value: "x", label: "X" }],
       },
-      global: {
-        stubs: {
-          Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
-        },
-      },
+      global: { stubs },
     });
+
     const container = wrapper.get(".select-box");
     expect(container.classes()).toContain("column");
+
     const currentLabel = wrapper.get(".current-label");
     expect(currentLabel.text()).toBe("X");
-    await nextTick();
 
-    const trigger = wrapper.get(".cm-btn");
-    await trigger.trigger("click");
-    await nextTick();
-    const items = wrapper.findAll(".cm-menu .item .cmi-caption");
+    const items = wrapper.findAll(".select-option");
     expect(items).toHaveLength(1);
     expect(items[0].text()).toBe("X");
   });
 
-  it("emits update:modelValue when menu item clicked", async () => {
+  it("emits update:modelValue when option clicked", async () => {
     const wrapper = mount(SelectBox, {
       props: {
         modelValue: "init",
@@ -98,19 +85,10 @@ describe("SelectBox.vue", () => {
           { value: "new", label: "New" },
         ],
       },
-      global: {
-        stubs: {
-          Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
-        },
-      },
+      global: { stubs },
     });
-    const trigger = wrapper.get(".cm-btn");
-    await trigger.trigger("click");
-    await nextTick();
-    const items = wrapper.findAll(".cm-menu .item");
+
+    const items = wrapper.findAll(".select-option");
     await items[1].trigger("click");
     expect(wrapper.emitted("update:modelValue")).toBeTruthy();
     expect(wrapper.emitted("update:modelValue")[0]).toEqual(["new"]);
@@ -119,23 +97,13 @@ describe("SelectBox.vue", () => {
   it("supports primitive string options", async () => {
     const wrapper = mount(SelectBox, {
       props: { modelValue: "foo", options: ["foo", "bar"] },
-      global: {
-        stubs: {
-          Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
-        },
-      },
+      global: { stubs },
     });
-    await nextTick();
+
     const currentLabel = wrapper.get(".current-label");
     expect(currentLabel.text()).toBe("foo");
 
-    const trigger = wrapper.get(".cm-btn");
-    await trigger.trigger("click");
-    await nextTick();
-    const items = wrapper.findAll(".cm-menu .item .cmi-caption");
+    const items = wrapper.findAll(".select-option");
     expect(items).toHaveLength(2);
     expect(items[0].text()).toBe("foo");
     expect(items[1].text()).toBe("bar");
@@ -148,15 +116,9 @@ describe("SelectBox.vue", () => {
         options: ["a", "b"],
         label: "Choose one",
       },
-      global: {
-        stubs: {
-          Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
-        },
-      },
+      global: { stubs },
     });
+
     const label = wrapper.find("label.select-label");
     expect(label.exists()).toBe(true);
     expect(label.text()).toBe("Choose one");
@@ -168,16 +130,60 @@ describe("SelectBox.vue", () => {
         modelValue: "a",
         options: ["a", "b"],
       },
+      global: { stubs },
+    });
+
+    const label = wrapper.find("label.select-label");
+    expect(label.exists()).toBe(false);
+  });
+
+  it("clicking the entire control area triggers the menu", async () => {
+    let toggleCalled = false;
+    const ContextMenuWithToggle = {
+      props: ["variant", "placement", "menuClass"],
+      template: `
+        <div class="cm-wrapper">
+          <slot name="trigger" :toggle="toggle" :is-open="false"></slot>
+          <div class="cm-menu"><slot/></div>
+        </div>
+      `,
+      setup() {
+        const toggle = () => { toggleCalled = true; };
+        return { toggle };
+      },
+    };
+
+    const wrapper = mount(SelectBox, {
+      props: {
+        modelValue: "a",
+        options: ["a", "b"],
+      },
       global: {
         stubs: {
           Teleport: TeleportStub,
-          ContextMenu: ContextMenuStub,
-          ButtonToggle: ButtonToggleStub,
-          ContextMenuItem: itemStub,
+          ContextMenu: ContextMenuWithToggle,
         },
       },
     });
-    const label = wrapper.find("label.select-label");
-    expect(label.exists()).toBe(false);
+
+    await wrapper.get(".select-control").trigger("click");
+    expect(toggleCalled).toBe(true);
+  });
+
+  it("marks the active option with active class", () => {
+    const wrapper = mount(SelectBox, {
+      props: {
+        modelValue: "b",
+        options: [
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ],
+      },
+      global: { stubs },
+    });
+
+    const items = wrapper.findAll(".select-option");
+    expect(items[0].classes()).not.toContain("active");
+    expect(items[1].classes()).toContain("active");
   });
 });

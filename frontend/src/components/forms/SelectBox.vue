@@ -1,32 +1,21 @@
 <script setup>
   /**
-   * SelectBox - A custom dropdown select component.
-   *
-   * This component provides a styled dropdown interface for selecting a single value
-   * from a list of options. It displays the currently selected label and uses a
-   * `ContextMenu` for the dropdown options. It supports `v-model` for its value,
-   * and can display options in a row or column layout.
+   * SelectBox - A custom dropdown select component styled to match InputText.
    *
    * @displayName SelectBox
    * @example
-   * // Basic usage with string options
    * <SelectBox v-model="selectedFruit" :options="['Apple', 'Banana', 'Orange']" />
    *
    * @example
-   * // With object options and column direction
    * <SelectBox
    *   v-model="selectedId"
    *   :options="[{ value: 1, label: 'First' }, { value: 2, label: 'Second' }]"
    *   direction="column"
    * />
-   *
-   * @example
-   * // With a default selected value
-   * <SelectBox v-model="selectedStatus" :options="['Active', 'Inactive']" :model-value="'Active'" />
    */
-  import { ref, computed, watch } from "vue";
+  import { ref, computed, watch, useTemplateRef } from "vue";
+  import { IconChevronDown } from "@tabler/icons-vue";
   import ContextMenu from "@/components/navigation/ContextMenu.vue";
-  import ContextMenuItem from "@/components/navigation/ContextMenuItem.vue";
 
   const props = defineProps({
     modelValue: { type: [String, Number], default: null },
@@ -36,55 +25,68 @@
   });
   const emit = defineEmits(["update:modelValue"]);
 
-  // Manage internal value for v-model
   const localValue = ref(props.modelValue);
   watch(
     () => props.modelValue,
     (v) => {
       localValue.value = v;
-    }
+    },
   );
   watch(
     () => localValue.value,
     (v) => {
       emit("update:modelValue", v);
-    }
+    },
   );
   defineOptions({ inheritAttrs: false });
 
-  // Normalize options: allow primitives or {value,label} objects
+  const menuRef = useTemplateRef("menu-ref");
+
   const normalizedOptions = computed(() =>
     props.options.map((opt) =>
-      typeof opt === "object" && opt !== null ? opt : { value: opt, label: String(opt) }
-    )
+      typeof opt === "object" && opt !== null ? opt : { value: opt, label: String(opt) },
+    ),
   );
 
-  // Display label of current value
   const currentLabel = computed(() => {
     const found = normalizedOptions.value.find((o) => o.value === localValue.value);
     return found ? found.label : "";
   });
+
+  const selectOption = (value) => {
+    localValue.value = value;
+    menuRef.value?.toggle();
+  };
 </script>
 
 <template>
   <div class="select-box" :class="[direction, { labeled: label }]">
     <label v-if="label" class="select-label">{{ label }}</label>
-    <div class="select-control">
-      <span class="current-label">{{ currentLabel }}</span>
-      <ContextMenu variant="slot" placement="bottom-start">
-        <template #trigger="{ toggle }">
-          <ButtonToggle icon="CaretDownFilled" v-bind="$attrs" @click="toggle" />
-        </template>
-        <ContextMenuItem
-          v-for="opt in normalizedOptions"
-          :key="opt.value"
-          icon=""
-          :caption="opt.label"
-          :class="{ active: opt.value === localValue }"
-          @click="localValue = opt.value"
-        />
-      </ContextMenu>
-    </div>
+    <ContextMenu ref="menu-ref" variant="slot" placement="bottom-start" menu-class="select-dropdown">
+      <template #trigger="{ toggle, isOpen }">
+        <button
+          type="button"
+          class="select-control"
+          :class="{ open: isOpen }"
+          v-bind="$attrs"
+          @click="toggle"
+        >
+          <span class="current-label">{{ currentLabel }}</span>
+          <IconChevronDown class="select-chevron" :class="{ rotated: isOpen }" :size="16" />
+        </button>
+      </template>
+      <button
+        v-for="opt in normalizedOptions"
+        :key="opt.value"
+        type="button"
+        class="select-option"
+        :class="{ active: opt.value === localValue }"
+        role="menuitem"
+        @click="selectOption(opt.value)"
+      >
+        {{ opt.label }}
+      </button>
+    </ContextMenu>
   </div>
 </template>
 
@@ -104,24 +106,10 @@
     color: var(--gray-900);
   }
 
-  .select-control {
-    display: flex;
-    border: var(--border-thin) solid var(--border-primary);
-    border-radius: 8px;
-  }
-
-  .select-box:not(.labeled) .select-control {
-    /* Unlabeled: match prior behaviour */
-  }
-
   .select-box.row:not(.labeled) {
     width: fit-content;
     flex-direction: row;
     align-items: center;
-
-    & .select-control {
-      width: fit-content;
-    }
   }
 
   .select-box.column:not(.labeled) {
@@ -129,25 +117,73 @@
     gap: 2px;
   }
 
-  .current-label {
-    flex: 1;
+  .select-control {
     display: flex;
     align-items: center;
-    height: 100%;
-    text-wrap: nowrap;
-    background: var(--surface-page);
-    padding-inline: 8px 4px;
-    border-radius: 8px 0 0 8px;
+    gap: 4px;
+    background: transparent;
+    border: var(--border-extrathin) solid var(--border-primary);
+    border-radius: 8px;
+    padding-block: 6px;
+    padding-inline: 12px 8px;
+    font: inherit;
+    cursor: pointer;
+    width: 100%;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
   }
 
-  :deep(.cm-btn) {
-    width: 24px;
-    height: calc(24px - var(--border-thin));
-    padding: 0 !important;
-    border-radius: 0 8px 8px 0 !important;
+  .select-control:hover {
+    border-color: var(--border-action);
+  }
 
-    & .tabler-icon {
-      margin: 0;
-    }
+  .select-control.open {
+    border-color: var(--border-action);
+    background-color: var(--white);
+  }
+
+  .select-control[disabled] {
+    background-color: var(--surface-disabled);
+    cursor: not-allowed;
+  }
+
+  .current-label {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .select-chevron {
+    color: var(--gray-500);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .select-chevron.rotated {
+    transform: rotate(180deg);
+  }
+
+  .select-option {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--extra-dark);
+    transition: var(--transition-bg-color);
+  }
+
+  .select-option:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .select-option.active {
+    font-weight: var(--weight-medium, 500);
+    color: var(--text-action);
   }
 </style>
