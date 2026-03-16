@@ -23,7 +23,7 @@
       <div class="mobile-logo">
         <Logo type="full" />
       </div>
-      <form class="form-card" @submit.prevent="$emit('submit')">
+      <form class="form-card" novalidate @submit.prevent="$emit('submit')">
         <h1 class="form-heading">{{ heading }}</h1>
         <p v-if="subheading" class="form-subheading text-caption">{{ subheading }}</p>
 
