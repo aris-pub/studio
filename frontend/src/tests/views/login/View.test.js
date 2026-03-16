@@ -162,6 +162,13 @@ describe("LoginView", () => {
     expect(wrapper.find('[data-testid="password-input"]').attributes("type")).toBe("password");
   });
 
+  it("sets autocomplete attributes on form fields (WCAG 1.3.5)", () => {
+    expect(wrapper.find('[data-testid="email-input"]').attributes("autocomplete")).toBe("email");
+    expect(wrapper.find('[data-testid="password-input"]').attributes("autocomplete")).toBe(
+      "current-password"
+    );
+  });
+
   it("does not render a 'Forgot password?' element", () => {
     expect(wrapper.text()).not.toContain("Forgot password?");
     expect(wrapper.find(".field-footer").exists()).toBe(false);
