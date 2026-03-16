@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-const componentPath = resolve(__dirname, "../../../views/account/View.vue");
+const componentPath = resolve(__dirname, "../../../views/account/ProfileSection.vue");
 const componentSrc = readFileSync(componentPath, "utf-8");
 
 const cssPath = resolve(__dirname, "../../../../../site/assets/css/rsm.css");
