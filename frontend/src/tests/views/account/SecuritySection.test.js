@@ -108,9 +108,7 @@ describe("SecuritySection", () => {
       wrapper.vm.newPassword = "short";
       wrapper.vm.confirmPassword = "short";
       await wrapper.vm.onChangePassword();
-      expect(toast.error).toHaveBeenCalledWith(
-        "New password must be at least 8 characters long"
-      );
+      expect(toast.error).toHaveBeenCalledWith("New password must be at least 8 characters long");
     });
 
     it("changes password successfully", async () => {

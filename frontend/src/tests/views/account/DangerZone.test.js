@@ -47,9 +47,7 @@ describe("DangerZone", () => {
   it("requires DELETE confirmation text", async () => {
     wrapper.vm.deleteConfirmText = "wrong";
     await wrapper.vm.onDeleteAccount();
-    expect(toast.error).toHaveBeenCalledWith(
-      'Please type "DELETE" to confirm account deletion'
-    );
+    expect(toast.error).toHaveBeenCalledWith('Please type "DELETE" to confirm account deletion');
     expect(api.delete).not.toHaveBeenCalled();
   });
 
@@ -61,7 +59,9 @@ describe("DangerZone", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
       set href(_) {},
-      get href() { return "http://localhost/account"; },
+      get href() {
+        return "http://localhost/account";
+      },
     });
 
     wrapper.vm.deleteConfirmText = "DELETE";
@@ -89,12 +89,18 @@ describe("DangerZone", () => {
 
   it("prevents concurrent deletion requests", async () => {
     let resolveDelete;
-    api.delete.mockReturnValue(new Promise((resolve) => { resolveDelete = resolve; }));
+    api.delete.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDelete = resolve;
+      })
+    );
 
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
       set href(_) {},
-      get href() { return "http://localhost/account"; },
+      get href() {
+        return "http://localhost/account";
+      },
     });
 
     wrapper.vm.deleteConfirmText = "DELETE";

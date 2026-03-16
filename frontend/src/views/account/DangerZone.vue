@@ -44,8 +44,7 @@
       <div class="danger-action">
         <div class="action-content">
           <p>
-            Permanently delete your account and all associated data. This action cannot be
-            undone.
+            Permanently delete your account and all associated data. This action cannot be undone.
           </p>
         </div>
 

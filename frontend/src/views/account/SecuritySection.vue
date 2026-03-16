@@ -136,9 +136,7 @@
               kind="secondary"
               size="sm"
               :disabled="isSendingVerification || verificationSent"
-              :icon="
-                verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'
-              "
+              :icon="verificationSent ? 'CheckCircle' : isSendingVerification ? 'Loader2' : 'Mail'"
               :text="
                 verificationSent
                   ? 'Verification email sent'

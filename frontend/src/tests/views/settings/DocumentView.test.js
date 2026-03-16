@@ -312,9 +312,7 @@ describe("DocumentView", () => {
       // Since scoped styles are compiled, we verify the component's style block
       // contains the responsive breakpoint by checking the component definition
       const componentDef = DocumentView;
-      const styleBlock = componentDef.__scopeId
-        ? document.querySelectorAll("style")
-        : [];
+      const styleBlock = componentDef.__scopeId ? document.querySelectorAll("style") : [];
 
       // Verify the component has the responsive class structure:
       // .settings-main should exist and .pane-settings should not have a fixed max-width

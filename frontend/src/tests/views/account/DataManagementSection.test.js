@@ -84,7 +84,11 @@ describe("DataManagementSection", () => {
     vi.spyOn(document.body, "appendChild").mockImplementation(() => {});
 
     let resolveExport;
-    api.get.mockReturnValue(new Promise((resolve) => { resolveExport = resolve; }));
+    api.get.mockReturnValue(
+      new Promise((resolve) => {
+        resolveExport = resolve;
+      })
+    );
 
     const first = wrapper.vm.onExportData();
     wrapper.vm.onExportData();
