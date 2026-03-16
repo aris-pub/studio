@@ -45,8 +45,13 @@
   });
 
   const onLogin = async () => {
-    isLoading.value = true;
     error.value = "";
+    if (!email.value || !password.value) {
+      error.value = "Please fill in all fields.";
+      return;
+    }
+
+    isLoading.value = true;
     try {
       const response = await api.post("/login", {
         email: email.value,
@@ -64,7 +69,14 @@
 
       router.push("/");
     } catch (err) {
-      error.value = err.response?.data?.detail || err.message || "Login failed";
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        error.value = detail.map((e) => e.msg ?? e.message ?? String(e)).join(". ");
+      } else if (typeof detail === "string") {
+        error.value = detail;
+      } else {
+        error.value = err.message || "Login failed";
+      }
     } finally {
       isLoading.value = false;
     }
@@ -101,22 +113,20 @@
       <Button
         ref="loginButton"
         data-testid="login-button"
+        type="submit"
         kind="primary"
         block
         :text="isLoading ? 'Logging in...' : 'Sign in'"
         :disabled="isLoading"
-        @click="onLogin"
       />
     </template>
 
     <template #footer>
       <div class="form-footer text-caption">
         New to Studio?
-        <RouterLink
-          data-testid="register-link"
-          to="/register"
-          class="register-link"
-        >Create an account</RouterLink>
+        <RouterLink data-testid="register-link" to="/register" class="register-link"
+          >Create an account</RouterLink
+        >
       </div>
     </template>
   </AuthLayout>
