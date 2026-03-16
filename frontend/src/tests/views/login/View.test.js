@@ -10,7 +10,13 @@ import Logo from "@/components/base/Logo.vue";
 
 // Stub useRouter to capture navigation calls
 const pushMock = vi.fn();
-vi.mock("vue-router", () => ({ useRouter: () => ({ push: pushMock }) }));
+vi.mock("vue-router", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useRouter: () => ({ push: pushMock }),
+  };
+});
 
 describe("LoginView", () => {
   let wrapper;
@@ -48,15 +54,15 @@ describe("LoginView", () => {
     expect(emailInput.attributes("type")).toBe("email");
   });
 
-  it("navigates to register page on register button click", async () => {
-    const registerBtn = wrapper.find('[data-testid="register-link"]');
-    await registerBtn.trigger("click");
-    expect(pushMock).toHaveBeenCalledWith("/register");
+  it("renders register link as a RouterLink to /register", () => {
+    const link = wrapper.findComponent(RouterLinkStub);
+    expect(link.exists()).toBe(true);
+    expect(link.props("to")).toBe("/register");
   });
 
-  it("register link does not trigger login form submission", () => {
-    const registerBtn = wrapper.find('[data-testid="register-link"]');
-    expect(registerBtn.attributes("type")).toBe("button");
+  it("register link displays correct text", () => {
+    const link = wrapper.findComponent(RouterLinkStub);
+    expect(link.text()).toBe("Create an account");
   });
 
   it("displays the Logo component", () => {
@@ -139,9 +145,12 @@ describe("LoginView", () => {
     expect(errorEl.classes()).toContain("error-alert");
   });
 
-  it("renders register link as a router-link", () => {
-    const link = wrapper.find('[data-testid="register-link"]');
-    expect(link.exists()).toBe(true);
+  it("register link is not a Button component", () => {
+    const buttons = wrapper.findAllComponents(Button);
+    const registerButton = buttons.find(
+      (b) => b.attributes("data-testid") === "register-link"
+    );
+    expect(registerButton).toBeUndefined();
   });
 
   it("toggles password visibility", async () => {
