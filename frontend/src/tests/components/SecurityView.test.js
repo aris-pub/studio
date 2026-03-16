@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { ref } from "vue";
 import AccountView from "@/views/account/View.vue";
+import SecuritySection from "@/views/account/SecuritySection.vue";
 import Button from "@/components/base/Button.vue";
 import InputText from "@/components/forms/InputText.vue";
 import { toast } from "@/utils/toast.js";
@@ -391,8 +392,9 @@ describe("SecurityView Email Verification", () => {
     it("handles password change API calls", async () => {
       mockApi.post.mockResolvedValueOnce({ data: { message: "Password changed successfully" } });
 
-      // Simulate filling form (we're using stubs so we can't actually fill inputs)
-      await wrapper.vm.onChangePassword();
+      // Access onChangePassword via the SecuritySection child component
+      const securitySection = wrapper.findComponent(SecuritySection);
+      await securitySection.vm.onChangePassword();
 
       // The component should show validation errors for empty fields
       expect(toast.error).toHaveBeenCalledWith("Please fill in all password fields");
