@@ -187,3 +187,15 @@
     color: var(--text-action);
   }
 </style>
+
+<style>
+  .select-dropdown.context-menu {
+    border-radius: 8px;
+    padding-block: 4px;
+    min-width: 120px;
+  }
+
+  .select-dropdown.context-menu > *:not(:last-child) {
+    margin-bottom: 0;
+  }
+</style>
