@@ -161,9 +161,7 @@ describe("LoginView", () => {
 
   it("register link is not a Button component", () => {
     const buttons = wrapper.findAllComponents(Button);
-    const registerButton = buttons.find(
-      (b) => b.attributes("data-testid") === "register-link"
-    );
+    const registerButton = buttons.find((b) => b.attributes("data-testid") === "register-link");
     expect(registerButton).toBeUndefined();
   });
 
@@ -275,6 +273,57 @@ describe("LoginView", () => {
     await nextTick();
     const errorEl = w.find('[data-testid="auth-error"]');
     expect(errorEl.text()).toBe("value is not a valid email address. field required");
+  });
+
+  it("does not render object detail as raw JSON in the error alert", async () => {
+    const mockApi = {
+      post: vi.fn().mockRejectedValue({
+        response: { data: { detail: { email: "invalid", code: 42 } } },
+        message: "Request failed",
+      }),
+      get: vi.fn(),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+    await w.vm.onLogin();
+    await nextTick();
+    const errorEl = w.find('[data-testid="auth-error"]');
+    expect(errorEl.text()).toBe("Request failed");
+  });
+
+  it("falls back to message property in array detail items when msg is missing", async () => {
+    const mockApi = {
+      post: vi.fn().mockRejectedValue({
+        response: {
+          data: {
+            detail: [{ message: "Email is required" }, { message: "Password is required" }],
+          },
+        },
+      }),
+      get: vi.fn(),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+    await w.vm.onLogin();
+    await nextTick();
+    const errorEl = w.find('[data-testid="auth-error"]');
+    expect(errorEl.text()).toBe("Email is required. Password is required");
   });
 
   it("pre-populates credentials when isDev is true", async () => {

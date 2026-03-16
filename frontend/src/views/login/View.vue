@@ -71,8 +71,8 @@
     } catch (err) {
       const detail = err.response?.data?.detail;
       if (Array.isArray(detail)) {
-        error.value = detail.map((e) => e.msg).join(". ");
-      } else if (detail) {
+        error.value = detail.map((e) => e.msg ?? e.message ?? String(e)).join(". ");
+      } else if (typeof detail === "string") {
         error.value = detail;
       } else {
         error.value = err.message || "Login failed";
@@ -124,11 +124,9 @@
     <template #footer>
       <div class="form-footer text-caption">
         New to Studio?
-        <RouterLink
-          data-testid="register-link"
-          to="/register"
-          class="register-link"
-        >Create an account</RouterLink>
+        <RouterLink data-testid="register-link" to="/register" class="register-link"
+          >Create an account</RouterLink
+        >
       </div>
     </template>
   </AuthLayout>
