@@ -72,7 +72,7 @@
     "eslint-plugin-vue": "~10.6.2",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
-    "playwright": "^1.53.1",
+    "playwright": "^1.58.2",
     "prettier": "^3.5.3",
     "puppeteer": "^24.35.0",
     "puppeteer-core": "^24.10.2",
