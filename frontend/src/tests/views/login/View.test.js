@@ -229,9 +229,36 @@ describe("LoginView", () => {
     expect(statusRegion.classes()).toContain("sr-only");
   });
 
-  it("login button has type=button to prevent dual submit", () => {
+  it("login button has type=submit so Enter key submits the form", () => {
     const btn = wrapper.find('[data-testid="login-button"]');
-    expect(btn.attributes("type")).toBe("button");
+    expect(btn.attributes("type")).toBe("submit");
+  });
+
+  it("login button does not have a @click handler (form submit handles it)", async () => {
+    const mockApi = {
+      post: vi.fn().mockResolvedValue({
+        data: { access_token: "tok", refresh_token: "ref" },
+      }),
+      get: vi.fn().mockResolvedValue({ data: { id: 1, name: "Test" } }),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+
+    await w.find('[data-testid="login-button"]').trigger("click");
+    await nextTick();
+
+    await w.find("form").trigger("submit");
+    await nextTick();
+
+    expect(mockApi.post).toHaveBeenCalledTimes(1);
   });
 
   it("pre-populates credentials when isDev is true", async () => {

@@ -363,12 +363,12 @@ describe("RegisterView", () => {
     expect(api.post).toHaveBeenCalledTimes(1);
   });
 
-  it("register button has type=button to prevent dual submit", () => {
+  it("register button has type=submit so Enter key submits the form", () => {
     const btn = wrapper.find('[data-testid="register-button"]');
-    expect(btn.attributes("type")).toBe("button");
+    expect(btn.attributes("type")).toBe("submit");
   });
 
-  it("clicking register button fires handler exactly once", async () => {
+  it("clicking register button does not fire handler directly (form submit handles it)", async () => {
     const inputs = wrapper.findAll("input");
     await inputs[0].setValue("Bob");
     await inputs[1].setValue("bob@test.com");
@@ -380,6 +380,9 @@ describe("RegisterView", () => {
     });
 
     await wrapper.find('[data-testid="register-button"]').trigger("click");
+    await nextTick();
+
+    await wrapper.find("form").trigger("submit");
     await nextTick();
 
     expect(api.post).toHaveBeenCalledTimes(1);
