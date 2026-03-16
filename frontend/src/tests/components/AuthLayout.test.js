@@ -86,4 +86,9 @@ describe("AuthLayout", () => {
     expect(main.exists()).toBe(true);
     expect(main.classes()).toContain("form-panel");
   });
+
+  it("sets novalidate on the form so JS validation handles errors", () => {
+    const wrapper = mountLayout();
+    expect(wrapper.find("form").attributes("novalidate")).toBeDefined();
+  });
 });
