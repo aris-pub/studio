@@ -3,6 +3,13 @@ import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import PreferencesView from "@/views/settings/PreferencesView.vue";
 
+let routeLeaveGuard = null;
+vi.mock("vue-router", () => ({
+  onBeforeRouteLeave: (guard) => {
+    routeLeaveGuard = guard;
+  },
+}));
+
 describe("PreferencesView", () => {
   let wrapper;
 
@@ -13,6 +20,7 @@ describe("PreferencesView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    routeLeaveGuard = null;
 
     wrapper = mount(PreferencesView, {
       global: {
@@ -211,6 +219,42 @@ describe("PreferencesView", () => {
       const warning = wrapper.find(".status-message.warning");
       expect(warning.attributes("role")).toBe("status");
       expect(warning.attributes("aria-live")).toBe("polite");
+    });
+  });
+
+  describe("In-App Navigation Protection", () => {
+    it("registers a route leave guard", () => {
+      expect(routeLeaveGuard).toBeTypeOf("function");
+    });
+
+    it("allows navigation when there are no unsaved changes", async () => {
+      await nextTick();
+      const result = routeLeaveGuard();
+      expect(result).not.toBe(false);
+    });
+
+    it("blocks navigation when user cancels and there are unsaved changes", async () => {
+      await nextTick();
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+      const result = routeLeaveGuard();
+      expect(window.confirm).toHaveBeenCalled();
+      expect(result).toBe(false);
+      window.confirm.mockRestore();
+    });
+
+    it("allows navigation when user confirms and there are unsaved changes", async () => {
+      await nextTick();
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      const result = routeLeaveGuard();
+      expect(window.confirm).toHaveBeenCalled();
+      expect(result).not.toBe(false);
+      window.confirm.mockRestore();
     });
   });
 

@@ -1,5 +1,6 @@
 <script setup>
   import { ref, reactive, computed, onMounted, onUnmounted, watch, inject } from "vue";
+  import { onBeforeRouteLeave } from "vue-router";
   import { IconSettings2 } from "@tabler/icons-vue";
   import { toast } from "@/utils/toast.js";
 
@@ -61,6 +62,13 @@
       });
     }
     savedSettings.value = { ...settings };
+  });
+
+  onBeforeRouteLeave(() => {
+    if (hasUnsavedChanges.value) {
+      const leave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+      if (!leave) return false;
+    }
   });
 
   onUnmounted(() => {
