@@ -82,9 +82,15 @@
       direction="column"
       label="Email"
       type="email"
+      autocomplete="email"
       required
     />
-    <PasswordInput v-model="password" data-testid="password-input" required />
+    <PasswordInput
+      v-model="password"
+      data-testid="password-input"
+      autocomplete="current-password"
+      required
+    />
 
     <template #actions>
       <Button
