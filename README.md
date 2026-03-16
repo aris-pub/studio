@@ -1,31 +1,50 @@
-# Aris Frontend
+# Aris Backend
 
-Vue 3 frontend for the Aris scientific publishing platform. Researchers write, read, and review RSM manuscripts as responsive, interactive web documents with real-time collaboration.
+FastAPI backend for the Aris scientific publishing platform. Provides a REST API for users, manuscripts, authentication, and real-time collaboration.
 
 ## Stack
 
-- **Vue 3** + Composition API
-- **Vite** — dev server and bundler
-- **CodeMirror 6** — source editor
-- **Y.js** + `y-codemirror.next` — real-time collaboration
-- **Vue Router**, **Pinia**, **@vueuse/core**
-- **Axios** — API requests
+- **Python 3.13+**
+- **FastAPI** + **Uvicorn**
+- **SQLAlchemy** (async) + **Alembic** migrations
+- **PostgreSQL** — primary database
+- **PyJWT** — authentication
+- **pycrdt** + **websockets** — Y.js collaboration client
 
 ## Quick Start
 
 ```bash
-npm install
-npm run dev        # dev server
-npm run storybook  # component library
-npm test           # unit tests
-npm run test:e2e   # E2E tests (requires services running)
-npm run lint
+uv sync
+alembic upgrade head
+uvicorn main:app --reload
 ```
 
-## Config
+API docs available at `http://localhost:8000/docs`.
 
-Copy `.env.example` to `.env`. Required variables are documented there.
+## Testing
+
+```bash
+uv run pytest -n8                      # SQLite locally (fast)
+uv run pytest tests/integration/ -v   # integration tests
+./simulate-ci -- uv run pytest -n8    # PostgreSQL (CI fidelity)
+```
+
+Tests use SQLite locally and PostgreSQL in CI automatically — no config needed for local dev.
 
 ## Deployment
 
-Hosted on Netlify, configured to rebuild on every push to `main`.
+```bash
+# Deploy from the project root (build needs both backend/ and styles/)
+fly deploy --config backend/fly.toml --ignorefile backend/.dockerignore
+```
+
+Database hosted on Supabase, managed via Alembic.
+
+## Utility Scripts
+
+| Script | Description |
+|--------|-------------|
+| `scripts/init_db.py` | Create all tables |
+| `scripts/add_mock_data.py` | Seed database with mock users and files |
+| `scripts/add_example_data.py` | Load example RSM documents |
+| `scripts/sync_columns.py` | Sync columns between Postgres databases |
