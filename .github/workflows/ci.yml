@@ -322,7 +322,7 @@ jobs:
 
     - name: Start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --wait --wait-timeout 180
+        docker compose --env-file .env up -d --wait --wait-timeout 300
 
     - name: Setup database and test user in Docker
       run: |
@@ -441,7 +441,7 @@ jobs:
 
     - name: Start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --wait --wait-timeout 180
+        docker compose --env-file .env up -d --wait --wait-timeout 300
 
     - name: Setup database and test user in Docker
       run: |
@@ -562,7 +562,7 @@ jobs:
 
     - name: Start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --wait --wait-timeout 180
+        docker compose --env-file .env up -d --wait --wait-timeout 300
 
     - name: Setup database and test user in Docker
       run: |

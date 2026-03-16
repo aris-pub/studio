@@ -40,8 +40,8 @@ services:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 5s
       timeout: 3s
-      retries: 30
-      start_period: 30s
+      retries: 40
+      start_period: 60s
     restart: unless-stopped
 
   # backend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
@@ -65,8 +65,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:5173"]
       interval: 5s
       timeout: 3s
-      retries: 30
-      start_period: 15s
+      retries: 40
+      start_period: 60s
     command: npm run dev -- --host 0.0.0.0
 
   # frontend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
@@ -125,8 +125,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
       interval: 5s
       timeout: 3s
-      retries: 30
-      start_period: 15s
+      retries: 40
+      start_period: 60s
     command: npm run dev
     
   postgres:
