@@ -122,30 +122,51 @@ describe("ProfileSection", () => {
   });
 
   describe("Discard", () => {
-    it("discards profile changes when confirmed", async () => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
+    it("shows inline confirmation bar when Reset is clicked with unsaved changes", async () => {
       wrapper.vm.newName = "Changed Name";
-      wrapper.vm.newEmail = "changed@example.com";
-      await wrapper.vm.onDiscardProfile();
-      expect(wrapper.vm.newName).toBeNull();
-      expect(wrapper.vm.newEmail).toBeNull();
-      expect(toast.info).toHaveBeenCalledWith("Changes discarded");
-      window.confirm.mockRestore();
+      await nextTick();
+      expect(wrapper.find(".discard-confirm").exists()).toBe(false);
+
+      wrapper.vm.onDiscardProfile();
+      await nextTick();
+      expect(wrapper.find(".discard-confirm").exists()).toBe(true);
+      expect(wrapper.find(".discard-confirm").text()).toContain("Discard unsaved changes?");
     });
 
-    it("does not discard changes when cancelled", async () => {
-      vi.spyOn(window, "confirm").mockReturnValue(false);
+    it("discards changes when Discard button is clicked", async () => {
+      wrapper.vm.newName = "Changed Name";
+      wrapper.vm.newEmail = "changed@example.com";
+      await nextTick();
+
+      wrapper.vm.onDiscardProfile();
+      await nextTick();
+
+      wrapper.vm.confirmDiscard();
+      await nextTick();
+      expect(wrapper.vm.newName).toBeNull();
+      expect(wrapper.vm.newEmail).toBeNull();
+      expect(wrapper.vm.showDiscardConfirm).toBe(false);
+      expect(toast.info).toHaveBeenCalledWith("Changes discarded");
+    });
+
+    it("hides confirmation bar when Keep Editing is clicked", async () => {
       wrapper.vm.newName = "Changed";
-      await wrapper.vm.onDiscardProfile();
+      await nextTick();
+
+      wrapper.vm.onDiscardProfile();
+      await nextTick();
+      expect(wrapper.vm.showDiscardConfirm).toBe(true);
+
+      wrapper.vm.cancelDiscard();
+      await nextTick();
+      expect(wrapper.vm.showDiscardConfirm).toBe(false);
       expect(wrapper.vm.newName).toBe("Changed");
-      window.confirm.mockRestore();
     });
 
     it("does nothing when no unsaved changes exist", async () => {
-      const confirmSpy = vi.spyOn(window, "confirm");
-      await wrapper.vm.onDiscardProfile();
-      expect(confirmSpy).not.toHaveBeenCalled();
-      confirmSpy.mockRestore();
+      wrapper.vm.onDiscardProfile();
+      await nextTick();
+      expect(wrapper.vm.showDiscardConfirm).toBe(false);
     });
   });
 
