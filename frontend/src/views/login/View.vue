@@ -1,6 +1,6 @@
 <script setup>
   import { ref, inject, computed, onMounted, nextTick } from "vue";
-  import { useRouter } from "vue-router";
+  import { useRouter, RouterLink } from "vue-router";
   import { createFileStore } from "@/store/FileStore.js";
   import AuthLayout from "@/components/layout/AuthLayout.vue";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
@@ -101,14 +101,11 @@
     <template #footer>
       <div class="form-footer text-caption">
         New to Studio?
-        <Button
+        <RouterLink
           data-testid="register-link"
-          type="button"
-          kind="secondary"
-          size="xs"
-          text="Create an account"
-          @click="router.push('/register')"
-        />
+          to="/register"
+          class="register-link"
+        >Create an account</RouterLink>
       </div>
     </template>
   </AuthLayout>
@@ -122,5 +119,15 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
+  }
+
+  .register-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .register-link:hover {
+    text-decoration: underline;
   }
 </style>
