@@ -1,6 +1,6 @@
 <script setup>
   import { ref, computed, inject, onMounted } from "vue";
-  import { useRouter } from "vue-router";
+  import { useRouter, RouterLink } from "vue-router";
   import { toast } from "@/utils/toast";
   import AuthLayout from "@/components/layout/AuthLayout.vue";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
@@ -139,14 +139,7 @@
       </div>
       <div class="form-footer text-caption">
         Already have an account?
-        <Button
-          data-testid="login-link"
-          type="button"
-          kind="secondary"
-          size="xs"
-          text="Sign in"
-          @click="router.push('/login')"
-        />
+        <RouterLink data-testid="login-link" to="/login" class="login-link">Sign in</RouterLink>
       </div>
     </template>
   </AuthLayout>
@@ -183,5 +176,15 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
+  }
+
+  .login-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .login-link:hover {
+    text-decoration: underline;
   }
 </style>
