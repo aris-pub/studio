@@ -22,6 +22,7 @@ describe("LoginView", () => {
   let wrapper;
 
   beforeEach(() => {
+    localStorage.clear();
     pushMock.mockClear();
 
     const mockApi = {
