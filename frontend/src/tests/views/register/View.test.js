@@ -9,7 +9,13 @@ import Button from "@/components/base/Button.vue";
 import Logo from "@/components/base/Logo.vue";
 
 const pushMock = vi.fn();
-vi.mock("vue-router", () => ({ useRouter: () => ({ push: pushMock }) }));
+vi.mock("vue-router", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useRouter: () => ({ push: pushMock }),
+  };
+});
 
 const toastInfoMock = vi.hoisted(() => vi.fn());
 vi.mock("@/utils/toast", () => ({ toast: { info: toastInfoMock } }));
@@ -173,11 +179,21 @@ describe("RegisterView", () => {
     expect(errorEl.classes()).toContain("error-alert");
   });
 
-  it("renders login link and navigates on click", async () => {
-    const link = wrapper.find('[data-testid="login-link"]');
+  it("renders login link as a RouterLink to /login", () => {
+    const link = wrapper.findComponent(RouterLinkStub);
     expect(link.exists()).toBe(true);
-    await link.trigger("click");
-    expect(pushMock).toHaveBeenCalledWith("/login");
+    expect(link.props("to")).toBe("/login");
+  });
+
+  it("login link displays correct text", () => {
+    const link = wrapper.findComponent(RouterLinkStub);
+    expect(link.text()).toBe("Sign in");
+  });
+
+  it("login link is not a Button component", () => {
+    const buttons = wrapper.findAllComponents(Button);
+    const loginButton = buttons.find((b) => b.attributes("data-testid") === "login-link");
+    expect(loginButton).toBeUndefined();
   });
 
   it("toggles password visibility", async () => {

@@ -4,19 +4,19 @@ export default defineNuxtConfig({
     head: {
       title: 'RSM Studio – Author scholarly work designed for pixels, not paper',
       meta: [
-        { name: 'description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming 2025 Q4.' },
+        { name: 'description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming mid 2026.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { charset: 'utf-8' },
         // Open Graph tags for social sharing
         { property: 'og:title', content: 'RSM Studio – Author scholarly work designed for pixels, not paper' },
-        { property: 'og:description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming 2025 Q4.' },
+        { property: 'og:description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming mid 2026.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: 'https://studio.aris.pub' },
         { property: 'og:site_name', content: 'RSM Studio' },
         // Twitter Card tags
         { name: 'twitter:card', content: 'summary' },
         { name: 'twitter:title', content: 'RSM Studio – Author scholarly work designed for pixels, not paper' },
-        { name: 'twitter:description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming 2025 Q4.' },
+        { name: 'twitter:description', content: 'RSM Studio: Describe your ideas and structure. Get stunning web documents without the formatting fight. Coming mid 2026.' },
         // Additional SEO meta tags
         { name: 'robots', content: 'index, follow' },
         { name: 'author', content: 'The Aris Program' },
