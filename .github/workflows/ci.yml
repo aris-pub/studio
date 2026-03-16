@@ -313,9 +313,24 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Start Docker Compose services
+    - name: Build and start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --build --wait --wait-timeout 300
+        docker compose --env-file .env build
+        docker compose --env-file .env up -d
+
+        echo "⏳ Waiting for services..."
+        for i in $(seq 1 180); do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
+            break
+          fi
+          if [ "$i" = "180" ]; then
+            echo "❌ Services failed to start"
+            docker compose --env-file .env logs --tail=30
+            exit 1
+          fi
+          sleep 1
+        done
 
     - name: Setup database and test user in Docker
       run: |
@@ -425,9 +440,24 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Start Docker Compose services
+    - name: Build and start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --build --wait --wait-timeout 300
+        docker compose --env-file .env build
+        docker compose --env-file .env up -d
+
+        echo "⏳ Waiting for services..."
+        for i in $(seq 1 180); do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
+            break
+          fi
+          if [ "$i" = "180" ]; then
+            echo "❌ Services failed to start"
+            docker compose --env-file .env logs --tail=30
+            exit 1
+          fi
+          sleep 1
+        done
 
     - name: Setup database and test user in Docker
       run: |
@@ -539,9 +569,24 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Start Docker Compose services
+    - name: Build and start Docker Compose services
       run: |
-        docker compose --env-file .env up -d --build --wait --wait-timeout 300
+        docker compose --env-file .env build
+        docker compose --env-file .env up -d
+
+        echo "⏳ Waiting for services..."
+        for i in $(seq 1 180); do
+          if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "✅ Services ready after ${i}s"
+            break
+          fi
+          if [ "$i" = "180" ]; then
+            echo "❌ Services failed to start"
+            docker compose --env-file .env logs --tail=30
+            exit 1
+          fi
+          sleep 1
+        done
 
     - name: Setup database and test user in Docker
       run: |
