@@ -174,6 +174,61 @@ describe("LoginView", () => {
     expect(wrapper.find(".field-footer").exists()).toBe(false);
   });
 
+  it("has an aria-live region that announces loading state", async () => {
+    const statusRegion = wrapper.find('[data-testid="login-status"]');
+    expect(statusRegion.exists()).toBe(true);
+    expect(statusRegion.attributes("aria-live")).toBe("polite");
+    expect(statusRegion.attributes("role")).toBe("status");
+    expect(statusRegion.text()).toBe("");
+  });
+
+  it("announces 'Logging in…' to screen readers when loading", async () => {
+    const mockApi = {
+      post: vi.fn(() => new Promise(() => {})),
+      get: vi.fn(),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+    w.vm.onLogin();
+    await nextTick();
+    const statusRegion = w.find('[data-testid="login-status"]');
+    expect(statusRegion.text()).toBe("Logging in…");
+  });
+
+  it("clears the loading announcement after login completes", async () => {
+    const mockApi = {
+      post: vi.fn().mockRejectedValue({ response: { data: { detail: "Bad" } } }),
+      get: vi.fn(),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+    await w.vm.onLogin();
+    await nextTick();
+    const statusRegion = w.find('[data-testid="login-status"]');
+    expect(statusRegion.text()).toBe("");
+  });
+
+  it("visually hides the status region", () => {
+    const statusRegion = wrapper.find('[data-testid="login-status"]');
+    expect(statusRegion.classes()).toContain("sr-only");
+  });
+
   it("pre-populates credentials when isDev is true", async () => {
     vi.stubEnv("VITE_DEV_LOGIN_EMAIL", "dev@example.com");
     vi.stubEnv("VITE_DEV_LOGIN_PASSWORD", "devpassword");

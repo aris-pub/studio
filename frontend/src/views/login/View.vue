@@ -14,6 +14,8 @@
   const user = inject("user");
   const fileStore = inject("fileStore");
 
+  const loadingAnnouncement = computed(() => (isLoading.value ? "Logging in\u2026" : ""));
+
   const isDev = inject("isDev");
   const loginButton = ref(null);
   const emailPlaceholder = computed(() =>
@@ -93,6 +95,9 @@
     />
 
     <template #actions>
+      <span data-testid="login-status" class="sr-only" role="status" aria-live="polite">{{
+        loadingAnnouncement
+      }}</span>
       <Button
         ref="loginButton"
         data-testid="login-button"
@@ -118,6 +123,18 @@
 </template>
 
 <style scoped>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .form-footer {
     text-align: center;
     color: var(--gray-600);
