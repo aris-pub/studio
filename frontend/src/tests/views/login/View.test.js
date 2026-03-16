@@ -153,6 +153,11 @@ describe("LoginView", () => {
     expect(wrapper.find('[data-testid="password-input"]').attributes("type")).toBe("password");
   });
 
+  it("does not render a 'Forgot password?' element", () => {
+    expect(wrapper.text()).not.toContain("Forgot password?");
+    expect(wrapper.find(".field-footer").exists()).toBe(false);
+  });
+
   it("pre-populates credentials when isDev is true", async () => {
     vi.stubEnv("VITE_DEV_LOGIN_EMAIL", "dev@example.com");
     vi.stubEnv("VITE_DEV_LOGIN_PASSWORD", "devpassword");

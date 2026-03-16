@@ -46,24 +46,26 @@ Insightful remark goes here, with a reference to the earlier :ref:sec::.
   const defaultSettings = reactive({});
   const fileSettingsRef = useTemplateRef("file-settings-ref");
 
-  onMounted(async () => {
-    try {
-      const fromDb = await File.getSettings(file.value, api);
-      Object.assign(defaultSettings, fromDb);
-      fileSettingsRef.value.startReceivingUserInput();
-    } catch (error) {
-      console.error("Failed to load settings:", error);
-    }
-  });
-
   provide("file", file);
 
   onMounted(async () => {
-    try {
-      const response = await api.post("render", { source: file.value.source });
-      file.value.html = response.data;
-    } catch (error) {
-      console.error("Failed to render content:", error);
+    const [settingsResult] = await Promise.allSettled([
+      File.getSettings(file.value, api),
+      api
+        .post("render", { source: file.value.source })
+        .then((response) => {
+          file.value.html = response.data;
+        })
+        .catch((error) => {
+          console.error("Failed to render content:", error);
+        }),
+    ]);
+
+    if (settingsResult.status === "fulfilled") {
+      Object.assign(defaultSettings, settingsResult.value);
+      fileSettingsRef.value.startReceivingUserInput();
+    } else {
+      console.error("Failed to load settings:", settingsResult.reason);
     }
   });
 

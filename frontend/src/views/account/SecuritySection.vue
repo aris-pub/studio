@@ -1,6 +1,7 @@
 <script setup>
   import { ref, computed, inject } from "vue";
   import { toast } from "@/utils/toast.js";
+  import PasswordInput from "@/components/forms/PasswordInput.vue";
   import PasswordStrength from "@/components/ui/PasswordStrength.vue";
 
   const user = inject("user");
@@ -159,32 +160,26 @@
       <p>Change your account password</p>
 
       <div class="form-group">
-        <InputText
+        <PasswordInput
           v-model="currentPassword"
           label="Current Password"
-          type="password"
           autocomplete="current-password"
           :disabled="isChangingPassword"
-          direction="column"
         />
-        <div class="password-field">
-          <InputText
+        <div class="new-password-group">
+          <PasswordInput
             v-model="newPassword"
             label="New Password"
-            type="password"
             autocomplete="new-password"
             :disabled="isChangingPassword"
-            direction="column"
           />
           <PasswordStrength :password="newPassword" />
         </div>
-        <InputText
+        <PasswordInput
           v-model="confirmPassword"
           label="Confirm New Password"
-          type="password"
           autocomplete="new-password"
           :disabled="isChangingPassword"
-          direction="column"
         />
       </div>
 
@@ -277,7 +272,7 @@
     border-top: var(--border-thin) solid var(--gray-200);
   }
 
-  .password-field {
+  .new-password-group {
     position: relative;
   }
 

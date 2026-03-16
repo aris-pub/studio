@@ -206,7 +206,7 @@ describe("DocumentView", () => {
     });
 
     it("renders the file content on mount", async () => {
-      // Wait for both onMounted hooks to complete
+      // Wait for onMounted to complete
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 
@@ -218,7 +218,7 @@ describe("DocumentView", () => {
     });
 
     it("passes rendered HTML to ManuscriptWrapper", async () => {
-      // Wait for both onMounted hooks to complete
+      // Wait for onMounted to complete
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 
@@ -229,7 +229,7 @@ describe("DocumentView", () => {
 
   describe("Settings Management", () => {
     it("loads default settings on mount", async () => {
-      // Wait for both onMounted hooks to complete
+      // Wait for onMounted to complete
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 
@@ -243,7 +243,7 @@ describe("DocumentView", () => {
     });
 
     it("starts receiving user input after settings load", async () => {
-      // Wait for onMounted hooks to complete first
+      // Wait for onMounted to complete
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 
@@ -259,7 +259,7 @@ describe("DocumentView", () => {
     });
 
     it("passes settings to ManuscriptWrapper", async () => {
-      // Wait for onMounted hooks to complete and settings to load
+      // Wait for onMounted to complete
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 

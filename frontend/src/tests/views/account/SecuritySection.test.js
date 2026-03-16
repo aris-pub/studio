@@ -23,6 +23,7 @@ describe("SecuritySection", () => {
       props: ["variant"],
     },
     InputText: { template: '<input v-bind="$attrs" />' },
+    PasswordInput: { template: '<input v-bind="$attrs" />' },
     Button: { template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot/></button>' },
     Icon: { template: '<span class="icon-mock"></span>' },
     PasswordStrength: { template: "<div></div>", props: ["password"] },

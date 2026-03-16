@@ -32,8 +32,23 @@ test.describe("Email Verification Flow @auth-flows", () => {
     await expect(page.locator('[data-testid="cta-primary"]')).toBeVisible();
     await expect(page.locator('[data-testid="cta-secondary"]')).toBeVisible();
 
-    await expect(page.locator('[data-testid="cta-primary"]')).toContainText("account settings");
+    await expect(page.locator('[data-testid="cta-primary"]')).toContainText("Sign in");
     await expect(page.locator('[data-testid="cta-secondary"]')).toContainText("home");
+  });
+
+  test("error state CTA says 'Go to account settings' when authenticated @auth-flows", async ({
+    page,
+  }) => {
+    const timeouts = getTimeouts();
+
+    await authHelpers.ensureLoggedIn();
+    await page.goto("/verify-email/this-token-does-not-exist");
+
+    await expect(page.locator('[data-testid="state-error"]')).toBeVisible({
+      timeout: timeouts.contentLoad,
+    });
+
+    await expect(page.locator('[data-testid="cta-primary"]')).toContainText("account settings");
   });
 
   test("navigates to /account from error state primary CTA @auth-flows", async ({ page }) => {

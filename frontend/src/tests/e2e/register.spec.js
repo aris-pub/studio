@@ -20,6 +20,15 @@ test.describe("Register Form Validation @auth-flows", () => {
     await expect(emailInput).toHaveAttribute("type", "email");
   });
 
+  test("Terms and Privacy links have rel=noopener noreferrer", async ({ page }) => {
+    const legalLinks = page.locator(".form-legal a");
+    const count = await legalLinks.count();
+    expect(count).toBe(2);
+    for (let i = 0; i < count; i++) {
+      await expect(legalLinks.nth(i)).toHaveAttribute("rel", "noopener noreferrer");
+    }
+  });
+
   test("empty form submission stays on register page", async ({ page }) => {
     await page.fill('[data-testid="name-input"]', "");
     await page.fill('[data-testid="email-input"]', "");
