@@ -140,4 +140,44 @@ describe("SelectBox.vue", () => {
     expect(items[0].text()).toBe("foo");
     expect(items[1].text()).toBe("bar");
   });
+
+  it("renders a label element when label prop is provided", () => {
+    const wrapper = mount(SelectBox, {
+      props: {
+        modelValue: "a",
+        options: ["a", "b"],
+        label: "Choose one",
+      },
+      global: {
+        stubs: {
+          Teleport: TeleportStub,
+          ContextMenu: ContextMenuStub,
+          ButtonToggle: ButtonToggleStub,
+          ContextMenuItem: itemStub,
+        },
+      },
+    });
+    const label = wrapper.find("label.select-label");
+    expect(label.exists()).toBe(true);
+    expect(label.text()).toBe("Choose one");
+  });
+
+  it("does not render a label element when label prop is empty", () => {
+    const wrapper = mount(SelectBox, {
+      props: {
+        modelValue: "a",
+        options: ["a", "b"],
+      },
+      global: {
+        stubs: {
+          Teleport: TeleportStub,
+          ContextMenu: ContextMenuStub,
+          ButtonToggle: ButtonToggleStub,
+          ContextMenuItem: itemStub,
+        },
+      },
+    });
+    const label = wrapper.find("label.select-label");
+    expect(label.exists()).toBe(false);
+  });
 });

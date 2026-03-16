@@ -22,6 +22,10 @@ export default {
       control: "object",
       description: "An array of options. Can be strings/numbers or objects { value, label }.",
     },
+    label: {
+      control: "text",
+      description: "Optional label text displayed above the select control.",
+    },
     "update:modelValue": { action: "update:modelValue" },
   },
   args: {
@@ -61,6 +65,18 @@ export const InitialValue = {
   args: {
     modelValue: "option2",
     options: ["option1", "option2", "option3"],
+  },
+};
+
+export const WithLabel = {
+  args: {
+    label: "Notification method",
+    modelValue: "in-app",
+    options: [
+      { value: "in-app", label: "In-app only" },
+      { value: "email", label: "Email only" },
+      { value: "both", label: "Both in-app and email" },
+    ],
   },
 };
 

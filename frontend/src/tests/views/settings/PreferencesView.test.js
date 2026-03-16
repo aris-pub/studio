@@ -46,6 +46,12 @@ describe("PreferencesView", () => {
             name: "IconSettings2",
             template: '<svg data-testid="icon-settings2" />',
           },
+          SelectBox: {
+            name: "SelectBox",
+            props: ["modelValue", "options", "label"],
+            template:
+              '<div data-testid="select-box"><span class="select-label">{{ label }}</span></div>',
+          },
         },
       },
     });
@@ -78,6 +84,28 @@ describe("PreferencesView", () => {
       const button = wrapper.findComponent({ name: "Button" });
       expect(button.exists()).toBe(true);
       expect(button.text()).toContain("Save Settings");
+    });
+  });
+
+  describe("SelectBox Usage", () => {
+    it("uses SelectBox components instead of native selects", () => {
+      const nativeSelects = wrapper.findAll("select");
+      expect(nativeSelects.length).toBe(0);
+    });
+
+    it("renders five SelectBox components for dropdown settings", () => {
+      const selectBoxes = wrapper.findAll('[data-testid="select-box"]');
+      expect(selectBoxes.length).toBe(5);
+    });
+
+    it("passes label props to SelectBox components", () => {
+      const selectBoxes = wrapper.findAllComponents({ name: "SelectBox" });
+      const labels = selectBoxes.map((sb) => sb.props("label"));
+      expect(labels).toContain("Auto-save interval");
+      expect(labels).toContain("Auto-compile delay");
+      expect(labels).toContain("Notification method");
+      expect(labels).toContain("Email digest frequency");
+      expect(labels).toContain("Mobile menu behavior");
     });
   });
 

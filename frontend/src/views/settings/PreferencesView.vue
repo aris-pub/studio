@@ -2,8 +2,41 @@
   import { ref, reactive, onMounted, inject } from "vue";
   import { IconSettings2 } from "@tabler/icons-vue";
   import { toast } from "@/utils/toast.js";
+  import SelectBox from "@/components/forms/SelectBox.vue";
 
   const api = inject("api");
+
+  const autoSaveOptions = [
+    { value: 10, label: "10 seconds" },
+    { value: 30, label: "30 seconds" },
+    { value: 60, label: "1 minute" },
+    { value: 300, label: "5 minutes" },
+  ];
+
+  const autoCompileOptions = [
+    { value: 500, label: "500ms" },
+    { value: 1000, label: "1 second" },
+    { value: 2000, label: "2 seconds" },
+    { value: 5000, label: "5 seconds" },
+  ];
+
+  const notificationMethodOptions = [
+    { value: "in-app", label: "In-app only" },
+    { value: "email", label: "Email only" },
+    { value: "both", label: "Both in-app and email" },
+  ];
+
+  const emailDigestOptions = [
+    { value: "none", label: "Never" },
+    { value: "daily", label: "Daily" },
+    { value: "weekly", label: "Weekly" },
+  ];
+
+  const mobileMenuOptions = [
+    { value: "standard", label: "Standard" },
+    { value: "compact", label: "Compact" },
+    { value: "minimal", label: "Minimal" },
+  ];
 
   const settings = reactive({
     autoSaveInterval: 30,
@@ -71,23 +104,19 @@
       <template #title>Auto-save & Performance</template>
       <template #content>
         <div class="setting-item">
-          <label for="auto-save-interval">Auto-save interval (seconds)</label>
-          <select id="auto-save-interval" v-model="settings.autoSaveInterval">
-            <option :value="10">10 seconds</option>
-            <option :value="30">30 seconds</option>
-            <option :value="60">1 minute</option>
-            <option :value="300">5 minutes</option>
-          </select>
+          <SelectBox
+            v-model="settings.autoSaveInterval"
+            label="Auto-save interval"
+            :options="autoSaveOptions"
+          />
         </div>
 
         <div class="setting-item">
-          <label for="auto-compile-delay">Auto-compile delay (milliseconds)</label>
-          <select id="auto-compile-delay" v-model="settings.autoCompileDelay">
-            <option :value="500">500ms</option>
-            <option :value="1000">1 second</option>
-            <option :value="2000">2 seconds</option>
-            <option :value="5000">5 seconds</option>
-          </select>
+          <SelectBox
+            v-model="settings.autoCompileDelay"
+            label="Auto-compile delay"
+            :options="autoCompileOptions"
+          />
         </div>
       </template>
     </Section>
@@ -137,12 +166,11 @@
       <template #title>Notifications</template>
       <template #content>
         <div class="setting-item">
-          <label for="notification-preference">Notification method</label>
-          <select id="notification-preference" v-model="settings.notificationPreference">
-            <option value="in-app">In-app only</option>
-            <option value="email">Email only</option>
-            <option value="both">Both in-app and email</option>
-          </select>
+          <SelectBox
+            v-model="settings.notificationPreference"
+            label="Notification method"
+            :options="notificationMethodOptions"
+          />
           <p class="setting-description">
             Choose how you want to receive notifications about activity on your content
           </p>
@@ -187,12 +215,11 @@
         </div>
 
         <div class="setting-item">
-          <label for="email-digest">Email digest frequency</label>
-          <select id="email-digest" v-model="settings.emailDigestFrequency">
-            <option value="none">Never</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-          </select>
+          <SelectBox
+            v-model="settings.emailDigestFrequency"
+            label="Email digest frequency"
+            :options="emailDigestOptions"
+          />
           <p class="setting-description">
             How often you'd like to receive summary emails about your account activity
           </p>
@@ -225,12 +252,11 @@
       <template #title>Mobile</template>
       <template #content>
         <div class="setting-item">
-          <label for="mobile-menu-behavior">Mobile menu behavior</label>
-          <select id="mobile-menu-behavior" v-model="settings.mobileMenuBehavior">
-            <option value="standard">Standard</option>
-            <option value="compact">Compact</option>
-            <option value="minimal">Minimal</option>
-          </select>
+          <SelectBox
+            v-model="settings.mobileMenuBehavior"
+            label="Mobile menu behavior"
+            :options="mobileMenuOptions"
+          />
         </div>
       </template>
     </Section>
@@ -254,74 +280,10 @@
     margin-bottom: 16px;
   }
 
-  .setting-item label {
-    display: block;
-    font-weight: var(--weight-medium, 500);
-    color: var(--gray-900);
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
-
-  .checkbox-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .checkbox-wrapper label {
-    margin: 0;
-    cursor: pointer;
-  }
-
-  .checkbox-wrapper input[type="checkbox"] {
-    margin: 0;
-    cursor: pointer;
-  }
-
   .setting-description {
     color: var(--gray-500);
     font-size: 13px;
     margin: 4px 0 0 0;
-  }
-
-  select {
-    width: 100%;
-    height: 40px;
-    padding: 8px 36px 8px 12px;
-    border: var(--border-extrathin) solid var(--border-primary);
-    border-radius: 8px;
-    background-color: transparent;
-    color: var(--gray-900);
-    font-size: 14px;
-    font-family: inherit;
-    line-height: 1.4;
-    cursor: pointer;
-    transition: var(--transition-bg-color), var(--transition-bd-color);
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 16px;
-  }
-
-  select:hover {
-    border-color: var(--gray-400);
-    background-color: var(--gray-50);
-  }
-
-  select:focus {
-    outline: var(--border-med) solid var(--border-action);
-    outline-offset: var(--border-extrathin);
-    border-color: var(--border-action);
-    background-color: var(--white);
-  }
-
-  select:disabled {
-    background-color: var(--surface-disabled);
-    color: var(--gray-400);
-    cursor: not-allowed;
-    opacity: 0.7;
   }
 
   .settings-actions {
