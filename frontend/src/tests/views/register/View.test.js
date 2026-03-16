@@ -322,6 +322,14 @@ describe("RegisterView", () => {
     expect(api.post).toHaveBeenCalled();
   });
 
+  it("sets autocomplete attributes on form fields (WCAG 1.3.5)", () => {
+    expect(wrapper.find('[data-testid="name-input"]').attributes("autocomplete")).toBe("name");
+    expect(wrapper.find('[data-testid="email-input"]').attributes("autocomplete")).toBe("email");
+    expect(wrapper.find('[data-testid="password-input"]').attributes("autocomplete")).toBe(
+      "new-password"
+    );
+  });
+
   it("joins multiple Pydantic validation error messages", async () => {
     api.post.mockRejectedValue({
       response: {
