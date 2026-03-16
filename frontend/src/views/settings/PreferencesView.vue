@@ -274,6 +274,11 @@
       >
         {{ loading ? "Saving..." : saved ? "Saved!" : "Save Settings" }}
       </Button>
+
+      <div v-if="hasUnsavedChanges" class="status-message warning" role="status" aria-live="polite">
+        <Icon name="AlertCircle" size="16" />
+        <span>You have unsaved changes</span>
+      </div>
     </div>
   </Pane>
 </template>
@@ -360,5 +365,29 @@
   .saved {
     background: var(--green-600, #16a34a) !important;
     border-color: var(--green-600, #16a34a) !important;
+  }
+
+  .status-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+
+  .status-message.warning {
+    background-color: var(--surface-warning);
+    border: var(--border-thin) solid var(--border-warning);
+    color: var(--warning-700);
+  }
+
+  .status-message :deep(.tabler-icon) {
+    flex-shrink: 0;
+  }
+
+  .status-message.warning :deep(.tabler-icon) {
+    color: var(--warning-600);
   }
 </style>

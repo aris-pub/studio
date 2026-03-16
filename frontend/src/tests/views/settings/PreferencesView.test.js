@@ -47,6 +47,11 @@ describe("PreferencesView", () => {
             name: "IconSettings2",
             template: '<svg data-testid="icon-settings2" />',
           },
+          Icon: {
+            name: "Icon",
+            props: ["name", "size"],
+            template: '<svg data-testid="icon" />',
+          },
         },
       },
     });
@@ -147,19 +152,65 @@ describe("PreferencesView", () => {
       wrapper.vm.settings.autoSaveInterval = 30;
       await nextTick();
 
-      expect(window.removeEventListener).toHaveBeenCalledWith(
-        "beforeunload",
-        expect.any(Function)
-      );
+      expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
     });
 
     it("removes beforeunload listener on component unmount", async () => {
       await nextTick();
       wrapper.unmount();
-      expect(window.removeEventListener).toHaveBeenCalledWith(
-        "beforeunload",
-        expect.any(Function)
-      );
+      expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+    });
+  });
+
+  describe("Unsaved Changes Warning Banner", () => {
+    it("shows warning banner when there are unsaved changes", async () => {
+      await nextTick();
+
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      const warning = wrapper.find(".status-message.warning");
+      expect(warning.exists()).toBe(true);
+      expect(warning.text()).toContain("You have unsaved changes");
+    });
+
+    it("hides warning banner when changes are reverted", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(true);
+
+      wrapper.vm.settings.autoSaveInterval = 30;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+    });
+
+    it("hides warning banner after successful save", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(true);
+
+      const button = wrapper.findComponent({ name: "Button" });
+      await button.trigger("click");
+      await nextTick();
+
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+    });
+
+    it("has correct accessibility attributes", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      const warning = wrapper.find(".status-message.warning");
+      expect(warning.attributes("role")).toBe("status");
+      expect(warning.attributes("aria-live")).toBe("polite");
     });
   });
 
