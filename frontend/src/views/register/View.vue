@@ -122,7 +122,6 @@
         block
         :text="isLoading ? 'Creating account...' : 'Create account'"
         :disabled="isLoading"
-        @click="onRegister"
       />
     </template>
 

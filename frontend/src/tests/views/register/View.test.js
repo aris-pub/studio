@@ -41,7 +41,7 @@ describe("RegisterView", () => {
   });
 
   it("shows an error when fields are empty", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Please fill in all fields.");
   });
@@ -165,7 +165,7 @@ describe("RegisterView", () => {
   });
 
   it("marks error container with role=alert and aria-live", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     const errorEl = wrapper.find('[data-testid="auth-error"]');
     expect(errorEl.attributes("role")).toBe("alert");
@@ -173,7 +173,7 @@ describe("RegisterView", () => {
   });
 
   it("styles error as an alert container", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     const errorEl = wrapper.find('[data-testid="auth-error"]');
     expect(errorEl.classes()).toContain("error-alert");
@@ -344,6 +344,23 @@ describe("RegisterView", () => {
     expect(wrapper.find('[data-testid="password-input"]').attributes("autocomplete")).toBe(
       "new-password"
     );
+  });
+
+  it("submits via form submit event", async () => {
+    const registeredUser = { id: 1, name: "Bob", initials: "B", email: "bob@test.com" };
+    api.post.mockResolvedValue({
+      data: { access_token: "tok", refresh_token: "ref-tok", user: registeredUser },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secretpw");
+
+    const form = wrapper.find("form");
+    await form.trigger("submit");
+    await nextTick();
+
+    expect(api.post).toHaveBeenCalledTimes(1);
   });
 
   it("joins multiple Pydantic validation error messages", async () => {
