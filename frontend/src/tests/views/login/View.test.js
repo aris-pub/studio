@@ -65,6 +65,16 @@ describe("LoginView", () => {
     expect(link.text()).toBe("Create an account");
   });
 
+  it("login button is type=submit so form handles submission", () => {
+    const loginBtn = wrapper.find('[data-testid="login-button"]');
+    expect(loginBtn.attributes("type")).toBe("submit");
+  });
+
+  it("register link does not trigger login form submission", () => {
+    const link = wrapper.find('[data-testid="register-link"]');
+    expect(link.element.tagName).not.toBe("BUTTON");
+  });
+
   it("displays the Logo component", () => {
     expect(wrapper.find(".logo").exists()).toBe(true);
   });

@@ -101,11 +101,11 @@
       <Button
         ref="loginButton"
         data-testid="login-button"
+        type="submit"
         kind="primary"
         block
         :text="isLoading ? 'Logging in...' : 'Sign in'"
         :disabled="isLoading"
-        @click="onLogin"
       />
     </template>
 

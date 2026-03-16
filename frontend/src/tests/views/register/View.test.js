@@ -41,9 +41,14 @@ describe("RegisterView", () => {
   });
 
   it("shows an error when fields are empty", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     expect(wrapper.find('[data-testid="auth-error"]').text()).toBe("Please fill in all fields.");
+  });
+
+  it("register button is type=submit so form handles submission", () => {
+    const registerBtn = wrapper.find('[data-testid="register-button"]');
+    expect(registerBtn.attributes("type")).toBe("submit");
   });
 
   it("registers and redirects on successful register", async () => {
@@ -165,7 +170,7 @@ describe("RegisterView", () => {
   });
 
   it("marks error container with role=alert and aria-live", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     const errorEl = wrapper.find('[data-testid="auth-error"]');
     expect(errorEl.attributes("role")).toBe("alert");
@@ -173,7 +178,7 @@ describe("RegisterView", () => {
   });
 
   it("styles error as an alert container", async () => {
-    await wrapper.findComponent(Button).trigger("click");
+    await wrapper.find("form").trigger("submit");
     await nextTick();
     const errorEl = wrapper.find('[data-testid="auth-error"]');
     expect(errorEl.classes()).toContain("error-alert");

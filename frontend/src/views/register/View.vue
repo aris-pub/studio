@@ -118,11 +118,11 @@
     <template #actions>
       <Button
         data-testid="register-button"
+        type="submit"
         kind="primary"
         block
         :text="isLoading ? 'Creating account...' : 'Create account'"
         :disabled="isLoading"
-        @click="onRegister"
       />
     </template>
 
