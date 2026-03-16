@@ -3,6 +3,17 @@
  */
 
 /**
+ * Replaces characters that are unsafe in filenames with hyphens,
+ * collapses runs of hyphens, and trims leading/trailing hyphens.
+ */
+export function sanitizeFilename(name) {
+  return name
+    .replace(/[/\\:*?"<>|#%]/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
  * Triggers a browser download for a Blob object
  * @param {Blob} blob - The blob to download
  * @param {string} filename - The filename for the download

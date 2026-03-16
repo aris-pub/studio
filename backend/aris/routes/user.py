@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime
@@ -21,6 +22,16 @@ from ..services.email import get_email_service
 
 _lookup_timestamps: dict[int, deque] = defaultdict(lambda: deque(maxlen=10))
 _LOOKUP_RATE_LIMIT = 10
+
+
+def sanitize_filename(name: str) -> str:
+    """Replace characters unsafe in filenames with hyphens, collapse runs, and trim."""
+    safe = re.sub(r'[\/\\:*?"<>|#%\x00-\x1f]', "-", name)
+    safe = re.sub(r"\s+", "-", safe)
+    safe = re.sub(r"-{2,}", "-", safe)
+    return safe.strip("-")
+
+
 _LOOKUP_WINDOW = 60
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(current_user)])
@@ -835,8 +846,7 @@ async def export_user_data(
         # Create JSON response
         json_data = json.dumps(export_data, indent=2, ensure_ascii=False)
 
-        # Use user name for filename to match Account view expectations
-        safe_name = user.name.replace(" ", "-").replace("/", "-")
+        safe_name = sanitize_filename(user.name)
         filename = f"{safe_name}-data-export.json"
 
         return Response(

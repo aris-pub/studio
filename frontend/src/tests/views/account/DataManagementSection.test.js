@@ -66,6 +66,23 @@ describe("DataManagementSection", () => {
     document.body.appendChild.mockRestore();
   });
 
+  it("sanitizes the filename when user name has unsafe characters", async () => {
+    user.value = { id: 1, name: "Alice/Bob" };
+    const mockLink = { href: "", setAttribute: vi.fn(), click: vi.fn(), remove: vi.fn() };
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      if (tag === "a") return mockLink;
+      return originalCreateElement(tag);
+    });
+    vi.spyOn(document.body, "appendChild").mockImplementation(() => {});
+
+    await wrapper.vm.onExportData();
+    expect(mockLink.setAttribute).toHaveBeenCalledWith("download", "Alice-Bob-data-export.json");
+
+    document.createElement.mockRestore();
+    document.body.appendChild.mockRestore();
+  });
+
   it("handles export failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     api.get.mockRejectedValue(new Error("Export failed"));
