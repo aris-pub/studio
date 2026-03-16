@@ -36,6 +36,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
     restart: unless-stopped
 
   # backend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
@@ -55,6 +61,12 @@ services:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
       - VITE_ENV=${ENV:-local}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5173"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
     command: npm run dev -- --host 0.0.0.0
 
   # frontend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).
@@ -109,6 +121,12 @@ services:
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
     command: npm run dev
     
   postgres:

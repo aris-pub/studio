@@ -1,0 +1,10 @@
+# CI override: use pre-built GHCR images instead of building from source.
+# Usage: COMPOSE_FILE=docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+
+services:
+  backend:
+    image: ghcr.io/aris-pub/studio/backend-dev:latest
+  frontend:
+    image: ghcr.io/aris-pub/studio/frontend-dev:latest
+  site:
+    image: ghcr.io/aris-pub/studio/site-dev:latest

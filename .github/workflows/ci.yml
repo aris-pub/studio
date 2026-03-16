@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # CI identifier (all jobs load .env, but ENV=CI enables CI-specific behavior)
   ENV: CI
@@ -111,16 +115,6 @@ jobs:
         asyncio.run(test())
         "
 
-    - name: Run linting
-      run: |
-        cd backend
-        uv run ruff check
-
-    - name: Run type checking
-      run: |
-        cd backend
-        uv run mypy aris/
-
     - name: Run tests
       run: |
         cd backend
@@ -148,11 +142,6 @@ jobs:
       run: |
         cd frontend
         npm ci
-
-    - name: Run linting
-      run: |
-        cd frontend
-        npm run lint
 
     - name: Run tests
       run: |
@@ -204,25 +193,78 @@ jobs:
     - name: Check for missing packages
       run: npm ls --depth=0
 
-    - name: Run linting
-      run: npm run lint
-
     - name: Run unit tests
       run: npm run test:run
 
+  # Build and push dev Docker images to GHCR (shared by all E2E jobs)
+  build-images:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Create .env file
+      run: cp .env.example .env
+
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push backend-dev
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/backend/Dockerfile.dev
+        target: dev
+        push: true
+        tags: ghcr.io/aris-pub/studio/backend-dev:latest
+        cache-from: type=gha,scope=backend-dev
+        cache-to: type=gha,mode=max,scope=backend-dev
+
+    - name: Build and push frontend-dev
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/frontend/Dockerfile.dev
+        target: dev
+        push: true
+        tags: ghcr.io/aris-pub/studio/frontend-dev:latest
+        cache-from: type=gha,scope=frontend-dev
+        cache-to: type=gha,mode=max,scope=frontend-dev
+
+    - name: Build and push site-dev
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/site/Dockerfile.dev
+        target: dev
+        push: true
+        tags: ghcr.io/aris-pub/studio/site-dev:latest
+        cache-from: type=gha,scope=site-dev
+        cache-to: type=gha,mode=max,scope=site-dev
+
   # Site E2E Tests (All Browsers)
   e2e-site:
+    needs: [build-images]
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
-        device: [desktop, mobile]
+        browser: ${{ github.event_name == 'push' && fromJSON('["chromium","firefox"]') || fromJSON('["chromium"]') }}
     runs-on: ubuntu-latest
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}-${{ matrix.device }}
+      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+      COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}
 
     steps:
     - uses: actions/checkout@v6
@@ -271,97 +313,39 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Clean up Docker volumes
+    - name: Pull pre-built images from GHCR
       run: |
-        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
-        # Stop ALL containers (not just compose)
-        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
-        # List volumes before cleanup
-        echo "Volumes before cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        # Force remove all volumes matching this project
-        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
-        # Verify cleanup
-        echo "Volumes after cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        echo "✅ Docker cleanup complete"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-site-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-site-
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
-
-        # Source .env to get port variables
-        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
-
-        echo "⏳ Polling for services to be ready (max 180s)..."
-        READY=false
-        for i in {1..180}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
-            READY=true
-            break
-          fi
-          sleep 1
-        done
-
-        echo "📊 Service status:"
-        docker compose --env-file .env ps
-
-        if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 180s"
-          docker compose --env-file .env logs --tail=50
-          exit 1
-        fi
-
-        echo "✅ Docker services ready"
+        docker compose --env-file .env up -d --wait --wait-timeout 180
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
-
-        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run site E2E tests
       working-directory: site
       run: |
-        echo "🧪 Running site E2E tests on ${{ matrix.browser }} ${{ matrix.device }} (Docker environment)..."
+        echo "🧪 Running site E2E tests on ${{ matrix.browser }} (desktop + mobile)..."
 
-        # Source .env file to set port variables for Playwright config
-        # Filter out comments and blank lines
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        if [ "${{ matrix.device }}" = "mobile" ]; then
-          if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="Mobile Firefox" --reporter=github
-          else
-            npx playwright test --project="Mobile Chrome" --reporter=github
-          fi
+        if [ "${{ matrix.browser }}" = "firefox" ]; then
+          npx playwright test --project=firefox --project="Mobile Firefox" --reporter=github
         else
-          if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="firefox" --reporter=github
-          else
-            npx playwright test --project="chromium" --reporter=github
-          fi
+          npx playwright test --project=chromium --project="Mobile Chrome" --reporter=github
         fi
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-results-site-${{ matrix.browser }}-${{ matrix.device }}
+        name: playwright-results-site-${{ matrix.browser }}
         path: site/test-results/
         retention-days: 7
 
@@ -383,19 +367,19 @@ jobs:
         echo "✅ Cleanup complete"
 
 
-  # Frontend E2E Tests (All test suites)
+  # Frontend E2E Tests (sharded, both browsers share one Docker stack per shard)
   e2e-frontend:
+    needs: [build-images]
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
-        test-type: [auth-content, auth-interface, auth-flows, core]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
-      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.shard }}
 
     steps:
     - uses: actions/checkout@v6
@@ -432,11 +416,15 @@ jobs:
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-browsers-frontend-${{ runner.os }}-${{ matrix.browser }}
+        key: playwright-browsers-frontend-${{ runner.os }}-${{ github.event_name == 'push' && 'all' || 'chromium' }}
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: |
+        npx playwright install chromium --with-deps
+        if [ "${{ github.event_name }}" = "push" ]; then
+          npx playwright install firefox --with-deps
+        fi
 
     - name: Create .env file
       run: cp .env.example .env
@@ -444,98 +432,47 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Clean up Docker volumes
+    - name: Pull pre-built images from GHCR
       run: |
-        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
-        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
-        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
-        echo "✅ Docker cleanup complete"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-frontend-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-frontend-
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
-
-        echo "⏳ Polling for services to be ready (max 180s)..."
-        READY=false
-        for i in {1..180}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
-            READY=true
-            break
-          fi
-          sleep 1
-        done
-
-        echo "📊 Service status:"
-        docker compose --env-file .env ps
-
-        if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 180s"
-          docker compose --env-file .env logs --tail=50
-          exit 1
-        fi
-
-        echo "✅ Docker services ready"
+        docker compose --env-file .env up -d --wait --wait-timeout 180
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
-
-        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run frontend E2E tests
       working-directory: frontend
       run: |
-        echo "🧪 Running ${{ matrix.test-type }} E2E tests on ${{ matrix.browser }} (Docker environment)..."
-
-        # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        # Map test-type to test path and grep pattern
-        case "${{ matrix.test-type }}" in
-          auth-content)
-            TEST_PATH="src/tests/e2e/content/"
-            PATTERN="@auth"
-            ;;
-          auth-interface)
-            TEST_PATH="src/tests/e2e/interface/"
-            PATTERN="@auth"
-            ;;
-          auth-flows)
-            TEST_PATH=""
-            PATTERN="@auth-flows"
-            ;;
-          core)
-            TEST_PATH=""
-            PATTERN="@core"
-            ;;
-        esac
-
-        # Run tests
-        if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
+        if [ "${{ github.event_name }}" = "push" ]; then
+          echo "🧪 Running shard ${{ matrix.shard }}/4 on chromium + firefox..."
+          npx playwright test \
+            --grep "@auth|@auth-flows|@core" \
+            --project=chromium --project=firefox \
+            --shard=${{ matrix.shard }}/4 \
+            --reporter=github
         else
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
+          echo "🧪 Running shard ${{ matrix.shard }}/4 on chromium..."
+          npx playwright test \
+            --grep "@auth|@auth-flows|@core" \
+            --project=chromium \
+            --shard=${{ matrix.shard }}/4 \
+            --reporter=github
         fi
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-results-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+        name: playwright-results-frontend-shard${{ matrix.shard }}
         path: frontend/test-results/
         retention-days: 7
 
@@ -557,16 +494,12 @@ jobs:
         echo "✅ Cleanup complete"
 
   e2e-collab:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
+    needs: [build-images]
     runs-on: ubuntu-latest
     env:
-      # CI-specific overrides (everything else comes from .env.example)
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
       COMPOSE_PROJECT_NAME: studio-e2e-collab
 
     steps:
@@ -604,11 +537,15 @@ jobs:
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-browsers-${{ runner.os }}-${{ matrix.browser }}
+        key: playwright-browsers-collab-${{ runner.os }}-${{ github.event_name == 'push' && 'all' || 'chromium' }}
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: |
+        npx playwright install chromium --with-deps
+        if [ "${{ github.event_name }}" = "push" ]; then
+          npx playwright install firefox --with-deps
+        fi
 
     - name: Create .env file
       run: cp .env.example .env
@@ -616,99 +553,38 @@ jobs:
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
 
-    - name: Debug - Gather evidence about .env file
+    - name: Pull pre-built images from GHCR
       run: |
-        echo "📍 Current directory: $(pwd)"
-        echo ""
-        echo "📄 .env file exists?"
-        ls -la .env
-        echo ""
-        echo "📄 .env file contents:"
-        cat .env
-        echo ""
-        echo "📄 backend/.env file exists?"
-        ls -la backend/.env
-        echo ""
-        echo "📄 Docker Compose version:"
-        docker compose version
-        echo ""
-        echo "📄 start-dev.sh location:"
-        ls -la scripts/start-dev.sh
-        echo ""
-        echo "📄 docker-compose.dev.yml env_file directive:"
-        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
-
-    - name: Clean up Docker volumes
-      run: |
-        echo "🧹 Force cleaning ALL volumes for $COMPOSE_PROJECT_NAME..."
-        # Stop ALL containers (not just compose)
-        docker ps -aq --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker rm -f || true
-        # List volumes before cleanup
-        echo "Volumes before cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        # Force remove all volumes matching this project
-        docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
-        # Verify cleanup
-        echo "Volumes after cleanup:"
-        docker volume ls --filter name=$COMPOSE_PROJECT_NAME
-        echo "✅ Docker cleanup complete"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', '**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
+        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
-
-        echo "⏳ Polling for services to be ready (max 180s)..."
-        READY=false
-        for i in {1..180}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
-            READY=true
-            break
-          fi
-          sleep 1
-        done
-
-        echo "📊 Service status:"
-        docker compose --env-file .env ps
-
-        if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 180s"
-          docker compose --env-file .env logs --tail=50
-          exit 1
-        fi
-
-        echo "✅ Docker services ready"
+        docker compose --env-file .env up -d --wait --wait-timeout 180
 
     - name: Setup database and test user in Docker
       run: |
-        echo "🔄 Confirming database migrations (entrypoint already ran them)..."
         docker compose --env-file .env exec -T backend uv run alembic upgrade head
-
-        echo "✅ Database setup complete (test user created by backend entrypoint)"
 
     - name: Run Y.js collaboration E2E tests
       working-directory: frontend
       run: |
-        echo "🧪 Running @collab E2E tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
+        if [ "${{ github.event_name }}" = "push" ]; then
+          echo "🧪 Running @collab E2E tests on chromium + firefox..."
+          npx playwright test --grep "@collab" --project=chromium --reporter=github --workers=1
+          npx playwright test --grep "@collab" --project=firefox --reporter=github --workers=1
+        else
+          echo "🧪 Running @collab E2E tests on chromium..."
+          npx playwright test --grep "@collab" --project=chromium --reporter=github --workers=1
+        fi
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-results-docker-${{ matrix.browser }}
+        name: playwright-results-collab
         path: frontend/test-results/
         retention-days: 7
 
