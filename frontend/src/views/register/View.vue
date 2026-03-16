@@ -93,6 +93,7 @@
       data-testid="name-input"
       direction="column"
       label="Display name"
+      autocomplete="name"
       required
     />
     <InputText
@@ -101,10 +102,16 @@
       direction="column"
       label="Email"
       type="email"
+      autocomplete="email"
       required
     />
     <div>
-      <PasswordInput v-model="pwd" data-testid="password-input" required />
+      <PasswordInput
+        v-model="pwd"
+        data-testid="password-input"
+        autocomplete="new-password"
+        required
+      />
       <PasswordStrength :password="pwd" />
     </div>
 
@@ -122,8 +129,13 @@
     <template #footer>
       <div class="form-legal text-caption">
         By creating an account, you agree to our
-        <a href="/terms" target="_blank">Terms of Service</a> and
-        <a href="/privacy" target="_blank">Privacy Policy</a>.
+        <a href="/terms" target="_blank" rel="noopener noreferrer"
+          >Terms of Service<span class="sr-only">(opens in new tab)</span></a
+        >
+        and
+        <a href="/privacy" target="_blank" rel="noopener noreferrer"
+          >Privacy Policy<span class="sr-only">(opens in new tab)</span></a
+        >.
       </div>
       <div class="form-footer text-caption">
         Already have an account?
@@ -150,6 +162,18 @@
   .form-legal a {
     color: var(--gray-700);
     text-decoration: underline;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .form-footer {

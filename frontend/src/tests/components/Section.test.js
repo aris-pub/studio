@@ -39,4 +39,45 @@ describe("Section.vue", () => {
     expect(wrapper.classes()).toContain("section");
     expect(wrapper.classes()).toContain("danger");
   });
+
+  describe("headingTag prop", () => {
+    it("renders title in a div by default", () => {
+      const wrapper = mount(Section, {
+        slots: { title: "Section Title" },
+      });
+
+      const title = wrapper.get(".title");
+      expect(title.element.tagName).toBe("DIV");
+    });
+
+    it("renders title in an h2 when headingTag is h2", () => {
+      const wrapper = mount(Section, {
+        props: { headingTag: "h2" },
+        slots: { title: "Section Title" },
+      });
+
+      const title = wrapper.get(".title");
+      expect(title.element.tagName).toBe("H2");
+    });
+
+    it("renders title in an h3 when headingTag is h3", () => {
+      const wrapper = mount(Section, {
+        props: { headingTag: "h3" },
+        slots: { title: "Section Title" },
+      });
+
+      const title = wrapper.get(".title");
+      expect(title.element.tagName).toBe("H3");
+    });
+
+    it("preserves text-h5 class regardless of heading tag", () => {
+      const wrapper = mount(Section, {
+        props: { headingTag: "h2" },
+        slots: { title: "Section Title" },
+      });
+
+      const title = wrapper.get(".title");
+      expect(title.classes()).toContain("text-h5");
+    });
+  });
 });

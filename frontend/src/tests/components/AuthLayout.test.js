@@ -79,4 +79,11 @@ describe("AuthLayout", () => {
     const wrapper = mountLayout();
     expect(wrapper.find(".error-alert").exists()).toBe(false);
   });
+
+  it("wraps form panel in a main landmark", () => {
+    const wrapper = mountLayout();
+    const main = wrapper.find("main");
+    expect(main.exists()).toBe(true);
+    expect(main.classes()).toContain("form-panel");
+  });
 });
