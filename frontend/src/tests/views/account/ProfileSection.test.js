@@ -150,6 +150,12 @@ describe("ProfileSection", () => {
   });
 
   describe("Avatar Upload", () => {
+    it("has aria-label on the upload button for accessibility", () => {
+      const uploadButton = wrapper.find(".avatar-upload");
+      expect(uploadButton.exists()).toBe(true);
+      expect(uploadButton.attributes("aria-label")).toBe("Upload profile picture");
+    });
+
     it("rejects non-image files", async () => {
       const mockFile = new File(["test"], "test.pdf", { type: "application/pdf" });
       await wrapper.vm.onFileSelected({ target: { files: [mockFile] } });

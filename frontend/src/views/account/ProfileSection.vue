@@ -163,6 +163,7 @@
             :icon="isUploadingAvatar ? 'Loader2' : 'Camera'"
             class="avatar-upload"
             size="sm"
+            aria-label="Upload profile picture"
             :disabled="isUploadingAvatar"
             @click="onUpload"
           />
