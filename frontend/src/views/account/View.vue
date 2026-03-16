@@ -393,7 +393,7 @@
       </div>
 
       <!-- Personal Information -->
-      <Section variant="enhanced">
+      <Section variant="enhanced" heading-tag="h2">
         <template #title>Personal Information</template>
         <template #content>
           <div class="form-group">
@@ -450,7 +450,7 @@
       </Section>
 
       <!-- Account Status -->
-      <Section variant="enhanced">
+      <Section variant="enhanced" heading-tag="h2">
         <template #title>Account Status</template>
         <template #content>
           <p>Your account security status and verification</p>
@@ -485,7 +485,7 @@
       </Section>
 
       <!-- Password -->
-      <Section variant="enhanced">
+      <Section variant="enhanced" heading-tag="h2">
         <template #title>Password</template>
         <template #content>
           <p>Change your account password</p>
@@ -538,7 +538,7 @@
       </Section>
 
       <!-- Data Management -->
-      <Section variant="enhanced">
+      <Section variant="enhanced" heading-tag="h2">
         <template #title>Data Management</template>
         <template #content>
           <div class="data-action">
@@ -559,7 +559,7 @@
       </Section>
 
       <!-- Danger Zone -->
-      <Section variant="enhanced" class="danger-zone">
+      <Section variant="enhanced" heading-tag="h2" class="danger-zone">
         <template #title>Danger Zone</template>
         <template #content>
           <div class="danger-action">

@@ -36,6 +36,16 @@
       type: Boolean,
       default: false,
     },
+
+    /**
+     * HTML tag for the title element, for correct heading hierarchy (WCAG 1.3.1)
+     * @values 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+     */
+    headingTag: {
+      type: String,
+      default: "div",
+      validator: (value) => ["div", "h1", "h2", "h3", "h4", "h5", "h6"].includes(value),
+    },
   });
 
   const sectionClasses = computed(() => ({
@@ -50,9 +60,9 @@
 
 <template>
   <div :class="sectionClasses">
-    <div v-if="$slots.title" class="title text-h5">
+    <component :is="headingTag" v-if="$slots.title" class="title text-h5">
       <slot name="title" />
-    </div>
+    </component>
     <div class="content"><slot name="content" /></div>
     <div v-if="$slots.footer" class="footer"><slot name="footer" /></div>
   </div>
