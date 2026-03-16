@@ -1,6 +1,7 @@
 <script setup>
   import { ref, computed, inject, onMounted, onUnmounted, watch } from "vue";
   import { toast } from "@/utils/toast.js";
+  import { sanitizeFilename } from "@/utils/download.js";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
   import PasswordStrength from "@/components/ui/PasswordStrength.vue";
 
@@ -260,7 +261,8 @@
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `${user.value.name}-data-export.json`);
+      const safeName = sanitizeFilename(user.value.name);
+      link.setAttribute("download", `${safeName}-data-export.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
