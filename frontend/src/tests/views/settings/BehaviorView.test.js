@@ -88,6 +88,21 @@ describe("PreferencesView", () => {
         },
         stubs: {
           IconSettings2: '<svg data-testid="icon-settings2" />',
+          SelectBox: {
+            name: "SelectBox",
+            props: ["modelValue", "options", "label"],
+            emits: ["update:modelValue"],
+            template:
+              '<div class="select-box-stub" :data-label="label"><label v-if="label" class="select-label">{{ label }}</label><span class="current-value">{{ currentLabel }}</span></div>',
+            computed: {
+              currentLabel() {
+                const opt = (this.options || []).find(
+                  (o) => (typeof o === "object" ? o.value : o) === this.modelValue
+                );
+                return opt ? (typeof opt === "object" ? opt.label : opt) : "";
+              },
+            },
+          },
         },
       },
     });
@@ -115,54 +130,69 @@ describe("PreferencesView", () => {
   });
 
   describe("Settings Form Elements", () => {
-    it("renders auto-save interval select", () => {
-      const autoSaveSelect = wrapper.find("#auto-save-interval");
-      expect(autoSaveSelect.exists()).toBe(true);
-      expect(autoSaveSelect.element.value).toBe("30");
+    it("uses SelectBox components instead of native selects", () => {
+      const nativeSelects = wrapper.findAll("select");
+      expect(nativeSelects.length).toBe(0);
 
-      const options = autoSaveSelect.findAll("option");
-      expect(options.length).toBe(4);
-      expect(options[0].text()).toBe("10 seconds");
-      expect(options[1].text()).toBe("30 seconds");
-      expect(options[2].text()).toBe("1 minute");
-      expect(options[3].text()).toBe("5 minutes");
+      const selectBoxes = wrapper.findAllComponents({ name: "SelectBox" });
+      expect(selectBoxes.length).toBe(5);
     });
 
-    it("renders auto-compile delay select", () => {
-      const autoCompileSelect = wrapper.find("#auto-compile-delay");
-      expect(autoCompileSelect.exists()).toBe(true);
-      expect(autoCompileSelect.element.value).toBe("1000");
-
-      const options = autoCompileSelect.findAll("option");
-      expect(options.length).toBe(4);
-      expect(options[0].text()).toBe("500ms");
-      expect(options[1].text()).toBe("1 second");
-      expect(options[2].text()).toBe("2 seconds");
-      expect(options[3].text()).toBe("5 seconds");
+    it("renders auto-save interval SelectBox with correct value and options", () => {
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Auto-save interval");
+      expect(selectBox).toBeDefined();
+      expect(selectBox.props("modelValue")).toBe(30);
+      expect(selectBox.props("options")).toEqual([
+        { value: 10, label: "10 seconds" },
+        { value: 30, label: "30 seconds" },
+        { value: 60, label: "1 minute" },
+        { value: 300, label: "5 minutes" },
+      ]);
     });
 
-    it("renders mobile menu behavior select", () => {
-      const mobileMenuSelect = wrapper.find("#mobile-menu-behavior");
-      expect(mobileMenuSelect.exists()).toBe(true);
-      expect(mobileMenuSelect.element.value).toBe("standard");
-
-      const options = mobileMenuSelect.findAll("option");
-      expect(options.length).toBe(3);
-      expect(options[0].text()).toBe("Standard");
-      expect(options[1].text()).toBe("Compact");
-      expect(options[2].text()).toBe("Minimal");
+    it("renders auto-compile delay SelectBox with correct value and options", () => {
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Auto-compile delay");
+      expect(selectBox).toBeDefined();
+      expect(selectBox.props("modelValue")).toBe(1000);
+      expect(selectBox.props("options")).toEqual([
+        { value: 500, label: "500ms" },
+        { value: 1000, label: "1 second" },
+        { value: 2000, label: "2 seconds" },
+        { value: 5000, label: "5 seconds" },
+      ]);
     });
 
-    it("renders notification preference select", () => {
-      const select = wrapper.find("#notification-preference");
-      expect(select.exists()).toBe(true);
-      expect(select.element.value).toBe("in-app");
+    it("renders mobile menu behavior SelectBox with correct value and options", () => {
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Mobile menu behavior");
+      expect(selectBox).toBeDefined();
+      expect(selectBox.props("modelValue")).toBe("standard");
+      expect(selectBox.props("options")).toEqual([
+        { value: "standard", label: "Standard" },
+        { value: "compact", label: "Compact" },
+        { value: "minimal", label: "Minimal" },
+      ]);
     });
 
-    it("renders email digest frequency select", () => {
-      const select = wrapper.find("#email-digest");
-      expect(select.exists()).toBe(true);
-      expect(select.element.value).toBe("weekly");
+    it("renders notification preference SelectBox", () => {
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Notification method");
+      expect(selectBox).toBeDefined();
+      expect(selectBox.props("modelValue")).toBe("in-app");
+    });
+
+    it("renders email digest frequency SelectBox", () => {
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Email digest frequency");
+      expect(selectBox).toBeDefined();
+      expect(selectBox.props("modelValue")).toBe("weekly");
     });
   });
 
@@ -230,6 +260,7 @@ describe("PreferencesView", () => {
           },
           stubs: {
             IconSettings2: '<svg data-testid="icon-settings2" />',
+            SelectBox: { template: "<div />" },
           },
         },
       });
@@ -304,11 +335,13 @@ describe("PreferencesView", () => {
   });
 
   describe("Form Interactions", () => {
-    it("updates settings when select values change", async () => {
+    it("updates settings when SelectBox emits update", async () => {
       await wrapper.vm.$nextTick();
 
-      const autoSaveSelect = wrapper.find("#auto-save-interval");
-      await autoSaveSelect.setValue("60");
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Auto-save interval");
+      await selectBox.vm.$emit("update:modelValue", 60);
 
       expect(wrapper.vm.settings.autoSaveInterval).toBe(60);
     });
@@ -324,12 +357,11 @@ describe("PreferencesView", () => {
   });
 
   describe("Accessibility", () => {
-    it("has proper form labels", () => {
-      expect(wrapper.find('label[for="auto-save-interval"]').exists()).toBe(true);
-      expect(wrapper.find('label[for="auto-compile-delay"]').exists()).toBe(true);
-      expect(wrapper.find('label[for="mobile-menu-behavior"]').exists()).toBe(true);
-      expect(wrapper.find('label[for="notification-preference"]').exists()).toBe(true);
-      expect(wrapper.find('label[for="email-digest"]').exists()).toBe(true);
+    it("has labels on all SelectBox components", () => {
+      const selectBoxes = wrapper.findAllComponents({ name: "SelectBox" });
+      selectBoxes.forEach((sb) => {
+        expect(sb.props("label")).toBeTruthy();
+      });
     });
 
     it("has descriptive text for settings", () => {
@@ -361,8 +393,10 @@ describe("PreferencesView", () => {
       wrapper.vm.settings.autoSaveInterval = 60;
       await wrapper.vm.$nextTick();
 
-      const autoSaveSelect = wrapper.find("#auto-save-interval");
-      expect(autoSaveSelect.element.value).toBe("60");
+      const selectBox = wrapper
+        .findAllComponents({ name: "SelectBox" })
+        .find((c) => c.props("label") === "Auto-save interval");
+      expect(selectBox.props("modelValue")).toBe(60);
     });
   });
 });
