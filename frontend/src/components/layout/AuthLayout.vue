@@ -19,7 +19,7 @@
         <strong>Web-native. Human-first.</strong>
       </p>
     </div>
-    <div class="form-panel">
+    <main class="form-panel">
       <div class="mobile-logo">
         <Logo type="full" />
       </div>
@@ -45,7 +45,7 @@
           <slot name="footer" />
         </div>
       </form>
-    </div>
+    </main>
   </div>
 </template>
 
