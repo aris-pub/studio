@@ -46,16 +46,24 @@
     }
   };
 
+  const showDiscardConfirm = ref(false);
+
   const onDiscardProfile = () => {
     if (!hasUnsavedChanges.value) return;
+    showDiscardConfirm.value = true;
+  };
 
-    if (confirm("Are you sure you want to discard your unsaved changes?")) {
-      newName.value = null;
-      newInitials.value = null;
-      newEmail.value = null;
-      newAffiliation.value = null;
-      toast.info("Changes discarded");
-    }
+  const confirmDiscard = () => {
+    newName.value = null;
+    newInitials.value = null;
+    newEmail.value = null;
+    newAffiliation.value = null;
+    showDiscardConfirm.value = false;
+    toast.info("Changes discarded");
+  };
+
+  const cancelDiscard = () => {
+    showDiscardConfirm.value = false;
   };
 
   // --- Avatar ---
@@ -141,7 +149,7 @@
     if (serverAvatarUrl.value) URL.revokeObjectURL(serverAvatarUrl.value);
   });
 
-  defineExpose({ hasUnsavedChanges });
+  defineExpose({ hasUnsavedChanges, showDiscardConfirm, onDiscardProfile, confirmDiscard, cancelDiscard });
 </script>
 
 <template>
@@ -240,7 +248,18 @@
         </Button>
       </div>
 
-      <div v-if="hasUnsavedChanges" class="status-message warning" role="status" aria-live="polite">
+      <div v-if="showDiscardConfirm" class="discard-confirm" role="alert">
+        <span class="discard-message">
+          <Icon name="AlertTriangle" size="16" />
+          Discard unsaved changes?
+        </span>
+        <div class="discard-actions">
+          <Button kind="tertiary" size="sm" @click="cancelDiscard">Keep Editing</Button>
+          <Button kind="danger" size="sm" icon="Trash" @click="confirmDiscard">Discard</Button>
+        </div>
+      </div>
+
+      <div v-else-if="hasUnsavedChanges" class="status-message warning" role="status" aria-live="polite">
         <Icon name="AlertCircle" size="16" />
         <span>You have unsaved changes</span>
       </div>
@@ -379,6 +398,39 @@
 
   .status-message.warning :deep(.tabler-icon) {
     color: var(--warning-600);
+  }
+
+  /* Discard Confirmation */
+  .discard-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    background-color: var(--surface-warning);
+    border: var(--border-thin) solid var(--border-warning);
+  }
+
+  .discard-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: var(--weight-medium);
+    color: var(--warning-700);
+  }
+
+  .discard-message :deep(.tabler-icon) {
+    color: var(--warning-600);
+    flex-shrink: 0;
+  }
+
+  .discard-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   /* Mobile Responsive */
