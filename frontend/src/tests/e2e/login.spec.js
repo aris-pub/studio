@@ -144,6 +144,21 @@ test.describe("Login Flow Tests @auth-flows", () => {
     await expect(page.getByText("Forgot password?")).not.toBeVisible();
   });
 
+  test("loading state announces to screen readers via aria-live region", async ({ page }) => {
+    await page.goto("/login");
+
+    const statusRegion = page.locator('[data-testid="login-status"]');
+    await expect(statusRegion).toHaveAttribute("aria-live", "polite");
+    await expect(statusRegion).toHaveAttribute("role", "status");
+    await expect(statusRegion).toHaveText("");
+
+    await page.fill('[data-testid="email-input"]', TEST_CREDENTIALS.valid.email);
+    await page.fill('[data-testid="password-input"]', TEST_CREDENTIALS.valid.password);
+    await page.click('[data-testid="login-button"]');
+
+    await expect(statusRegion).toHaveText("Logging in…");
+  });
+
   test("dev mode auto-fill - pre-filled credentials in development", async ({ page }) => {
     // This test checks if dev mode pre-fills credentials
     // Skip if not in development mode
