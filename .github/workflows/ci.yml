@@ -254,7 +254,7 @@ jobs:
 
   # Site E2E Tests (All Browsers)
   e2e-site:
-    needs: [build-images]
+    # build-images runs in parallel (pushes to GHCR for future cache use)
     strategy:
       fail-fast: false
       matrix:
@@ -263,7 +263,7 @@ jobs:
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+      COMPOSE_FILE: docker/docker-compose.dev.yml
       COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}
 
     steps:
@@ -312,13 +312,6 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
-
-    - name: Pull pre-built images from GHCR
-      run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
@@ -369,7 +362,7 @@ jobs:
 
   # Frontend E2E Tests (sharded, both browsers share one Docker stack per shard)
   e2e-frontend:
-    needs: [build-images]
+    # build-images runs in parallel (pushes to GHCR for future cache use)
     strategy:
       fail-fast: false
       matrix:
@@ -378,7 +371,7 @@ jobs:
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+      COMPOSE_FILE: docker/docker-compose.dev.yml
       COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.shard }}
 
     steps:
@@ -431,13 +424,6 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
-
-    - name: Pull pre-built images from GHCR
-      run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
@@ -494,12 +480,12 @@ jobs:
         echo "✅ Cleanup complete"
 
   e2e-collab:
-    needs: [build-images]
+    # build-images runs in parallel (pushes to GHCR for future cache use)
     runs-on: ubuntu-latest
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml:docker/docker-compose.ci.yml
+      COMPOSE_FILE: docker/docker-compose.dev.yml
       COMPOSE_PROJECT_NAME: studio-e2e-collab
 
     steps:
@@ -552,13 +538,6 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
-
-    - name: Pull pre-built images from GHCR
-      run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker pull ghcr.io/aris-pub/studio/backend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/frontend-dev:latest
-        docker pull ghcr.io/aris-pub/studio/site-dev:latest
 
     - name: Start Docker Compose services
       run: |
