@@ -24,7 +24,7 @@ test.describe("Preferences Unsaved Changes Warning @auth @desktop-only", () => {
     await expect(saveButton).toBeVisible();
 
     // Toggle a checkbox setting (sidebar auto-collapse is off by default)
-    const sidebarCheckbox = page.locator("#sidebar-auto-collapse");
+    const sidebarCheckbox = page.locator("label[for='sidebar-auto-collapse']");
     await sidebarCheckbox.click();
 
     // Should show unsaved changes warning
@@ -49,7 +49,7 @@ test.describe("Preferences Unsaved Changes Warning @auth @desktop-only", () => {
     await expect(page.locator(".status-message.warning")).not.toBeVisible();
 
     // Clean up: uncheck and save to restore defaults
-    await page.locator("#sidebar-auto-collapse").click();
+    await page.locator("label[for='sidebar-auto-collapse']").click();
     await saveButton.click();
   });
 
@@ -62,7 +62,7 @@ test.describe("Preferences Unsaved Changes Warning @auth @desktop-only", () => {
     await expect(saveButton).toBeVisible();
 
     // Toggle a setting
-    const focusModeCheckbox = page.locator("#focus-mode-auto-hide");
+    const focusModeCheckbox = page.locator("label[for='focus-mode-auto-hide']");
     await focusModeCheckbox.click();
 
     // Should show unsaved changes warning
@@ -102,7 +102,7 @@ test.describe("Preferences Unsaved Changes Warning @auth @desktop-only", () => {
     await expect(saveButton).toBeVisible();
 
     // Toggle a setting
-    await page.locator("#sidebar-auto-collapse").click();
+    await page.locator("label[for='sidebar-auto-collapse']").click();
     await expect(page.locator(".status-message.warning")).toBeVisible();
 
     // Click reset
