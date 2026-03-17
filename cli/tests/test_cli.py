@@ -10,7 +10,7 @@ import pytest
 import responses
 from click.testing import CliRunner
 
-from cli import Session, StudioAPI, check_environment, cli, get_api_base_url
+from cli import Session, StudioAPI, check_environment, cli, get_api_base_url, get_frontend_port
 
 
 class TestEnvironmentCheck:
@@ -294,8 +294,8 @@ class TestCLI:
                 mock_playwright.return_value.__enter__.return_value.chromium.launch.assert_called_once_with(
                     headless=False
                 )
-                mock_page.goto.assert_any_call("http://localhost:5173")
-                mock_page.goto.assert_any_call("http://localhost:5173/file/200")
+                mock_page.goto.assert_any_call(f"http://localhost:{get_frontend_port()}")
+                mock_page.goto.assert_any_call(f"http://localhost:{get_frontend_port()}/file/200")
                 mock_page.evaluate.assert_called_once()
                 mock_page.wait_for_timeout.assert_not_called()
 
@@ -320,8 +320,8 @@ class TestCLI:
 
             assert result.exit_code == 0
             assert "from playwright.sync_api import sync_playwright" in result.output
-            assert "page.goto('http://localhost:5173')" in result.output
-            assert "page.goto('http://localhost:5173/file/200')" in result.output
+            assert f"page.goto('http://localhost:{get_frontend_port()}')" in result.output
+            assert f"page.goto('http://localhost:{get_frontend_port()}/file/200')" in result.output
             assert "localStorage.setItem('accessToken'" in result.output
             assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" in result.output
             assert "# ADD YOUR TEST CODE BELOW" in result.output

@@ -12,6 +12,11 @@ Bug: Typing "HELLO" produces "HHEELLLLOO" (each character duplicated)
 from playwright.sync_api import sync_playwright
 import time
 
+from cli import get_frontend_port
+
+FRONTEND_URL = f"http://localhost:{get_frontend_port()}"
+
+
 def test_single_user_no_duplication() -> None:
     """Test that single-user typing does not duplicate characters."""
 
@@ -24,14 +29,14 @@ def test_single_user_no_duplication() -> None:
         print("=" * 60)
 
         # Navigate to frontend
-        page.goto('http://localhost:5173', wait_until='domcontentloaded')
+        page.goto(FRONTEND_URL, wait_until='domcontentloaded')
 
         # Inject session tokens
         page.evaluate('''localStorage.setItem('accessToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzcwMjIxNzM3fQ.mpcn96aimju7TOH-dSfZV34euEH1UQmTlnNcUWOMJ4c'); localStorage.setItem('refreshToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzcwMjIxNzM3LCJ0eXBlIjoicmVmcmVzaCJ9.qourOZ_dTRY0Ou7K5wWSpM_8kLR6m52r-o7_2hqe6H4'); localStorage.setItem('user', '{"email": "testuser@aris.pub", "id": 1, "name": "Test User", "initials": null, "created_at": "2026-02-03T16:15:02.946491+00:00", "avatar_color": null, "email_verified": false}');''')
 
         # Navigate to file
         print("\n1. Navigating to file...")
-        page.goto('http://localhost:5173/file/1', wait_until='domcontentloaded')
+        page.goto(f'{FRONTEND_URL}/file/1', wait_until='domcontentloaded')
 
         # Wait for authentication
         page.wait_for_selector('[data-testid="user-avatar"]', timeout=5000)

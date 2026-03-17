@@ -14,6 +14,10 @@ import time
 from pathlib import Path
 from playwright.async_api import BrowserContext, Page, async_playwright
 
+from cli import get_frontend_port
+
+FRONTEND_URL = f"http://localhost:{get_frontend_port()}"
+
 # Load session from CLI session file
 session_path = Path.home() / '.studio' / 'session.json'
 with open(session_path) as f:
@@ -24,7 +28,7 @@ async def setup_user(context: BrowserContext, page_name: str) -> Page:
     page = await context.new_page()
 
     print(f"   {page_name}: Navigating to home page...")
-    await page.goto('http://localhost:5173/', wait_until='domcontentloaded')
+    await page.goto(f'{FRONTEND_URL}/', wait_until='domcontentloaded')
 
     print(f"   {page_name}: Injecting auth tokens...")
     user_json = json.dumps(SESSION["user"])
@@ -35,7 +39,7 @@ async def setup_user(context: BrowserContext, page_name: str) -> Page:
     }}""")
 
     print(f"   {page_name}: Navigating to file 1...")
-    await page.goto('http://localhost:5173/file/1', wait_until='domcontentloaded')
+    await page.goto(f'{FRONTEND_URL}/file/1', wait_until='domcontentloaded')
 
     print(f"   {page_name}: Waiting for manuscript...")
     await page.wait_for_selector('[data-testid="manuscript-container"]', timeout=10000)
