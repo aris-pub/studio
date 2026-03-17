@@ -373,7 +373,7 @@
 
 <template>
   <div v-if="isAppLoading" class="app-loading">
-    <LoadingSpinner size="large" message="Loading Aris..." />
+    <LoadingSpinner size="large" message="Loading RSM Studio..." />
   </div>
   <template v-else>
     <RouterView :class="`bp-${breakpoints.active().value}`" />

@@ -1,6 +1,6 @@
 # Debug Folder
 
-This folder contains tools and scripts for debugging issues in the Aris frontend application.
+This folder contains tools and scripts for debugging issues in the RSM Studio frontend application.
 
 ## Contents
 

@@ -1,4 +1,4 @@
-"""Database session and auth management dependencies for the Aris backend API.
+"""Database session and auth management dependencies for the RSM Studio backend API.
 
 This module provides:
 - SQLAlchemy database engine and session setup.

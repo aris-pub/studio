@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the Minimum Viable Product (MVP) features for Aris's peer review and preprint portal functionality. The goal is to create a focused, achievable feature set that delivers real value to researchers from day one.
+This document outlines the Minimum Viable Product (MVP) features for RSM Studio's peer review and preprint portal functionality. The goal is to create a focused, achievable feature set that delivers real value to researchers from day one.
 
 ## Core MVP Features
 
@@ -56,7 +56,7 @@ This document outlines the Minimum Viable Product (MVP) features for Aris's peer
 ## Technical Architecture
 
 ### Document AST Integration
-The peer review system builds on Aris's existing RSM (Readable Research Markup) rendering engine:
+The peer review system builds on RSM Studio's existing RSM (Readable Research Markup) rendering engine:
 
 - **AST Foundation**: Each document is parsed into an Abstract Syntax Tree that represents the semantic structure
 - **Node-based anchoring**: Comments are anchored to specific AST nodes rather than character positions

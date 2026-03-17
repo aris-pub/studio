@@ -138,7 +138,7 @@ router = APIRouter(prefix="/signup", tags=["signup"])
         422: {"model": ErrorResponse, "description": "Validation error"},
     },
     summary="Create a new signup",
-    description="Register a new user for early access to Aris platform",
+    description="Register a new user for early access to RSM Studio",
 )
 async def create_signup_endpoint(
     signup_data: SignupCreate,

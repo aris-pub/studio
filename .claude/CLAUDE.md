@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project Overview
-Aris is a web-native scientific publishing platform. FastAPI backend + Vue.js frontend
+RSM Studio is a web-native scientific publishing platform. FastAPI backend + Vue.js frontend
 for RSM (Readable Research Markup) manuscripts.
 
 ## Structure

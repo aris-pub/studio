@@ -1,7 +1,7 @@
 {
   "name": "aris-multiplayer-server",
   "version": "1.0.0",
-  "description": "Y.js WebSocket server for Aris Studio collaborative editing",
+  "description": "Y.js WebSocket server for RSM Studio collaborative editing",
   "main": "server.js",
   "type": "module",
   "scripts": {

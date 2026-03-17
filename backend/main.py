@@ -1,4 +1,4 @@
-"""Aris backend: FastApi app."""
+"""RSM Studio backend: FastApi app."""
 
 import asyncio
 import importlib
@@ -42,11 +42,11 @@ collab_logger = get_logger("aris.collaboration")
 
 
 # API metadata for documentation
-logger.info("Starting Aris backend application")
+logger.info("Starting RSM Studio backend application")
 app = FastAPI(
-    title="Aris API",
+    title="RSM Studio API",
     description="""
-    **Aris** is a web-native scientific publishing platform that manages research manuscripts
+    **RSM Studio** is a web-native scientific publishing platform that manages research manuscripts
     written in RSM (Research Source Markup) format.
 
     ## Features
@@ -79,7 +79,7 @@ app = FastAPI(
     """,
     version="1.0.0",
     contact={
-        "name": "Aris Development Team",
+        "name": "RSM Studio Development Team",
         "url": "https://github.com/your-org/aris",
     },
     license_info={

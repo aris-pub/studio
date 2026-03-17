@@ -1,4 +1,4 @@
-"""Health check functionality for the Aris backend.
+"""Health check functionality for the RSM Studio backend.
 
 This module provides comprehensive health monitoring for all critical
 and non-critical system components.
@@ -324,7 +324,7 @@ async def perform_health_check(db: AsyncSession) -> HealthResponse:
 
     return HealthResponse(
         status=overall_status,
-        message=f"Aris API is {overall_status}",
+        message=f"RSM Studio API is {overall_status}",
         checks=checks,
         timestamp=datetime.now(UTC).isoformat(),
     )

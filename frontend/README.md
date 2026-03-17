@@ -1,6 +1,6 @@
-# Aris Frontend
+# RSM Studio Frontend
 
-Vue 3 frontend for the Aris scientific publishing platform. Researchers write, read, and review RSM manuscripts as responsive, interactive web documents with real-time collaboration.
+Vue 3 frontend for the RSM Studio scientific publishing platform. Researchers write, read, and review RSM manuscripts as responsive, interactive web documents with real-time collaboration.
 
 ## Stack
 

@@ -138,4 +138,4 @@ Made with <3 by [leotrs](https://leotrs.com).
 
 ---
 
-Aris, empowering researchers, one draft at a time.
+RSM Studio, empowering researchers, one draft at a time.

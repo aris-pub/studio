@@ -1,1 +1,1 @@
-"""Tests for Aris Studio CLI."""
+"""Tests for RSM Studio CLI."""

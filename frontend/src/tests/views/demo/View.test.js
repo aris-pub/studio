@@ -103,7 +103,7 @@ describe("Demo View", () => {
 
       const banner = wrapper.find(".demo-banner");
       expect(banner.exists()).toBe(true);
-      expect(banner.text()).toContain("Demo Mode - Experience Aris workspace with sample content");
+      expect(banner.text()).toContain("Demo Mode - Experience RSM Studio workspace with sample content");
 
       const backLink = wrapper.find(".demo-link");
       expect(backLink.exists()).toBe(true);

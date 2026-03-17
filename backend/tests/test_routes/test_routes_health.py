@@ -11,7 +11,7 @@ async def test_health_check_healthy(client):
     data = response.json()
     # In CI, may be degraded due to short JWT_SECRET_KEY, but should not be unhealthy
     assert data["status"] in ["healthy", "degraded"]
-    assert data["message"] in ["Aris API is healthy", "Aris API is degraded but functional"]
+    assert data["message"] in ["RSM Studio API is healthy", "RSM Studio API is degraded but functional"]
     assert "checks" in data
     assert "timestamp" in data
     
@@ -53,7 +53,7 @@ async def test_health_check_database_failure(client):
         
         data = response.json()["detail"]
         assert data["status"] == "unhealthy"
-        assert data["message"] == "Aris API is unhealthy"
+        assert data["message"] == "RSM Studio API is unhealthy"
         assert data["checks"]["database"]["status"] == "unhealthy"
         assert "Connection refused" in data["checks"]["database"]["message"]
 

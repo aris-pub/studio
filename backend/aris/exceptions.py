@@ -1,4 +1,4 @@
-"""Common exception utilities for the Aris backend."""
+"""Common exception utilities for the RSM Studio backend."""
 
 from fastapi import HTTPException, status
 

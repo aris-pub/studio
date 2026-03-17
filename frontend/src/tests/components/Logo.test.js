@@ -33,7 +33,7 @@ describe("Logo.vue", () => {
     expect(img.attributes("src")).toBe(
       `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
     );
-    expect(img.attributes("alt")).toBe("Aris logo");
+    expect(img.attributes("alt")).toBe("RSM Studio logo");
     expect(img.classes()).toContain("logo__mark");
   });
 

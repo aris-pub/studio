@@ -1,5 +1,5 @@
 /**
- * Toast notification service for Aris.
+ * Toast notification service for RSM Studio.
  *
  * Provides a simple API for showing toast notifications throughout the app.
  */

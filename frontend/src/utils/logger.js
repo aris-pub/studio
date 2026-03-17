@@ -1,5 +1,5 @@
 /**
- * Frontend logging utility for Aris.
+ * Frontend logging utility for RSM Studio.
  *
  * Provides structured logging with environment-aware configuration.
  * Designed to match backend logging patterns and support debugging.

@@ -1,7 +1,7 @@
 /**
  * Puppeteer Bug Reproduction Template
  *
- * Use this template to replicate user interaction bugs in the Aris frontend.
+ * Use this template to replicate user interaction bugs in the RSM Studio frontend.
  * Always run in headless mode as specified in CLAUDE.md.
  *
  * Usage:
