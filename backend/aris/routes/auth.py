@@ -73,6 +73,12 @@ class Token(BaseModel):
     }
 
 
+class RefreshRequest(BaseModel):
+    """Refresh token request body."""
+
+    refresh_token: str
+
+
 router = APIRouter()
 
 
@@ -180,6 +186,37 @@ async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depen
     access = jwt.create_access_token(data={"sub": str(user.id)})
     refresh = jwt.create_refresh_token(data={"sub": str(user.id)})
     return {"token_type": "bearer", "access_token": access, "refresh_token": refresh}
+
+
+@router.post(
+    "/refresh",
+    summary="Refresh Access Token",
+    description="Exchange a valid refresh token for a new access token.",
+    response_description="New JWT access token",
+)
+async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    payload = jwt.decode_token(body.refresh_token)
+    if payload is None or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalars().first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    access_token = jwt.create_access_token(data={"sub": str(user.id)})
+    return {"access_token": access_token}
 
 
 @router.post(
