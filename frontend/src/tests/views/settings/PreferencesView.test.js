@@ -300,8 +300,8 @@ describe("PreferencesView", () => {
       expect(mockApi.post).toHaveBeenCalledWith(
         "/user-settings",
         expect.objectContaining({
-          autoSaveInterval: 30,
-          notificationPreference: "in-app",
+          auto_save_interval: 30,
+          notification_preference: "in-app",
         })
       );
     });
@@ -317,6 +317,163 @@ describe("PreferencesView", () => {
 
       expect(consoleSpy).toHaveBeenCalledWith("Failed to save user settings:", expect.any(Error));
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("API Response Normalization", () => {
+    const mountWithResponse = async (responseData) => {
+      const localApi = {
+        get: vi.fn().mockResolvedValue({ data: responseData }),
+        post: vi.fn().mockResolvedValue({}),
+      };
+      const w = mount(PreferencesView, {
+        global: {
+          provide: { api: localApi },
+          components: {
+            Pane: {
+              name: "Pane",
+              template:
+                '<div data-testid="pane"><header data-testid="pane-header"><slot name="header" /></header><div data-testid="pane-content"><slot /></div></div>',
+            },
+            Section: {
+              name: "Section",
+              props: ["variant"],
+              template:
+                '<div data-testid="section"><div data-testid="section-title"><slot name="title" /></div><div data-testid="section-content"><slot name="content" /></div></div>',
+            },
+            Button: {
+              name: "Button",
+              props: ["disabled", "kind"],
+              template: '<button data-testid="button" @click="$emit(\'click\')"><slot /></button>',
+            },
+            Checkbox: {
+              name: "Checkbox",
+              props: ["modelValue", "id"],
+              template: '<label data-testid="checkbox"><slot /></label>',
+            },
+          },
+          stubs: {
+            IconSettings2: { name: "IconSettings2", template: "<svg />" },
+            Icon: { name: "Icon", props: ["name", "size"], template: "<svg />" },
+            SelectBox: {
+              name: "SelectBox",
+              props: ["modelValue", "options", "label"],
+              template: '<div data-testid="select-box" />',
+            },
+          },
+        },
+      });
+      await w.vm.$nextTick();
+      await w.vm.$nextTick();
+      return w;
+    };
+
+    it("normalizes snake_case API response to camelCase", async () => {
+      const w = await mountWithResponse({
+        auto_save_interval: 60,
+        sidebar_auto_collapse: true,
+        focus_mode_auto_hide: false,
+        notification_preference: "email",
+        user_id: 1,
+        created_at: "2026-01-01",
+        updated_at: "2026-01-01",
+      });
+
+      expect(w.vm.settings.autoSaveInterval).toBe(60);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+      expect(w.vm.settings.focusModeAutoHide).toBe(false);
+      expect(w.vm.settings.notificationPreference).toBe("email");
+      expect(w.vm.hasUnsavedChanges).toBe(false);
+    });
+
+    it("handles camelCase API response correctly", async () => {
+      const w = await mountWithResponse({
+        autoSaveInterval: 120,
+        sidebarAutoCollapse: true,
+      });
+
+      expect(w.vm.settings.autoSaveInterval).toBe(120);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+    });
+
+    it("sends snake_case keys when saving", async () => {
+      const localApi = {
+        get: vi.fn().mockResolvedValue({ data: {} }),
+        post: vi.fn().mockResolvedValue({}),
+      };
+      const w = mount(PreferencesView, {
+        global: {
+          provide: { api: localApi },
+          components: {
+            Pane: {
+              name: "Pane",
+              template:
+                '<div data-testid="pane"><header data-testid="pane-header"><slot name="header" /></header><div data-testid="pane-content"><slot /></div></div>',
+            },
+            Section: {
+              name: "Section",
+              props: ["variant"],
+              template:
+                '<div data-testid="section"><div data-testid="section-title"><slot name="title" /></div><div data-testid="section-content"><slot name="content" /></div></div>',
+            },
+            Button: {
+              name: "Button",
+              props: ["disabled", "kind"],
+              template: '<button data-testid="button" @click="$emit(\'click\')"><slot /></button>',
+            },
+            Checkbox: {
+              name: "Checkbox",
+              props: ["modelValue", "id"],
+              template: '<label data-testid="checkbox"><slot /></label>',
+            },
+          },
+          stubs: {
+            IconSettings2: { name: "IconSettings2", template: "<svg />" },
+            Icon: { name: "Icon", props: ["name", "size"], template: "<svg />" },
+            SelectBox: {
+              name: "SelectBox",
+              props: ["modelValue", "options", "label"],
+              template: '<div data-testid="select-box" />',
+            },
+          },
+        },
+      });
+      await w.vm.$nextTick();
+
+      w.vm.settings.sidebarAutoCollapse = true;
+      await w.vm.$nextTick();
+
+      const saveButton = w
+        .findAllComponents({ name: "Button" })
+        .find((b) => b.text().includes("Save Settings"));
+      await saveButton.trigger("click");
+
+      const postedPayload = localApi.post.mock.calls[0][1];
+      expect(postedPayload).toHaveProperty("sidebar_auto_collapse", true);
+      expect(postedPayload).not.toHaveProperty("sidebarAutoCollapse");
+    });
+
+    it("save-then-reload: saved values survive a component remount", async () => {
+      const savedState = {
+        autoSaveInterval: 60,
+        autoCompileDelay: 2000,
+        focusModeAutoHide: false,
+        sidebarAutoCollapse: true,
+        notificationPreference: "email",
+        emailDigestFrequency: "daily",
+        mobileMenuBehavior: "compact",
+      };
+
+      // "Reload" — mount a component that loads the saved state from the server
+      const w = await mountWithResponse(savedState);
+      expect(w.vm.settings.autoSaveInterval).toBe(60);
+      expect(w.vm.settings.autoCompileDelay).toBe(2000);
+      expect(w.vm.settings.focusModeAutoHide).toBe(false);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+      expect(w.vm.settings.notificationPreference).toBe("email");
+      expect(w.vm.settings.emailDigestFrequency).toBe("daily");
+      expect(w.vm.settings.mobileMenuBehavior).toBe("compact");
+      expect(w.vm.hasUnsavedChanges).toBe(false);
     });
   });
 

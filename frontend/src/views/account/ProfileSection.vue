@@ -149,7 +149,13 @@
     if (serverAvatarUrl.value) URL.revokeObjectURL(serverAvatarUrl.value);
   });
 
-  defineExpose({ hasUnsavedChanges, showDiscardConfirm, onDiscardProfile, confirmDiscard, cancelDiscard });
+  defineExpose({
+    hasUnsavedChanges,
+    showDiscardConfirm,
+    onDiscardProfile,
+    confirmDiscard,
+    cancelDiscard,
+  });
 </script>
 
 <template>
@@ -259,7 +265,12 @@
         </div>
       </div>
 
-      <div v-else-if="hasUnsavedChanges" class="status-message warning" role="status" aria-live="polite">
+      <div
+        v-else-if="hasUnsavedChanges"
+        class="status-message warning"
+        role="status"
+        aria-live="polite"
+      >
         <Icon name="AlertCircle" size="16" />
         <span>You have unsaved changes</span>
       </div>

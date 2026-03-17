@@ -7,6 +7,13 @@
 
   const api = inject("api");
 
+  const toCamel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+  const normalizeKeys = (obj) =>
+    obj ? Object.fromEntries(Object.entries(obj).map(([k, v]) => [toCamel(k), v])) : {};
+  const toSnake = (s) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+  const snakeKeys = (obj) =>
+    Object.fromEntries(Object.entries(obj).map(([k, v]) => [toSnake(k), v]));
+
   const autoSaveOptions = [
     { value: 10, label: "10 seconds" },
     { value: 30, label: "30 seconds" },
@@ -92,7 +99,8 @@
   onMounted(async () => {
     try {
       const response = await api.get("/user-settings");
-      Object.assign(settings, response.data);
+      const normalized = normalizeKeys(response.data);
+      Object.assign(settings, normalized);
       savedSettings.value = { ...settings };
     } catch (error) {
       console.error("Failed to load user settings:", error);
@@ -118,7 +126,16 @@
     saved.value = false;
 
     try {
-      await api.post("/user-settings", settings);
+      const payload = snakeKeys(
+        Object.fromEntries(Object.keys(defaults).map((k) => [k, settings[k]]))
+      );
+      const response = await api.post("/user-settings", payload);
+      if (response.data) {
+        const serverState = normalizeKeys(response.data);
+        for (const key of Object.keys(defaults)) {
+          if (key in serverState) settings[key] = serverState[key];
+        }
+      }
       savedSettings.value = { ...settings };
       saved.value = true;
       setTimeout(() => {
