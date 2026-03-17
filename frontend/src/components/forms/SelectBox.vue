@@ -30,13 +30,13 @@
     () => props.modelValue,
     (v) => {
       localValue.value = v;
-    },
+    }
   );
   watch(
     () => localValue.value,
     (v) => {
       emit("update:modelValue", v);
-    },
+    }
   );
   defineOptions({ inheritAttrs: false });
 
@@ -52,8 +52,8 @@
 
   const normalizedOptions = computed(() =>
     props.options.map((opt) =>
-      typeof opt === "object" && opt !== null ? opt : { value: opt, label: String(opt) },
-    ),
+      typeof opt === "object" && opt !== null ? opt : { value: opt, label: String(opt) }
+    )
   );
 
   const currentLabel = computed(() => {

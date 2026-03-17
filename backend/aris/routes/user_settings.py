@@ -17,7 +17,7 @@ from ..models import User
 router = APIRouter(prefix="/user-settings", tags=["user", "settings"])
 
 
-@router.post("", response_model=UserSettingsResponse)
+@router.post("", response_model=UserSettingsResponse, response_model_by_alias=True)
 async def upsert_user_settings(
     settings_data: UserSettingsBase,
     db: AsyncSession = Depends(get_db),
@@ -28,7 +28,7 @@ async def upsert_user_settings(
     return settings
 
 
-@router.get("", response_model=UserSettingsResponse)
+@router.get("", response_model=UserSettingsResponse, response_model_by_alias=True)
 async def get_user_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(current_user),

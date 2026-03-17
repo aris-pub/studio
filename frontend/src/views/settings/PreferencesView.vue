@@ -1,10 +1,18 @@
 <script setup>
-  import { ref, reactive, computed, onMounted, inject } from "vue";
+  import { ref, reactive, computed, onMounted, onUnmounted, watch, inject } from "vue";
+  import { onBeforeRouteLeave } from "vue-router";
   import { IconSettings2 } from "@tabler/icons-vue";
   import { toast } from "@/utils/toast.js";
   import SelectBox from "@/components/forms/SelectBox.vue";
 
   const api = inject("api");
+
+  const toCamel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+  const normalizeKeys = (obj) =>
+    obj ? Object.fromEntries(Object.entries(obj).map(([k, v]) => [toCamel(k), v])) : {};
+  const toSnake = (s) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+  const snakeKeys = (obj) =>
+    Object.fromEntries(Object.entries(obj).map(([k, v]) => [toSnake(k), v]));
 
   const autoSaveOptions = [
     { value: 10, label: "10 seconds" },
@@ -38,7 +46,7 @@
     { value: "minimal", label: "Minimal" },
   ];
 
-  const settings = reactive({
+  const defaults = {
     autoSaveInterval: 30,
     autoCompileDelay: 1000,
     focusModeAutoHide: true,
@@ -59,13 +67,28 @@
 
   const settings = reactive({ ...defaults });
   const savedSettings = ref({ ...defaults });
-
   const loading = ref(false);
   const saved = ref(false);
 
   const hasUnsavedChanges = computed(() => {
     const saved_ = savedSettings.value;
     return Object.keys(defaults).some((key) => settings[key] !== saved_[key]);
+  });
+
+  const handleBeforeUnload = (e) => {
+    if (hasUnsavedChanges.value) {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    }
+  };
+
+  watch(hasUnsavedChanges, (hasChanges) => {
+    if (hasChanges) {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    } else {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    }
   });
 
   const resetSettings = () => {
@@ -76,7 +99,8 @@
   onMounted(async () => {
     try {
       const response = await api.get("/user-settings");
-      Object.assign(settings, response.data);
+      const normalized = normalizeKeys(response.data);
+      Object.assign(settings, normalized);
       savedSettings.value = { ...settings };
     } catch (error) {
       console.error("Failed to load user settings:", error);
@@ -86,12 +110,32 @@
     }
   });
 
+  onBeforeRouteLeave(() => {
+    if (hasUnsavedChanges.value) {
+      const leave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+      if (!leave) return false;
+    }
+  });
+
+  onUnmounted(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  });
+
   const saveSettings = async () => {
     loading.value = true;
     saved.value = false;
 
     try {
-      await api.post("/user-settings", settings);
+      const payload = snakeKeys(
+        Object.fromEntries(Object.keys(defaults).map((k) => [k, settings[k]]))
+      );
+      const response = await api.post("/user-settings", payload);
+      if (response.data) {
+        const serverState = normalizeKeys(response.data);
+        for (const key of Object.keys(defaults)) {
+          if (key in serverState) settings[key] = serverState[key];
+        }
+      }
       savedSettings.value = { ...settings };
       saved.value = true;
       setTimeout(() => {
@@ -289,6 +333,11 @@
       >
         {{ loading ? "Saving..." : saved ? "Saved!" : "Save Settings" }}
       </Button>
+
+      <div v-if="hasUnsavedChanges" class="status-message warning" role="status" aria-live="polite">
+        <Icon name="AlertCircle" size="16" />
+        <span>You have unsaved changes</span>
+      </div>
     </div>
   </Pane>
 </template>
@@ -314,5 +363,29 @@
   .saved {
     background: var(--green-600, #16a34a) !important;
     border-color: var(--green-600, #16a34a) !important;
+  }
+
+  .status-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+
+  .status-message.warning {
+    background-color: var(--surface-warning);
+    border: var(--border-thin) solid var(--border-warning);
+    color: var(--warning-700);
+  }
+
+  .status-message :deep(.tabler-icon) {
+    flex-shrink: 0;
+  }
+
+  .status-message.warning :deep(.tabler-icon) {
+    color: var(--warning-600);
   }
 </style>

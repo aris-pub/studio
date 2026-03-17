@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,11 @@ from ..models import UserSettings
 
 
 class UserSettingsBase(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
     auto_save_interval: int = 30
     focus_mode_auto_hide: bool = True
     sidebar_auto_collapse: bool = False
@@ -34,7 +40,11 @@ class UserSettingsResponse(UserSettingsBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
 
 
 class UserSettingsDB:

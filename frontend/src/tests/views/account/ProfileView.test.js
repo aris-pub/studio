@@ -31,12 +31,14 @@ describe("AccountView (integration)", () => {
     BaseLayout: { template: "<div><slot/></div>", props: ["fab"] },
     Pane: { template: "<div><slot/></div>" },
     Section: {
-      template: '<div><component :is="headingTag || \'div\'"><slot name="title"/></component><slot name="content"/><slot name="footer"/></div>',
+      template:
+        '<div><component :is="headingTag || \'div\'"><slot name="title"/></component><slot name="content"/><slot name="footer"/></div>',
       props: ["variant", "theme", "headingTag"],
     },
     InputText: { template: '<input v-bind="$attrs" />' },
     PasswordInput: {
-      template: '<div class="password-field"><input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><button type="button" data-testid="toggle-password">Show</button></div>',
+      template:
+        '<div class="password-field"><input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><button type="button" data-testid="toggle-password">Show</button></div>',
       props: ["modelValue", "label"],
       emits: ["update:modelValue"],
     },

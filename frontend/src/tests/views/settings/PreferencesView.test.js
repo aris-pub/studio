@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 import PreferencesView from "@/views/settings/PreferencesView.vue";
+
+let routeLeaveGuard = null;
+vi.mock("vue-router", () => ({
+  onBeforeRouteLeave: (guard) => {
+    routeLeaveGuard = guard;
+  },
+}));
 
 describe("PreferencesView", () => {
   let wrapper;
@@ -12,6 +20,7 @@ describe("PreferencesView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    routeLeaveGuard = null;
 
     wrapper = mount(PreferencesView, {
       global: {
@@ -45,6 +54,11 @@ describe("PreferencesView", () => {
           IconSettings2: {
             name: "IconSettings2",
             template: '<svg data-testid="icon-settings2" />',
+          },
+          Icon: {
+            name: "Icon",
+            props: ["name", "size"],
+            template: '<svg data-testid="icon" />',
           },
           SelectBox: {
             name: "SelectBox",
@@ -109,6 +123,169 @@ describe("PreferencesView", () => {
     });
   });
 
+  describe("Unsaved Changes Detection", () => {
+    it("detects unsaved changes when a setting differs from saved values", async () => {
+      await nextTick();
+
+      // Initially no unsaved changes
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+
+      // Modify a setting
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+    });
+
+    it("clears unsaved state after successful save", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+
+      // Trigger save
+      const button = wrapper.findComponent({ name: "Button" });
+      await button.trigger("click");
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+    });
+
+    it("detects changes across multiple setting types", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.focusModeAutoHide = false;
+      wrapper.vm.settings.notificationPreference = "email";
+      await nextTick();
+
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+    });
+  });
+
+  describe("Browser Navigation Protection", () => {
+    beforeEach(() => {
+      window.addEventListener = vi.fn();
+      window.removeEventListener = vi.fn();
+    });
+
+    it("adds beforeunload listener when there are unsaved changes", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      expect(window.addEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+    });
+
+    it("removes beforeunload listener when changes are reverted", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      // Revert to original
+      wrapper.vm.settings.autoSaveInterval = 30;
+      await nextTick();
+
+      expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+    });
+
+    it("removes beforeunload listener on component unmount", async () => {
+      await nextTick();
+      wrapper.unmount();
+      expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+    });
+  });
+
+  describe("Unsaved Changes Warning Banner", () => {
+    it("shows warning banner when there are unsaved changes", async () => {
+      await nextTick();
+
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      const warning = wrapper.find(".status-message.warning");
+      expect(warning.exists()).toBe(true);
+      expect(warning.text()).toContain("You have unsaved changes");
+    });
+
+    it("hides warning banner when changes are reverted", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(true);
+
+      wrapper.vm.settings.autoSaveInterval = 30;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+    });
+
+    it("hides warning banner after successful save", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.find(".status-message.warning").exists()).toBe(true);
+
+      const button = wrapper.findComponent({ name: "Button" });
+      await button.trigger("click");
+      await nextTick();
+
+      expect(wrapper.find(".status-message.warning").exists()).toBe(false);
+    });
+
+    it("has correct accessibility attributes", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      const warning = wrapper.find(".status-message.warning");
+      expect(warning.attributes("role")).toBe("status");
+      expect(warning.attributes("aria-live")).toBe("polite");
+    });
+  });
+
+  describe("In-App Navigation Protection", () => {
+    it("registers a route leave guard", () => {
+      expect(routeLeaveGuard).toBeTypeOf("function");
+    });
+
+    it("allows navigation when there are no unsaved changes", async () => {
+      await nextTick();
+      const result = routeLeaveGuard();
+      expect(result).not.toBe(false);
+    });
+
+    it("blocks navigation when user cancels and there are unsaved changes", async () => {
+      await nextTick();
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+      const result = routeLeaveGuard();
+      expect(window.confirm).toHaveBeenCalled();
+      expect(result).toBe(false);
+      window.confirm.mockRestore();
+    });
+
+    it("allows navigation when user confirms and there are unsaved changes", async () => {
+      await nextTick();
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      const result = routeLeaveGuard();
+      expect(window.confirm).toHaveBeenCalled();
+      expect(result).not.toBe(false);
+      window.confirm.mockRestore();
+    });
+  });
+
   describe("Settings Management", () => {
     it("loads user settings on mount", async () => {
       await wrapper.vm.$nextTick();
@@ -123,8 +300,8 @@ describe("PreferencesView", () => {
       expect(mockApi.post).toHaveBeenCalledWith(
         "/user-settings",
         expect.objectContaining({
-          autoSaveInterval: 30,
-          notificationPreference: "in-app",
+          auto_save_interval: 30,
+          notification_preference: "in-app",
         })
       );
     });
@@ -143,112 +320,15 @@ describe("PreferencesView", () => {
     });
   });
 
-  describe("Reset Button", () => {
-    it("renders a reset button", () => {
-      const buttons = wrapper.findAllComponents({ name: "Button" });
-      const resetButton = buttons.find((b) => b.text().includes("Reset"));
-      expect(resetButton).toBeDefined();
-    });
-
-    it("reset button is disabled when no changes have been made", () => {
-      const buttons = wrapper.findAllComponents({ name: "Button" });
-      const resetButton = buttons.find((b) => b.text().includes("Reset"));
-      expect(resetButton.props("disabled")).toBe(true);
-    });
-
-    it("reset button is enabled after settings are changed", async () => {
-      const serverSettings = {
-        autoSaveInterval: 30,
-        autoCompileDelay: 1000,
-        focusModeAutoHide: true,
-        sidebarAutoCollapse: false,
-        drawerDefaultAnnotations: false,
-        drawerDefaultMargins: false,
-        drawerDefaultSettings: false,
-        notificationPreference: "in-app",
-        notificationMentions: true,
-        notificationComments: true,
-        notificationShares: true,
-        notificationSystem: true,
-        emailDigestFrequency: "weekly",
-        allowAnonymousFeedback: false,
-        soundNotifications: true,
-        mobileMenuBehavior: "standard",
+  describe("API Response Normalization", () => {
+    const mountWithResponse = async (responseData) => {
+      const localApi = {
+        get: vi.fn().mockResolvedValue({ data: responseData }),
+        post: vi.fn().mockResolvedValue({}),
       };
-      mockApi.get.mockResolvedValue({ data: serverSettings });
-
-      wrapper = mount(PreferencesView, {
+      const w = mount(PreferencesView, {
         global: {
-          provide: { api: mockApi },
-          components: {
-            Pane: {
-              name: "Pane",
-              template:
-                '<div data-testid="pane"><header data-testid="pane-header"><slot name="header" /></header><div data-testid="pane-content"><slot /></div></div>',
-            },
-            Section: {
-              name: "Section",
-              props: ["variant"],
-              template:
-                '<div data-testid="section"><div data-testid="section-title"><slot name="title" /></div><div data-testid="section-content"><slot name="content" /></div></div>',
-            },
-            Button: {
-              name: "Button",
-              props: ["disabled", "kind"],
-              template: '<button data-testid="button"><slot /></button>',
-            },
-            Checkbox: {
-              name: "Checkbox",
-              props: ["modelValue", "id"],
-              template: '<label data-testid="checkbox"><slot /></label>',
-            },
-          },
-          stubs: {
-            IconSettings2: {
-              name: "IconSettings2",
-              template: '<svg data-testid="icon-settings2" />',
-            },
-          },
-        },
-      });
-
-      await wrapper.vm.$nextTick();
-      await wrapper.vm.$nextTick();
-
-      // Change a setting via the select element
-      const select = wrapper.find("#auto-save-interval");
-      await select.setValue(60);
-      await wrapper.vm.$nextTick();
-
-      const buttons = wrapper.findAllComponents({ name: "Button" });
-      const resetButton = buttons.find((b) => b.text().includes("Reset"));
-      expect(resetButton.props("disabled")).toBe(false);
-    });
-
-    it("restores original settings when reset is clicked", async () => {
-      const serverSettings = {
-        autoSaveInterval: 30,
-        autoCompileDelay: 1000,
-        focusModeAutoHide: true,
-        sidebarAutoCollapse: false,
-        drawerDefaultAnnotations: false,
-        drawerDefaultMargins: false,
-        drawerDefaultSettings: false,
-        notificationPreference: "in-app",
-        notificationMentions: true,
-        notificationComments: true,
-        notificationShares: true,
-        notificationSystem: true,
-        emailDigestFrequency: "weekly",
-        allowAnonymousFeedback: false,
-        soundNotifications: true,
-        mobileMenuBehavior: "standard",
-      };
-      mockApi.get.mockResolvedValue({ data: serverSettings });
-
-      wrapper = mount(PreferencesView, {
-        global: {
-          provide: { api: mockApi },
+          provide: { api: localApi },
           components: {
             Pane: {
               name: "Pane",
@@ -273,30 +353,158 @@ describe("PreferencesView", () => {
             },
           },
           stubs: {
-            IconSettings2: {
-              name: "IconSettings2",
-              template: '<svg data-testid="icon-settings2" />',
+            IconSettings2: { name: "IconSettings2", template: "<svg />" },
+            Icon: { name: "Icon", props: ["name", "size"], template: "<svg />" },
+            SelectBox: {
+              name: "SelectBox",
+              props: ["modelValue", "options", "label"],
+              template: '<div data-testid="select-box" />',
             },
           },
         },
       });
+      await w.vm.$nextTick();
+      await w.vm.$nextTick();
+      return w;
+    };
 
-      await wrapper.vm.$nextTick();
-      await wrapper.vm.$nextTick();
+    it("normalizes snake_case API response to camelCase", async () => {
+      const w = await mountWithResponse({
+        auto_save_interval: 60,
+        sidebar_auto_collapse: true,
+        focus_mode_auto_hide: false,
+        notification_preference: "email",
+        user_id: 1,
+        created_at: "2026-01-01",
+        updated_at: "2026-01-01",
+      });
 
-      // Change a setting
-      const select = wrapper.find("#auto-save-interval");
-      await select.setValue(60);
-      await wrapper.vm.$nextTick();
+      expect(w.vm.settings.autoSaveInterval).toBe(60);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+      expect(w.vm.settings.focusModeAutoHide).toBe(false);
+      expect(w.vm.settings.notificationPreference).toBe("email");
+      expect(w.vm.hasUnsavedChanges).toBe(false);
+    });
+
+    it("handles camelCase API response correctly", async () => {
+      const w = await mountWithResponse({
+        autoSaveInterval: 120,
+        sidebarAutoCollapse: true,
+      });
+
+      expect(w.vm.settings.autoSaveInterval).toBe(120);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+    });
+
+    it("sends snake_case keys when saving", async () => {
+      const localApi = {
+        get: vi.fn().mockResolvedValue({ data: {} }),
+        post: vi.fn().mockResolvedValue({}),
+      };
+      const w = mount(PreferencesView, {
+        global: {
+          provide: { api: localApi },
+          components: {
+            Pane: {
+              name: "Pane",
+              template:
+                '<div data-testid="pane"><header data-testid="pane-header"><slot name="header" /></header><div data-testid="pane-content"><slot /></div></div>',
+            },
+            Section: {
+              name: "Section",
+              props: ["variant"],
+              template:
+                '<div data-testid="section"><div data-testid="section-title"><slot name="title" /></div><div data-testid="section-content"><slot name="content" /></div></div>',
+            },
+            Button: {
+              name: "Button",
+              props: ["disabled", "kind"],
+              template: '<button data-testid="button" @click="$emit(\'click\')"><slot /></button>',
+            },
+            Checkbox: {
+              name: "Checkbox",
+              props: ["modelValue", "id"],
+              template: '<label data-testid="checkbox"><slot /></label>',
+            },
+          },
+          stubs: {
+            IconSettings2: { name: "IconSettings2", template: "<svg />" },
+            Icon: { name: "Icon", props: ["name", "size"], template: "<svg />" },
+            SelectBox: {
+              name: "SelectBox",
+              props: ["modelValue", "options", "label"],
+              template: '<div data-testid="select-box" />',
+            },
+          },
+        },
+      });
+      await w.vm.$nextTick();
+
+      w.vm.settings.sidebarAutoCollapse = true;
+      await w.vm.$nextTick();
+
+      const saveButton = w
+        .findAllComponents({ name: "Button" })
+        .find((b) => b.text().includes("Save Settings"));
+      await saveButton.trigger("click");
+
+      const postedPayload = localApi.post.mock.calls[0][1];
+      expect(postedPayload).toHaveProperty("sidebar_auto_collapse", true);
+      expect(postedPayload).not.toHaveProperty("sidebarAutoCollapse");
+    });
+
+    it("save-then-reload: saved values survive a component remount", async () => {
+      const savedState = {
+        autoSaveInterval: 60,
+        autoCompileDelay: 2000,
+        focusModeAutoHide: false,
+        sidebarAutoCollapse: true,
+        notificationPreference: "email",
+        emailDigestFrequency: "daily",
+        mobileMenuBehavior: "compact",
+      };
+
+      // "Reload" — mount a component that loads the saved state from the server
+      const w = await mountWithResponse(savedState);
+      expect(w.vm.settings.autoSaveInterval).toBe(60);
+      expect(w.vm.settings.autoCompileDelay).toBe(2000);
+      expect(w.vm.settings.focusModeAutoHide).toBe(false);
+      expect(w.vm.settings.sidebarAutoCollapse).toBe(true);
+      expect(w.vm.settings.notificationPreference).toBe("email");
+      expect(w.vm.settings.emailDigestFrequency).toBe("daily");
+      expect(w.vm.settings.mobileMenuBehavior).toBe("compact");
+      expect(w.vm.hasUnsavedChanges).toBe(false);
+    });
+  });
+
+  describe("Reset Button", () => {
+    it("renders a reset button", () => {
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const resetButton = buttons.find((b) => b.text().includes("Reset"));
+      expect(resetButton).toBeDefined();
+    });
+
+    it("reset button is disabled when no changes have been made", () => {
+      const buttons = wrapper.findAllComponents({ name: "Button" });
+      const resetButton = buttons.find((b) => b.text().includes("Reset"));
+      expect(resetButton.props("disabled")).toBe(true);
+    });
+
+    it("reverts settings when reset is clicked", async () => {
+      await nextTick();
+
+      wrapper.vm.settings.autoSaveInterval = 60;
+      await nextTick();
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true);
 
       // Click reset
       const buttons = wrapper.findAllComponents({ name: "Button" });
       const resetButton = buttons.find((b) => b.text().includes("Reset"));
       await resetButton.trigger("click");
-      await wrapper.vm.$nextTick();
+      await nextTick();
 
-      // Verify setting was restored
-      expect(wrapper.find("#auto-save-interval").element.value).toBe("30");
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+      expect(wrapper.vm.settings.autoSaveInterval).toBe(30);
     });
   });
 });

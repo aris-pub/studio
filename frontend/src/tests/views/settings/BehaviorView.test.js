@@ -284,7 +284,13 @@ describe("PreferencesView", () => {
 
       await saveButton.trigger("click");
 
-      expect(mockApi.post).toHaveBeenCalledWith("/user-settings", wrapper.vm.settings);
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/user-settings",
+        expect.objectContaining({
+          auto_save_interval: 30,
+          notification_preference: "in-app",
+        })
+      );
     });
 
     it("shows loading state during save", async () => {
