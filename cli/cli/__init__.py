@@ -1,4 +1,4 @@
-"""Aris Studio CLI - Developer tool for local development.
+"""RSM Studio CLI - Developer tool for local development.
 
 CRITICAL: This tool ONLY works in LOCAL development environment.
 It will refuse to run in PROD, CI, or STAGING environments.
@@ -123,7 +123,7 @@ class Session:
 
 
 class StudioAPI:
-    """Thin wrapper around Aris API - no business logic."""
+    """Thin wrapper around RSM Studio API - no business logic."""
 
     def __init__(self) -> None:
         self.base_url = get_api_base_url()
@@ -172,7 +172,7 @@ class StudioAPI:
 
 @click.group()
 def cli() -> None:
-    """Aris Studio CLI - Developer tool for local development."""
+    """RSM Studio CLI - Developer tool for local development."""
     check_environment()
 
 

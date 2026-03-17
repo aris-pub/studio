@@ -16,7 +16,7 @@
     },
     alt: {
       type: String,
-      default: "Aris logo",
+      default: "RSM Studio logo",
     },
     class: {
       type: String,

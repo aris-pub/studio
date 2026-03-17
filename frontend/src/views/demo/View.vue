@@ -100,7 +100,7 @@
     <div v-if="!focusMode" class="demo-banner" data-testid="demo-banner">
       <div class="demo-banner-content">
         <Icon name="InfoCircle" icon-class="demo-icon" />
-        <span>Demo Mode - Experience Aris workspace with sample content</span>
+        <span>Demo Mode - Experience RSM Studio workspace with sample content</span>
         <a href="/" class="demo-link" data-testid="demo-back-link">← Back to homepage</a>
       </div>
     </div>

@@ -1,4 +1,4 @@
-# Contributing to Aris
+# Contributing to RSM Studio
 
 ## Setup
 

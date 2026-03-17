@@ -158,7 +158,7 @@
     <!-- Desktop mode: direct children for CSS compatibility -->
     <template v-if="!mobileMode">
       <div id="logo">
-        <Logo :type="collapsed ? 'small' : 'full'" alt="Aris logo" />
+        <Logo :type="collapsed ? 'small' : 'full'" alt="RSM Studio logo" />
       </div>
 
       <div class="cta">
@@ -215,7 +215,7 @@
     <!-- Mobile mode: drawer content when open -->
     <div v-if="mobileMode && mobileDrawerOpen" ref="sidebar-content-ref" class="sidebar-content">
       <div id="logo">
-        <Logo :type="collapsed ? 'small' : 'full'" alt="Aris logo" />
+        <Logo :type="collapsed ? 'small' : 'full'" alt="RSM Studio logo" />
       </div>
 
       <div class="cta">

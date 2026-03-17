@@ -1,6 +1,6 @@
-# Aris Landing Page
+# RSM Studio Landing Page
 
-Landing page for Aris scientific publishing platform, built with Nuxt 3 and Vue 3.
+Landing page for RSM Studio scientific publishing platform, built with Nuxt 3 and Vue 3.
 
 ## Features
 

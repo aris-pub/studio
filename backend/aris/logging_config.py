@@ -1,4 +1,4 @@
-"""Logging configuration for the Aris backend.
+"""Logging configuration for the RSM Studio backend.
 
 Provides centralized logging setup with environment-aware configuration.
 Designed for development stage - console output with structured formatting.

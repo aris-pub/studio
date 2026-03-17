@@ -34,7 +34,7 @@ This is a sample RSM document for testing.
 
 ## Introduction
 
-Welcome to *Aris*, the web-native scientific publishing platform.`,
+Welcome to *RSM Studio*, the web-native scientific publishing platform.`,
   },
 
   MINIMAL_RSM: {

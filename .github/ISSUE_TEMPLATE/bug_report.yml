@@ -21,7 +21,7 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which part of Aris is affected?
+      description: Which part of RSM Studio is affected?
       options:
         - Backend (FastAPI/Python)
         - Frontend (Vue.js)
@@ -50,7 +50,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: What environment are you running Aris in?
+      description: What environment are you running RSM Studio in?
       placeholder: |
         - OS: [e.g. macOS, Windows, Ubuntu]
         - Browser: [e.g. Chrome, Firefox, Safari]

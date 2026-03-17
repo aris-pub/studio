@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ari (Agentic Research Interface) is the proposed intelligent research assistant for the Aris scientific publishing platform. Rather than a traditional writing assistant, Ari is envisioned as the **central nervous system** of research collaboration - an intelligent secretary that manages platform workflows, team coordination, and research tasks.
+Ari (Agentic Research Interface) is the proposed intelligent research assistant for the RSM Studio scientific publishing platform. Rather than a traditional writing assistant, Ari is envisioned as the **central nervous system** of research collaboration - an intelligent secretary that manages platform workflows, team coordination, and research tasks.
 
 ## Core Philosophy
 
@@ -122,7 +122,7 @@ Ari: "Questions drafted and saved to your meeting notes. Dr. Kim worked with sim
 - **Academic Language**: Specialized understanding of research terminology
 
 #### 2. Platform Integration
-- **Deep Hooks**: Integration with all Aris platform components
+- **Deep Hooks**: Integration with all RSM Studio platform components
 - **User Management**: Understanding of teams, roles, and permissions
 - **Document Management**: File creation, sharing, and collaboration
 - **Notification System**: Coordinated messaging and reminders

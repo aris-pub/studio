@@ -89,10 +89,9 @@ describe("LoginView", () => {
     expect(heading.text()).toBe("Sign in");
   });
 
-  it("shows RSM Studio in subheading, not Aris Studio", () => {
+  it("shows RSM Studio in subheading", () => {
     const sub = wrapper.find(".form-subheading");
     expect(sub.text()).toContain("RSM Studio");
-    expect(sub.text()).not.toContain("Aris Studio");
   });
 
   it("has a brand panel", () => {

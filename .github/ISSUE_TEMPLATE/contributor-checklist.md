@@ -1,14 +1,14 @@
 ---
 name: 📋 New Contributor Checklist
-about: Checklist for new contributors to get started with Aris
+about: Checklist for new contributors to get started with RSM Studio
 title: "New Contributor Onboarding: [Your Name]"
 labels: ["onboarding", "contributor"]
 assignees: []
 ---
 
-# Welcome to Aris! 🚀
+# Welcome to RSM Studio! 🚀
 
-Thank you for your interest in contributing to Aris! This checklist will help you get started and ensure you have everything you need to make successful contributions.
+Thank you for your interest in contributing to RSM Studio! This checklist will help you get started and ensure you have everything you need to make successful contributions.
 
 ## 📋 Pre-Development Setup
 
@@ -130,7 +130,7 @@ alembic upgrade head            # Apply migrations
 
 ## ✅ Ready to Contribute!
 
-Once you've completed this checklist, you're ready to start contributing to Aris!
+Once you've completed this checklist, you're ready to start contributing to RSM Studio!
 
 ### Quick Verification
 - [ ] **Environment works**: Both backend and frontend run successfully

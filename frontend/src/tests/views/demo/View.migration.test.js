@@ -229,7 +229,7 @@ describe("Demo View Migration Tests", () => {
 
       const banner = wrapper.find(".demo-banner");
       expect(banner.exists()).toBe(true);
-      expect(banner.text()).toContain("Demo Mode - Experience Aris workspace with sample content");
+      expect(banner.text()).toContain("Demo Mode - Experience RSM Studio workspace with sample content");
     });
 
     it("focus mode still toggles correctly", async () => {

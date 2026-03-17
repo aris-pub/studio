@@ -29,7 +29,7 @@
 ## Sample Section Heading
 {:label: sec}
 
-Aris\\: the web-native, human-first ResOps platform.
+RSM Studio\\: the web-native, human-first ResOps platform.
 
 ### And a subsection
 

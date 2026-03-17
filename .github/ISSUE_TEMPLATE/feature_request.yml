@@ -1,12 +1,12 @@
 name: Feature Request
-description: Suggest an idea for Aris
+description: Suggest an idea for RSM Studio
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a new feature for Aris!
+        Thanks for suggesting a new feature for RSM Studio!
 
   - type: textarea
     id: problem
@@ -29,7 +29,7 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which part of Aris would this feature affect?
+      description: Which part of RSM Studio would this feature affect?
       options:
         - Backend (FastAPI/Python)
         - Frontend (Vue.js)

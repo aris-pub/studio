@@ -1,6 +1,6 @@
-# Aris Backend
+# RSM Studio Backend
 
-FastAPI backend for the Aris scientific publishing platform. Provides a REST API for users, manuscripts, authentication, and real-time collaboration.
+FastAPI backend for the RSM Studio scientific publishing platform. Provides a REST API for users, manuscripts, authentication, and real-time collaboration.
 
 ## Stack
 

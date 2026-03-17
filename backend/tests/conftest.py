@@ -1,6 +1,6 @@
 """Global test fixtures and configuration.
 
-This module provides centralized testing infrastructure for the Aris backend,
+This module provides centralized testing infrastructure for the RSM Studio backend,
 following FastAPI testing best practices. It includes:
 
 - Database setup with proper isolation

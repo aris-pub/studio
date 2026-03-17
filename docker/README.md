@@ -1,4 +1,4 @@
-# Aris Docker Development Environment
+# RSM Studio Docker Development Environment
 
 Containerized development stack with hot reload for all services.
 

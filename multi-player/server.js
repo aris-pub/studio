@@ -1,5 +1,5 @@
 /**
- * Aris Y.js WebSocket Server
+ * RSM Studio Y.js WebSocket Server
  *
  * Pure WebSocket relay for Y.js synchronization with automatic backend cleanup.
  * No persistence logic - backend connects as a peer/client to handle persistence.

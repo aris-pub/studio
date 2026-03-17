@@ -1,6 +1,6 @@
-"""All Aris database models.
+"""All RSM Studio database models.
 
-This module defines the SQLAlchemy ORM models for the Aris platform, including users,
+This module defines the SQLAlchemy ORM models for the RSM Studio platform, including users,
 files, associated metadata such as tags, and private user-uploaded file assets (images,
 data, code). Supports soft deletes.
 

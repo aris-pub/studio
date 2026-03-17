@@ -19,13 +19,13 @@
       : "Not published";
 
     // Generate citation formats
-    const plainCitation = `${fileData.title || "Untitled"} by ${fileData.authors || "Unknown Author"}. Published on Aris Preprint, ${publishedDate}. ${fileData.public_uuid || ""}`;
+    const plainCitation = `${fileData.title || "Untitled"} by ${fileData.authors || "Unknown Author"}. Published on RSM Studio Preprint, ${publishedDate}. ${fileData.public_uuid || ""}`;
 
     const bibtexCitation = `@article{${fileData.public_uuid || "unknown"},
   title={${fileData.title || "Untitled"}},
   author={${fileData.authors || "Unknown Author"}},
   year={${fileData.published_at ? new Date(fileData.published_at).getFullYear() : new Date().getFullYear()}},
-  journal={Aris Preprint},
+  journal={RSM Studio Preprint},
   url={}, % Publication URLs will be handled by separate publishing app
   abstract={${fileData.abstract || ""}},
   keywords={${fileData.keywords || ""}}
@@ -45,7 +45,7 @@
       {
         label: "Source",
         icon: IconBook2,
-        content: `📝 Aris Preprint
+        content: `📝 RSM Studio Preprint
         🔗 UUID: ${fileData.public_uuid || "Not assigned"}
         📅 ${new Date(fileData.published_at || Date.now()).getFullYear()}`,
       },

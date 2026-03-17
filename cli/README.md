@@ -1,6 +1,6 @@
-# Aris Studio CLI
+# RSM Studio CLI
 
-Developer CLI tool for local Aris development.
+Developer CLI tool for local RSM Studio development.
 
 **CRITICAL:** This tool ONLY works in LOCAL development environment. It refuses to run in PROD, CI, or STAGING.
 
