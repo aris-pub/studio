@@ -11,7 +11,7 @@ from pycrdt import Doc, Text, create_sync_message, handle_sync_message
 from pycrdt._sync import YSyncMessageType, create_message
 from websockets import connect
 
-from cli.core import StudioAPI, console, get_multiplayer_ws_url
+from cli.core import StudioAPI, console, get_multiplayer_url
 
 
 def _build_room_name(file_id: int) -> str:
@@ -66,7 +66,7 @@ async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
 
 def _run_edit(file_id: int, new_source: str) -> dict[str, Any]:
     """Connect to Y.js WebSocket, apply edit, disconnect. Returns result dict."""
-    ws_base = get_multiplayer_ws_url()
+    ws_base = get_multiplayer_url()
     room = _build_room_name(file_id)
     url = f"{ws_base}/{room}"
 

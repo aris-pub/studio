@@ -9,7 +9,6 @@ import responses
 from click.testing import CliRunner
 
 from cli import cli
-from cli.core import SESSION_FILE
 
 
 class TestFilesCommand:

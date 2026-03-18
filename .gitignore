@@ -119,6 +119,10 @@ test-results/
 playwright-report/
 
 
+# Agent-generated files (bd init, claude code)
+AGENTS.md
+CLAUDE.md
+
 # Beads (stealth mode - not in VC)
 .beads/
 
