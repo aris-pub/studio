@@ -15,8 +15,10 @@ COPY site/package.json site/package.json
 COPY multi-player/package.json multi-player/package.json
 
 # Install all workspace dependencies (hoisted to /workspace/node_modules)
+# --ignore-scripts prevents postinstall from trying to install Playwright (needs apt-get, not available on Alpine)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --ignore-scripts && \
+    node_modules/.pnpm/esbuild@*/node_modules/esbuild/install.js || true
 
 # Development stage
 FROM base AS dev
