@@ -162,6 +162,18 @@ class StudioAPI:
         data: list[dict[str, Any]] = response.json()
         return data
 
+    def get_annotations(self, file_id: int) -> list[dict[str, Any]]:
+        """GET /annotations/?file_id={file_id}."""
+        response = requests.get(
+            f"{self.base_url}/annotations/",
+            params={"file_id": file_id},
+            headers=self._get_headers(),
+            timeout=10,
+        )
+        response.raise_for_status()
+        data: list[dict[str, Any]] = response.json()
+        return data
+
     def delete_annotation(self, annotation_id: int) -> None:
         """DELETE /annotations/{annotation_id} (soft-delete)."""
         response = requests.delete(

@@ -193,9 +193,6 @@ jobs:
 
   # Site E2E Tests (All Browsers)
   e2e-site:
-    # Allow site e2e to fail without blocking CI — SSR crash in pnpm
-    # workspace Docker layout needs separate investigation (see beads)
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
