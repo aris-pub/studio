@@ -347,3 +347,114 @@ async def test_non_preview_origin_login_unrestricted(client: AsyncClient):
         headers={"origin": "https://app.rsm.studio"},
     )
     assert response.status_code == 200
+
+
+# --- Refresh token tests ---
+
+
+async def test_refresh_returns_new_access_token(client: AsyncClient):
+    """POST /refresh with a valid refresh token returns a new access token."""
+    reg = await client.post(
+        "/register",
+        json={
+            "email": "test@example.com",
+            "name": "Test User",
+            "initials": "TU",
+            "password": "testpass123",
+        },
+    )
+    refresh_token = reg.json()["refresh_token"]
+
+    response = await client.post("/refresh", json={"refresh_token": refresh_token})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    # The new access token should work
+    me_resp = await client.get(
+        "/me", headers={"Authorization": f"Bearer {data['access_token']}"}
+    )
+    assert me_resp.status_code == 200
+    assert me_resp.json()["email"] == "test@example.com"
+
+
+async def test_refresh_rejects_access_token(client: AsyncClient):
+    """POST /refresh rejects an access token (missing type=refresh claim)."""
+    reg = await client.post(
+        "/register",
+        json={
+            "email": "test@example.com",
+            "name": "Test User",
+            "initials": "TU",
+            "password": "testpass123",
+        },
+    )
+    access_token = reg.json()["access_token"]
+
+    response = await client.post("/refresh", json={"refresh_token": access_token})
+    assert response.status_code == 401
+
+
+async def test_refresh_rejects_invalid_token(client: AsyncClient):
+    """POST /refresh rejects a garbage token."""
+    response = await client.post("/refresh", json={"refresh_token": "not.a.valid.token"})
+    assert response.status_code == 401
+
+
+async def test_refresh_rejects_missing_token(client: AsyncClient):
+    """POST /refresh returns 422 when refresh_token is missing from body."""
+    response = await client.post("/refresh", json={})
+    assert response.status_code == 422
+
+
+async def test_refresh_rejects_expired_token(client: AsyncClient):
+    """POST /refresh rejects an expired refresh token."""
+    from datetime import UTC, datetime, timedelta
+
+    from jose import jwt as jose_jwt
+
+    from aris.config import settings
+
+    expired_token = jose_jwt.encode(
+        {
+            "sub": "1",
+            "type": "refresh",
+            "exp": datetime.now(UTC) - timedelta(minutes=1),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+    response = await client.post("/refresh", json={"refresh_token": expired_token})
+    assert response.status_code == 401
+
+
+async def test_refresh_rejects_deleted_user(client: AsyncClient, db_session):
+    """POST /refresh rejects token for a deleted user."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from aris.models import User
+
+    reg = await client.post(
+        "/register",
+        json={
+            "email": "test@example.com",
+            "name": "Test User",
+            "initials": "TU",
+            "password": "testpass123",
+        },
+    )
+    refresh_token = reg.json()["refresh_token"]
+
+    # Soft-delete the user
+    result = await db_session.execute(
+        select(User).where(User.email == "test@example.com")
+    )
+    user = result.scalars().first()
+    user.deleted_at = datetime.now(UTC)
+    await db_session.commit()
+
+    response = await client.post("/refresh", json={"refresh_token": refresh_token})
+    assert response.status_code == 401
