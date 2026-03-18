@@ -30,6 +30,10 @@ WORKDIR /workspace/studio/backend
 # Copy dependency files (sync happens in entrypoint after rsm mount is available)
 COPY backend/pyproject.toml backend/uv.lock ./
 
+# Pre-install multi-player deps (anonymous volume in docker-compose preserves this)
+COPY multi-player/package.json multi-player/package-lock.json /workspace/studio/multi-player/
+RUN cd /workspace/studio/multi-player && npm ci --quiet
+
 # Development stage
 FROM base AS dev
 

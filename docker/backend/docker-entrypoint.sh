@@ -45,46 +45,53 @@ if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
     fi
 fi
 
-# Install Node.js dependencies for multiplayer
+# Install Node.js dependencies for multiplayer (pre-installed in Docker image,
+# anonymous volume preserves node_modules across bind mount)
 if [ -d "/workspace/studio/multi-player" ]; then
-    echo "Installing multiplayer server dependencies..."
     cd /workspace/studio/multi-player
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm install --quiet
+        echo "Installing multiplayer server dependencies..."
+        npm ci --quiet 2>/dev/null || npm install --quiet
     else
         echo "Multiplayer dependencies already installed"
     fi
 fi
 
+# Build RSM Node.js deps in parallel (tree-sitter + rsm-lsp are independent installs)
 if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
-    # tree-sitter-rsm native bindings: only rebuild when source changes
     TS_RSM_DIR="/workspace/rsm/tree-sitter-rsm"
-    TS_SRC_HASH=$(md5sum "$TS_RSM_DIR/src/parser.c" "$TS_RSM_DIR/src/scanner.c" "$TS_RSM_DIR/bindings/node/binding.cc" 2>/dev/null | md5sum | cut -d' ' -f1)
+    LSP_DIR="/workspace/rsm/packages/rsm-lsp"
     ARCH=$(uname -m)
 
-    cd "$TS_RSM_DIR"
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm install --quiet
-    fi
+    # Install tree-sitter-rsm and rsm-lsp deps in parallel
+    (
+        cd "$TS_RSM_DIR"
+        if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+            npm install --quiet
+        fi
+        TS_SRC_HASH=$(md5sum "$TS_RSM_DIR/src/parser.c" "$TS_RSM_DIR/src/scanner.c" "$TS_RSM_DIR/bindings/node/binding.cc" 2>/dev/null | md5sum | cut -d' ' -f1)
+        if [ "$(cat "$CACHE_DIR/tree-sitter-$ARCH" 2>/dev/null)" != "$TS_SRC_HASH" ]; then
+            echo "Building tree-sitter-rsm Node.js bindings for Linux..."
+            npm rebuild --quiet
+            npm run prebuildify --quiet
+            echo "$TS_SRC_HASH" > "$CACHE_DIR/tree-sitter-$ARCH"
+        else
+            echo "tree-sitter-rsm native bindings up to date (cached)"
+        fi
+    ) &
 
-    if [ "$(cat "$CACHE_DIR/tree-sitter-$ARCH" 2>/dev/null)" != "$TS_SRC_HASH" ]; then
-        echo "Building tree-sitter-rsm Node.js bindings for Linux..."
-        npm rebuild --quiet
-        npm run prebuildify --quiet
-        echo "$TS_SRC_HASH" > "$CACHE_DIR/tree-sitter-$ARCH"
-    else
-        echo "tree-sitter-rsm native bindings up to date (cached)"
-    fi
+    (
+        cd "$LSP_DIR"
+        if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+            npm install --quiet
+        fi
+    ) &
 
-    # rsm-lsp: only rebuild TypeScript when source changes
-    LSP_DIR="/workspace/rsm/packages/rsm-lsp"
+    wait
+
+    # Build rsm-lsp after both installs complete (depends on tree-sitter-rsm)
     LSP_SRC_HASH=$(find "$LSP_DIR/src" -name '*.ts' -exec md5sum {} + 2>/dev/null | sort | md5sum | cut -d' ' -f1)
-
     cd "$LSP_DIR"
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm install --quiet
-    fi
-
     if [ "$(cat "$CACHE_DIR/rsm-lsp" 2>/dev/null)" != "$LSP_SRC_HASH" ]; then
         echo "Building rsm-lsp server..."
         npm run build --quiet
