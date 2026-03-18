@@ -45,12 +45,12 @@ if [ -d "/workspace/rsm" ] && [ -f "/workspace/rsm/pyproject.toml" ]; then
     fi
 fi
 
-# Install Node.js dependencies for multiplayer (part of pnpm workspace)
+# Install Node.js dependencies for multiplayer
 if [ -d "/workspace/studio/multi-player" ]; then
     echo "Installing multiplayer server dependencies..."
-    cd /workspace/studio
+    cd /workspace/studio/multi-player
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        pnpm install --frozen-lockfile --filter multi-player... --ignore-scripts 2>/dev/null || npm install --prefix multi-player --quiet
+        npm install --quiet
     else
         echo "Multiplayer dependencies already installed"
     fi
