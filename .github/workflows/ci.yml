@@ -148,25 +148,17 @@ jobs:
         node-version: '23'
         cache: 'pnpm'
 
-    - name: Install frontend dependencies
-      run: pnpm install --frozen-lockfile --filter frontend...
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Run linting
-      run: |
-        cd frontend
-        pnpm run lint
+      run: pnpm --filter frontend run lint
 
     - name: Run tests
-      run: |
-        cd frontend
-        pnpm run test:run
+      run: pnpm --filter frontend run test:run
 
   unit-site:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: site
 
     steps:
     - uses: actions/checkout@v6
@@ -199,7 +191,7 @@ jobs:
 
     - name: Install dependencies
       if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
-      run: pnpm install --frozen-lockfile --filter site...
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache vitest
       uses: actions/cache@v5
@@ -207,14 +199,11 @@ jobs:
         path: site/node_modules/.vitest
         key: vitest-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-    - name: Check for missing packages
-      run: pnpm ls --depth=0
-
     - name: Run linting
-      run: pnpm run lint
+      run: pnpm --filter site run lint
 
     - name: Run unit tests
-      run: pnpm run test:run
+      run: pnpm --filter site run test:run
 
   # Site E2E Tests (All Browsers)
   e2e-site:
@@ -260,9 +249,8 @@ jobs:
         key: node-modules-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install site dependencies
-      working-directory: site
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: cd .. && pnpm install --frozen-lockfile --filter site...
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
@@ -437,9 +425,8 @@ jobs:
         key: node-modules-frontend-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install frontend dependencies
-      working-directory: frontend
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: cd .. && pnpm install --frozen-lockfile --filter frontend...
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
@@ -613,9 +600,8 @@ jobs:
         key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install frontend dependencies
-      working-directory: frontend
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: cd .. && pnpm install --frozen-lockfile --filter frontend...
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
