@@ -104,7 +104,7 @@ services:
       - ../site:/workspace/site
       - /workspace/site/node_modules
       - /workspace/site/.nuxt
-      - ../brand:/brand
+      - ../brand:/workspace/brand
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}

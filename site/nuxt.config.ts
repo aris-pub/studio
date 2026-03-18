@@ -1,5 +1,10 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
+  // SSR disabled in dev: Nuxt's vite-node SSR worker crashes resolving
+  // virtual:public assets in the Docker workspace layout. Production
+  // uses nuxt generate (static pre-rendering) which doesn't hit this.
+  ssr: process.env.NODE_ENV === 'production',
+
   app: {
     head: {
       title: 'RSM Studio – Author scholarly work designed for pixels, not paper',
