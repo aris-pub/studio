@@ -261,7 +261,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: site
-      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
+      run: npx playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -343,15 +343,15 @@ jobs:
 
         if [ "${{ matrix.device }}" = "mobile" ]; then
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            pnpm exec playwright test --project="Mobile Firefox" --reporter=github
+            npx playwright test --project="Mobile Firefox" --reporter=github
           else
-            pnpm exec playwright test --project="Mobile Chrome" --reporter=github
+            npx playwright test --project="Mobile Chrome" --reporter=github
           fi
         else
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            pnpm exec playwright test --project="firefox" --reporter=github
+            npx playwright test --project="firefox" --reporter=github
           else
-            pnpm exec playwright test --project="chromium" --reporter=github
+            npx playwright test --project="chromium" --reporter=github
           fi
         fi
 
@@ -437,7 +437,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
+      run: npx playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -527,9 +527,9 @@ jobs:
 
         # Run tests
         if [ "${{ matrix.browser }}" = "firefox" ]; then
-          pnpm exec playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
         else
-          pnpm exec playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
+          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
         fi
 
     - name: Upload test results on failure
@@ -612,7 +612,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
+      run: npx playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -706,7 +706,7 @@ jobs:
       working-directory: frontend
       run: |
         echo "🧪 Running @collab E2E tests on ${{ matrix.browser }} (Docker environment)..."
-        pnpm exec playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
+        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
 
     - name: Upload test results on failure
       if: failure()
