@@ -102,6 +102,8 @@ services:
       - "${SITE_PORT:?SITE_PORT is required}:${SITE_CONTAINER_PORT:?SITE_CONTAINER_PORT is required}"
     volumes:
       - ../site:/workspace/site
+      - /workspace/site/node_modules
+      - /workspace/site/.nuxt
       - ../brand:/brand
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
