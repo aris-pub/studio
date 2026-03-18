@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild",
+      "leveldown",
+      "puppeteer",
+      "sharp",
+      "vue-demi"
+    ]
+  }
+}

@@ -40,14 +40,25 @@
 const fs = require('fs');
 const path = require('path');
 
-const distPath = path.join(__dirname, '../node_modules/y-codemirror.next/dist/y-codemirror.cjs');
-const srcPath = path.join(__dirname, '../node_modules/y-codemirror.next/src/y-sync.js');
+// Support both local and hoisted (pnpm node-linker=hoisted) layouts
+const candidates = [
+  path.join(__dirname, '../node_modules/y-codemirror.next'),
+  path.join(__dirname, '../../node_modules/y-codemirror.next'),
+];
+const pkgDir = candidates.find(d => fs.existsSync(d));
 
 console.log(`📍 Patch script location: ${__dirname}`);
 
-// Check files exist
+if (!pkgDir) {
+  console.error('❌ y-codemirror.next not found in node_modules or hoisted root.');
+  process.exit(1);
+}
+
+const distPath = path.join(pkgDir, 'dist/y-codemirror.cjs');
+const srcPath = path.join(pkgDir, 'src/y-sync.js');
+
 if (!fs.existsSync(distPath) || !fs.existsSync(srcPath)) {
-  console.error('❌ y-codemirror.next not found. Run npm install first.');
+  console.error('❌ y-codemirror.next found but missing dist/src files.');
   console.error(`❌ Dist exists: ${fs.existsSync(distPath)}`);
   console.error(`❌ Src exists: ${fs.existsSync(srcPath)}`);
   process.exit(1);

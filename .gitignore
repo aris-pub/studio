@@ -124,3 +124,6 @@ playwright-report/
 
 # HNS agent harness worktrees
 .hns/
+
+# Dolt database files (added by bd init)
+.dolt/
