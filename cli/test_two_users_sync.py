@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from playwright.async_api import BrowserContext, Page, async_playwright
 
-from cli import get_frontend_port
+from cli.core import get_frontend_port
 
 FRONTEND_URL = f"http://localhost:{get_frontend_port()}"
 

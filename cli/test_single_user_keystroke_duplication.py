@@ -12,7 +12,7 @@ Bug: Typing "HELLO" produces "HHEELLLLOO" (each character duplicated)
 from playwright.sync_api import sync_playwright
 import time
 
-from cli import get_frontend_port
+from cli.core import get_frontend_port
 
 FRONTEND_URL = f"http://localhost:{get_frontend_port()}"
 
