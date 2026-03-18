@@ -122,12 +122,60 @@ class StudioAPI:
         self.base_url = get_api_base_url()
         self.session = Session()
 
+    def _is_token_expired(self, token: str) -> bool:
+        """Check if a JWT token is expired without verifying signature."""
+        try:
+            jwt.decode(token, options={"verify_signature": False, "verify_exp": True})
+            return False
+        except jwt.ExpiredSignatureError:
+            return True
+        except jwt.DecodeError:
+            return False
+
+    def _refresh_access_token(self, refresh_token: str) -> str | None:
+        """Exchange refresh token for a new access token. Returns None on failure."""
+        try:
+            response = requests.post(
+                f"{self.base_url}/refresh",
+                json={"refresh_token": refresh_token},
+                timeout=10,
+            )
+            if response.status_code == 200:
+                token: str | None = response.json().get("access_token")
+                return token
+        except (requests.RequestException, ConnectionError):
+            pass
+        return None
+
     def _get_headers(self) -> dict[str, str]:
-        """Get headers with auth token if available."""
+        """Get headers with auth token, auto-refreshing if expired."""
         session_data = self.session.load()
-        if session_data and session_data.get("access_token"):
-            return {"Authorization": f"Bearer {session_data['access_token']}"}
-        return {}
+        if not session_data:
+            return {}
+
+        access_token = session_data.get("access_token")
+        if not access_token:
+            return {}
+
+        if self._is_token_expired(access_token):
+            refresh_token = session_data.get("refresh_token")
+            if not refresh_token:
+                console.print("[red]Session expired. Run studio login again.[/red]")
+                sys.exit(1)
+
+            new_token = self._refresh_access_token(refresh_token)
+            if not new_token:
+                console.print("[red]Session expired. Run studio login again.[/red]")
+                sys.exit(1)
+
+            self.session.save(
+                access_token=new_token,
+                refresh_token=refresh_token,
+                user=session_data.get("user", {}),
+            )
+            access_token = new_token
+
+        return {"Authorization": f"Bearer {access_token}"}
 
     def login(self, email: str, password: str) -> dict[str, Any]:
         """POST /login."""

@@ -8,7 +8,7 @@ import jwt
 from click.testing import CliRunner
 
 from cli import cli
-from cli.core import SESSION_FILE, get_frontend_port
+from cli.core import get_frontend_port
 
 
 class TestUICommand:
