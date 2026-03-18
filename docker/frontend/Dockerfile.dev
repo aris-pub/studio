@@ -3,25 +3,27 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Set npm configuration for better performance
-RUN npm config set fund false && \
-    npm config set audit false
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
-# Copy package files first for optimal layer caching
-COPY frontend/package*.json ./
+# Copy package files and workspace config for optimal layer caching
+COPY frontend/package.json ./
+COPY pnpm-lock.yaml ../pnpm-lock.yaml
+COPY pnpm-workspace.yaml ../pnpm-workspace.yaml
+COPY .npmrc ../.npmrc
 
 # Install dependencies with cache mount for faster builds
 # Skip postinstall in base stage (Playwright browsers not needed for prod dependencies)
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production --ignore-scripts
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    cd .. && pnpm install --frozen-lockfile --filter frontend... --ignore-scripts
 
 # Development stage with dev dependencies
 FROM base AS dev
 
 # Install all dependencies including dev dependencies
 # Skip postinstall (Playwright) since tests run on host, not in container
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --ignore-scripts
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    cd .. && pnpm install --frozen-lockfile --filter frontend... --ignore-scripts
 
 # Copy env-check script, patch script, and .env file
 COPY docker/env-check.js ../docker/env-check.js
@@ -39,4 +41,4 @@ EXPOSE 5173 6006
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default development server command (can be overridden in docker-compose)
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]

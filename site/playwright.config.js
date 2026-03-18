@@ -120,7 +120,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined // In CI, Docker Compose already runs the site service
     : {
-        command: "NODE_ENV=test npm run dev",
+        command: "NODE_ENV=test pnpm run dev",
         url: `http://localhost:${SITE_PORT}`,
         reuseExistingServer: true,
       },

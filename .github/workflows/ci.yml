@@ -137,27 +137,29 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+        cache: 'pnpm'
 
     - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm ci
+      run: pnpm install --frozen-lockfile --filter frontend...
 
     - name: Run linting
       run: |
         cd frontend
-        npm run lint
+        pnpm run lint
 
     - name: Run tests
       run: |
         cd frontend
-        npm run test:run
+        pnpm run test:run
 
   unit-site:
     runs-on: ubuntu-latest
@@ -177,38 +179,42 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
         node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: site/package-lock.json
+        cache: 'pnpm'
 
     - name: Cache node_modules
       uses: actions/cache@v5
       id: cache-node-modules-site
       with:
         path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+        key: node-modules-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install dependencies
       if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
-      run: npm ci
+      run: pnpm install --frozen-lockfile --filter site...
 
     - name: Cache vitest
       uses: actions/cache@v5
       with:
         path: site/node_modules/.vitest
-        key: vitest-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+        key: vitest-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Check for missing packages
-      run: npm ls --depth=0
+      run: pnpm ls --depth=0
 
     - name: Run linting
-      run: npm run lint
+      run: pnpm run lint
 
     - name: Run unit tests
-      run: npm run test:run
+      run: pnpm run test:run
 
   # Site E2E Tests (All Browsers)
   e2e-site:
@@ -235,24 +241,28 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
         node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: site/package-lock.json
+        cache: 'pnpm'
 
     - name: Cache node_modules
       uses: actions/cache@v5
       id: cache-node-modules
       with:
         path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+        key: node-modules-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install site dependencies
       working-directory: site
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: npm ci
+      run: cd .. && pnpm install --frozen-lockfile --filter site...
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
@@ -263,7 +273,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: site
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -345,15 +355,15 @@ jobs:
 
         if [ "${{ matrix.device }}" = "mobile" ]; then
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="Mobile Firefox" --reporter=github
+            pnpm exec playwright test --project="Mobile Firefox" --reporter=github
           else
-            npx playwright test --project="Mobile Chrome" --reporter=github
+            pnpm exec playwright test --project="Mobile Chrome" --reporter=github
           fi
         else
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            npx playwright test --project="firefox" --reporter=github
+            pnpm exec playwright test --project="firefox" --reporter=github
           else
-            npx playwright test --project="chromium" --reporter=github
+            pnpm exec playwright test --project="chromium" --reporter=github
           fi
         fi
 
@@ -408,24 +418,28 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
         node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+        cache: 'pnpm'
 
     - name: Cache node_modules
       uses: actions/cache@v5
       id: cache-node-modules
       with:
         path: frontend/node_modules
-        key: node-modules-frontend-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+        key: node-modules-frontend-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install frontend dependencies
       working-directory: frontend
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: npm ci
+      run: cd .. && pnpm install --frozen-lockfile --filter frontend...
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
@@ -436,7 +450,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -526,9 +540,9 @@ jobs:
 
         # Run tests
         if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
+          pnpm exec playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
         else
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
+          pnpm exec playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
         fi
 
     - name: Upload test results on failure
@@ -580,24 +594,28 @@ jobs:
         git clone --recurse-submodules https://github.com/aris-pub/rsm.git
         echo "Cloned RSM repository to ../rsm"
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
         node-version: '23'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+        cache: 'pnpm'
 
     - name: Cache node_modules
       uses: actions/cache@v5
       id: cache-node-modules
       with:
         path: frontend/node_modules
-        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+        key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install frontend dependencies
       working-directory: frontend
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
-      run: npm ci
+      run: cd .. && pnpm install --frozen-lockfile --filter frontend...
 
     - name: Cache Playwright browsers
       uses: actions/cache@v5
@@ -608,7 +626,7 @@ jobs:
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: pnpm exec playwright install ${{ matrix.browser }} --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -660,7 +678,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', '**/package-lock.json') }}
+        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', 'pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-buildx-
 
@@ -702,7 +720,7 @@ jobs:
       working-directory: frontend
       run: |
         echo "🧪 Running @collab E2E tests on ${{ matrix.browser }} (Docker environment)..."
-        npx playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
+        pnpm exec playwright test --grep "@collab" --project=${{ matrix.browser }} --reporter=github --workers=1
 
     - name: Upload test results on failure
       if: failure()

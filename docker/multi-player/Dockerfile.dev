@@ -3,23 +3,25 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Set npm configuration for better performance
-RUN npm config set fund false && \
-    npm config set audit false
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
-# Copy package files first for optimal layer caching
-COPY multi-player/package*.json ./
+# Copy package files and workspace config for optimal layer caching
+COPY multi-player/package.json ./
+COPY pnpm-lock.yaml ../pnpm-lock.yaml
+COPY pnpm-workspace.yaml ../pnpm-workspace.yaml
+COPY .npmrc ../.npmrc
 
 # Install dependencies with cache mount for faster builds
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    cd .. && pnpm install --frozen-lockfile --filter multi-player...
 
 # Development stage with dev dependencies
 FROM base AS dev
 
 # Install all dependencies including dev dependencies
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    cd .. && pnpm install --frozen-lockfile --filter multi-player...
 
 # Copy env-check script and .env file
 COPY docker/env-check.js ../docker/env-check.js
@@ -36,4 +38,4 @@ EXPOSE 1234
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default development server command
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

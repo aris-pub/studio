@@ -4,7 +4,7 @@ set -e
 # Install dependencies if node_modules is empty or missing
 if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
     echo "Installing dependencies..."
-    npm ci
+    pnpm install --frozen-lockfile
 else
     echo "Dependencies already installed"
 fi

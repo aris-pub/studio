@@ -9,9 +9,5 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Set npm configuration for better caching
-RUN npm config set fund false && \
-    npm config set audit false
-
-# Create cache mount point
-RUN mkdir -p /root/.npm
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate

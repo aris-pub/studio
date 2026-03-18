@@ -5,7 +5,7 @@ set -e
 # These are needed for Vite/Rollup/esbuild but aren't installed with --ignore-scripts
 # We install them here (after volume mount) rather than in Dockerfile
 echo "Installing platform-specific dependencies..."
-npm install --no-save --no-audit --no-fund @rollup/rollup-linux-arm64-musl @esbuild/linux-arm64 || true
+pnpm add --save-dev @rollup/rollup-linux-arm64-musl @esbuild/linux-arm64 || true
 
 # For frontend-test: Remove .env file so docker-compose env vars take precedence
 # Vite loads .env files which override environment variables, but we want
