@@ -6,4 +6,4 @@ set -e
 # It must run at startup (not build time) because the volume mount overlays the build layer.
 pnpm exec nuxt prepare
 
-exec pnpm run dev
+exec pnpm run dev --host 0.0.0.0 --port 3000
