@@ -106,7 +106,8 @@ services:
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
-    
+      - SITE_CONTAINER_PORT=${SITE_CONTAINER_PORT}
+
   postgres:
     image: postgres:16
     ports:

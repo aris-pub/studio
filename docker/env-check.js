@@ -50,7 +50,12 @@ function loadEnvFile() {
       if (trimmed && !trimmed.startsWith('#')) {
         const [key, ...valueParts] = trimmed.split('=');
         if (key && valueParts.length > 0) {
-          process.env[key.trim()] = valueParts.join('=').trim();
+          const k = key.trim();
+          // Don't overwrite variables already set in the environment
+          // (e.g. entrypoint.sh exports SITE_PORT=3000 for container use)
+          if (!(k in process.env)) {
+            process.env[k] = valueParts.join('=').trim();
+          }
         }
       }
     });
