@@ -561,7 +561,7 @@ References such as :ref:fig1:: and :ref:gaussian,Eqn. (1):: appear as clickable 
       const backendUrl = config.public.backendUrl || "http://localhost:8000";
 
       // Load RSM onload function from backend static assets
-      const onloadModule = await import(`${backendUrl}/static/onload.js`);
+      const onloadModule = await import(/* @vite-ignore */ `${backendUrl}/static/onload.js`);
 
       // Initialize RSM features for this element
       await onloadModule.onload(element, {
