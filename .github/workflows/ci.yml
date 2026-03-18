@@ -182,22 +182,8 @@ jobs:
         node-version: '23'
         cache: 'pnpm'
 
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules-site
-      with:
-        path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
     - name: Install dependencies
-      if: steps.cache-node-modules-site.outputs.cache-hit != 'true'
       run: pnpm install --frozen-lockfile --ignore-scripts
-
-    - name: Cache vitest
-      uses: actions/cache@v5
-      with:
-        path: site/node_modules/.vitest
-        key: vitest-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Run linting
       run: pnpm --filter site run lint
@@ -241,15 +227,7 @@ jobs:
         node-version: '23'
         cache: 'pnpm'
 
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules
-      with:
-        path: site/node_modules
-        key: node-modules-site-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
     - name: Install site dependencies
-      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
@@ -303,12 +281,12 @@ jobs:
         # Source .env to get port variables
         export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 
-        echo "⏳ Polling for services to be ready (max 420s)..."
+        echo "⏳ Polling for services to be ready (max 600s)..."
         READY=false
         BACKEND_OK=false
         FRONTEND_OK=false
         SITE_OK=false
-        for i in $(seq 1 420); do
+        for i in $(seq 1 600); do
           if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
             echo "  backend ready at ${i}s"
             BACKEND_OK=true
@@ -337,7 +315,7 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 420s"
+          echo "❌ Services failed to start within 600s"
           docker compose --env-file .env logs --tail=100
           exit 1
         fi
@@ -436,15 +414,7 @@ jobs:
         node-version: '23'
         cache: 'pnpm'
 
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules
-      with:
-        path: frontend/node_modules
-        key: node-modules-frontend-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
     - name: Install frontend dependencies
-      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
@@ -625,15 +595,7 @@ jobs:
         node-version: '23'
         cache: 'pnpm'
 
-    - name: Cache node_modules
-      uses: actions/cache@v5
-      id: cache-node-modules
-      with:
-        path: frontend/node_modules
-        key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
     - name: Install frontend dependencies
-      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers

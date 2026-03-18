@@ -18,7 +18,7 @@ COPY multi-player/package.json multi-player/package.json
 # --ignore-scripts prevents postinstall from trying to install Playwright (needs apt-get, not available on Alpine)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts && \
-    node_modules/.pnpm/esbuild@*/node_modules/esbuild/install.js || true
+    pnpm rebuild esbuild || true
 
 # Development stage
 FROM base AS dev
