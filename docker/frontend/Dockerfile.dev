@@ -38,4 +38,4 @@ EXPOSE 5173 6006
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default development server command (can be overridden in docker-compose)
-CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]
