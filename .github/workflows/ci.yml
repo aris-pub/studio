@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   # CI identifier (all jobs load .env, but ENV=CI enables CI-specific behavior)
   ENV: CI
@@ -66,50 +70,6 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
-
-    - name: Debug - Test PostgreSQL connection
-      run: |
-        echo "Testing PostgreSQL connection..."
-        cd backend
-        uv run python -c "
-        import asyncio
-        import asyncpg
-
-        async def test():
-            # Test connection to test_aris
-            try:
-                conn = await asyncpg.connect(
-                    host='localhost',
-                    port=5432,
-                    user='postgres',
-                    password='postgres',
-                    database='test_aris'
-                )
-                print('✅ Connection to test_aris successful!')
-                version = await conn.fetchval('SELECT version()')
-                print(f'PostgreSQL version: {version}')
-                await conn.close()
-            except Exception as e:
-                print(f'❌ Connection to test_aris failed: {e}')
-                raise
-
-            # Test connection to postgres admin database
-            try:
-                conn = await asyncpg.connect(
-                    host='localhost',
-                    port=5432,
-                    user='postgres',
-                    password='postgres',
-                    database='postgres'
-                )
-                print('✅ Connection to postgres admin db successful!')
-                await conn.close()
-            except Exception as e:
-                print(f'❌ Connection to postgres admin db failed: {e}')
-                raise
-
-        asyncio.run(test())
-        "
 
     - name: Run linting
       run: |
@@ -196,7 +156,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
+        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
         device: [desktop, mobile]
     runs-on: ubuntu-latest
     env:
@@ -383,7 +343,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
+        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
         test-type: [auth-content, auth-interface, auth-flows, core]
     runs-on: ubuntu-latest
     env:
@@ -564,7 +524,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
+        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
     runs-on: ubuntu-latest
     env:
       # CI-specific overrides (everything else comes from .env.example)
@@ -614,28 +574,6 @@ jobs:
 
     - name: Create backend .env file
       run: cp backend/.env.example backend/.env
-
-    - name: Debug - Gather evidence about .env file
-      run: |
-        echo "📍 Current directory: $(pwd)"
-        echo ""
-        echo "📄 .env file exists?"
-        ls -la .env
-        echo ""
-        echo "📄 .env file contents:"
-        cat .env
-        echo ""
-        echo "📄 backend/.env file exists?"
-        ls -la backend/.env
-        echo ""
-        echo "📄 Docker Compose version:"
-        docker compose version
-        echo ""
-        echo "📄 start-dev.sh location:"
-        ls -la scripts/start-dev.sh
-        echo ""
-        echo "📄 docker-compose.dev.yml env_file directive:"
-        grep -A2 "env_file:" docker/docker-compose.dev.yml || echo "No env_file directive found"
 
     - name: Clean up Docker volumes
       run: |
