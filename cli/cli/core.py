@@ -166,8 +166,8 @@ class StudioAPI:
         """GET /annotations/?file_id={file_id}."""
         response = requests.get(
             f"{self.base_url}/annotations/",
-            headers=self._get_headers(),
             params={"file_id": file_id},
+            headers=self._get_headers(),
             timeout=10,
         )
         response.raise_for_status()

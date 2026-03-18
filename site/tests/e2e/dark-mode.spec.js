@@ -11,11 +11,10 @@ test.describe("Dark Mode", () => {
 
   test("dark mode toggle works @core", async ({ page }) => {
     // Wait for Nuxt hydration - toggles are disabled until hydrated
-    // Increased timeout for SPA mode where client-side rendering takes longer
     await page.waitForFunction(() => {
       const toggles = document.querySelectorAll('[data-testid="dark-mode-toggle"]');
       return toggles.length > 0 && !toggles[0].disabled;
-    }, { timeout: 15000 });
+    });
 
     // Check if we're on mobile and need to open hamburger menu first
     const isMobile = page.viewportSize()?.width < 768;
