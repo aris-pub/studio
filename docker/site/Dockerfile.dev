@@ -7,20 +7,18 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 # Work from workspace root so pnpm hoists correctly
 WORKDIR /workspace
 
-# Copy workspace config and site package.json
-COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+# Copy all workspace package.json files and config
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json ./
+COPY frontend/package.json frontend/package.json
 COPY site/package.json site/package.json
+COPY multi-player/package.json multi-player/package.json
 
-# Install production dependencies with cache mount
-# Skip postinstall (Playwright browsers not needed in container)
+# Install all workspace dependencies (hoisted to /workspace/node_modules)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --filter site... --ignore-scripts
+    pnpm install --frozen-lockfile --ignore-scripts
 
-# Development stage with dev dependencies
+# Development stage
 FROM base AS dev
-
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --filter site... --ignore-scripts
 
 # Copy env-check script and .env file
 COPY docker/env-check.js docker/env-check.js
