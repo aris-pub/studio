@@ -50,10 +50,10 @@ def create_refresh_token(data: dict) -> str:
     Notes
     -----
     The refresh token includes a 'type': 'refresh' claim to distinguish it
-    from access tokens. Currently uses the same expiration time as access tokens.
+    from access tokens. Uses JWT_REFRESH_TOKEN_EXPIRE_MINUTES (default: 7 days).
     """
     to_encode = data.copy()
-    expire = datetime.now(UTC) + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.JWT_REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "refresh"})
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
