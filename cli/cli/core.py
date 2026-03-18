@@ -161,3 +161,12 @@ class StudioAPI:
         response.raise_for_status()
         data: list[dict[str, Any]] = response.json()
         return data
+
+    def delete_annotation(self, annotation_id: int) -> None:
+        """DELETE /annotations/{annotation_id} (soft-delete)."""
+        response = requests.delete(
+            f"{self.base_url}/annotations/{annotation_id}",
+            headers=self._get_headers(),
+            timeout=10,
+        )
+        response.raise_for_status()
