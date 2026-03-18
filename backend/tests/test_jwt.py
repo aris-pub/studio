@@ -36,7 +36,7 @@ def test_create_refresh_token_contains_expected_claims(test_payload):
 
 
 @freeze_time("2025-01-01 12:00:00")
-def test_expiration_time_is_respected(test_payload):
+def test_access_token_expiration_uses_access_config(test_payload):
     token = create_access_token(test_payload)
     decoded = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
 
@@ -46,6 +46,29 @@ def test_expiration_time_is_respected(test_payload):
     actual_exp = datetime.fromtimestamp(decoded["exp"], tz=UTC)
 
     assert actual_exp == expected_exp
+
+
+@freeze_time("2025-01-01 12:00:00")
+def test_refresh_token_expiration_uses_refresh_config(test_payload):
+    token = create_refresh_token(test_payload)
+    decoded = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+
+    expected_exp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC) + timedelta(
+        minutes=settings.JWT_REFRESH_TOKEN_EXPIRE_MINUTES
+    )
+    actual_exp = datetime.fromtimestamp(decoded["exp"], tz=UTC)
+
+    assert actual_exp == expected_exp
+
+
+@freeze_time("2025-01-01 12:00:00")
+def test_refresh_token_lives_longer_than_access_token(test_payload):
+    access = create_access_token(test_payload)
+    refresh = create_refresh_token(test_payload)
+    access_decoded = jwt.decode(access, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    refresh_decoded = jwt.decode(refresh, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+
+    assert refresh_decoded["exp"] > access_decoded["exp"]
 
 
 def test_decode_token_valid_token(test_payload):

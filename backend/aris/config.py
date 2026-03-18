@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     :param ENV: Current environment ('LOCAL', 'PROD', etc.).
     :param JWT_SECRET_KEY: Secret key used to sign JWT tokens.
     :param JWT_ALGORITHM: Algorithm used for JWT encoding (default: HS256).
-    :param JWT_ACCESS_TOKEN_EXPIRE_MINUTES: Expiration time in minutes for JWT access tokens (default: 30).
+    :param JWT_ACCESS_TOKEN_EXPIRE_MINUTES: Expiration time in minutes for JWT access tokens (default: 120).
+    :param JWT_REFRESH_TOKEN_EXPIRE_MINUTES: Expiration time in minutes for JWT refresh tokens (default: 10080).
     """
 
     DB_PORT: int = Field(5432, json_schema_extra={"env": "DB_PORT"})
@@ -55,6 +56,11 @@ class Settings(BaseSettings):
         120, json_schema_extra={"env": "JWT_ACCESS_TOKEN_EXPIRE_MINUTES"}
     )
     """Expiration time in minutes for JWT access tokens (default: 120)."""
+
+    JWT_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(
+        10080, json_schema_extra={"env": "JWT_REFRESH_TOKEN_EXPIRE_MINUTES"}
+    )
+    """Expiration time in minutes for JWT refresh tokens (default: 10080 = 7 days)."""
 
     TEST_USER_EMAIL: str = Field(..., json_schema_extra={"env": "TEST_USER_EMAIL"})
     """Test user email for visual tests."""

@@ -19,6 +19,7 @@ def test_settings_defaults_and_env_override(monkeypatch):
     monkeypatch.delenv("ENV", raising=False)
     monkeypatch.delenv("JWT_ALGORITHM", raising=False)
     monkeypatch.delenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", raising=False)
+    monkeypatch.delenv("JWT_REFRESH_TOKEN_EXPIRE_MINUTES", raising=False)
 
     s = Settings(_env_file=None)
     assert s.DB_URL_LOCAL == env["DB_URL_LOCAL"]
@@ -29,6 +30,7 @@ def test_settings_defaults_and_env_override(monkeypatch):
     assert s.ENV == "LOCAL"
     assert s.JWT_ALGORITHM == "HS256"
     assert s.JWT_ACCESS_TOKEN_EXPIRE_MINUTES == 120
+    assert s.JWT_REFRESH_TOKEN_EXPIRE_MINUTES == 10080
 
 
 def test_missing_required_env_vars(monkeypatch):
