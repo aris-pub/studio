@@ -1,5 +1,12 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
+  // In Docker dev/CI, the Vite SSR worker crashes trying to resolve dynamic imports
+  // that reference localhost URLs unreachable from within the container network
+  // (e.g., import(`${backendUrl}/static/onload.js`) where backendUrl is localhost:8000).
+  // Disable SSR during development. Production builds (nuxt generate) keep SSR enabled
+  // for pre-rendered HTML and SEO.
+  ssr: process.env.NODE_ENV === 'production',
+
   app: {
     head: {
       title: 'RSM Studio – Author scholarly work designed for pixels, not paper',
