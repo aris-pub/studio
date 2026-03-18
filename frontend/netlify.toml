@@ -4,10 +4,13 @@
 
 [build]
   publish = "dist"
-  command = "npm run build"
+  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter frontend run build"
+
+[build.environment]
+  PNPM_VERSION = "9"
 
 [dev]
-  command = "npm run dev"
+  command = "pnpm run dev"
   port = "${FRONTEND_PORT}"
 
 [[redirects]]

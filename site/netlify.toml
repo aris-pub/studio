@@ -1,9 +1,12 @@
 [build]
   publish = ".output/public"
-  command = "npm run generate"
+  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter site run generate"
+
+[build.environment]
+  PNPM_VERSION = "9"
 
 [dev]
-  command = "npm run dev"
+  command = "pnpm run dev"
   port = "${SITE_PORT}"
 
 [[redirects]]
