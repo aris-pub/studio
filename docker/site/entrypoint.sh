@@ -6,4 +6,6 @@ set -e
 # It must run at startup (not build time) because the volume mount overlays the build layer.
 pnpm exec nuxt prepare
 
-exec pnpm run dev --host 0.0.0.0 --port 3000
+# Run env check then start nuxt dev bound to all interfaces
+node ../docker/env-check.js
+exec pnpm exec nuxt dev --host 0.0.0.0 --port 3000
