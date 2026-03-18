@@ -50,7 +50,7 @@ if [ -d "/workspace/studio/multi-player" ]; then
     echo "Installing multiplayer server dependencies..."
     cd /workspace/studio/multi-player
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
+        npm install --quiet
     else
         echo "Multiplayer dependencies already installed"
     fi
@@ -64,7 +64,7 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
 
     cd "$TS_RSM_DIR"
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
+        npm install --quiet
     fi
 
     if [ "$(cat "$CACHE_DIR/tree-sitter-$ARCH" 2>/dev/null)" != "$TS_SRC_HASH" ]; then
@@ -82,7 +82,7 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
 
     cd "$LSP_DIR"
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        npm ci --quiet
+        npm install --quiet
     fi
 
     if [ "$(cat "$CACHE_DIR/rsm-lsp" 2>/dev/null)" != "$LSP_SRC_HASH" ]; then
