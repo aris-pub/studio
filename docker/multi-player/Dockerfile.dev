@@ -1,35 +1,35 @@
 # Multi-stage build for multi-player server
 FROM node:20-alpine AS base
 
-WORKDIR /app
-
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-# Copy package files and workspace config for optimal layer caching
-COPY multi-player/package.json ./
-COPY pnpm-lock.yaml ../pnpm-lock.yaml
-COPY pnpm-workspace.yaml ../pnpm-workspace.yaml
-COPY .npmrc ../.npmrc
+# Work from workspace root so pnpm hoists correctly
+WORKDIR /workspace
+
+# Copy workspace config and multi-player package.json
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY multi-player/package.json multi-player/package.json
 
 # Install dependencies with cache mount for faster builds
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    cd .. && pnpm install --frozen-lockfile --filter multi-player...
+    pnpm install --frozen-lockfile --filter multi-player...
 
 # Development stage with dev dependencies
 FROM base AS dev
 
-# Install all dependencies including dev dependencies
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    cd .. && pnpm install --frozen-lockfile --filter multi-player...
+    pnpm install --frozen-lockfile --filter multi-player...
 
 # Copy env-check script and .env file
-COPY docker/env-check.js ../docker/env-check.js
-COPY .env ../.env
+COPY docker/env-check.js docker/env-check.js
+COPY .env .env
 
 # Copy entrypoint script
 COPY docker/multi-player/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+WORKDIR /workspace/multi-player
 
 # Expose WebSocket port
 EXPOSE 1234

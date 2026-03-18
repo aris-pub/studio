@@ -1,33 +1,32 @@
 # Multi-stage build for site service
 FROM node:20-alpine AS base
 
-WORKDIR /app
-
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-# Copy package files and workspace config for optimal layer caching
-COPY site/package.json ./
-COPY pnpm-lock.yaml ../pnpm-lock.yaml
-COPY pnpm-workspace.yaml ../pnpm-workspace.yaml
-COPY .npmrc ../.npmrc
+# Work from workspace root so pnpm hoists correctly
+WORKDIR /workspace
+
+# Copy workspace config and site package.json
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY site/package.json site/package.json
 
 # Install production dependencies with cache mount
 # Skip postinstall (Playwright browsers not needed in container)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    cd .. && pnpm install --frozen-lockfile --filter site... --ignore-scripts
+    pnpm install --frozen-lockfile --filter site... --ignore-scripts
 
 # Development stage with dev dependencies
 FROM base AS dev
 
-# Install all dependencies including dev dependencies
-# Skip postinstall (Playwright) since tests run on host, not in container
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    cd .. && pnpm install --frozen-lockfile --filter site... --ignore-scripts
+    pnpm install --frozen-lockfile --filter site... --ignore-scripts
 
 # Copy env-check script and .env file
-COPY docker/env-check.js ../docker/env-check.js
-COPY .env ../.env
+COPY docker/env-check.js docker/env-check.js
+COPY .env .env
+
+WORKDIR /workspace/site
 
 # Expose port
 EXPOSE 3000

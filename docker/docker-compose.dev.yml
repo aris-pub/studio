@@ -49,8 +49,8 @@ services:
     ports:
       - "${FRONTEND_PORT:?FRONTEND_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
     volumes:
-      - ../frontend:/app
-      - /app/node_modules  # Anonymous volume - no races, each container gets its own
+      - ../frontend:/workspace/frontend
+      - /workspace/node_modules  # Anonymous volume for hoisted deps
     environment:
       - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
@@ -89,8 +89,8 @@ services:
     ports:
       - "${STORYBOOK_PORT:?STORYBOOK_PORT is required}:${STORYBOOK_PORT}"
     volumes:
-      - ../frontend:/app
-      - /app/node_modules  # Anonymous volume - no races
+      - ../frontend:/workspace/frontend
+      - /workspace/node_modules  # Anonymous volume for hoisted deps
     environment:
       - VITE_API_BASE_URL=http://backend:8000
     command: pnpm run storybook -- --host 0.0.0.0 --no-open
@@ -103,9 +103,9 @@ services:
     ports:
       - "${SITE_PORT:?SITE_PORT is required}:${SITE_CONTAINER_PORT:?SITE_CONTAINER_PORT is required}"
     volumes:
-      - ../site:/app
+      - ../site:/workspace/site
       - ../brand:/brand
-      - site_node_modules:/app/node_modules
+      - site_node_modules:/workspace/node_modules
     environment:
       - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
       - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
