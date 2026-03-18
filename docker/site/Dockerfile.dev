@@ -1,8 +1,9 @@
 # Multi-stage build for site service
 FROM node:20-alpine AS base
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# Install pnpm and native build deps for allowlisted packages (esbuild, parcel/watcher, etc.)
+RUN apk add --no-cache python3 make g++ && \
+    corepack enable && corepack prepare pnpm@9 --activate
 
 # Work from workspace root so pnpm hoists correctly
 WORKDIR /workspace
@@ -15,7 +16,7 @@ COPY multi-player/package.json multi-player/package.json
 
 # Install all workspace dependencies (hoisted to /workspace/node_modules)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --ignore-scripts
+    pnpm install --frozen-lockfile
 
 # Development stage
 FROM base AS dev

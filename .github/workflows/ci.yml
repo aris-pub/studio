@@ -303,13 +303,32 @@ jobs:
         # Source .env to get port variables
         export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 
-        echo "⏳ Polling for services to be ready (max 300s)..."
+        echo "⏳ Polling for services to be ready (max 420s)..."
         READY=false
-        for i in {1..300}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1 && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
+        BACKEND_OK=false
+        FRONTEND_OK=false
+        SITE_OK=false
+        for i in $(seq 1 420); do
+          if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "  backend ready at ${i}s"
+            BACKEND_OK=true
+          fi
+          if [ "$FRONTEND_OK" != "true" ] && curl -sf http://localhost:5173 >/dev/null 2>&1; then
+            echo "  frontend ready at ${i}s"
+            FRONTEND_OK=true
+          fi
+          if [ "$SITE_OK" != "true" ] && curl -sf http://localhost:$SITE_PORT >/dev/null 2>&1; then
+            echo "  site ready at ${i}s"
+            SITE_OK=true
+          fi
+          if [ "$BACKEND_OK" = "true" ] && [ "$FRONTEND_OK" = "true" ] && [ "$SITE_OK" = "true" ]; then
+            echo "✅ All services ready after ${i}s"
             READY=true
             break
+          fi
+          if [ $((i % 30)) -eq 0 ]; then
+            echo "  ... ${i}s elapsed (backend=$BACKEND_OK frontend=$FRONTEND_OK site=$SITE_OK)"
+            docker compose --env-file .env ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
           fi
           sleep 1
         done
@@ -318,8 +337,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 300s"
-          docker compose --env-file .env logs --tail=50
+          echo "❌ Services failed to start within 420s"
+          docker compose --env-file .env logs --tail=100
           exit 1
         fi
 
@@ -468,13 +487,27 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
-        echo "⏳ Polling for services to be ready (max 300s)..."
+        echo "⏳ Polling for services to be ready (max 420s)..."
         READY=false
-        for i in {1..300}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
+        BACKEND_OK=false
+        FRONTEND_OK=false
+        for i in $(seq 1 420); do
+          if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "  backend ready at ${i}s"
+            BACKEND_OK=true
+          fi
+          if [ "$FRONTEND_OK" != "true" ] && curl -sf http://localhost:5173 >/dev/null 2>&1; then
+            echo "  frontend ready at ${i}s"
+            FRONTEND_OK=true
+          fi
+          if [ "$BACKEND_OK" = "true" ] && [ "$FRONTEND_OK" = "true" ]; then
+            echo "✅ All services ready after ${i}s"
             READY=true
             break
+          fi
+          if [ $((i % 30)) -eq 0 ]; then
+            echo "  ... ${i}s elapsed (backend=$BACKEND_OK frontend=$FRONTEND_OK)"
+            docker compose --env-file .env ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
           fi
           sleep 1
         done
@@ -483,8 +516,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 300s"
-          docker compose --env-file .env logs --tail=50
+          echo "❌ Services failed to start within 420s"
+          docker compose --env-file .env logs --tail=100
           exit 1
         fi
 
@@ -673,13 +706,27 @@ jobs:
         echo "🐳 Starting services using start-dev.sh (same as local dev)..."
         ./scripts/start-dev.sh
 
-        echo "⏳ Polling for services to be ready (max 300s)..."
+        echo "⏳ Polling for services to be ready (max 420s)..."
         READY=false
-        for i in {1..300}; do
-          if curl -sf http://localhost:8000/health >/dev/null 2>&1 && curl -sf http://localhost:5173 >/dev/null 2>&1; then
-            echo "✅ Services ready after ${i}s"
+        BACKEND_OK=false
+        FRONTEND_OK=false
+        for i in $(seq 1 420); do
+          if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            echo "  backend ready at ${i}s"
+            BACKEND_OK=true
+          fi
+          if [ "$FRONTEND_OK" != "true" ] && curl -sf http://localhost:5173 >/dev/null 2>&1; then
+            echo "  frontend ready at ${i}s"
+            FRONTEND_OK=true
+          fi
+          if [ "$BACKEND_OK" = "true" ] && [ "$FRONTEND_OK" = "true" ]; then
+            echo "✅ All services ready after ${i}s"
             READY=true
             break
+          fi
+          if [ $((i % 30)) -eq 0 ]; then
+            echo "  ... ${i}s elapsed (backend=$BACKEND_OK frontend=$FRONTEND_OK)"
+            docker compose --env-file .env ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
           fi
           sleep 1
         done
@@ -688,8 +735,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 300s"
-          docker compose --env-file .env logs --tail=50
+          echo "❌ Services failed to start within 420s"
+          docker compose --env-file .env logs --tail=100
           exit 1
         fi
 
