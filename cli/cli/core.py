@@ -59,6 +59,21 @@ def get_frontend_port() -> int:
     return int(os.environ.get("FRONTEND_PORT", "5173"))
 
 
+def get_multiplayer_url() -> str:
+    """Get Y.js multiplayer WebSocket URL from .env file.
+
+    Returns:
+        Multiplayer WebSocket URL (defaults to ws://localhost:1234).
+    """
+    repo_root = Path(__file__).parent.parent
+    env_file = repo_root / ".env"
+
+    if env_file.exists():
+        load_dotenv(env_file)
+
+    return os.environ.get("VITE_MULTIPLAYER_URL", "ws://localhost:1234")
+
+
 class Session:
     """Manage user session stored in ~/.studio/session.json."""
 
