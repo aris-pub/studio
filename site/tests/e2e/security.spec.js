@@ -46,10 +46,8 @@ test.describe("Security", () => {
     // Navigate to non-existent page
     const response = await page.goto("/non-existent-page", { waitUntil: "domcontentloaded" });
 
-    // In SPA mode (ssr: false in dev), all routes return 200 and
-    // client-side routing handles the 404 page. In SSR mode, the
-    // server returns 404 directly.
-    expect([200, 404]).toContain(response.status());
+    // Should return 404 status
+    expect(response.status()).toBe(404);
 
     // Should show our custom 404 page
     await expect(page.locator(".error-page")).toBeVisible();
