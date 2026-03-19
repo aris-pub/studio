@@ -282,6 +282,24 @@ describe("useHighlightRenderer — highlight colors", () => {
     expect(parentMark).not.toBeNull();
   });
 
+  it("renders highlights for API-created annotations with non-matching node_id", () => {
+    const { el } = setup(
+      '<div data-nodeid="0"><p data-nodeid="1">Hello world</p><p data-nodeid="2">Goodbye world</p></div>',
+      [
+        {
+          id: 1,
+          color: "purple",
+          anchor_data: { node_id: "wrong-node-id", start_offset: 0, end_offset: 5 },
+          selected_text: "Hello",
+        },
+      ]
+    );
+
+    const mark = el.querySelector('mark[data-annotation-id="1"]');
+    expect(mark).not.toBeNull();
+    expect(mark.textContent).toBe("Hello");
+  });
+
   it("cross-boundary range produces a single contiguous mark", () => {
     const { el } = setup('<p data-nodeid="n1">Hello <em>beautiful</em> world</p>', [
       {
