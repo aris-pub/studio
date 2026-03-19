@@ -166,4 +166,13 @@ describe("FeedbackIcon.vue", () => {
     container.remove();
     wrapper.unmount();
   });
+
+  it("trigger button has tabindex=-1 (regression: j/k navigation stops on reaction buttons)", () => {
+    const file = ref({ id: 1 });
+    const wrapper = mountIcon(file);
+    const btn = wrapper.find(".trigger-btn");
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes("tabindex")).toBe("-1");
+    wrapper.unmount();
+  });
 });
