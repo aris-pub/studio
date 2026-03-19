@@ -3,7 +3,7 @@
   command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter site run generate"
 
 [build.environment]
-  PNPM_VERSION = "9"
+  NUXT_TELEMETRY_DISABLED = "1"
 
 [dev]
   command = "pnpm run dev"
