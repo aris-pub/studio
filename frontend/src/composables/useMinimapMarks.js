@@ -116,6 +116,22 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       }
     }
 
+    // Figures (images, SVGs, HTML assets)
+    const figures = el.querySelectorAll("figure");
+    let figIdx = 0;
+    for (const fig of figures) {
+      const caption = fig.querySelector(".label")?.textContent || fig.querySelector("span.label")?.textContent || "";
+      const figClass = fig.classList.contains("html") ? "Widget" : "Figure";
+      const label = caption || `${figClass} ${figIdx + 1}`;
+      result.push({
+        top: measureElement(fig, container),
+        color: "var(--blue-400)",
+        type: "figure",
+        id: `figure-${figIdx++}`,
+        label,
+      });
+    }
+
     // Search highlights (include --current variant so the active match isn't missed)
     const searchMarks = el.querySelectorAll(
       "mark.aris-search-highlight, mark.aris-search-highlight--current"

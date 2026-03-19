@@ -124,6 +124,7 @@
   const searchMarks = computed(() => allMarks.value.filter((m) => m.type === "search"));
   const presenceMarks = computed(() => allMarks.value.filter((m) => m.type === "presence"));
   const feedbackMarks = computed(() => allMarks.value.filter((m) => m.type === "feedback"));
+  const figureMarks = computed(() => allMarks.value.filter((m) => m.type === "figure"));
 
   function updateViewport() {
     if (!scrollContainer.value) return;
@@ -237,6 +238,17 @@
       :key="mark.id"
       class="mm-section"
       :class="{ 'level-1': mark.level === 1 }"
+      :style="posStyle(mark.top)"
+      @mouseenter="onMarkEnter($event, mark)"
+      @mouseleave="onMarkLeave"
+      @click="onMarkClick($event, mark)"
+    />
+
+    <!-- Figure marks — short blue dashes -->
+    <div
+      v-for="mark in figureMarks"
+      :key="mark.id"
+      class="mm-figure"
       :style="posStyle(mark.top)"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
@@ -388,6 +400,39 @@
     background-color: var(--gray-700);
   }
 
+  /* ── Figure marks ── */
+  .mm-figure {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    height: 16px;
+    transform: translateY(-50%);
+    pointer-events: auto;
+    cursor: pointer;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 60%;
+      margin-left: auto;
+      margin-right: auto;
+      height: 3px;
+      border-radius: 2px;
+      background-color: var(--blue-400);
+      transition:
+        width 0.15s ease,
+        background-color 0.15s ease;
+    }
+  }
+
+  .mm-figure:hover::after {
+    width: 100%;
+    margin-inline: 2px;
+    background-color: var(--blue-500);
+  }
+
   /* ── Annotation bubble icons ── */
   .mm-annotation {
     position: absolute;
@@ -522,6 +567,24 @@
     height: 100%;
     margin-inline: 0;
     background-color: var(--gray-500);
+  }
+
+  .scrollbar-minimap.horizontal .mm-figure {
+    top: 0;
+    height: 100%;
+    width: 8px;
+    right: auto;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    &::after {
+      width: 1px;
+      height: 50%;
+      margin: 0;
+      background-color: var(--blue-400);
+    }
   }
 
   .scrollbar-minimap.horizontal .mm-annotation,
