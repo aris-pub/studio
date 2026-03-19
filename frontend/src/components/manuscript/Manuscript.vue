@@ -102,7 +102,7 @@
             });
 
             if (Object.keys(attrs).length) {
-              data.attrs = attrs;
+              Object.assign(data, attrs);
             }
 
             // Key math elements to force Vue replacement when document changes
