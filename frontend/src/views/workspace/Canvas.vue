@@ -286,13 +286,28 @@
   // Keyboard shortcuts
   registerAsFallback(manuscriptRef);
 
-  // Focus management for Page Up/Down keys
+  // Focus management for keyboard navigation
   onMounted(async () => {
     await nextTick();
-    // Ensure the manuscript container can receive focus for keyboard events
     if (innerRef.value) {
       innerRef.value.setAttribute("tabindex", "-1");
       innerRef.value.focus();
+
+      // When nothing is focused (scroll container has focus), forward j/k/h/l
+      // to the first handrail so RSM keyboard navigation kicks in
+      innerRef.value.addEventListener("keydown", (e) => {
+        if (!["j", "k", "h", "l"].includes(e.key)) return;
+        if (e.target !== innerRef.value) return;
+        const firstHR = innerRef.value.querySelector(".hr[tabindex='0']");
+        if (firstHR) {
+          firstHR.focus();
+          firstHR.dispatchEvent(new KeyboardEvent("keydown", {
+            key: e.key, code: e.code, bubbles: true, cancelable: true,
+          }));
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      });
     }
   });
 
