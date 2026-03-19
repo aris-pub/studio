@@ -390,7 +390,7 @@
       :data-testid="$attrs['data-testid']"
     >
       <div class="inner-wrapper">
-        <div v-if="showEditor" data-testid="workspace-editor" class="inner left">
+        <div v-if="showEditor && !focusMode" data-testid="workspace-editor" class="inner left">
           <Editor v-model="file" />
         </div>
 
