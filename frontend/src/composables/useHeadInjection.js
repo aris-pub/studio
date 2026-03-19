@@ -49,8 +49,9 @@ export function useHeadInjection(api = null) {
       scripts.forEach((script) => {
         let src = script.getAttribute("src");
         if (src && !loadedResources.has(src)) {
-          // Skip jQuery and Tooltipster - ManuscriptWrapper loads these from npm
-          if (src.includes("jquery") || src.includes("tooltipster")) {
+          // Skip jQuery, Tooltipster, and MathJax — ManuscriptWrapper handles
+          // math rendering via onload.js (which uses Temml with MathJax fallback)
+          if (src.includes("jquery") || src.includes("tooltipster") || src.includes("mathjax") || src.includes("tex-chtml") || src.includes("tex-mml")) {
             loadedResources.add(src);
             return;
           }
@@ -111,6 +112,13 @@ export function useHeadInjection(api = null) {
       return;
     }
 
+    // Skip MathJax init scripts — Studio handles math rendering via
+    // onload.js (Temml with MathJax fallback). The backend's init_script
+    // loads MathJax independently which conflicts with Temml.
+    if (initScript.includes("MathJax") || initScript.includes("tex-chtml") || initScript.includes("tex-mml")) {
+      return;
+    }
+
     try {
       // Execute the script content directly
       // Asset IIFEs handle their own CDN loading and dependency management
@@ -131,8 +139,11 @@ export function useHeadInjection(api = null) {
     const scripts = manuscriptEl.querySelectorAll("script");
     scripts.forEach((script) => {
       if (script.textContent && script.textContent.trim()) {
+        // Skip MathJax config scripts — Studio uses Temml via onload.js
+        if (script.textContent.includes("MathJax") || script.textContent.includes("mathjax")) {
+          return;
+        }
         try {
-          console.log("Executing embedded script:", script.textContent.substring(0, 50) + "...");
           // Create a new script element and copy the content
           const newScript = document.createElement("script");
           newScript.textContent = script.textContent;

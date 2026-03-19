@@ -101,7 +101,25 @@
         return;
       }
 
+      // Strip stale MathJax output from math elements so Temml can
+      // re-render them. The database stores the last compiled HTML which
+      // may contain MathJax mjx-container elements from a previous session.
+      mountPoint.querySelectorAll('span.math mjx-container, div.mathblock mjx-container').forEach(el => {
+        el.remove();
+      });
+      // Restore raw LaTeX text in math elements that were consumed by MathJax
+      mountPoint.querySelectorAll('span.math[data-latex]').forEach(el => {
+        el.textContent = '\\(' + el.dataset.latex + '\\)';
+      });
+      mountPoint.querySelectorAll('div.mathblock[data-latex]').forEach(el => {
+        const contentEl = el.querySelector('.hr-content-zone') || el;
+        contentEl.textContent = '$$' + el.dataset.latex + '$$';
+      });
+
       if (!onloadCalled.value) {
+        // Reset __rsmInitialized so onload re-runs setup() (handrails)
+        // and setup2() (keyboard) on the new DOM after Manuscript recreation.
+        window.__rsmInitialized = false;
         await onload.value(mountPoint, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {

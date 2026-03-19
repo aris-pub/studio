@@ -48,6 +48,11 @@
 
           // Handle element nodes
           if (node.nodeType === Node.ELEMENT_NODE) {
+            // Skip script tags — Vue's createElement + appendChild executes them,
+            // which causes MathJax to load and conflict with Temml math rendering.
+            if (node.tagName.toLowerCase() === "script") {
+              return null;
+            }
             // Extract attributes
             const data = {};
             const attrs = {};
