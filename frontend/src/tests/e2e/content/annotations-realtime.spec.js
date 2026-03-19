@@ -101,10 +101,10 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
         openFileInViewer(collab.page, fileId),
       ]);
 
-      // Wait for Y.js connections to establish
+      // Wait for pages to fully load (manuscript container visible)
       await Promise.all([
-        owner.page.waitForFunction(() => window.__provider?.synced, { timeout: 15000 }),
-        collab.page.waitForFunction(() => window.__provider?.synced, { timeout: 15000 }),
+        owner.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
+        collab.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
       ]);
 
       // Owner creates a shared annotation via API
@@ -168,8 +168,8 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
       ]);
 
       await Promise.all([
-        owner.page.waitForFunction(() => window.__provider?.synced, { timeout: 15000 }),
-        collab.page.waitForFunction(() => window.__provider?.synced, { timeout: 15000 }),
+        owner.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
+        collab.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
       ]);
 
       // Both should see the annotation
