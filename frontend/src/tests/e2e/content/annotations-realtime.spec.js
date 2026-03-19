@@ -54,9 +54,12 @@ async function addCollaborator(fileId, userId, role, token) {
   return await response.json();
 }
 
-async function openFileInViewer(page, fileId) {
+async function openFileWithEditor(page, fileId) {
+  await page.goto("/", { waitUntil: "commit" });
+  await page.evaluate(() => localStorage.setItem("ws-panel-editor", "true"));
   await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
   await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
+  await page.waitForFunction(() => window.__provider?.synced, { timeout: 15000 });
 }
 
 test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
@@ -97,15 +100,11 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
 
     try {
       await Promise.all([
-        openFileInViewer(owner.page, fileId),
-        openFileInViewer(collab.page, fileId),
+        openFileWithEditor(owner.page, fileId),
+        openFileWithEditor(collab.page, fileId),
       ]);
 
-      // Wait for pages to fully load (manuscript container visible)
-      await Promise.all([
-        owner.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
-        collab.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 }),
-      ]);
+      // openFileWithEditor already waits for provider sync
 
       // Owner creates a shared annotation via API
       const annResponse = await request.post(`${backendURL}/annotations/`, {
@@ -163,8 +162,8 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
 
     try {
       await Promise.all([
-        openFileInViewer(owner.page, fileId),
-        openFileInViewer(collab.page, fileId),
+        openFileWithEditor(owner.page, fileId),
+        openFileWithEditor(collab.page, fileId),
       ]);
 
       await Promise.all([
