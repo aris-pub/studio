@@ -200,4 +200,4 @@ class TestReadCommand:
                 runner.invoke(cli, ["read", "99"])
 
                 assert len(factory.connected_urls) == 1
-                assert factory.connected_urls[0].endswith("/99")
+                assert "file-99-" in factory.connected_urls[0]

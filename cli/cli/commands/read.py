@@ -10,14 +10,13 @@ from pycrdt import Doc, Text, create_sync_message, handle_sync_message
 from rich.console import Console
 from websockets import connect as ws_connect
 
-from cli.core import StudioAPI, get_multiplayer_url
+from cli.core import StudioAPI, build_room_url
 
 console = Console()
 
 
-async def _read_ydoc(file_id: int, ws_url: str) -> str:
+async def _read_ydoc(file_id: int, room_url: str) -> str:
     """Connect to Y.js WebSocket, sync YDoc, return text content."""
-    room_url = f"{ws_url}/{file_id}"
 
     doc = Doc()
     text = doc.get("text", type=Text)
@@ -58,10 +57,10 @@ def read(file_id: int, output: str | None, as_json: bool) -> None:
         console.print("[red]✗ Not logged in. Run 'studio login' first.[/red]")
         sys.exit(1)
 
-    ws_url = get_multiplayer_url()
+    room_url = build_room_url(file_id)
 
     try:
-        content = asyncio.run(_read_ydoc(file_id, ws_url))
+        content = asyncio.run(_read_ydoc(file_id, room_url))
     except Exception as e:
         console.print(f"[red]✗ Failed to read file {file_id}: {e}[/red]")
         sys.exit(1)

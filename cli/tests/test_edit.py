@@ -10,23 +10,27 @@ import pytest
 from click.testing import CliRunner
 
 from cli import cli
-from cli.commands.edit import _build_room_name, _apply_edit
+from cli.commands.edit import _apply_edit
+from cli.core import build_room_url
 
 
-class TestBuildRoomName:
-    """Test Y.js room name construction."""
+class TestBuildRoomUrl:
+    """Test Y.js room URL construction."""
 
     def test_default_env(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
-            assert _build_room_name(42) == "file-42-dev"
+            url = build_room_url(42)
+            assert url == "ws://localhost:1234/file-42-local"
 
-    def test_local_normalizes_to_dev(self) -> None:
-        with patch.dict("os.environ", {"ENV": "LOCAL"}):
-            assert _build_room_name(42) == "file-42-dev"
+    def test_vite_env_takes_precedence(self) -> None:
+        with patch.dict("os.environ", {"VITE_ENV": "ci", "ENV": "local"}):
+            url = build_room_url(42)
+            assert url == "ws://localhost:1234/file-42-ci"
 
-    def test_ci_env(self) -> None:
-        with patch.dict("os.environ", {"ENV": "CI"}):
-            assert _build_room_name(42) == "file-42-ci"
+    def test_env_fallback(self) -> None:
+        with patch.dict("os.environ", {"ENV": "CI"}, clear=True):
+            url = build_room_url(42)
+            assert url == "ws://localhost:1234/file-42-ci"
 
 
 class TestApplyEdit:

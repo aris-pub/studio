@@ -74,6 +74,16 @@ def get_multiplayer_url() -> str:
     return os.environ.get("VITE_MULTIPLAYER_URL", "ws://localhost:1234")
 
 
+def build_room_url(file_id: int) -> str:
+    """Build full WebSocket URL for a Y.js room, matching frontend convention.
+
+    Frontend uses: `file-{fileId}-{env}` where env = VITE_ENV || 'local'
+    """
+    base = get_multiplayer_url()
+    env = os.environ.get("VITE_ENV", os.environ.get("ENV", "local")).lower()
+    return f"{base}/file-{file_id}-{env}"
+
+
 class Session:
     """Manage user session stored in ~/.studio/session.json."""
 
