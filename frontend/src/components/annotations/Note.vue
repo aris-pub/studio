@@ -459,26 +459,16 @@
     background-color: var(--surface-page);
   }
 
-  .note.shared.active:not(:hover) {
+  .note.shared.active:not(:focus-within) {
     border-color: var(--border-action);
     border-top-color: var(--note-color);
-    box-shadow: 0 0 0 1px var(--border-action);
   }
 
-  .note.shared:hover,
-  .note.shared:focus-within {
+  .note.shared:hover:not(.active) {
     border-color: var(--border-primary);
     border-top-color: var(--note-color);
     background-color: var(--surface-page);
     box-shadow: var(--shadow-soft);
-  }
-
-  .note.shared.active:hover {
-    border-color: var(--border-action);
-    border-top-color: var(--note-color);
-    box-shadow:
-      0 0 0 1px var(--border-action),
-      var(--shadow-soft);
   }
 
   .note.shared.search-match {
@@ -703,8 +693,8 @@
 
   .reply-send {
     position: absolute;
-    right: 4px;
-    bottom: 4px;
+    right: 6px;
+    bottom: 10px;
   }
 
   /* ---------------------------------------------------------------
