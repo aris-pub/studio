@@ -131,7 +131,7 @@ class TestEditCommand:
         session_file = self._make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "edit"])
+            result = runner.invoke(cli, ["file", "-f", "200", "edit"])
             assert result.exit_code != 0
             assert "source" in result.output.lower() or "stdin" in result.output.lower()
 
@@ -143,7 +143,7 @@ class TestEditCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["file", "200", "edit", "--source", str(source_file), "--stdin"]
+                cli, ["file", "-f", "200", "edit", "--source", str(source_file), "--stdin"]
             )
             assert result.exit_code != 0
 
@@ -151,7 +151,7 @@ class TestEditCommand:
         """Edit command fails without login."""
         with patch("cli.core.SESSION_FILE", tmp_path / "nonexistent.json"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "edit", "--stdin"], input="hello")
+            result = runner.invoke(cli, ["file", "-f", "200", "edit", "--stdin"], input="hello")
             assert result.exit_code != 0
             assert "Not logged in" in result.output
 
@@ -173,7 +173,7 @@ class TestEditCommand:
         ):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["file", "200", "edit", "--source", str(source_file)]
+                cli, ["file", "-f", "200", "edit", "--source", str(source_file)]
             )
             assert result.exit_code == 0
             assert "200" in result.output
@@ -194,7 +194,7 @@ class TestEditCommand:
         ):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["file", "200", "edit", "--stdin"], input="hello"
+                cli, ["file", "-f", "200", "edit", "--stdin"], input="hello"
             )
             assert result.exit_code == 0
 
@@ -214,7 +214,7 @@ class TestEditCommand:
         ):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["file", "200", "edit", "--stdin", "--json"], input="hello"
+                cli, ["file", "-f", "200", "edit", "--stdin", "--json"], input="hello"
             )
             assert result.exit_code == 0
             data = json.loads(result.output)

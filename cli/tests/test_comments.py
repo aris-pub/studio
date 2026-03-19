@@ -96,7 +96,7 @@ class TestCommentsCommand:
         """Comments command fails without login."""
         with patch("cli.core.SESSION_FILE", tmp_path / "nonexistent.json"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments"])
 
             assert result.exit_code != 0
             assert "Not logged in" in result.output
@@ -114,7 +114,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments"])
 
             assert result.exit_code == 0
             assert "Hello" in result.output
@@ -138,7 +138,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments"])
 
             assert result.exit_code == 0
             assert "No annotations" in result.output
@@ -156,7 +156,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments", "--json"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments", "--json"])
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -178,7 +178,7 @@ class TestCommentsCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
             # Only the second annotation (2026-03-16) should appear
-            result = runner.invoke(cli, ["file", "200", "comments", "--since", "2026-03-16T00:00:00"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments", "--since", "2026-03-16T00:00:00"])
 
             assert result.exit_code == 0
             assert "World" in result.output
@@ -197,7 +197,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments", "--since", "2026-03-16T00:00:00", "--json"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments", "--since", "2026-03-16T00:00:00", "--json"])
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -217,7 +217,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            runner.invoke(cli, ["file", "200", "comments"])
+            runner.invoke(cli, ["file", "-f", "200", "comments"])
 
             assert responses.calls[0].request.params == {"file_id": "200"}
 
@@ -234,7 +234,7 @@ class TestCommentsCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "200", "comments"])
+            result = runner.invoke(cli, ["file", "-f", "200", "comments"])
 
             assert result.exit_code != 0
             assert "API error" in result.output

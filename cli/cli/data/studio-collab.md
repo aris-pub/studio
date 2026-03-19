@@ -38,10 +38,10 @@ Lists all documents the agent has been invited to collaborate on. The agent cann
 ### Read a document
 
 ```bash
-studio file <file_id>                          # Print RSM source to stdout (default)
-studio file <file_id> read                     # Same as above
-studio file <file_id> read --output draft.rsm  # Save to file
-studio file <file_id> read --json              # JSON with file_id and content
+studio file -f <file_id>                          # Print RSM source to stdout (default)
+studio file -f <file_id> read                     # Same as above
+studio file -f <file_id> read --output draft.rsm  # Save to file
+studio file -f <file_id> read --json              # JSON with file_id and content
 ```
 
 Connects to Y.js WebSocket, syncs the current document state, prints the RSM source, and disconnects. Always read before editing to avoid overwriting the human's changes.
@@ -49,8 +49,8 @@ Connects to Y.js WebSocket, syncs the current document state, prints the RSM sou
 ### Edit a document
 
 ```bash
-studio file <file_id> edit --source revised.rsm   # From file
-studio file <file_id> edit --stdin                  # From stdin
+studio file -f <file_id> edit --source revised.rsm   # From file
+studio file -f <file_id> edit --stdin                  # From stdin
 ```
 
 Connects to Y.js, applies the new source as a diff, and disconnects. The edit appears in real-time for any human with the document open in their browser. Always read first, apply changes locally, then edit.
@@ -58,9 +58,9 @@ Connects to Y.js, applies the new source as a diff, and disconnects. The edit ap
 ### Check for comments
 
 ```bash
-studio file <file_id> comments                        # Rich table output
-studio file <file_id> comments --json                  # Machine-readable JSON
-studio file <file_id> comments --since 2026-03-18T10:00:00  # Only recent
+studio file -f <file_id> comments                        # Rich table output
+studio file -f <file_id> comments --json                  # Machine-readable JSON
+studio file -f <file_id> comments --since 2026-03-18T10:00:00  # Only recent
 ```
 
 Lists all shared annotations and their message threads. Use `--json` for parsing. Use `--since` to avoid re-processing old comments.
@@ -82,8 +82,8 @@ Run in the background. Check output when ready to process feedback.
 ### Reply to a comment
 
 ```bash
-studio file <file_id> reply <annotation_id> "Your response text"
-studio file <file_id> reply <annotation_id> --stdin       # Pipe longer responses
+studio file -f <file_id> reply <annotation_id> "Your response text"
+studio file -f <file_id> reply <annotation_id> --stdin       # Pipe longer responses
 ```
 
 Posts a message to an existing annotation thread. The human sees it immediately in their browser.
@@ -91,10 +91,23 @@ Posts a message to an existing annotation thread. The human sees it immediately 
 ### Resolve a comment
 
 ```bash
-studio file <file_id> resolve <annotation_id>
+studio file -f <file_id> resolve <annotation_id>
 ```
 
 Soft-deletes the annotation, marking the comment as addressed. Use after editing the document to reflect the feedback.
+
+### Manage file assets
+
+```bash
+studio file -f <file_id> assets                             # List all assets
+studio file -f <file_id> assets --json                      # List as JSON
+studio file -f <file_id> assets create --file chart.html    # Upload text asset
+studio file -f <file_id> assets create --file figure.png    # Upload binary asset (auto base64)
+studio file -f <file_id> assets edit <asset_id> --source updated.html  # Update content
+studio file -f <file_id> assets delete <asset_id>           # Delete asset
+```
+
+Assets are files attached to a document (HTML fragments, images, data files). Text files are uploaded as plain text; binary files are automatically base64-encoded. Use `:html:` in RSM to include uploaded HTML assets.
 
 ## The Collaboration Workflow
 
@@ -102,21 +115,21 @@ Soft-deletes the annotation, marking the comment as addressed. Use after editing
 
 ```bash
 studio files                              # Find the document
-studio file <file_id> read -o doc.rsm     # Download current state
+studio file -f <file_id> read -o doc.rsm     # Download current state
 # Read and understand the document content
 ```
 
 ### Phase 2: Review loop
 
 ```bash
-studio file <file_id> comments --json     # Check for human feedback
+studio file -f <file_id> comments --json     # Check for human feedback
 # For each annotation:
 #   1. Read the comment and understand what the human wants
-#   2. Read the current document: studio file <file_id> read -o doc.rsm
+#   2. Read the current document: studio file -f <file_id> read -o doc.rsm
 #   3. Make edits locally to doc.rsm
-#   4. Upload: studio file <file_id> edit --source doc.rsm
-#   5. Reply: studio file <file_id> reply <ann_id> "Addressed — see revised section 3.2"
-#   6. Resolve: studio file <file_id> resolve <ann_id>
+#   4. Upload: studio file -f <file_id> edit --source doc.rsm
+#   5. Reply: studio file -f <file_id> reply <ann_id> "Addressed — see revised section 3.2"
+#   6. Resolve: studio file -f <file_id> resolve <ann_id>
 ```
 
 ### Phase 3: Continuous collaboration

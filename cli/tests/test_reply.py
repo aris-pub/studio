@@ -55,7 +55,7 @@ class TestReplyCommand:
         session_file = _session_file(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "0", "reply", "10", "Looks good to me"])
+            result = runner.invoke(cli, ["file", "-f", "0", "reply", "10", "Looks good to me"])
 
             assert result.exit_code == 0
             assert "Looks good to me" in result.output
@@ -75,7 +75,7 @@ class TestReplyCommand:
         session_file = _session_file(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "0", "reply", "10", "Looks good to me", "--json"])
+            result = runner.invoke(cli, ["file", "-f", "0", "reply", "10", "Looks good to me", "--json"])
 
             assert result.exit_code == 0
             parsed = json.loads(result.output)
@@ -96,7 +96,7 @@ class TestReplyCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["file", "0", "reply", "10", "--stdin"], input="Looks good to me"
+                cli, ["file", "-f", "0", "reply", "10", "--stdin"], input="Looks good to me"
             )
 
             assert result.exit_code == 0
@@ -106,7 +106,7 @@ class TestReplyCommand:
         """Reply fails if not logged in."""
         with patch("cli.core.SESSION_FILE", tmp_path / "nonexistent.json"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "0", "reply", "10", "hello"])
+            result = runner.invoke(cli, ["file", "-f", "0", "reply", "10", "hello"])
 
             assert result.exit_code != 0
             assert "Not logged in" in result.output
@@ -116,7 +116,7 @@ class TestReplyCommand:
         session_file = _session_file(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "0", "reply", "10"])
+            result = runner.invoke(cli, ["file", "-f", "0", "reply", "10"])
 
             assert result.exit_code != 0
             assert "Provide a message" in result.output
@@ -134,7 +134,7 @@ class TestReplyCommand:
         session_file = _session_file(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "0", "reply", "10", "hello"])
+            result = runner.invoke(cli, ["file", "-f", "0", "reply", "10", "hello"])
 
             assert result.exit_code != 0
             assert "API error" in result.output

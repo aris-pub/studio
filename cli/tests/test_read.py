@@ -77,7 +77,7 @@ class TestReadCommand:
         """Read command fails without login."""
         with patch("cli.core.SESSION_FILE", tmp_path / "nonexistent.json"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["file", "42", "read"])
+            result = runner.invoke(cli, ["file", "-f", "42", "read"])
             assert result.exit_code != 0
             assert "Not logged in" in result.output
 
@@ -93,7 +93,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read"])
+                result = runner.invoke(cli, ["file", "-f", "42", "read"])
 
                 assert result.exit_code == 0
                 assert "Hello, world!" in result.output
@@ -110,7 +110,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read", "--json"])
+                result = runner.invoke(cli, ["file", "-f", "42", "read", "--json"])
 
                 assert result.exit_code == 0
                 data = json.loads(result.output)
@@ -130,7 +130,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read", "--output", str(output_file)])
+                result = runner.invoke(cli, ["file", "-f", "42", "read", "--output", str(output_file)])
 
                 assert result.exit_code == 0
                 assert output_file.read_text() == "File content here"
@@ -147,7 +147,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read"])
+                result = runner.invoke(cli, ["file", "-f", "42", "read"])
 
                 assert result.exit_code == 0
 
@@ -163,7 +163,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", failing_connect):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read"])
+                result = runner.invoke(cli, ["file", "-f", "42", "read"])
 
                 assert result.exit_code != 0
                 assert "Connection refused" in result.output
@@ -180,7 +180,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                result = runner.invoke(cli, ["file", "42", "read"])
+                result = runner.invoke(cli, ["file", "-f", "42", "read"])
 
                 assert result.exit_code == 0
                 mock_ws.send.assert_called()
@@ -197,7 +197,7 @@ class TestReadCommand:
         with patch("cli.core.SESSION_FILE", session_file):
             with patch("cli.commands.read.ws_connect", factory):
                 runner = CliRunner()
-                runner.invoke(cli, ["file", "99", "read"])
+                runner.invoke(cli, ["file", "-f", "99", "read"])
 
                 assert len(factory.connected_urls) == 1
                 assert "file-99-" in factory.connected_urls[0]

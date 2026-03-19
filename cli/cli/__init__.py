@@ -2,6 +2,7 @@
 
 import click
 
+from cli.commands.assets import assets
 from cli.commands.auth import login, logout, session_cmd
 from cli.commands.comments import comments
 from cli.commands.edit import edit
@@ -35,6 +36,7 @@ file_cmd.add_command(edit)
 file_cmd.add_command(comments)
 file_cmd.add_command(reply)
 file_cmd.add_command(resolve)
+file_cmd.add_command(assets)
 cli.add_command(file_cmd, "file")
 
 
