@@ -45,12 +45,18 @@
   const annotationActions = inject("annotationActions", null);
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const user = inject("user", ref(null));
+  const file = inject("file", ref(null));
 
   const isShared = computed(() => props.annotation.visibility === "shared");
   const isOwnAnnotation = computed(() => {
     const userId = user.value?.id;
     return userId && props.annotation.owner_id === userId;
   });
+  const isFileOwner = computed(() => {
+    const userId = user.value?.id;
+    return userId && file.value?.ownerId === userId;
+  });
+  const canDelete = computed(() => isOwnAnnotation.value || (isShared.value && isFileOwner.value));
   const annotationOwner = computed(() => props.annotation.owner);
 
   const isActive = computed(() => activeAnnotationId.value === props.annotation.id);
@@ -296,7 +302,7 @@
           @click.stop="onEdit"
         />
         <Button
-          v-if="isOwnAnnotation"
+          v-if="canDelete"
           :kind="confirmingDelete ? 'danger' : 'danger-ghost'"
           size="xs"
           :icon="confirmingDelete ? '' : 'Trash'"

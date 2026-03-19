@@ -30,7 +30,10 @@ function makeAnnotationWithNote(overrides = {}) {
 
 const TEST_USER = { id: 100, name: "Test User" };
 
-function createWrapper(annotation, { activeId = null, actions = {} } = {}) {
+function createWrapper(
+  annotation,
+  { activeId = null, actions = {}, file = null, user = TEST_USER } = {}
+) {
   const activeAnnotationId = ref(activeId);
   const annotationActions = {
     deleteAnnotation: vi.fn().mockResolvedValue({}),
@@ -45,7 +48,8 @@ function createWrapper(annotation, { activeId = null, actions = {} } = {}) {
       provide: {
         annotationActions,
         activeAnnotationId,
-        user: ref(TEST_USER),
+        user: ref(user),
+        file: ref(file),
       },
     },
   });
@@ -542,5 +546,73 @@ describe("Note.vue — search match highlighting (std-50vp)", () => {
     const noteText = wrapper.find(".note-text");
     expect(noteText.html()).toContain('<span class="aris-search-highlight">foo</span>');
     expect(noteText.html()).not.toContain("--current");
+  });
+});
+
+describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () => {
+  const OTHER_USER = { id: 200, name: "Other User" };
+  const FILE_OWNED_BY_TEST_USER = { ownerId: 100 };
+
+  it("file owner sees delete button on shared annotation from another user", () => {
+    const ann = makeAnnotation({
+      owner_id: 200,
+      owner: OTHER_USER,
+      visibility: "shared",
+    });
+    const { wrapper } = createWrapper(ann, { file: FILE_OWNED_BY_TEST_USER });
+    expect(wrapper.find(".delete-btn").exists()).toBe(true);
+  });
+
+  it("file owner does NOT see edit button on shared annotation from another user", () => {
+    const ann = makeAnnotation({
+      owner_id: 200,
+      owner: OTHER_USER,
+      visibility: "shared",
+    });
+    const { wrapper } = createWrapper(ann, { file: FILE_OWNED_BY_TEST_USER });
+    expect(findButtonByIcon(wrapper, "Edit")).toBeUndefined();
+  });
+
+  it("file owner does NOT see share button on another user's private annotation", () => {
+    const ann = makeAnnotation({
+      owner_id: 200,
+      owner: OTHER_USER,
+      visibility: "private",
+    });
+    const { wrapper } = createWrapper(ann, { file: FILE_OWNED_BY_TEST_USER });
+    expect(findButtonByIcon(wrapper, "MessageShare")).toBeUndefined();
+  });
+
+  it("non-owner does NOT see delete button on shared annotation from another user", () => {
+    const ann = makeAnnotation({
+      owner_id: 200,
+      owner: OTHER_USER,
+      visibility: "shared",
+    });
+    const { wrapper } = createWrapper(ann, { file: { ownerId: 300 } });
+    expect(wrapper.find(".delete-btn").exists()).toBe(false);
+  });
+
+  it("file owner can confirm-delete a shared annotation from another user", async () => {
+    vi.useFakeTimers();
+    const ann = makeAnnotation({
+      id: 99,
+      owner_id: 200,
+      owner: OTHER_USER,
+      visibility: "shared",
+    });
+    const { wrapper, annotationActions } = createWrapper(ann, {
+      file: FILE_OWNED_BY_TEST_USER,
+    });
+    const deleteBtn = wrapper.find(".delete-btn");
+
+    await deleteBtn.trigger("click");
+    await nextTick();
+    vi.advanceTimersByTime(500);
+    await deleteBtn.trigger("click");
+    await nextTick();
+
+    expect(annotationActions.deleteAnnotation).toHaveBeenCalledWith(99);
+    vi.useRealTimers();
   });
 });
