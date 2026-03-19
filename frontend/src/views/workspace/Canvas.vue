@@ -293,19 +293,35 @@
       innerRef.value.setAttribute("tabindex", "-1");
       innerRef.value.focus();
 
-      // When nothing is focused (scroll container has focus), forward j/k/h/l
-      // to the first handrail so RSM keyboard navigation kicks in
+      // Handle j/k/h/l keyboard navigation for the manuscript preview.
+      // RSM's keyboard listeners attach to the mountPoint on first onload,
+      // but the mountPoint is recreated on each compile. Instead of trying
+      // to re-attach RSM's listeners, we handle navigation here on the
+      // persistent scroll container.
       innerRef.value.addEventListener("keydown", (e) => {
         if (!["j", "k", "h", "l"].includes(e.key)) return;
-        if (e.target !== innerRef.value) return;
-        const firstHR = innerRef.value.querySelector(".hr[tabindex='0']");
-        if (firstHR) {
-          firstHR.focus();
-          firstHR.dispatchEvent(new KeyboardEvent("keydown", {
-            key: e.key, code: e.code, bubbles: true, cancelable: true,
-          }));
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const focusable = Array.from(innerRef.value.querySelectorAll(
+          "[tabindex='0'].hr"
+        ));
+        if (!focusable.length) return;
+
+        const current = document.activeElement;
+        let idx = focusable.indexOf(current);
+
+        if (["j", "k"].includes(e.key)) {
           e.preventDefault();
           e.stopPropagation();
+          if (idx === -1) {
+            focusable[0].focus();
+          } else {
+            const next = e.key === "j"
+              ? (idx + 1) % focusable.length
+              : (idx - 1 + focusable.length) % focusable.length;
+            focusable[next].focus();
+            focusable[next].scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
         }
       });
     }
@@ -768,7 +784,7 @@
   .annotation-overlay {
     position: fixed;
     top: 8px;
-    right: 8px;
+    right: calc(var(--chunk) / 2 + 0.125rem);
     bottom: 8px;
     width: 280px;
     z-index: 999;

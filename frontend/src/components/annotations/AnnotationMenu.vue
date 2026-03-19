@@ -5,12 +5,9 @@
   import { SWATCH_COLORS } from "@/constants/annotationColors.js";
 
   const selfRef = useTemplateRef("selfRef");
-  const noteInputRef = useTemplateRef("noteInputRef");
   const visible = ref(false);
   const virtualEl = ref(null);
   const currentAnchor = ref(null);
-  const showNoteInput = ref(false);
-  const inputText = ref("");
   // Static rect snapshot — immune to DOM mutations that invalidate live Ranges
   let anchorRect = null;
 
@@ -40,8 +37,6 @@
     virtualEl.value = null;
     anchorRect = null;
     currentAnchor.value = null;
-    showNoteInput.value = false;
-    inputText.value = "";
 
     const selection = window.getSelection();
     if (selection && selection.removeAllRanges) {
@@ -81,8 +76,6 @@
     anchorRect = range.getBoundingClientRect();
     currentAnchor.value = anchor;
     virtualEl.value = getVirtualElementFromRect(anchorRect);
-    showNoteInput.value = false;
-    inputText.value = "";
     visible.value = true;
     nextTick(() => selfRef.value?.focus());
   };
@@ -144,13 +137,15 @@
 
   // Color click is the terminal action: create annotation with whatever
   // note text exists (empty string for highlight-only) and dismiss.
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
+
   async function onColorClick(colorName) {
     if (!annotationActions || !currentAnchor.value) return;
 
     const anchor = currentAnchor.value;
 
     try {
-      const annotation = await annotationActions.createAnnotation({
+      await annotationActions.createAnnotation({
         color: colorName,
         anchorData: {
           node_id: anchor.node_id,
@@ -160,10 +155,6 @@
         },
         selectedText: anchor.selected_text,
       });
-
-      if (inputText.value.trim()) {
-        await annotationActions.addNote(annotation.id, inputText.value.trim());
-      }
     } catch (err) {
       console.error("Failed to create annotation:", err);
     }
@@ -171,22 +162,32 @@
     clearSelection();
   }
 
-  function onNoteClick() {
-    showNoteInput.value = true;
-    setTimeout(() => noteInputRef.value?.focus(), 0);
-  }
+  async function onCreateAnnotation(visibility) {
+    if (!annotationActions || !currentAnchor.value) return;
 
-  // Send button / Enter in the note input: commit with purple default
-  async function onNoteSubmit() {
-    await onColorClick("purple");
-  }
+    const anchor = currentAnchor.value;
 
-  function onNoteKeydown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (inputText.value.trim()) {
-        onNoteSubmit();
-      }
+    try {
+      const annotation = await annotationActions.createAnnotation({
+        color: "purple",
+        visibility,
+        anchorData: {
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+        },
+        selectedText: anchor.selected_text,
+      });
+
+      clearSelection();
+
+      // Activate the annotation card so it opens in editing mode
+      await nextTick();
+      activeAnnotationId.value = annotation.id;
+    } catch (err) {
+      console.error("Failed to create annotation:", err);
+      clearSelection();
     }
   }
 
@@ -251,25 +252,6 @@
       tabindex="-1"
       @mouseup.stop
     >
-      <div v-if="!showNoteInput" class="note-trigger" @mousedown.prevent>
-        <Button kind="tertiary" size="sm" icon="Message" @click="onNoteClick" />
-      </div>
-
-      <div v-if="showNoteInput" class="note-area">
-        <label for="annotation-menu-note" class="sr-only">Annotation note</label>
-        <textarea
-          id="annotation-menu-note"
-          ref="noteInputRef"
-          v-model="inputText"
-          class="note-input"
-          placeholder="Add a note..."
-          rows="1"
-          @keydown="onNoteKeydown"
-        />
-      </div>
-
-      <div class="separator" aria-hidden="true" />
-
       <div class="swatches" @mousedown.prevent>
         <button
           v-for="(color, name) in SWATCH_COLORS"
@@ -281,6 +263,27 @@
         >
           <span class="swatch-circle" :style="{ backgroundColor: color }" />
         </button>
+      </div>
+
+      <div class="separator" aria-hidden="true" />
+
+      <div class="annotation-actions" @mousedown.prevent>
+        <Button
+          kind="tertiary"
+          size="sm"
+          icon="Note"
+          aria-label="Private note"
+          title="Private note"
+          @click="onCreateAnnotation('private')"
+        />
+        <Button
+          kind="tertiary"
+          size="sm"
+          icon="Messages"
+          aria-label="Shared comment"
+          title="Shared comment"
+          @click="onCreateAnnotation('shared')"
+        />
       </div>
     </div>
   </Teleport>
@@ -350,50 +353,13 @@
     flex-shrink: 0;
   }
 
-  .note-trigger {
+  .annotation-actions {
     display: flex;
     align-items: center;
+    gap: 0;
 
     & :deep(.tabler-icon) {
       color: var(--dark) !important;
-    }
-  }
-
-  .note-area {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-
-    & :deep(.tabler-icon) {
-      color: var(--dark) !important;
-    }
-  }
-
-  .note-input {
-    width: 180px;
-    min-height: 28px;
-    max-height: 64px;
-    padding: 4px 8px;
-    border: var(--border-extrathin) solid var(--border-primary);
-    border-radius: 12px;
-    font-family: inherit;
-    font-size: 13px;
-    line-height: 1.4;
-    resize: none;
-    outline: none;
-    background-color: var(--surface-hover);
-    color: var(--extra-dark);
-    transition: var(--transition-bd-color);
-
-    &:focus {
-      border-color: var(--border-action);
-      outline: 2px solid var(--border-action);
-      outline-offset: -2px;
-    }
-
-    &::placeholder {
-      color: var(--medium);
-      font-style: italic;
     }
   }
 

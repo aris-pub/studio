@@ -48,8 +48,6 @@
     () => props.htmlString,
     () => {
       manuscriptKey.value++;
-      // Reset onloadCalled when Manuscript is destroyed/recreated
-      // so the new mountPoint gets properly initialized with onload()
       onloadCalled.value = false;
     }
   );
@@ -104,10 +102,6 @@
       }
 
       if (!onloadCalled.value) {
-        // Force full init so keyboard listeners attach to this mountPoint.
-        // RSM's onload guards with __rsmInitialized — reset it so setup2()
-        // (keyboard) runs on the new DOM tree after Manuscript recreation.
-        window.__rsmInitialized = false;
         await onload.value(mountPoint, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {

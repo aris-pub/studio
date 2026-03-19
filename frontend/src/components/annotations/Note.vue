@@ -220,7 +220,13 @@
     if (active) {
       nextTick(() => {
         noteRef.value?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-        if (isShared.value) nextTick(() => replyInput.value?.focus());
+        const hasMessages = threadMessages.value.length > 0;
+        if (!hasMessages) {
+          // Newly created annotation with no messages — open in edit mode
+          onEdit();
+        } else if (isShared.value) {
+          nextTick(() => replyInput.value?.focus());
+        }
       });
     }
   });
