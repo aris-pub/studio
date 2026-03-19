@@ -173,6 +173,16 @@ class InMemoryFileService(FileServiceInterface):
             logger.debug(f"Soft deleted file {file_id}")
             return True
     
+    async def clear_file_cache(self, file_id: int) -> bool:
+        """Clear cached render results for a file."""
+        async with self._lock:
+            file_data = self._files.get(file_id)
+            if not file_data or file_data.is_deleted():
+                return False
+            file_data.clear_cache()
+            logger.debug(f"Cleared render cache for file {file_id}")
+            return True
+
     async def duplicate_file(self, file_id: int, db: AsyncSession | None = None) -> Optional[FileData]:
         """Create a duplicate of an existing file."""
         async with self._lock:
