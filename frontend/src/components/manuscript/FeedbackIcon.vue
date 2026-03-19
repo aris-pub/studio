@@ -158,6 +158,7 @@
           :class="{ 'has-reaction': selectedReaction }"
           :style="{ '--trigger-color': triggerColor }"
           aria-label="Add reaction"
+          tabindex="-1"
           @click="onToggle"
         >
           <Icon :name="triggerIcon" />
