@@ -67,7 +67,8 @@
   });
 
   const threadMessages = computed(() => {
-    return props.annotation.messages?.filter((m) => !m.deleted_at) || [];
+    const msgs = props.annotation.messages?.filter((m) => !m.deleted_at) || [];
+    return msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   });
 
   const replyText = ref("");
