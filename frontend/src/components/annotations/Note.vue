@@ -303,7 +303,16 @@
           @click.stop="onEdit"
         />
         <Button
-          v-if="canDelete"
+          v-if="canDelete && isShared"
+          kind="tertiary"
+          size="xs"
+          icon="CircleCheck"
+          class="resolve-btn"
+          aria-label="Resolve annotation"
+          @click.stop="onDelete"
+        />
+        <Button
+          v-if="canDelete && !isShared"
           :kind="confirmingDelete ? 'danger' : 'danger-ghost'"
           size="xs"
           :icon="confirmingDelete ? '' : 'Trash'"
@@ -530,6 +539,15 @@
     height: 16px;
     color: var(--gray-700);
     stroke-width: 1.5;
+  }
+
+  .resolve-btn :deep(.tabler-icon) {
+    color: var(--gray-600);
+    transition: color 0.15s ease;
+  }
+
+  .resolve-btn:hover :deep(.tabler-icon) {
+    color: var(--green-500);
   }
 
   .delete-label {
