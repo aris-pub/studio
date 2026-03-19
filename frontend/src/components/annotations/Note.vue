@@ -1,6 +1,7 @@
 <script setup>
   import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
+  import { renderInlineMath } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
 
   const props = defineProps({
@@ -97,7 +98,8 @@
   });
 
   function highlightMatch(text) {
-    if (!text || !props.searchMatch || !props.searchQuery) return escapeHtml(text);
+    if (!text) return "";
+    if (!props.searchMatch || !props.searchQuery) return renderInlineMath(text);
     const escaped = escapeHtml(text);
     const queryEscaped = props.searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(`(${queryEscaped})`, "gi");

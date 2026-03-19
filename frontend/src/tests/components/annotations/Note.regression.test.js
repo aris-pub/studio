@@ -616,3 +616,67 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     vi.useRealTimers();
   });
 });
+
+describe("Note.vue — inline math rendering (std-kg55)", () => {
+  let originalTemml;
+
+  beforeEach(() => {
+    originalTemml = window.temml;
+    window.temml = {
+      renderToString: vi.fn((latex) => `<math>${latex}</math>`),
+    };
+  });
+
+  afterEach(() => {
+    window.temml = originalTemml;
+  });
+
+  it("renders inline math in selected_text", () => {
+    const ann = makeAnnotation({ selected_text: "the value $x_e$ is key" });
+    const { wrapper } = createWrapper(ann);
+    const sel = wrapper.find(".selected-text");
+    expect(sel.html()).toContain("<math>x_e</math>");
+    expect(sel.html()).not.toContain("$x_e$");
+  });
+
+  it("renders inline math in note content", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "see $\\alpha$ here", deleted_at: null }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain("<math>\\alpha</math>");
+  });
+
+  it("renders inline math in collapsed preview", async () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "note about $x$", deleted_at: null }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const collapseBtn = findButtonByIcon(wrapper, "ChevronUp");
+    await collapseBtn.trigger("click");
+    await nextTick();
+    const collapsed = wrapper.find(".collapsed-line");
+    expect(collapsed.html()).toContain("<math>x</math>");
+  });
+
+  it("renders inline math in shared thread messages", () => {
+    const ann = makeAnnotation({
+      visibility: "shared",
+      owner_id: 100,
+      owner: TEST_USER,
+      messages: [{ id: 10, content: "check $y^2$", deleted_at: null, owner: TEST_USER }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const body = wrapper.find(".thread-body");
+    expect(body.html()).toContain("<math>y^2</math>");
+  });
+
+  it("falls back to plain text when temml is unavailable", () => {
+    window.temml = undefined;
+    const ann = makeAnnotation({ selected_text: "the $x_e$ value" });
+    const { wrapper } = createWrapper(ann);
+    const sel = wrapper.find(".selected-text");
+    expect(sel.text()).toContain("$x_e$");
+  });
+});
