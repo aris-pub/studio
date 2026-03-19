@@ -135,11 +135,34 @@ describe("resolveAnchor", () => {
     expect(range.toString()).toBe("world");
   });
 
-  it("returns null when block is not found", () => {
+  it("falls back to global text search when block is not found", () => {
+    manuscriptEl.innerHTML = '<p data-nodeid="n1">Hello</p>';
+
+    const range = resolveAnchor(
+      { node_id: "nonexistent", start_offset: 0, end_offset: 5, selected_text: "Hello" },
+      manuscriptEl
+    );
+
+    expect(range).not.toBeNull();
+    expect(range.toString()).toBe("Hello");
+  });
+
+  it("returns null when block not found and no selected_text", () => {
     manuscriptEl.innerHTML = '<p data-nodeid="n1">Hello</p>';
 
     const result = resolveAnchor(
-      { node_id: "nonexistent", start_offset: 0, end_offset: 5, selected_text: "Hello" },
+      { node_id: "nonexistent", start_offset: 0, end_offset: 5 },
+      manuscriptEl
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when block not found and selected_text not in document", () => {
+    manuscriptEl.innerHTML = '<p data-nodeid="n1">Hello</p>';
+
+    const result = resolveAnchor(
+      { node_id: "nonexistent", start_offset: 0, end_offset: 5, selected_text: "Goodbye" },
       manuscriptEl
     );
 
@@ -178,6 +201,66 @@ describe("resolveAnchor", () => {
   it("returns null for null inputs", () => {
     expect(resolveAnchor(null, manuscriptEl)).toBeNull();
     expect(resolveAnchor({ node_id: "n1" }, null)).toBeNull();
+  });
+});
+
+describe("resolveAnchor — global text search fallback", () => {
+  let manuscriptEl;
+
+  beforeEach(() => {
+    manuscriptEl = document.createElement("div");
+    document.body.appendChild(manuscriptEl);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(manuscriptEl);
+  });
+
+  it("finds text in a different block than the one specified", () => {
+    manuscriptEl.innerHTML =
+      '<p data-nodeid="1">First paragraph</p>' +
+      '<p data-nodeid="2">Second paragraph with target text</p>';
+
+    const range = resolveAnchor(
+      { node_id: "wrong-id", start_offset: 0, end_offset: 11, selected_text: "target text" },
+      manuscriptEl
+    );
+
+    expect(range).not.toBeNull();
+    expect(range.toString()).toBe("target text");
+  });
+
+  it("finds text across multiple blocks with numeric node IDs (RSM-style)", () => {
+    manuscriptEl.innerHTML =
+      '<div class="manuscript" data-nodeid="0">' +
+      '<div class="paragraph" data-nodeid="1"><div class="hr-content-zone"><p>Introduction text</p></div></div>' +
+      '<div class="paragraph" data-nodeid="2"><div class="hr-content-zone"><p>Results show improvement</p></div></div>' +
+      "</div>";
+
+    const range = resolveAnchor(
+      { node_id: "test-node", start_offset: 0, end_offset: 11, selected_text: "improvement" },
+      manuscriptEl
+    );
+
+    expect(range).not.toBeNull();
+    expect(range.toString()).toBe("improvement");
+  });
+
+  it("prefers exact block match over global search", () => {
+    manuscriptEl.innerHTML =
+      '<p data-nodeid="n1">Hello world</p>' +
+      '<p data-nodeid="n2">Hello world</p>';
+
+    const range = resolveAnchor(
+      { node_id: "n2", start_offset: 0, end_offset: 5, selected_text: "Hello" },
+      manuscriptEl
+    );
+
+    expect(range).not.toBeNull();
+    expect(range.toString()).toBe("Hello");
+    // Should resolve in n2, not n1
+    const block = range.startContainer.parentElement.closest("[data-nodeid]");
+    expect(block.getAttribute("data-nodeid")).toBe("n2");
   });
 });
 

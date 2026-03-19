@@ -61,20 +61,38 @@ export function extractAnchor(range, manuscriptEl) {
 
 /**
  * Resolve anchor data back to a DOM Range within a manuscript element.
+ *
+ * Resolution strategy (in order):
+ * 1. Find block by data-nodeid, resolve by character offsets
+ * 2. If offsets don't match selected_text, search within the same block
+ * 3. Find block by element_id fallback, repeat offset + text search
+ * 4. Global fallback: search ALL [data-nodeid] blocks for selected_text
+ *    (handles API-created annotations where node_id doesn't match the DOM)
  */
 export function resolveAnchor(anchorData, manuscriptEl) {
   if (!anchorData || !manuscriptEl) return null;
+
+  const { start_offset, end_offset, selected_text } = anchorData;
 
   // Find the block element
   let block = manuscriptEl.querySelector(`[data-nodeid="${anchorData.node_id}"]`);
   if (!block && anchorData.element_id) {
     block = manuscriptEl.querySelector(`#${CSS.escape(anchorData.element_id)}`);
   }
-  if (!block) return null;
 
-  const { start_offset, end_offset, selected_text } = anchorData;
+  if (block) {
+    const result = resolveInBlock(block, start_offset, end_offset, selected_text);
+    if (result) return result;
+  }
 
-  // Walk text nodes to find the range at the specified offsets
+  // Block not found or text not found within block — search all blocks
+  if (selected_text) {
+    return resolveByGlobalTextSearch(manuscriptEl, selected_text);
+  }
+  return null;
+}
+
+function resolveInBlock(block, start_offset, end_offset, selected_text) {
   const range = document.createRange();
   const treeWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
   let charCount = 0;
@@ -91,7 +109,6 @@ export function resolveAnchor(anchorData, manuscriptEl) {
     if (startSet && charCount + len >= end_offset) {
       range.setEnd(textNode, end_offset - charCount);
 
-      // Validate against stored text
       if (selected_text && range.toString() !== selected_text) {
         return resolveByTextSearch(block, selected_text);
       }
@@ -100,9 +117,18 @@ export function resolveAnchor(anchorData, manuscriptEl) {
     charCount += len;
   }
 
-  // Offset-based resolution failed — try text search
+  // Offset-based resolution failed — try text search within block
   if (selected_text) {
     return resolveByTextSearch(block, selected_text);
+  }
+  return null;
+}
+
+function resolveByGlobalTextSearch(manuscriptEl, searchText) {
+  const blocks = manuscriptEl.querySelectorAll("[data-nodeid]");
+  for (const block of blocks) {
+    const result = resolveByTextSearch(block, searchText);
+    if (result) return result;
   }
   return null;
 }
