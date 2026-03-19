@@ -15,32 +15,31 @@ describe("renderInlineMath", () => {
 
   it("renders single inline math expression", () => {
     const result = renderInlineMath("the value $x_e$ is important");
-    expect(result).toContain("katex");
-    expect(result).toMatch(/the value .+katex.+ is important/s);
+    expect(result).toContain("<math");
+    expect(result).toMatch(/the value .*<math.+ is important/s);
   });
 
   it("renders multiple inline math expressions", () => {
     const result = renderInlineMath("$a$ and $b$");
-    expect(result).toContain("katex");
+    expect(result).toContain("<math");
     expect(result).toContain(" and ");
   });
 
   it("escapes HTML in non-math segments", () => {
     const result = renderInlineMath("<b>bold</b> $x$ text");
     expect(result).toContain("&lt;b&gt;bold&lt;/b&gt;");
-    expect(result).toContain("katex");
+    expect(result).toContain("<math");
   });
 
-  it("renders invalid LaTeX gracefully with throwOnError: false", () => {
+  it("renders invalid LaTeX gracefully", () => {
     const result = renderInlineMath("bad $\\invalid$ math");
-    // KaTeX with throwOnError: false renders an error span instead of throwing
     expect(result).toContain("bad ");
     expect(result).toContain(" math");
   });
 
   it("handles math at start and end of string", () => {
     const result = renderInlineMath("$a$ middle $b$");
-    expect(result).toContain("katex");
+    expect(result).toContain("<math");
     expect(result).toContain(" middle ");
   });
 
@@ -51,9 +50,8 @@ describe("renderInlineMath", () => {
 
   it("handles adjacent math expressions", () => {
     const result = renderInlineMath("$a$$b$");
-    expect(result).toContain("katex");
-    // Should contain two rendered math expressions
-    const katexCount = (result.match(/katex-mathml/g) || []).length;
-    expect(katexCount).toBe(2);
+    expect(result).toContain("<math");
+    const mathCount = (result.match(/<math/g) || []).length;
+    expect(mathCount).toBe(2);
   });
 });

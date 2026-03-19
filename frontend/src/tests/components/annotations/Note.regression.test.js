@@ -617,7 +617,7 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     const ann = makeAnnotation({ selected_text: "the value $x_e$ is key" });
     const { wrapper } = createWrapper(ann);
     const sel = wrapper.find(".selected-text");
-    expect(sel.html()).toContain("katex");
+    expect(sel.html()).toContain("<math");
     expect(sel.html()).not.toContain("$x_e$");
   });
 
@@ -627,7 +627,7 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     });
     const { wrapper } = createWrapper(ann);
     const noteText = wrapper.find(".note-text");
-    expect(noteText.html()).toContain("katex");
+    expect(noteText.html()).toContain("<math");
   });
 
   it("renders inline math in collapsed preview", async () => {
@@ -639,7 +639,7 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     await collapseBtn.trigger("click");
     await nextTick();
     const collapsed = wrapper.find(".collapsed-line");
-    expect(collapsed.html()).toContain("katex");
+    expect(collapsed.html()).toContain("<math");
   });
 
   it("renders inline math in shared thread messages", () => {
@@ -651,6 +651,6 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     });
     const { wrapper } = createWrapper(ann);
     const body = wrapper.find(".thread-body");
-    expect(body.html()).toContain("katex");
+    expect(body.html()).toContain("<math");
   });
 });
