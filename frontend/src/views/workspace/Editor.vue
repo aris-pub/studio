@@ -114,6 +114,7 @@
       const response = await api.post("/assets", payload);
       const result = response.data;
       console.log("File uploaded successfully:", result);
+      await compile();
     } catch (error) {
       console.error("Error uploading asset:", error);
     }
