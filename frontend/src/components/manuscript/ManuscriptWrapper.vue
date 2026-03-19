@@ -113,11 +113,13 @@
       } else if (onrender.value) {
         await onrender.value(mountPoint);
       }
-      // Remove tabindex from MathJax containers — math expressions should not
-      // be in the tab order (breaks j/k handrail navigation). RSM standalone
-      // sets inTabOrder:false but the config may not apply in Studio's lifecycle.
+      // Remove non-handrail focusable elements from the tab order so j/k
+      // navigation only stops on handrails, not on inline links or math.
       mountPoint.querySelectorAll('mjx-container[tabindex]').forEach(el => {
         el.removeAttribute('tabindex');
+      });
+      mountPoint.querySelectorAll('.hr a[href]').forEach(el => {
+        el.setAttribute('tabindex', '-1');
       });
     } catch (err) {
       console.error("Render error:", err);
