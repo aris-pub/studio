@@ -98,7 +98,7 @@ class TestSkillCommand:
             assert "name: studio-collab" in content
             assert "## Commands Reference" in content
             assert "studio login" in content
-            assert "studio edit" in content
+            assert "studio file" in content
 
     @responses.activate
     def test_rsm_skill_fetched_from_github(self, tmp_path: Path) -> None:

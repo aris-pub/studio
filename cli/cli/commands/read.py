@@ -46,11 +46,12 @@ async def _read_ydoc(file_id: int, room_url: str) -> str:
 
 
 @click.command()
-@click.argument("file_id", type=int)
 @click.option("--output", "-o", type=click.Path(), help="Write source to file instead of stdout")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def read(file_id: int, output: str | None, as_json: bool) -> None:
+@click.pass_context
+def read(ctx: click.Context, output: str | None, as_json: bool) -> None:
     """Read current document source via Y.js."""
+    file_id: int = ctx.obj["file_id"]
     api = StudioAPI()
 
     if not api.session.is_valid():

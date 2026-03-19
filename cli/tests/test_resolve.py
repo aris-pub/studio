@@ -44,7 +44,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "42"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "42"])
 
             assert result.exit_code == 0
             assert "Resolved" in result.output
@@ -61,7 +61,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "--json", "42"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "--json", "42"])
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -81,7 +81,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "999"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "999"])
 
             # Idempotent: already-resolved annotation is a no-op
             assert result.exit_code == 0
@@ -100,7 +100,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "--json", "999"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "--json", "999"])
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -120,7 +120,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "42"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "42"])
 
             assert result.exit_code != 0
             assert "403" in result.output or "permission" in result.output.lower() or "delete your own" in result.output.lower()
@@ -129,7 +129,7 @@ class TestResolveCommand:
         """Resolve command fails without login."""
         with patch("cli.core.SESSION_FILE", tmp_path / "nonexistent.json"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "42"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "42"])
 
             assert result.exit_code != 0
             assert "Not logged in" in result.output
@@ -146,7 +146,7 @@ class TestResolveCommand:
         session_file = _make_session(tmp_path)
         with patch("cli.core.SESSION_FILE", session_file):
             runner = CliRunner()
-            result = runner.invoke(cli, ["resolve", "42"])
+            result = runner.invoke(cli, ["file", "0", "resolve", "42"])
 
             assert result.exit_code != 0
             assert "Network error" in result.output

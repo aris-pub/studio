@@ -13,11 +13,12 @@ from cli.core import StudioAPI, console
 
 
 @click.command()
-@click.argument("file_id", type=int)
 @click.option("--since", type=str, help="Only show annotations after this ISO8601 timestamp")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def comments(file_id: int, since: str | None, as_json: bool) -> None:
+@click.pass_context
+def comments(ctx: click.Context, since: str | None, as_json: bool) -> None:
     """List annotations and comment threads for a file."""
+    file_id: int = ctx.obj["file_id"]
     api = StudioAPI()
 
     if not api.session.is_valid():
