@@ -11,9 +11,13 @@ from cli.core import SESSION_FILE, StudioAPI, console
 @click.command()
 @click.option("-u", "--username", required=True, help="Email address")
 @click.option("-p", "--password", required=True, help="Password")
-def login(username: str, password: str) -> None:
+@click.option("--server", default=None, help="Studio API URL (e.g. https://api.rsm.studio)")
+@click.option("--ws", default=None, help="Y.js WebSocket URL (e.g. wss://ws.rsm.studio)")
+def login(username: str, password: str, server: str | None, ws: str | None) -> None:
     """Login and store session."""
     api = StudioAPI()
+    if server:
+        api.base_url = server
 
     try:
         console.print(f"[cyan]Logging in as {username}...[/cyan]")
@@ -30,6 +34,8 @@ def login(username: str, password: str) -> None:
             access_token=auth_data["access_token"],
             refresh_token=auth_data["refresh_token"],
             user=user_data,
+            server=server,
+            ws=ws,
         )
 
         console.print(f"[green]✓ Logged in successfully as {user_data['name']}[/green]")

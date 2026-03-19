@@ -1,8 +1,4 @@
-"""RSM Studio CLI - Developer tool for local development.
-
-CRITICAL: This tool ONLY works in LOCAL development environment.
-It will refuse to run in PROD, CI, or STAGING environments.
-"""
+"""RSM Studio CLI — collaborate on RSM documents from the command line."""
 
 import click
 
@@ -13,15 +9,14 @@ from cli.commands.files import files
 from cli.commands.read import read
 from cli.commands.reply import reply
 from cli.commands.resolve import resolve
+from cli.commands.skill import skill
 from cli.commands.ui import ui
 from cli.commands.watch import watch
-from cli.core import check_environment
 
 
 @click.group()
 def cli() -> None:
-    """RSM Studio CLI - Developer tool for local development."""
-    check_environment()
+    """RSM Studio CLI — collaborate on RSM documents from the command line."""
 
 
 # Existing commands
@@ -38,6 +33,7 @@ cli.add_command(comments)
 cli.add_command(watch)
 cli.add_command(reply)
 cli.add_command(resolve)
+cli.add_command(skill)
 
 
 def main() -> None:

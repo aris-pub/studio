@@ -8,8 +8,13 @@ from typing import Any
 
 import jwt
 import requests
-from dotenv import load_dotenv
 from rich.console import Console
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args: Any, **kwargs: Any) -> None:  # type: ignore[misc]
+        pass
 
 console = Console()
 
@@ -91,13 +96,24 @@ class Session:
         self.file_path = SESSION_FILE
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def save(self, access_token: str, refresh_token: str, user: dict[str, Any]) -> None:
+    def save(
+        self,
+        access_token: str,
+        refresh_token: str,
+        user: dict[str, Any],
+        server: str | None = None,
+        ws: str | None = None,
+    ) -> None:
         """Save session to disk with restricted permissions."""
-        data = {
+        data: dict[str, Any] = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": user,
         }
+        if server:
+            data["server"] = server
+        if ws:
+            data["ws"] = ws
 
         self.file_path.write_text(json.dumps(data, indent=2))
         os.chmod(self.file_path, 0o600)
@@ -144,8 +160,20 @@ class StudioAPI:
     """Thin wrapper around RSM Studio API - no business logic."""
 
     def __init__(self) -> None:
-        self.base_url = get_api_base_url()
         self.session = Session()
+        self.base_url = self._resolve_server()
+
+    def _resolve_server(self) -> str:
+        """Resolve API server URL: STUDIO_SERVER env > session > .env > default."""
+        env_override = os.environ.get("STUDIO_SERVER")
+        if env_override:
+            return env_override
+
+        session_data = self.session.load()
+        if session_data and session_data.get("server"):
+            return session_data["server"]
+
+        return get_api_base_url()
 
     def _is_token_expired(self, token: str) -> bool:
         """Check if a JWT token is expired without verifying signature."""

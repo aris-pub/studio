@@ -4,9 +4,13 @@ import json
 import sys
 
 import click
-from playwright.sync_api import sync_playwright
 
 from cli.core import StudioAPI, console, get_frontend_port
+
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    sync_playwright = None  # type: ignore[assignment, misc]
 
 
 @click.command()
@@ -14,6 +18,10 @@ from cli.core import StudioAPI, console, get_frontend_port
 @click.option("--playwright", is_flag=True, help="Output Playwright script instead of opening browser")
 def ui(file_id: int, playwright: bool) -> None:
     """Open browser to file with logged-in session, or output Playwright script."""
+    if sync_playwright is None:
+        console.print("[red]✗ playwright is not installed. Run: pip install rsm-studio-cli[dev][/red]")
+        sys.exit(1)
+
     api = StudioAPI()
 
     if not api.session.is_valid():
