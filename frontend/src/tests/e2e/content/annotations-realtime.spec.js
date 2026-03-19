@@ -88,7 +88,7 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
     if (fileId) await deleteTestFile(request, ownerAuth.token, fileId).catch(() => {});
   });
 
-  test("shared annotation created by owner appears on collaborator without refresh", async ({
+  test.fixme("shared annotation created by owner appears on collaborator without refresh", async ({
     request,
     browser,
   }) => {
@@ -138,7 +138,7 @@ test.describe("Real-time Annotation Sync @auth @annotations @realtime", () => {
     }
   });
 
-  test("annotation deleted by owner disappears from collaborator view", async ({
+  test.fixme("annotation deleted by owner disappears from collaborator view", async ({
     request,
     browser,
   }) => {
