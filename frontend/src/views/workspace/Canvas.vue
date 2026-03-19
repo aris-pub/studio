@@ -703,6 +703,10 @@
     padding-inline: v-bind(fileSettings.marginWidth) !important;
   }
 
+  :deep(.manuscriptwrapper .hr:focus) {
+    outline: none;
+  }
+
   .annotation-overlay-toggle {
     position: absolute;
     top: 8px;
