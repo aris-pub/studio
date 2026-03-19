@@ -553,14 +553,14 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
   const OTHER_USER = { id: 200, name: "Other User" };
   const FILE_OWNED_BY_TEST_USER = { ownerId: 100 };
 
-  it("file owner sees delete button on shared annotation from another user", () => {
+  it("file owner sees resolve button on shared annotation from another user", () => {
     const ann = makeAnnotation({
       owner_id: 200,
       owner: OTHER_USER,
       visibility: "shared",
     });
     const { wrapper } = createWrapper(ann, { file: FILE_OWNED_BY_TEST_USER });
-    expect(wrapper.find(".delete-btn").exists()).toBe(true);
+    expect(wrapper.find(".resolve-btn").exists()).toBe(true);
   });
 
   it("file owner does NOT see edit button on shared annotation from another user", () => {
@@ -593,8 +593,7 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     expect(wrapper.find(".delete-btn").exists()).toBe(false);
   });
 
-  it("file owner can confirm-delete a shared annotation from another user", async () => {
-    vi.useFakeTimers();
+  it("file owner can resolve a shared annotation from another user", async () => {
     const ann = makeAnnotation({
       id: 99,
       owner_id: 200,
@@ -604,16 +603,12 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     const { wrapper, annotationActions } = createWrapper(ann, {
       file: FILE_OWNED_BY_TEST_USER,
     });
-    const deleteBtn = wrapper.find(".delete-btn");
+    const resolveBtn = wrapper.find(".resolve-btn");
 
-    await deleteBtn.trigger("click");
-    await nextTick();
-    vi.advanceTimersByTime(500);
-    await deleteBtn.trigger("click");
+    await resolveBtn.trigger("click");
     await nextTick();
 
     expect(annotationActions.deleteAnnotation).toHaveBeenCalledWith(99);
-    vi.useRealTimers();
   });
 });
 
