@@ -9,7 +9,7 @@
     "pregenerate": "pnpm run copy-assets",
     "build": "node ../docker/env-check.js && nuxt build",
     "dev": "node ../docker/env-check.js && nuxt dev",
-    "generate": "node ../docker/env-check.js && nuxt generate",
+    "generate": "nuxt generate",
     "preview": "node ../docker/env-check.js && nuxt preview",
     "postinstall": "nuxt prepare && ([ \"$NETLIFY\" = \"true\" ] || pnpm exec playwright install chromium --with-deps)",
     "lint": "eslint . --fix",

@@ -711,6 +711,7 @@ async def create_asset_for_file(
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
     user: UserRead = Depends(current_user),
+    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Upload a new asset to a file. Requires edit permission."""
     asset = await FileAssetDB.create_asset(
@@ -724,6 +725,7 @@ async def create_asset_for_file(
         user.id,
         db,
     )
+    await file_service.clear_file_cache(file_id)
     return asset
 
 
@@ -734,12 +736,15 @@ async def update_asset_for_file(
     payload: FileAssetUpdate,
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
+    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Update an asset's filename or content. Requires edit permission."""
     asset = await db.get(FileAsset, asset_id)
     if not asset or asset.file_id != file_id or asset.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Asset not found")
-    return await FileAssetDB.update_asset(asset, payload, db)
+    result = await FileAssetDB.update_asset(asset, payload, db)
+    await file_service.clear_file_cache(file_id)
+    return result
 
 
 @router.delete("/{file_id}/assets/{asset_id}")
@@ -748,12 +753,14 @@ async def delete_asset_for_file(
     asset_id: int,
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
+    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Soft-delete an asset. Requires edit permission."""
     asset = await db.get(FileAsset, asset_id)
     if not asset or asset.file_id != file_id or asset.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Asset not found")
     await FileAssetDB.soft_delete_asset(asset, db)
+    await file_service.clear_file_cache(file_id)
     return {"message": f"Asset {asset_id} deleted"}
 
 

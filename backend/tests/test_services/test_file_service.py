@@ -610,6 +610,53 @@ class TestCacheInvalidation:
         )
 
 
+class TestClearFileCache:
+    """Test clear_file_cache for asset-change cache invalidation."""
+
+    @pytest.fixture
+    def file_service(self):
+        return InMemoryFileService()
+
+    @pytest.mark.asyncio
+    async def test_clear_file_cache_invalidates_html(self, file_service):
+        """clear_file_cache must bust the HTML render cache so the next
+        get_file_html call re-renders instead of returning stale output."""
+        await file_service.initialize()
+
+        f = await file_service.create_file(FileCreateData(
+            title="Cache",
+            source="\n# V1\nOriginal.\n",
+            owner_id=1,
+        ))
+
+        v1 = await file_service.get_file_html(f.id)
+        assert "Original" in v1
+
+        # Simulate what happens when an asset changes: source stays the same,
+        # but the render cache must be cleared so asset-dependent output refreshes.
+        result = await file_service.clear_file_cache(f.id)
+        assert result is True
+
+        # Internal cache attrs should be gone
+        file_data = await file_service.get_file(f.id)
+        assert file_data._rendered_html is None
+        assert len(file_data._sections) == 0
+
+    @pytest.mark.asyncio
+    async def test_clear_file_cache_returns_false_for_missing_file(self, file_service):
+        await file_service.initialize()
+        assert await file_service.clear_file_cache(999) is False
+
+    @pytest.mark.asyncio
+    async def test_clear_file_cache_returns_false_for_deleted_file(self, file_service):
+        await file_service.initialize()
+        f = await file_service.create_file(FileCreateData(
+            title="Del", source="\nX\n", owner_id=1,
+        ))
+        await file_service.delete_file(f.id)
+        assert await file_service.clear_file_cache(f.id) is False
+
+
 class TestInMemoryFileServiceDatabaseSync:
     """Test database synchronization functionality for InMemoryFileService."""
 

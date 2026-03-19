@@ -143,6 +143,20 @@ class FileServiceInterface(ABC):
         pass
     
     @abstractmethod
+    async def clear_file_cache(self, file_id: int) -> bool:
+        """Clear cached render results for a file.
+
+        Call this when external data that affects rendering changes (e.g. assets).
+
+        Args:
+            file_id: Unique identifier of the file
+
+        Returns:
+            True if the cache was cleared, False if file not found
+        """
+        pass
+
+    @abstractmethod
     async def sync_from_database(self, db) -> None:
         """Load all files from database into memory.
         
