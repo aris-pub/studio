@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, computed, inject, provide, onMounted, watch, watchEffect } from "vue";
+  import { ref, shallowRef, computed, inject, provide, onMounted, onBeforeUnmount, watch, watchEffect } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
@@ -81,6 +81,10 @@
   });
   provide("file", file);
 
+  // Shared Y.Doc ref — EditorCodeMirror writes to it, useAnnotations observes it
+  const ydoc = shallowRef(null);
+  provide("ydoc", ydoc);
+
   const fileId = computed(() => file.value?.id);
   const {
     annotations,
@@ -92,7 +96,11 @@
     addNote,
     updateNote,
     deleteNote,
+    setYDoc,
   } = useAnnotations(fileId, api);
+
+  watch(ydoc, (doc) => setYDoc(doc));
+  onBeforeUnmount(() => setYDoc(null));
 
   const activeAnnotationId = ref(null);
 
