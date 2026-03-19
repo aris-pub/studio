@@ -1,8 +1,16 @@
 import { ref } from "vue";
 
+const ANNOTATIONS_META_KEY = "annotations-meta";
+const DEBOUNCE_MS = 300;
+
 export function useAnnotations(fileId, api) {
   const annotations = ref([]);
   const loading = ref(false);
+
+  let _ydoc = null;
+  let _observer = null;
+  let _debounceTimer = null;
+  let _localChangeInProgress = false;
 
   async function fetchAnnotations() {
     if (!fileId.value) return;
@@ -17,6 +25,48 @@ export function useAnnotations(fileId, api) {
     }
   }
 
+  function _notifyYjs() {
+    if (!_ydoc) return;
+    _localChangeInProgress = true;
+    const meta = _ydoc.getMap(ANNOTATIONS_META_KEY);
+    meta.set("version", Date.now());
+    _localChangeInProgress = false;
+  }
+
+  function _handleMetaChange(event, transaction) {
+    if (transaction.local && _localChangeInProgress) return;
+    if (transaction.local) return;
+
+    if (_debounceTimer) clearTimeout(_debounceTimer);
+    _debounceTimer = setTimeout(() => {
+      fetchAnnotations();
+    }, DEBOUNCE_MS);
+  }
+
+  function setYDoc(ydoc) {
+    // Clean up previous observer
+    if (_observer && _ydoc) {
+      _ydoc.getMap(ANNOTATIONS_META_KEY).unobserve(_observer);
+    }
+    if (_debounceTimer) {
+      clearTimeout(_debounceTimer);
+      _debounceTimer = null;
+    }
+
+    _ydoc = ydoc;
+
+    if (_ydoc) {
+      _observer = _handleMetaChange;
+      _ydoc.getMap(ANNOTATIONS_META_KEY).observe(_observer);
+    } else {
+      _observer = null;
+    }
+  }
+
+  function notifyAnnotationChange() {
+    _notifyYjs();
+  }
+
   async function createAnnotation({ color, anchorData, selectedText, visibility }) {
     const payload = {
       file_id: fileId.value,
@@ -28,6 +78,7 @@ export function useAnnotations(fileId, api) {
 
     const response = await api.post("/annotations/", payload);
     annotations.value.push(response.data);
+    _notifyYjs();
     return response.data;
   }
 
@@ -35,12 +86,14 @@ export function useAnnotations(fileId, api) {
     const response = await api.put(`/annotations/${id}`, data);
     const idx = annotations.value.findIndex((a) => a.id === id);
     if (idx !== -1) annotations.value[idx] = response.data;
+    _notifyYjs();
     return response.data;
   }
 
   async function deleteAnnotation(id) {
     await api.delete(`/annotations/${id}`);
     annotations.value = annotations.value.filter((a) => a.id !== id);
+    _notifyYjs();
   }
 
   async function addNote(annotationId, content) {
@@ -50,6 +103,7 @@ export function useAnnotations(fileId, api) {
       if (!ann.messages) ann.messages = [];
       ann.messages.push(response.data);
     }
+    _notifyYjs();
     return response.data;
   }
 
@@ -62,6 +116,7 @@ export function useAnnotations(fileId, api) {
         break;
       }
     }
+    _notifyYjs();
     return response.data;
   }
 
@@ -72,6 +127,7 @@ export function useAnnotations(fileId, api) {
         ann.messages = ann.messages.filter((m) => m.id !== messageId);
       }
     }
+    _notifyYjs();
   }
 
   return {
@@ -84,5 +140,7 @@ export function useAnnotations(fileId, api) {
     addNote,
     updateNote,
     deleteNote,
+    setYDoc,
+    notifyAnnotationChange,
   };
 }

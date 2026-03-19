@@ -53,7 +53,7 @@
   // Y.js objects must use shallowRef — Vue's reactive Proxy breaks Y.js
   // internal identity checks (UndoManager scope, findRootTypeKey, etc.)
   const view = shallowRef(null);
-  const ydoc = shallowRef(null);
+  const ydoc = inject("ydoc", shallowRef(null));
   const ytext = shallowRef(null);
   const provider = shallowRef(null);
   const awareness = inject("awareness", shallowRef(null));
