@@ -613,24 +613,11 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
 });
 
 describe("Note.vue — inline math rendering (std-kg55)", () => {
-  let originalTemml;
-
-  beforeEach(() => {
-    originalTemml = window.temml;
-    window.temml = {
-      renderToString: vi.fn((latex) => `<math>${latex}</math>`),
-    };
-  });
-
-  afterEach(() => {
-    window.temml = originalTemml;
-  });
-
   it("renders inline math in selected_text", () => {
     const ann = makeAnnotation({ selected_text: "the value $x_e$ is key" });
     const { wrapper } = createWrapper(ann);
     const sel = wrapper.find(".selected-text");
-    expect(sel.html()).toContain("<math>x_e</math>");
+    expect(sel.html()).toContain("katex");
     expect(sel.html()).not.toContain("$x_e$");
   });
 
@@ -640,7 +627,7 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     });
     const { wrapper } = createWrapper(ann);
     const noteText = wrapper.find(".note-text");
-    expect(noteText.html()).toContain("<math>\\alpha</math>");
+    expect(noteText.html()).toContain("katex");
   });
 
   it("renders inline math in collapsed preview", async () => {
@@ -652,7 +639,7 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     await collapseBtn.trigger("click");
     await nextTick();
     const collapsed = wrapper.find(".collapsed-line");
-    expect(collapsed.html()).toContain("<math>x</math>");
+    expect(collapsed.html()).toContain("katex");
   });
 
   it("renders inline math in shared thread messages", () => {
@@ -664,14 +651,6 @@ describe("Note.vue — inline math rendering (std-kg55)", () => {
     });
     const { wrapper } = createWrapper(ann);
     const body = wrapper.find(".thread-body");
-    expect(body.html()).toContain("<math>y^2</math>");
-  });
-
-  it("falls back to plain text when temml is unavailable", () => {
-    window.temml = undefined;
-    const ann = makeAnnotation({ selected_text: "the $x_e$ value" });
-    const { wrapper } = createWrapper(ann);
-    const sel = wrapper.find(".selected-text");
-    expect(sel.text()).toContain("$x_e$");
+    expect(body.html()).toContain("katex");
   });
 });
