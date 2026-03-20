@@ -801,10 +801,18 @@ async def download_file_pdf(
     if not file_data or not file_data.source:
         raise HTTPException(status_code=404, detail="File not found")
 
+    # Strip :html: blocks — the Pandoc translator can't handle them
+    source_for_export = re.sub(
+        r':html:\s*\{[^}]*\}.*?::',
+        '',
+        file_data.source,
+        flags=re.DOTALL,
+    )
+
     try:
         typst_source = await asyncio.to_thread(
             rsm_pandoc_export,
-            file_data.source,
+            source_for_export,
             to_format="typst",
         )
     except Exception as e:
