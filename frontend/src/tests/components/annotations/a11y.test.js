@@ -192,3 +192,14 @@ describe("Note.vue — WCAG AA contrast for card hierarchy (std-nn1a)", () => {
     expect(noteStyle).toMatch(/\.selected-text[\s\S]*?color:\s*var\(--gray-800\)/);
   });
 });
+
+describe("Canvas.vue — j/k/h/l skips text inputs (regression)", () => {
+  it("keyboard handler checks activeElement tag before capturing j/k/h/l", () => {
+    expect(canvasScript).toMatch(/activeElement[\s\S]*?TEXTAREA/);
+    expect(canvasScript).toMatch(/activeElement[\s\S]*?INPUT/);
+  });
+
+  it("keyboard handler checks contentEditable", () => {
+    expect(canvasScript).toMatch(/isContentEditable/);
+  });
+});

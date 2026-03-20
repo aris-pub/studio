@@ -302,6 +302,10 @@
         if (!["j", "k", "h", "l"].includes(e.key)) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
+        // Don't hijack typing in text inputs
+        const tag = document.activeElement?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+
         const focusable = Array.from(innerRef.value.querySelectorAll(
           "[tabindex='0'].hr"
         ));
