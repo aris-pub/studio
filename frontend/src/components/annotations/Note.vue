@@ -1,8 +1,26 @@
 <script setup>
-  import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
+  import { ref, inject, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from "vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
   import { renderInlineMath } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
+
+  // Temml loads async from CDN via onload.js. Poll until available so
+  // Vue re-renders annotation cards with math once it's ready.
+  const temmlReady = ref(!!window.temml);
+  let temmlPoll = null;
+  onMounted(() => {
+    if (!temmlReady.value) {
+      temmlPoll = setInterval(() => {
+        if (window.temml) {
+          temmlReady.value = true;
+          clearInterval(temmlPoll);
+        }
+      }, 200);
+    }
+  });
+  onUnmounted(() => {
+    if (temmlPoll) clearInterval(temmlPoll);
+  });
 
   const props = defineProps({
     annotation: { type: Object, required: true },
@@ -99,6 +117,8 @@
   });
 
   function highlightMatch(text) {
+    // Access reactive dep so Vue re-renders when temml becomes available
+    void temmlReady.value;
     if (!text) return "";
     if (!props.searchMatch || !props.searchQuery) return renderInlineMath(text);
     const escaped = escapeHtml(text);
