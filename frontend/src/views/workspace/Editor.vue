@@ -67,8 +67,8 @@
   // Collab/LSP state from EditorCodeMirror (shared with status bar)
   const collabIsConnected = ref(false);
   const collabIsSynced = ref(false);
-  const lspClient = shallowRef(null);
-  const documentUri = ref("");
+  const lspClient = inject("lspClient", shallowRef(null));
+  const documentUri = inject("documentUri", ref(""));
   provide("collabIsConnected", collabIsConnected);
   provide("collabIsSynced", collabIsSynced);
   provide("lspClient", lspClient);
@@ -151,6 +151,10 @@
   // Manual compile bypasses debounce
   const onCompile = () => compile(true);
 
+  // Cursor-to-preview navigation
+  const navigateToPreview = inject("navigateToPreview", null);
+  const onSyncToPreview = () => navigateToPreview?.();
+
   // Keys — Cmd+S triggers compile immediately
   const onSaveShortcut = () => compile(true);
   useKeyboardShortcuts({
@@ -160,7 +164,7 @@
 
 <template>
   <div class="editor">
-    <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" />
+    <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" @sync-to-preview="onSyncToPreview" />
     <div class="content">
       <EditorToolbar v-if="tabIndex === 0 && !mobileMode" />
       <div v-if="mobileMode && tabIndex === 0" class="mobile-readonly-banner">

@@ -1,11 +1,12 @@
 <script setup>
   import { ref, inject, watch } from "vue";
-  const emit = defineEmits(["compile", "upload"]);
+  const emit = defineEmits(["compile", "upload", "sync-to-preview"]);
   const activeIndex = defineModel({ type: Number, required: true });
   const focusMode = inject("focusMode");
   const file = inject("file");
   const fileSettings = inject("fileSettings");
   const isCompiling = inject("isCompiling", ref(false));
+  const syncBtnRef = ref(null);
 
   // Word counter
   const numWords = ref(0);
@@ -62,6 +63,15 @@
         <div v-if="activeIndex === 0" key="source" class="source-right">
           <span class="word-count">{{ numWords }} words</span>
           <Button kind="tertiary" size="sm" icon="Settings" />
+          <Button
+            ref="syncBtnRef"
+            kind="tertiary"
+            size="sm"
+            icon="ArrowBarToRight"
+            aria-label="Scroll preview to cursor"
+            @click="emit('sync-to-preview')"
+          />
+          <Tooltip :anchor="syncBtnRef?.$el ?? null" content="Scroll preview to cursor" placement="bottom" />
           <Button
             kind="primary"
             size="sm"

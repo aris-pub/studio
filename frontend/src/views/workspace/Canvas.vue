@@ -18,6 +18,7 @@
 
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
+  import { useSourcePreviewNav } from "@/composables/useSourcePreviewNav.js";
   import { IconMessageFilled } from "@tabler/icons-vue";
   import useClosable from "@/composables/useClosable.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
@@ -53,6 +54,12 @@
   // Shared CodeMirror view — EditorCodeMirror writes, TopbarSearch reads for Source scope search
   const cmView = shallowRef(null);
   provide("cmView", cmView);
+
+  // LSP client and document URI — EditorCodeMirror writes, used for source/preview navigation
+  const lspClient = shallowRef(null);
+  const documentUri = ref("");
+  provide("lspClient", lspClient);
+  provide("documentUri", documentUri);
 
   // Search-matched annotation IDs and query — TopbarSearch writes, DockableAnnotations reads
   const searchMatchedAnnotationIds = shallowRef(new Set());
@@ -328,6 +335,28 @@
           }
         }
       });
+    }
+  });
+
+  // Source/preview navigation
+  const { handlePreviewClick, navigateToPreview } = useSourcePreviewNav({
+    lspClient,
+    documentUri,
+    cmView,
+    manuscriptRef,
+  });
+  provide("navigateToPreview", navigateToPreview);
+
+  onMounted(() => {
+    const container = innerRef.value;
+    if (container) {
+      container.addEventListener("click", handlePreviewClick);
+    }
+  });
+  onUnmounted(() => {
+    const container = innerRef.value;
+    if (container) {
+      container.removeEventListener("click", handlePreviewClick);
     }
   });
 
