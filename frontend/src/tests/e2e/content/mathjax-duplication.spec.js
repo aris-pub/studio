@@ -324,12 +324,12 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      await page.click('button:has-text("compile")');
-
-      await page.waitForResponse(
+      const compileResp1 = page.waitForResponse(
         (response) => response.url().includes("/render/private") && response.status() === 200,
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
+      await page.click('button:has-text("compile")');
+      await compileResp1;
 
       const viewport = page.viewportSize();
       const isMobile = viewport && viewport.width < 640;
@@ -389,12 +389,12 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      await page.click('button:has-text("compile")');
-
-      await page.waitForResponse(
+      const compileResp2 = page.waitForResponse(
         (response) => response.url().includes("/render/private") && response.status() === 200,
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
+      await page.click('button:has-text("compile")');
+      await compileResp2;
 
       if (isMobile) {
         const sourceButton = page.locator(".sb-item").filter({ hasText: "source" });

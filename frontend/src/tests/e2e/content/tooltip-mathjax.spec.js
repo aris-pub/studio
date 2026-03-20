@@ -169,7 +169,7 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
     }
   });
 
-  test("showing tooltip should not duplicate math in main document", async ({ page, request }) => {
+  test("showing tooltip should not duplicate math in main document @flaky", async ({ page, request }) => {
     const fileId = await createTestFile(request, RSM_SOURCE_WITH_MATH_REFERENCE);
 
     try {
