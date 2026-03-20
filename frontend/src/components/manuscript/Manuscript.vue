@@ -40,6 +40,19 @@
       expose({ mountPoint: mountPointRef });
 
       const makeRenderFn = (htmlString) => {
+        // Extract preamble content hash for math VNode keying.
+        // If preamble hasn't changed between compiles, unchanged math nodes
+        // keep the same key and Vue preserves them (including Temml output).
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(htmlString, "text/html");
+
+        const preambleEls = dom.querySelectorAll(".math-preamble");
+        let preambleHash = "";
+        if (preambleEls.length) {
+          const preambleText = Array.from(preambleEls).map((el) => el.textContent).join("");
+          preambleHash = hashString(preambleText);
+        }
+
         const createVNode = (node) => {
           // Handle text nodes
           if (node.nodeType === Node.TEXT_NODE) {
@@ -56,10 +69,7 @@
             // Extract attributes
             const data = {};
             const attrs = {};
-            const compProps = {};
 
-            // Check if this is a div with a class that should be replaced
-            const replacementComponent = null;
             let isHrInfo = false;
 
             if (node.tagName.toLowerCase() === "div" && node.hasAttribute("class")) {
@@ -74,8 +84,7 @@
             Array.from(node.attributes || []).forEach((attr) => {
               // Handle event handlers (on*)
               if (attr.name.startsWith("on") && attr.name.length > 2) {
-                const eventName = attr.name.substring(2).toLowerCase();
-                attrs[attr.name] = attr.value; // Keep as attribute since we can't eval
+                attrs[attr.name] = attr.value;
               }
               // Handle style attribute
               else if (attr.name === "style") {
@@ -83,7 +92,6 @@
                 attr.value.split(";").forEach((style) => {
                   const [prop, val] = style.split(":");
                   if (prop && val) {
-                    // Convert kebab-case to camelCase for style properties
                     const camelProp = prop
                       .trim()
                       .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -110,12 +118,13 @@
               Object.assign(data, attrs);
             }
 
-            // Key math elements to force Vue replacement when document changes
+            // Key math elements by content + preamble hash. If neither changed,
+            // Vue preserves the existing DOM element (with Temml rendered output).
             const isMathElement =
               (node.tagName.toLowerCase() === "span" && node.classList?.contains("math")) ||
               (node.tagName.toLowerCase() === "div" && node.classList?.contains("mathblock"));
             if (isMathElement) {
-              data.key = `math-${hashString(node.textContent)}-${hashString(htmlString)}`;
+              data.key = `math-${hashString(node.textContent)}-${preambleHash}`;
             }
 
             // Get child nodes recursively
@@ -135,14 +144,10 @@
           return null;
         };
 
-        // Process HTML string
-        const parser = new DOMParser();
-        const dom = parser.parseFromString(htmlString, "text/html");
         const bodyContent = Array.from(dom.body.childNodes)
           .map(createVNode)
           .filter((vnode) => vnode !== null && vnode !== "");
 
-        // Attach a ref to the root node -- and remember to return a render function
         return () => h("div", { ref: "mountPointRef" }, bodyContent);
       };
 
