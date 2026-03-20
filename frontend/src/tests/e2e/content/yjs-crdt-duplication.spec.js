@@ -159,12 +159,13 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      // Compile and wait for response
-      await page.click('button:has-text("compile")');
-      await page.waitForResponse(
+      // Set up response listener BEFORE clicking compile
+      const compileResponse = page.waitForResponse(
         (response) => response.url().includes("/render/private") && response.status() === 200,
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
+      await page.click('button:has-text("compile")');
+      await compileResponse;
 
       // On mobile, switch to manuscript view to check compiled output
       const viewport = page.viewportSize();
@@ -226,12 +227,13 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
         { timeout: 5000 }
       );
 
-      // Compile and wait for response
-      await page.click('button:has-text("compile")');
-      await page.waitForResponse(
+      // Set up response listener BEFORE clicking compile
+      const compileResponse = page.waitForResponse(
         (response) => response.url().includes("/render/private") && response.status() === 200,
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
+      await page.click('button:has-text("compile")');
+      await compileResponse;
 
       if (isMobile) {
         await page.locator(".sb-item").filter({ hasText: "source" }).click();
