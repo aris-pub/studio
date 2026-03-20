@@ -12,12 +12,23 @@
 export function extractAnchor(range, manuscriptEl) {
   if (!range || !manuscriptEl) return null;
 
-  const container =
+  const startEl =
     range.startContainer.nodeType === Node.TEXT_NODE
       ? range.startContainer.parentElement
       : range.startContainer;
+  const endEl =
+    range.endContainer.nodeType === Node.TEXT_NODE
+      ? range.endContainer.parentElement
+      : range.endContainer;
 
-  const block = container.closest("[data-nodeid]");
+  // Find the smallest [data-nodeid] block that contains the entire selection.
+  // Start from the start container's closest block and walk up until it
+  // also contains the end container.
+  let block = startEl.closest("[data-nodeid]");
+  if (!block || !manuscriptEl.contains(block)) return null;
+  while (block && !block.contains(endEl)) {
+    block = block.parentElement?.closest("[data-nodeid]");
+  }
   if (!block || !manuscriptEl.contains(block)) return null;
 
   const nodeId = block.getAttribute("data-nodeid");

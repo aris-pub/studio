@@ -51,7 +51,7 @@
       return doCompile();
     }
     const elapsed = Date.now() - lastCompileTime;
-    const delay = Math.max(0, 2000 - elapsed);
+    const delay = Math.max(0, 500 - elapsed);
     debouncedCompileTimer = setTimeout(() => {
       debouncedCompileTimer = null;
       doCompile();
