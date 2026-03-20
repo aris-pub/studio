@@ -205,7 +205,7 @@
     outline: 2px solid var(--orange-300);
     outline-offset: 2px;
     border-radius: 3px;
-    animation: synctarget-fade 1.5s ease-out forwards;
+    animation: synctarget-fade 2s ease-out forwards;
   }
 
   @keyframes synctarget-fade {
@@ -220,12 +220,29 @@
   }
 
   .cm-synctarget-line {
-    background-color: color-mix(in srgb, var(--orange-200) 20%, transparent);
-    animation: synctarget-fade-bg 1.5s ease-out forwards;
+    background-color: color-mix(in srgb, var(--orange-200) 40%, transparent);
+    animation: synctarget-fade-bg 2s ease-out forwards;
   }
 
   @keyframes synctarget-fade-bg {
-    0% { background-color: color-mix(in srgb, var(--orange-200) 20%, transparent); }
+    0% { background-color: color-mix(in srgb, var(--orange-200) 40%, transparent); }
     100% { background-color: transparent; }
+  }
+
+  .cm-synctarget-gutter {
+    background-color: var(--orange-300) !important;
+    color: white !important;
+    animation: synctarget-fade-gutter 2s ease-out forwards;
+  }
+
+  @keyframes synctarget-fade-gutter {
+    0% {
+      background-color: var(--orange-300);
+      color: white;
+    }
+    100% {
+      background-color: transparent;
+      color: inherit;
+    }
   }
 </style>

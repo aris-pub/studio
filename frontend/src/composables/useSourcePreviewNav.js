@@ -10,7 +10,7 @@
 
 import { toRaw } from "vue";
 
-const HIGHLIGHT_DURATION = 1500;
+const HIGHLIGHT_DURATION = 2000;
 
 /**
  * @param {Object} options
@@ -49,18 +49,36 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     if (!view) return;
 
     const { EditorView } = await import("@codemirror/view");
-    const line = view.state.doc.line(pos.startLine + 1);
-    view.dispatch({
-      selection: { anchor: line.from },
-      effects: EditorView.scrollIntoView(line.from, { y: "center" }),
-    });
+    const startLine = view.state.doc.line(pos.startLine + 1);
+    const endLine = view.state.doc.line(Math.min(pos.endLine + 1, view.state.doc.lines));
 
-    // Transient highlight on target line
-    const lineEl = view.domAtPos(line.from)?.node?.parentElement;
-    if (lineEl) {
-      lineEl.classList.add("cm-synctarget-line");
-      setTimeout(() => lineEl.classList.remove("cm-synctarget-line"), HIGHLIGHT_DURATION);
+    // Place cursor at content start (after tag + meta region)
+    const contentLine = view.state.doc.line(pos.contentStartLine + 1);
+    const cursorPos = contentLine.from + pos.contentStartCol;
+
+    view.dispatch({
+      selection: { anchor: cursorPos },
+      effects: EditorView.scrollIntoView(startLine.from, { y: "start", yMargin: 20 }),
+    });
+    view.focus();
+
+    // Highlight the entire source range: gutter + background
+    const targetLineNums = new Set();
+    for (let i = startLine.number; i <= endLine.number; i++) {
+      targetLineNums.add(String(i));
+      const lineEl = view.domAtPos(view.state.doc.line(i).from)?.node?.parentElement;
+      if (lineEl) {
+        lineEl.classList.add("cm-synctarget-line");
+        setTimeout(() => lineEl.classList.remove("cm-synctarget-line"), HIGHLIGHT_DURATION);
+      }
     }
+    const gutterEls = view.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement");
+    gutterEls.forEach((el) => {
+      if (targetLineNums.has(el.textContent.trim())) {
+        el.classList.add("cm-synctarget-gutter");
+        setTimeout(() => el.classList.remove("cm-synctarget-gutter"), HIGHLIGHT_DURATION);
+      }
+    });
   }
 
   /**
