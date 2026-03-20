@@ -23,32 +23,46 @@ export function extractAnchor(range, manuscriptEl) {
   const nodeId = block.getAttribute("data-nodeid");
   const elementId = block.getAttribute("id") || null;
   const selectedText = range.toString();
+  if (!selectedText) return null;
 
-  // Compute character offsets within the block's text content
-  const treeWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  let charCount = 0;
-  let startOffset = 0;
-  let endOffset = 0;
-  let foundStart = false;
-  let foundEnd = false;
+  // Compute character offsets within the block's text content.
+  // Use text search rather than node identity matching, because
+  // selections spanning MathML elements may have element-type
+  // containers that the tree walker can't match.
+  const fullText = block.textContent;
+  const idx = fullText.indexOf(selectedText);
+  let startOffset, endOffset;
 
-  while (treeWalker.nextNode()) {
-    const textNode = treeWalker.currentNode;
-    const len = textNode.textContent.length;
+  if (idx !== -1) {
+    startOffset = idx;
+    endOffset = idx + selectedText.length;
+  } else {
+    // Fallback: try node-matching for simple same-node selections
+    const treeWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    let charCount = 0;
+    let foundStart = false;
+    let foundEnd = false;
+    startOffset = 0;
+    endOffset = 0;
 
-    if (!foundStart && textNode === range.startContainer) {
-      startOffset = charCount + range.startOffset;
-      foundStart = true;
+    while (treeWalker.nextNode()) {
+      const textNode = treeWalker.currentNode;
+      const len = textNode.textContent.length;
+
+      if (!foundStart && textNode === range.startContainer) {
+        startOffset = charCount + range.startOffset;
+        foundStart = true;
+      }
+      if (!foundEnd && textNode === range.endContainer) {
+        endOffset = charCount + range.endOffset;
+        foundEnd = true;
+        break;
+      }
+      charCount += len;
     }
-    if (!foundEnd && textNode === range.endContainer) {
-      endOffset = charCount + range.endOffset;
-      foundEnd = true;
-      break;
-    }
-    charCount += len;
+
+    if (!foundStart || !foundEnd) return null;
   }
-
-  if (!foundStart || !foundEnd) return null;
 
   return {
     node_id: nodeId,
