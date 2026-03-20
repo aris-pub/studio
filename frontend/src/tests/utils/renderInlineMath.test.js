@@ -1,5 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { renderInlineMath } from "@/utils/renderInlineMath.js";
+
+// Mock window.temml with a minimal renderToString that produces MathML
+const mockTemml = {
+  renderToString(latex, opts) {
+    if (latex.startsWith("\\invalid")) {
+      throw new Error("Invalid LaTeX");
+    }
+    return `<math><mi>${latex}</mi></math>`;
+  },
+};
+
+beforeAll(() => {
+  window.temml = mockTemml;
+});
+
+afterAll(() => {
+  delete window.temml;
+});
 
 describe("renderInlineMath", () => {
   it("returns empty string for falsy input", () => {
@@ -53,5 +71,14 @@ describe("renderInlineMath", () => {
     expect(result).toContain("<math");
     const mathCount = (result.match(/<math/g) || []).length;
     expect(mathCount).toBe(2);
+  });
+
+  it("falls back to escaped text when temml is not available", () => {
+    const saved = window.temml;
+    delete window.temml;
+    const result = renderInlineMath("see $x^2$ here");
+    expect(result).toBe("see $x^2$ here");
+    expect(result).not.toContain("<math");
+    window.temml = saved;
   });
 });

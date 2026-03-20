@@ -7,6 +7,16 @@ import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
 beforeEach(() => {
   localStorage.removeItem("annotation-collapsed");
+  // Mock window.temml for inline math rendering tests
+  window.temml = {
+    renderToString(latex) {
+      return `<math><mi>${latex}</mi></math>`;
+    },
+  };
+});
+
+afterEach(() => {
+  delete window.temml;
 });
 
 function makeAnnotation(overrides = {}) {

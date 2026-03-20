@@ -46,9 +46,6 @@ importers:
       jquery:
         specifier: ^3.6.0
         version: 3.7.1
-      temml:
-        specifier: ^0.13.2
-        version: 0.13.2
       tooltipster:
         specifier: ^4.2.8
         version: 4.2.8(jquery@3.7.1)
@@ -5181,10 +5178,6 @@ packages:
 
   teex@1.0.1:
     resolution: {integrity: sha512-eYE6iEI62Ni1H8oIa7KlDU6uQBtqr4Eajni3wX7rpfXD8ysFx8z0+dri+KWEPWpBsxXfxu58x/0jvTVT1ekOSg==}
-
-  temml@0.13.2:
-    resolution: {integrity: sha512-n8fDRSsLscq9nh9j6z+FgkCvFMT0IJm6GCgwfzh+7AHT3Sfb4jFTQlsA6hVcF2dYYr3b66oDBVES95RfoukyrA==}
-    engines: {node: '>=18.13.0'}
 
   terser@5.46.1:
     resolution: {integrity: sha512-vzCjQO/rgUuK9sf8VJZvjqiqiHFaZLnOiimmUuOKODxWL8mm/xua7viT7aqX7dgPY60otQjUotzFMmCB4VdmqQ==}
@@ -11649,8 +11642,6 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
-
-  temml@0.13.2: {}
 
   terser@5.46.1:
     dependencies:
