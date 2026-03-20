@@ -1,7 +1,18 @@
 <script setup>
-  import { ref, inject, computed, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
+  import { ref, inject, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from "vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
+  import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
+
+  // Load Temml from CDN if not already loaded (e.g. by onload.js), then
+  // flip a reactive flag so Vue re-renders cards with rendered math.
+  const temmlReady = ref(!!window.temml);
+  onMounted(async () => {
+    if (!temmlReady.value) {
+      await ensureTemml();
+      temmlReady.value = true;
+    }
+  });
 
   const props = defineProps({
     annotation: { type: Object, required: true },
@@ -98,7 +109,10 @@
   });
 
   function highlightMatch(text) {
-    if (!text || !props.searchMatch || !props.searchQuery) return escapeHtml(text);
+    // Access reactive dep so Vue re-renders when temml becomes available
+    void temmlReady.value;
+    if (!text) return "";
+    if (!props.searchMatch || !props.searchQuery) return renderInlineMath(text);
     const escaped = escapeHtml(text);
     const queryEscaped = props.searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(`(${queryEscaped})`, "gi");

@@ -7,6 +7,16 @@ import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
 beforeEach(() => {
   localStorage.removeItem("annotation-collapsed");
+  // Mock window.temml for inline math rendering tests
+  window.temml = {
+    renderToString(latex) {
+      return `<math><mi>${latex}</mi></math>`;
+    },
+  };
+});
+
+afterEach(() => {
+  delete window.temml;
 });
 
 function makeAnnotation(overrides = {}) {
@@ -553,14 +563,14 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
   const OTHER_USER = { id: 200, name: "Other User" };
   const FILE_OWNED_BY_TEST_USER = { ownerId: 100 };
 
-  it("file owner sees delete button on shared annotation from another user", () => {
+  it("file owner sees resolve button on shared annotation from another user", () => {
     const ann = makeAnnotation({
       owner_id: 200,
       owner: OTHER_USER,
       visibility: "shared",
     });
     const { wrapper } = createWrapper(ann, { file: FILE_OWNED_BY_TEST_USER });
-    expect(wrapper.find(".delete-btn").exists()).toBe(true);
+    expect(wrapper.find(".resolve-btn").exists()).toBe(true);
   });
 
   it("file owner does NOT see edit button on shared annotation from another user", () => {
@@ -593,8 +603,7 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     expect(wrapper.find(".delete-btn").exists()).toBe(false);
   });
 
-  it("file owner can confirm-delete a shared annotation from another user", async () => {
-    vi.useFakeTimers();
+  it("file owner can resolve a shared annotation from another user", async () => {
     const ann = makeAnnotation({
       id: 99,
       owner_id: 200,
@@ -604,15 +613,54 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     const { wrapper, annotationActions } = createWrapper(ann, {
       file: FILE_OWNED_BY_TEST_USER,
     });
-    const deleteBtn = wrapper.find(".delete-btn");
+    const resolveBtn = wrapper.find(".resolve-btn");
 
-    await deleteBtn.trigger("click");
-    await nextTick();
-    vi.advanceTimersByTime(500);
-    await deleteBtn.trigger("click");
+    await resolveBtn.trigger("click");
     await nextTick();
 
     expect(annotationActions.deleteAnnotation).toHaveBeenCalledWith(99);
-    vi.useRealTimers();
+  });
+});
+
+describe("Note.vue — inline math rendering (std-kg55)", () => {
+  it("renders inline math in selected_text", () => {
+    const ann = makeAnnotation({ selected_text: "the value $x_e$ is key" });
+    const { wrapper } = createWrapper(ann);
+    const sel = wrapper.find(".selected-text");
+    expect(sel.html()).toContain("<math");
+    expect(sel.html()).not.toContain("$x_e$");
+  });
+
+  it("renders inline math in note content", () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "see $\\alpha$ here", deleted_at: null }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const noteText = wrapper.find(".note-text");
+    expect(noteText.html()).toContain("<math");
+  });
+
+  it("renders inline math in collapsed preview", async () => {
+    const ann = makeAnnotationWithNote({
+      messages: [{ id: 10, content: "note about $x$", deleted_at: null }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const collapseBtn = findButtonByIcon(wrapper, "ChevronUp");
+    await collapseBtn.trigger("click");
+    await nextTick();
+    const collapsed = wrapper.find(".collapsed-line");
+    expect(collapsed.html()).toContain("<math");
+  });
+
+  it("renders inline math in shared thread messages", () => {
+    const ann = makeAnnotation({
+      visibility: "shared",
+      owner_id: 100,
+      owner: TEST_USER,
+      messages: [{ id: 10, content: "check $y^2$", deleted_at: null, owner: TEST_USER }],
+    });
+    const { wrapper } = createWrapper(ann);
+    const body = wrapper.find(".thread-body");
+    expect(body.html()).toContain("<math");
   });
 });
