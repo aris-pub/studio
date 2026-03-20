@@ -212,7 +212,7 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
           changes: { from: currentLength, insert: ` ${num}` },
         });
       }, i);
-      await page.waitForTimeout(300); // 300ms between edits (< 2000ms debounce)
+      await page.waitForTimeout(50); // 50ms between edits (< 500ms debounce)
     }
 
     // Wait for final compilation (should only happen once after last edit)
