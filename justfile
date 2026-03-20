@@ -163,3 +163,54 @@ rebuild-frontend-test:
     @echo "🔍 Verify the new environment variable:"
     @echo "    docker exec docker-frontend-test-1 printenv | grep VITE"
     @osascript -e "display notification \"Frontend-test rebuilt. Hard refresh your browser!\" with title \"Claude Code\""
+
+# Versioning & Release
+# ====================
+
+# Generate a CHANGELOG entry for the given version and prepend to CHANGELOG.md.
+# If no version is given, uses "Unreleased".
+changelog version="Unreleased":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    VERSION="{{version}}"
+    LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+    if [ -z "$LAST_TAG" ]; then COMMITS=$(git log --oneline --no-merges); else COMMITS=$(git log --oneline --no-merges "${LAST_TAG}..HEAD"); fi
+    DATE=$(date +%Y-%m-%d)
+    PROMPT="Generate a CHANGELOG entry for version $VERSION (date: $DATE). Commits since last tag: $COMMITS. Rules: Skip ci/test/chore/docs commits and submodule updates. Group into Keep-a-Changelog sections: Added (feat:), Fixed (fix:), Changed (other). Rewrite as user-friendly prose. Omit empty sections. If no user-visible changes output: _No user-visible changes._ Output only raw markdown (no preamble, no code fences): ## [$VERSION] - $DATE, then ### Added, ### Fixed, ### Changed sections as needed."
+    entry=$(claude --print "$PROMPT")
+    if [ -f CHANGELOG.md ]; then { head -1 CHANGELOG.md; printf "\n%s\n" "$entry"; tail -n +2 CHANGELOG.md; } > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md; else printf "# Changelog\n\n%s\n" "$entry" > CHANGELOG.md; fi
+    echo "==> CHANGELOG.md updated for $VERSION"
+
+# Release: bump version, generate changelog, tag, push
+# Usage: just release <major|minor|patch>
+release level:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    LEVEL="{{level}}"
+    if [[ "$LEVEL" != "major" && "$LEVEL" != "minor" && "$LEVEL" != "patch" ]]; then
+        echo "Error: level must be 'major', 'minor', or 'patch', got '$LEVEL'"
+        exit 1
+    fi
+
+    CURRENT=$(node -p "require('./package.json').version")
+    IFS='.' read -r major minor patch <<< "$CURRENT"
+    case "$LEVEL" in
+        major) major=$((major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((minor + 1)); patch=0 ;;
+        patch) patch=$((patch + 1)) ;;
+    esac
+    NEXT="${major}.${minor}.${patch}"
+
+    echo "==> Bumping $CURRENT -> $NEXT"
+    node -e "const p=require('./package.json'); p.version='$NEXT'; require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n')"
+
+    echo "==> Generating changelog"
+    just changelog "$NEXT"
+
+    git add package.json CHANGELOG.md
+    git commit -m "Release v${NEXT}"
+    git tag "v${NEXT}"
+    git push origin main --tags
+
+    echo "==> Released v${NEXT}"
