@@ -46,14 +46,33 @@ studio file -f <file_id> read --json              # JSON with file_id and conten
 
 Connects to Y.js WebSocket, syncs the current document state, prints the RSM source, and disconnects. Always read before editing to avoid overwriting the human's changes.
 
-### Edit a document
+### Edit a document (patch mode — preferred)
 
 ```bash
-studio file -f <file_id> edit --source revised.rsm   # From file
-studio file -f <file_id> edit --stdin                  # From stdin
+studio file -f <file_id> edit --patch changes.diff    # Apply unified diff
+echo "..." | studio file -f <file_id> edit --stdin     # Auto-detects patch if input starts with --- or @@
 ```
 
-Connects to Y.js, applies the new source as a diff, and disconnects. The edit appears in real-time for any human with the document open in their browser. Always read first, apply changes locally, then edit.
+Connects to Y.js, syncs the **current live document**, applies the unified diff against it, and disconnects. If the patch doesn't apply cleanly (context lines don't match), the edit is **rejected** — no changes are made. This prevents overwriting the human's recent edits.
+
+**Generating a patch:** After reading the document and editing it locally, generate a unified diff:
+
+```bash
+studio file -f <file_id> read --output original.rsm
+# Make your changes to a copy
+cp original.rsm revised.rsm
+# ... edit revised.rsm ...
+diff -u original.rsm revised.rsm > changes.diff
+studio file -f <file_id> edit --patch changes.diff
+```
+
+### Edit a document (full replacement — use sparingly)
+
+```bash
+studio file -f <file_id> edit --source revised.rsm   # Full file replacement
+```
+
+Replaces the entire document with the contents of the file. Uses minimal Y.js diff operations to preserve peer scroll positions, but **will overwrite any changes made since you last read**. Prefer `--patch` mode instead.
 
 ### Check for comments
 
@@ -125,11 +144,12 @@ studio file -f <file_id> read -o doc.rsm     # Download current state
 studio file -f <file_id> comments --json     # Check for human feedback
 # For each annotation:
 #   1. Read the comment and understand what the human wants
-#   2. Read the current document: studio file -f <file_id> read -o doc.rsm
-#   3. Make edits locally to doc.rsm
-#   4. Upload: studio file -f <file_id> edit --source doc.rsm
-#   5. Reply: studio file -f <file_id> reply <ann_id> "Addressed — see revised section 3.2"
-#   6. Resolve: studio file -f <file_id> resolve <ann_id>
+#   2. Read the current document: studio file -f <file_id> read -o original.rsm
+#   3. Copy and edit: cp original.rsm revised.rsm && edit revised.rsm
+#   4. Generate patch: diff -u original.rsm revised.rsm > changes.diff
+#   5. Apply patch: studio file -f <file_id> edit --patch changes.diff
+#   6. Reply: studio file -f <file_id> reply <ann_id> "Addressed — see revised section 3.2"
+#   7. Resolve: studio file -f <file_id> resolve <ann_id>
 ```
 
 ### Phase 3: Continuous collaboration
@@ -142,6 +162,7 @@ studio watch <file_id> &
 
 ## Key Rules
 
+- **Always use `--patch`, not `--source`.** Patches are validated against the live document and rejected if they don't apply cleanly. `--source` overwrites blindly.
 - **Always read before editing.** The human may have made changes since your last read.
 - **Reply before resolving.** Tell the human what you changed, then mark it done.
 - **One annotation at a time.** Read the comment, edit the document, reply, resolve. Don't batch.
