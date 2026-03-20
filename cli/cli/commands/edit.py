@@ -35,20 +35,33 @@ def _compute_diff_ops(old: str, new: str) -> list[tuple]:
     return ops
 
 
+def _codepoint_to_utf8_offset(s: str, cp_offset: int) -> int:
+    """Convert a Unicode code point offset to a UTF-8 byte offset.
+
+    pycrdt (yrs) indexes Y.Text by UTF-8 bytes, not code points.
+    """
+    return len(s[:cp_offset].encode("utf-8"))
+
+
 def _apply_ops_to_ytext(text: Any, old_source: str, new_source: str) -> None:
     """Apply minimal diff ops to a Y.js Text object."""
     ops = _compute_diff_ops(old_source, new_source)
     for op in reversed(ops):
         if op[0] == "replace":
             _, start, end, new_content = op
-            del text[start:end]
-            text.insert(start, new_content)
+            utf8_start = _codepoint_to_utf8_offset(old_source, start)
+            utf8_end = _codepoint_to_utf8_offset(old_source, end)
+            del text[utf8_start:utf8_end]
+            text.insert(utf8_start, new_content)
         elif op[0] == "delete":
             _, start, end = op
-            del text[start:end]
+            utf8_start = _codepoint_to_utf8_offset(old_source, start)
+            utf8_end = _codepoint_to_utf8_offset(old_source, end)
+            del text[utf8_start:utf8_end]
         elif op[0] == "insert":
             _, offset, content = op
-            text.insert(offset, content)
+            utf8_offset = _codepoint_to_utf8_offset(old_source, offset)
+            text.insert(utf8_offset, content)
 
 
 def apply_unified_diff(source: str, patch_text: str) -> str:
@@ -177,6 +190,23 @@ async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
     with doc.transaction():
         _apply_ops_to_ytext(text, old_source, new_source)
 
+    # Verify the result before broadcasting
+    actual = str(text)
+    if actual != new_source:
+        # Find where they diverge
+        for i, (a, b) in enumerate(zip(actual, new_source)):
+            if a != b:
+                ctx = 40
+                raise RuntimeError(
+                    f"Y.Text verification failed at char {i}. "
+                    f"Expected: ...{new_source[max(0,i-ctx):i+ctx]!r}... "
+                    f"Got: ...{actual[max(0,i-ctx):i+ctx]!r}..."
+                )
+        if len(actual) != len(new_source):
+            raise RuntimeError(
+                f"Y.Text length mismatch: expected {len(new_source)}, got {len(actual)}"
+            )
+
     update = doc.get_update(state_before)
     update_msg = create_message(update, YSyncMessageType.SYNC_UPDATE)
     await ws.send(update_msg)
@@ -196,6 +226,22 @@ async def _apply_patch(ws: Any, file_id: int, patch_text: str) -> dict[str, Any]
     state_before = doc.get_state()
     with doc.transaction():
         _apply_ops_to_ytext(text, old_source, new_source)
+
+    # Verify before broadcasting
+    actual = str(text)
+    if actual != new_source:
+        for i, (a, b) in enumerate(zip(actual, new_source)):
+            if a != b:
+                ctx = 40
+                raise RuntimeError(
+                    f"Y.Text verification failed at char {i}. "
+                    f"Expected: ...{new_source[max(0,i-ctx):i+ctx]!r}... "
+                    f"Got: ...{actual[max(0,i-ctx):i+ctx]!r}..."
+                )
+        if len(actual) != len(new_source):
+            raise RuntimeError(
+                f"Y.Text length mismatch: expected {len(new_source)}, got {len(actual)}"
+            )
 
     update = doc.get_update(state_before)
     update_msg = create_message(update, YSyncMessageType.SYNC_UPDATE)
