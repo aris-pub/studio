@@ -10,7 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from cli import cli
-from cli.commands.edit import _apply_edit
+from cli.commands.edit import _apply_edit, _compute_diff_ops
 from cli.core import build_room_url
 
 
@@ -220,3 +220,58 @@ class TestEditCommand:
             data = json.loads(result.output)
             assert data["status"] == "ok"
             assert data["file_id"] == 200
+
+
+class TestDiffOps:
+    """Regression tests for _compute_diff_ops (replace bug fix)."""
+
+    def _apply_ops(self, old: str, new: str) -> str:
+        """Apply diff ops to old string and verify result matches new."""
+        from pycrdt import Doc, Text
+
+        doc = Doc()
+        text = doc.get("text", type=Text)
+        with doc.transaction():
+            text += old
+
+        ops = _compute_diff_ops(old, new)
+        with doc.transaction():
+            for op in reversed(ops):
+                if op[0] == "replace":
+                    _, start, end, new_content = op
+                    del text[start:end]
+                    text.insert(start, new_content)
+                elif op[0] == "delete":
+                    _, start, end = op
+                    del text[start:end]
+                elif op[0] == "insert":
+                    _, offset, content = op
+                    text.insert(offset, content)
+
+        return str(text)
+
+    def test_replace_single_word(self):
+        result = self._apply_ops("hello world", "hello WORLD")
+        assert result == "hello WORLD"
+
+    def test_replace_multiple_locations(self):
+        result = self._apply_ops("aaa bbb ccc", "AAA bbb CCC")
+        assert result == "AAA bbb CCC"
+
+    def test_insert_only(self):
+        result = self._apply_ops("hello world", "hello beautiful world")
+        assert result == "hello beautiful world"
+
+    def test_delete_only(self):
+        result = self._apply_ops("hello beautiful world", "hello world")
+        assert result == "hello world"
+
+    def test_no_change(self):
+        result = self._apply_ops("hello world", "hello world")
+        assert result == "hello world"
+
+    def test_large_document_single_edit(self):
+        old = "line1\nline2\nline3\nline4\nline5\n" * 100
+        new = old.replace("line3", "LINE_THREE", 1)
+        result = self._apply_ops(old, new)
+        assert result == new
