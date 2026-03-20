@@ -95,20 +95,20 @@
         return;
       }
 
-      // Strip stale MathJax output from math elements so Temml can
-      // re-render them. The database stores the last compiled HTML which
-      // may contain MathJax mjx-container elements from a previous session.
-      mountPoint.querySelectorAll('span.math mjx-container, div.mathblock mjx-container').forEach(el => {
-        el.remove();
-      });
-      // Restore raw LaTeX text in math elements that were consumed by MathJax
-      mountPoint.querySelectorAll('span.math[data-latex]').forEach(el => {
-        el.textContent = '\\(' + el.dataset.latex + '\\)';
-      });
-      mountPoint.querySelectorAll('div.mathblock[data-latex]').forEach(el => {
-        const contentEl = el.querySelector('.hr-content-zone') || el;
-        contentEl.textContent = '$$' + el.dataset.latex + '$$';
-      });
+      // Strip stale MathJax output and restore raw LaTeX ONLY when MathJax
+      // containers are present. Without this guard, Temml's rendered output
+      // gets reset to raw LaTeX on every recompile, causing a visual flash.
+      const mjxContainers = mountPoint.querySelectorAll('span.math mjx-container, div.mathblock mjx-container');
+      if (mjxContainers.length) {
+        mjxContainers.forEach(el => el.remove());
+        mountPoint.querySelectorAll('span.math[data-latex]').forEach(el => {
+          el.textContent = '\\(' + el.dataset.latex + '\\)';
+        });
+        mountPoint.querySelectorAll('div.mathblock[data-latex]').forEach(el => {
+          const contentEl = el.querySelector('.hr-content-zone') || el;
+          contentEl.textContent = '$$' + el.dataset.latex + '$$';
+        });
+      }
 
       if (!onloadCalled.value) {
         // Reset __rsmInitialized so onload re-runs setup() (handrails)

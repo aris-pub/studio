@@ -1,6 +1,7 @@
 <script>
   import { h, useTemplateRef } from "vue";
   import FeedbackIcon from "./FeedbackIcon.vue";
+  import MathElement from "./MathElement.vue";
 
   // Simple hash function for generating keys
   const hashString = (str) => {
@@ -40,18 +41,8 @@
       expose({ mountPoint: mountPointRef });
 
       const makeRenderFn = (htmlString) => {
-        // Extract preamble content hash for math VNode keying.
-        // If preamble hasn't changed between compiles, unchanged math nodes
-        // keep the same key and Vue preserves them (including Temml output).
         const parser = new DOMParser();
         const dom = parser.parseFromString(htmlString, "text/html");
-
-        const preambleEls = dom.querySelectorAll(".math-preamble");
-        let preambleHash = "";
-        if (preambleEls.length) {
-          const preambleText = Array.from(preambleEls).map((el) => el.textContent).join("");
-          preambleHash = hashString(preambleText);
-        }
 
         const createVNode = (node) => {
           // Handle text nodes
@@ -118,13 +109,29 @@
               Object.assign(data, attrs);
             }
 
-            // Key math elements by content + preamble hash. If neither changed,
-            // Vue preserves the existing DOM element (with Temml rendered output).
-            const isMathElement =
-              (node.tagName.toLowerCase() === "span" && node.classList?.contains("math")) ||
-              (node.tagName.toLowerCase() === "div" && node.classList?.contains("mathblock"));
-            if (isMathElement) {
-              data.key = `math-${hashString(node.textContent)}-${preambleHash}`;
+            // Inline math: use MathElement component so Vue manages the
+            // Temml lifecycle. Raw h("span") creates a text node that Temml
+            // replaces, leaving Vue with a stale reference on recompile.
+            if (node.tagName.toLowerCase() === "span" && node.classList?.contains("math")) {
+              const text = node.textContent;
+              const latex = text.startsWith("\\(") && text.endsWith("\\)")
+                ? text.slice(2, -2)
+                : text;
+              return h(MathElement, { ...data, latex, display: false });
+            }
+
+            // Display math: the LaTeX lives inside .hr-content-zone within a
+            // .mathblock handrail. Replace its text children with a MathElement.
+            const isMathblockContent =
+              node.tagName.toLowerCase() === "div" &&
+              node.classList?.contains("hr-content-zone") &&
+              node.parentElement?.classList?.contains("mathblock");
+            if (isMathblockContent) {
+              const text = node.textContent.trim();
+              if (text.startsWith("$$") && text.endsWith("$$")) {
+                const latex = text.slice(2, -2).trim();
+                return h("div", data, [h(MathElement, { latex, display: true })]);
+              }
             }
 
             // Get child nodes recursively
