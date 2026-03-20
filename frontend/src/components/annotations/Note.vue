@@ -1,25 +1,17 @@
 <script setup>
   import { ref, inject, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from "vue";
   import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
-  import { renderInlineMath } from "@/utils/renderInlineMath.js";
+  import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
 
-  // Temml loads async from CDN via onload.js. Poll until available so
-  // Vue re-renders annotation cards with math once it's ready.
+  // Load Temml from CDN if not already loaded (e.g. by onload.js), then
+  // flip a reactive flag so Vue re-renders cards with rendered math.
   const temmlReady = ref(!!window.temml);
-  let temmlPoll = null;
-  onMounted(() => {
+  onMounted(async () => {
     if (!temmlReady.value) {
-      temmlPoll = setInterval(() => {
-        if (window.temml) {
-          temmlReady.value = true;
-          clearInterval(temmlPoll);
-        }
-      }, 200);
+      await ensureTemml();
+      temmlReady.value = true;
     }
-  });
-  onUnmounted(() => {
-    if (temmlPoll) clearInterval(temmlPoll);
   });
 
   const props = defineProps({
