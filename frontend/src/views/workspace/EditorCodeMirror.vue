@@ -241,12 +241,10 @@
           // LSP is optional — editor works without it
         }
 
-        // Setup auto-compilation on Y.Doc changes
+        // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
         if (compile) {
-          const handleYtextChange = (event, transaction) => {
-            if (transaction.local) {
-              compile();
-            }
+          const handleYtextChange = () => {
+            compile();
           };
 
           ytext.value.observe(handleYtextChange);

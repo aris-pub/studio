@@ -1,6 +1,7 @@
 """Edit command: connect to Y.js, apply source changes, disconnect."""
 
 import asyncio
+import difflib
 import json
 import sys
 from typing import Any
@@ -11,6 +12,27 @@ from pycrdt._sync import YSyncMessageType, create_message
 from websockets import connect
 
 from cli.core import StudioAPI, build_room_url, console
+
+
+def _compute_diff_ops(old: str, new: str) -> list[tuple[str, int, str]]:
+    """Compute minimal insert/delete operations to transform old into new.
+
+    Returns list of (op_type, offset, content) tuples in forward order.
+    Caller should apply in reverse order to preserve offsets.
+    """
+    ops: list[tuple[str, int, str]] = []
+    matcher = difflib.SequenceMatcher(None, old, new, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        elif tag == "replace":
+            ops.append(("delete", i1, old[i1:i2]))
+            ops.append(("insert", i1, new[j1:j2]))
+        elif tag == "delete":
+            ops.append(("delete", i1, old[i1:i2]))
+        elif tag == "insert":
+            ops.append(("insert", i1, new[j1:j2]))
+    return ops
 
 
 async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
@@ -36,13 +58,17 @@ async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
             if payload and payload[0] == 1:  # SyncStep2
                 break
 
-    # Replace document content
+    # Apply minimal diff to preserve peer scroll positions and reduce Y.js traffic
+    old_source = str(text)
     state_before = doc.get_state()
     with doc.transaction():
-        if len(text) > 0:
-            del text[0 : len(text)]
-        if new_source:
-            text += new_source
+        ops = _compute_diff_ops(old_source, new_source)
+        # Apply ops from end to start so earlier offsets stay valid
+        for op_type, offset, content in reversed(ops):
+            if op_type == "delete":
+                del text[offset : offset + len(content)]
+            elif op_type == "insert":
+                text.insert(offset, content)
 
     # Broadcast the update to all peers in the room
     update = doc.get_update(state_before)
