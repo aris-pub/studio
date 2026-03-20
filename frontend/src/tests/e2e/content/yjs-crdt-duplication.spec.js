@@ -228,12 +228,12 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
       );
 
       // Set up response listener BEFORE clicking compile
-      const compileResponse = page.waitForResponse(
+      const compileResponse2 = page.waitForResponse(
         (response) => response.url().includes("/render/private") && response.status() === 200,
         { timeout: 15000 }
       );
       await page.click('button:has-text("compile")');
-      await compileResponse;
+      await compileResponse2;
 
       if (isMobile) {
         await page.locator(".sb-item").filter({ hasText: "source" }).click();
