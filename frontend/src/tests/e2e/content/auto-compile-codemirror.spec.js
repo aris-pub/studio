@@ -138,6 +138,12 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
     );
     await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
 
+    // Set up listener for render API call BEFORE making the edit
+    const compileResponsePromise = page.waitForResponse(
+      (response) => response.url().includes("/render/private") && response.status() === 200,
+      { timeout: 15000 }
+    );
+
     // Edit content via CodeMirror
     await page.evaluate(() => {
       const view = window.__cmView;
@@ -153,15 +159,6 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
       {},
       { timeout: 5000 }
     );
-
-    // Set up listener for render API call BEFORE waiting
-    const compileResponsePromise = page.waitForResponse(
-      (response) => response.url().includes("/render/private") && response.status() === 200,
-      { timeout: 10000 } // Give it 10 seconds for debounce (2s) + compilation time
-    );
-
-    // CRITICAL: Do NOT click compile button - test auto-compilation
-    // await page.click('button:has-text("compile")'); // ← REMOVED
 
     // Wait for automatic compilation to trigger
     await compileResponsePromise;
