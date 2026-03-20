@@ -8,7 +8,20 @@
   function ensureTemml() {
     if (window.temml) return Promise.resolve();
     if (loadPromise) return loadPromise;
-    if (!document.querySelector(`link[href="${TEMML_CSS}"]`)) {
+
+    // Check if a Temml script is already loading (e.g. from onload.js)
+    const existingScript = document.querySelector(`script[src*="temml"]`);
+    if (existingScript) {
+      loadPromise = new Promise((resolve) => {
+        if (window.temml) { resolve(); return; }
+        existingScript.addEventListener("load", resolve);
+        existingScript.addEventListener("error", resolve);
+        setTimeout(resolve, 5000);
+      });
+      return loadPromise;
+    }
+
+    if (!document.querySelector(`link[href*="temml" i], link[href*="Temml" i]`)) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = TEMML_CSS;
@@ -52,5 +65,5 @@
 </script>
 
 <template>
-  <component :is="display ? 'div' : 'span'" ref="el" :class="display ? 'mathblock' : 'math'" />
+  <component :is="display ? 'div' : 'span'" ref="el" :class="display ? '' : 'math'" />
 </template>
