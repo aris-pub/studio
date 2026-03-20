@@ -5,6 +5,7 @@
   const focusMode = inject("focusMode");
   const file = inject("file");
   const fileSettings = inject("fileSettings");
+  const isCompiling = inject("isCompiling", ref(false));
 
   // Word counter
   const numWords = ref(0);
@@ -61,7 +62,16 @@
         <div v-if="activeIndex === 0" key="source" class="source-right">
           <span class="word-count">{{ numWords }} words</span>
           <Button kind="tertiary" size="sm" icon="Settings" />
-          <Button kind="primary" size="sm" text="compile" class="cta" @click="emit('compile')" />
+          <Button
+            kind="primary"
+            size="sm"
+            :text="isCompiling ? '' : 'compile'"
+            :icon="isCompiling ? 'Loader2' : ''"
+            class="cta compile-btn"
+            :class="{ compiling: isCompiling }"
+            :disabled="isCompiling"
+            @click="emit('compile')"
+          />
         </div>
         <div v-else key="files" class="files-right">
           <input
@@ -155,5 +165,19 @@
   .fade-slide-leave-from {
     opacity: 1;
     transform: translateX(0);
+  }
+
+  .compile-btn {
+    min-width: 86px;
+    justify-content: center;
+  }
+
+  .compile-btn.compiling :deep(.tabler-icon) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 </style>

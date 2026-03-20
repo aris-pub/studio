@@ -18,17 +18,44 @@
   const mobileMode = inject("mobileMode");
 
   // Compile: render the current Y.js source
-  const compile = async () => {
-    let source = "";
-    if (window.__ytext) {
-      source = window.__ytext.toString();
-    }
+  const isCompiling = ref(false);
+  let lastCompileTime = 0;
+  let debouncedCompileTimer = null;
 
-    const response = await api.post("render/private", {
-      source,
-      file_id: file.value.id,
-    });
-    file.value.html = response.data;
+  const doCompile = async () => {
+    isCompiling.value = true;
+    try {
+      let source = "";
+      if (window.__ytext) {
+        source = window.__ytext.toString();
+      }
+      const response = await api.post("render/private", {
+        source,
+        file_id: file.value.id,
+      });
+      file.value.html = response.data;
+      lastCompileTime = Date.now();
+    } finally {
+      isCompiling.value = false;
+    }
+  };
+
+  // Global debounced compile — at most once every 2s regardless of trigger.
+  // Manual button press bypasses debounce.
+  const compile = (immediate = false) => {
+    if (debouncedCompileTimer) {
+      clearTimeout(debouncedCompileTimer);
+      debouncedCompileTimer = null;
+    }
+    if (immediate) {
+      return doCompile();
+    }
+    const elapsed = Date.now() - lastCompileTime;
+    const delay = Math.max(0, 2000 - elapsed);
+    debouncedCompileTimer = setTimeout(() => {
+      debouncedCompileTimer = null;
+      doCompile();
+    }, delay);
   };
 
   // CodeMirror view — provided by Canvas.vue, written by EditorCodeMirror
@@ -47,8 +74,9 @@
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
 
-  // Provide compile to child components (EditorCodeMirror uses it)
+  // Provide compile and state to child components
   provide("compile", compile);
+  provide("isCompiling", isCompiling);
 
   // File asset upload
   const isTextMimeType = (mimeType) => {
@@ -120,11 +148,11 @@
     }
   };
 
-  // Compilation trigger
-  const onCompile = () => compile();
+  // Manual compile bypasses debounce
+  const onCompile = () => compile(true);
 
-  // Keys — Cmd+S triggers compile (Y.js handles persistence)
-  const onSaveShortcut = () => compile();
+  // Keys — Cmd+S triggers compile immediately
+  const onSaveShortcut = () => compile(true);
   useKeyboardShortcuts({
     s: onSaveShortcut,
   });

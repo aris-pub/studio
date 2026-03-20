@@ -110,17 +110,10 @@
   const lintExtensions = [lintGutter(), keymap.of(lintKeymap)];
 
   // Auto-compilation on Y.Doc changes
-  let compileDebounceTimeout = null;
   let ytextObserverCleanup = null;
 
   // Cleanup function
   const cleanup = () => {
-    // Clear auto-compile debounce timer
-    if (compileDebounceTimeout) {
-      clearTimeout(compileDebounceTimeout);
-      compileDebounceTimeout = null;
-    }
-
     // Remove Y.Doc observer
     if (ytextObserverCleanup) {
       ytextObserverCleanup();
@@ -252,13 +245,7 @@
         if (compile) {
           const handleYtextChange = (event, transaction) => {
             if (transaction.local) {
-              if (compileDebounceTimeout) {
-                clearTimeout(compileDebounceTimeout);
-              }
-
-              compileDebounceTimeout = setTimeout(async () => {
-                await compile();
-              }, 2000);
+              compile();
             }
           };
 
