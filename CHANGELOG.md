@@ -1,1 +1,133 @@
 # Changelog
+
+## [0.1.0] - 2026-03-20
+
+### Added
+
+- Versioning, changelog, and release system
+- Unified diff patch mode for CLI edit command
+- Auto-recompile on remote Y.js changes and diff-based edits
+- Bidirectional source/preview navigation
+- Compile button spinner with global recompile debounce
+- Inline math rendering in annotation messages
+- Annotation menu with Note/Messages icons
+- Auto-recompile when file assets change
+- Shared annotation layer with threaded comments
+- Private annotation layer with highlight rendering and editor polish
+- Annotation overlay panel toggle for narrow viewports
+- Figure marks shown as blue lines in scrollbar minimap
+- Minimap drag-to-scroll replacing native scrollbar
+- Annotation card positioning at highlight height in right column
+- Topbar-embedded search with scope toggles and mark filtering
+- Math scope search with two-layer highlight (container wash + outline ring)
+- Search across Marginalia scope (annotation notes)
+- Source scope search driven via CodeMirror native search
+- In-app feedback modal with DB storage and email notification
+- Compact minimap on the homepage file list
+- Collaborator avatars and role badges on file list rows
+- Collaborator invitations in share drawer
+- My files / Shared with me filter tabs on home page
+- Empty state for zero files with Create/Upload actions
+- Sort reset (default order) as third column header state
+- Multi-format file import (Markdown/LaTeX/DOCX to RSM)
+- RSM semantic tokens highlighting via LSP
+- PDF download via rsm export and typst
+- Email verification flow
+- Version system with named versions and auto-checkpoints
+- Auto-compilation for CodeMirror edits
+- User roles and permissions for collaborative editing
+- Dynamic Y.js backend clients with DB persistence
+- COMMENTER read-only mode and authorization
+- Standalone CLI package with session injection, file management, annotation commands, and transparent auto-refresh
+- Refresh token endpoint for token renewal
+- Unsaved changes warning in preferences
+- Autocomplete attributes on login and register form fields
+- Reset button in preferences for discarding unsaved changes
+- Sanitized filenames in data export downloads
+- Aria-live region for login loading state
+- Main landmark for screen reader navigation on auth and verify-email pages
+- Non-owner version restore with redesigned version items
+- Reusable Badge and SelectBox components
+- Unseen dot indicator for shared files with tab visibility refresh
+- DrawerShare and DrawerFile sidebar panels
+- Workspace panel state persisted across hard refresh
+- Feedback icon persistence to database with homepage minimap display
+- File assets scoped to files with collaborator visibility
+- Row-level security on all database tables
+- Mobile read-only editor with info banner
+
+### Fixed
+
+- E2E compile response listener race condition
+- Duplicate const in Y.js duplication E2E test
+- Firefox CI flakiness in E2E tests
+- Math duplication allowing multiple Temml script tags
+- Code point to UTF-8 byte offset conversion for pycrdt
+- Annotation selection across math elements
+- Source/preview navigation UX improvements
+- Diff-based edit garbling content on replace operations
+- j/k/h/l key capture in textareas and inputs
+- Math not rendering on page load
+- Trash icon replaced with resolve icon on shared annotations
+- Annotation thread messages sorted chronologically
+- j/k/h/l forwarding to first handrail when nothing focused
+- Editor pane hidden in focus mode
+- Inline links inside handrails excluded from keyboard navigation
+- Math removed from tab order with suppressed focus outline on handrails
+- Keyboard navigation (j/k/h/l) working in manuscript preview
+- VNode reconstruction preserving non-whitelisted HTML attributes
+- Annotation card UI with reduced blue chrome and fixed focus states
+- Annotation highlights with overlap color priority, math styling, and contiguous ranges
+- Handrail focus suppression during selection
+- Search close button, highlighting, positioning, and ESC behavior
+- Y.js room naming unified between CLI and frontend
+- Resolve annotation highlights for API-created annotations via global text search fallback
+- Real-time annotation sync via Y.js signaling
+- Delete button visibility for file owners on shared annotations
+- Register legal text contrast for WCAG AA compliance
+- Dual submit path removed from login/register buttons
+- Stale dates in landing page meta tags and footer
+- Document title for 404 page
+- Aria-label on avatar upload button
+- Heading hierarchy in Account view for WCAG compliance
+- Account password fields using PasswordInput component
+- Hero text contrast on account page
+- Responsive layout for document settings
+- Toast error feedback for settings save/load failures
+- Server error vs expired token differentiation in email verification
+- Pydantic validation errors parsed into readable messages
+- localStorage auth state cleared on account deletion
+- Home search extended to match abstract, authors, and tags
+- Tag filter using OR logic instead of AND
+- bcrypt crash on passwords longer than 72 bytes
+- Deploy preview CORS for frontend
+- Database connection pool exhaustion deadlocking the backend
+- Uvicorn reload deadlock on Y.js background tasks
+- Y.js content duplication on DB load
+- Compile button updating preview with Y.js content
+- LSP Vue Proxy unwrapping for real-time diagnostics
+- Duplicate file rendering in file list
+- Asyncpg concurrent access errors in permission system
+- Theme toggle disabled in in-app RSM compilation
+- Minimap source div prevented from inflating page scroll height
+- WCAG AA contrast for toggle buttons, minimap marks, and annotation colors
+- Editor panel overflow contained
+- Sidebar editor toggle synced with persisted state
+
+### Changed
+
+- MathElement component used for Vue-managed math rendering with preamble-aware memoization
+- Manuscript no longer destroyed on every recompile
+- Migrated from npm to pnpm with hoisted workspace layout
+- CLI restructured into modular command files with nested subcommands
+- Product references renamed from "Aris" to "RSM Studio"
+- Account view merged into single scrollable page
+- Behavior and Notifications settings merged into single PreferencesView
+- Annotation system redesigned as borderless marginalia (private) vs card threads (shared)
+- Button and ButtonToggle components redesigned
+- Topbar overhauled with section-only running header
+- Prettier formatting applied across frontend sources
+- Editor removed legacy useEditSession and textarea fallback
+- Search scopes unified (Document + Math merged into Output)
+- Supervisord multi-service container architecture for Docker
+- Backend container architecture split for parallel CI execution
