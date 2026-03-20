@@ -85,9 +85,9 @@ describe("AnnotationMenu.vue — swatch border contrast (std-sdg2)", () => {
   });
 });
 
-describe("AnnotationMenu.vue — textarea focus outline (std-9ywg)", () => {
-  it("note-input focus has outline", () => {
-    const focusBlock = menuStyle.match(/note-input[\s\S]*?&:focus\s*\{([^}]*)\}/s)?.[1] ?? "";
+describe("AnnotationMenu.vue — button focus outline (std-9ywg)", () => {
+  it("swatch-btn focus-visible has outline", () => {
+    const focusBlock = menuStyle.match(/\.swatch-btn[\s\S]*?&:focus-visible\s*\{([^}]*)\}/s)?.[1] ?? "";
     expect(focusBlock).toContain("outline");
   });
 });
@@ -153,14 +153,13 @@ describe("Note.vue — visually-hidden textarea label (std-wz20)", () => {
   });
 });
 
-describe("AnnotationMenu.vue — visually-hidden textarea label (std-wz20)", () => {
-  it("note textarea has a label element", () => {
-    expect(menuTemplate).toMatch(/<label[\s\S]*?class="sr-only"[\s\S]*?Annotation note/);
+describe("AnnotationMenu.vue — action buttons have aria-labels (std-wz20)", () => {
+  it("private note button has aria-label", () => {
+    expect(menuTemplate).toMatch(/aria-label="Private note"/);
   });
 
-  it("label for attribute matches textarea id", () => {
-    expect(menuTemplate).toMatch(/for="annotation-menu-note"/);
-    expect(menuTemplate).toMatch(/id="annotation-menu-note"/);
+  it("shared comment button has aria-label", () => {
+    expect(menuTemplate).toMatch(/aria-label="Shared comment"/);
   });
 });
 

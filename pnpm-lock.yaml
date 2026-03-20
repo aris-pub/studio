@@ -46,9 +46,6 @@ importers:
       jquery:
         specifier: ^3.6.0
         version: 3.7.1
-      katex:
-        specifier: ^0.16.39
-        version: 0.16.39
       temml:
         specifier: ^0.13.2
         version: 0.13.2
@@ -2702,10 +2699,6 @@ packages:
     resolution: {integrity: sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==}
     engines: {node: '>= 10'}
 
-  commander@8.3.0:
-    resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
-    engines: {node: '>= 12'}
-
   commondir@1.0.1:
     resolution: {integrity: sha512-W9pAhw0ja1Edb5GVdIF1mjZw/ASI0AlShXM83UUGe2DVr5TdAPEA1OA8m/g8zWp9x6On7gqufY+FatDbC3MDQg==}
 
@@ -3908,10 +3901,6 @@ packages:
 
   jstransformer@1.0.0:
     resolution: {integrity: sha512-C9YK3Rf8q6VAPDCCU9fnqo3mAfOH6vUGnMcP4AQAYIEpWtfGLpwOTmZ+igtdK5y+VvI2n3CyYSzy4Qh34eq24A==}
-
-  katex@0.16.39:
-    resolution: {integrity: sha512-FR2f6y85+81ZLO0GPhyQ+EJl/E5ILNWltJhpAeOTzRny952Z13x2867lTFDmvMZix//Ux3CuMQ2VkLXRbUwOFg==}
-    hasBin: true
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -8764,8 +8753,6 @@ snapshots:
   commander@7.2.0:
     optional: true
 
-  commander@8.3.0: {}
-
   commondir@1.0.1: {}
 
   compatx@0.2.0: {}
@@ -10050,10 +10037,6 @@ snapshots:
     dependencies:
       is-promise: 2.2.2
       promise: 7.3.1
-
-  katex@0.16.39:
-    dependencies:
-      commander: 8.3.0
 
   keyv@4.5.4:
     dependencies:
