@@ -3,6 +3,7 @@
 import asyncio
 import difflib
 import json
+import re
 import sys
 from typing import Any
 
@@ -34,48 +35,168 @@ def _compute_diff_ops(old: str, new: str) -> list[tuple]:
     return ops
 
 
-async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
-    """Sync with the Y.js room, replace document text, broadcast, and return result."""
-    doc = Doc()
-    text = doc.get("text", type=Text)
+def _apply_ops_to_ytext(text: Any, old_source: str, new_source: str) -> None:
+    """Apply minimal diff ops to a Y.js Text object."""
+    ops = _compute_diff_ops(old_source, new_source)
+    for op in reversed(ops):
+        if op[0] == "replace":
+            _, start, end, new_content = op
+            del text[start:end]
+            text.insert(start, new_content)
+        elif op[0] == "delete":
+            _, start, end = op
+            del text[start:end]
+        elif op[0] == "insert":
+            _, offset, content = op
+            text.insert(offset, content)
 
-    # SyncStep1: announce our (empty) state
+
+def apply_unified_diff(source: str, patch_text: str) -> str:
+    """Apply a unified diff to source text. Raises ValueError if patch doesn't apply."""
+    hunks = _parse_unified_diff(patch_text)
+    if not hunks:
+        raise ValueError("No valid hunks found in patch")
+
+    lines = source.split("\n")
+    # Apply hunks from bottom to top so line numbers stay valid
+    for hunk in reversed(hunks):
+        old_start, old_count, new_lines_content, context_before = hunk
+
+        # Verify context/deletion lines match the source (the guardrail)
+        src_idx = old_start - 1  # 0-indexed
+        src_offset = 0
+        for tag, line in context_before:
+            if tag == "+":
+                continue
+            pos = src_idx + src_offset
+            if pos >= len(lines) or lines[pos] != line:
+                actual = lines[pos] if pos < len(lines) else "(EOF)"
+                nearby = lines[max(0, src_idx - 2) : src_idx + old_count + 2]
+                raise ValueError(
+                    f"Patch {'context' if tag == ' ' else 'deletion'} mismatch at line {pos + 1}. "
+                    f"Expected: {line!r}, found: {actual!r}. "
+                    f"Nearby source: {nearby!r}"
+                )
+            src_offset += 1
+
+        # Apply: remove old lines, insert new lines
+        lines[src_idx : src_idx + old_count] = new_lines_content
+
+    return "\n".join(lines)
+
+
+def _parse_unified_diff(patch_text: str) -> list[tuple]:
+    """Parse unified diff into hunks.
+
+    Returns list of (old_start, old_count, new_lines, context_lines) tuples.
+    context_lines is a list of (tag, line) where tag is ' ', '-', or '+'.
+    """
+    hunks = []
+    hunk_header = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+    patch_lines = patch_text.split("\n")
+
+    i = 0
+    while i < len(patch_lines):
+        line = patch_lines[i]
+
+        # Skip --- and +++ headers
+        if line.startswith("---") or line.startswith("+++"):
+            i += 1
+            continue
+
+        m = hunk_header.match(line)
+        if not m:
+            i += 1
+            continue
+
+        old_start = int(m.group(1))
+        old_count = int(m.group(2)) if m.group(2) is not None else 1
+        i += 1
+
+        context_lines = []
+        new_lines = []
+        while i < len(patch_lines):
+            pline = patch_lines[i]
+            if pline.startswith("@@") or pline.startswith("---") or pline.startswith("+++"):
+                break
+            if pline.startswith(" "):
+                context_lines.append((" ", pline[1:]))
+                new_lines.append(pline[1:])
+            elif pline.startswith("-"):
+                context_lines.append(("-", pline[1:]))
+            elif pline.startswith("+"):
+                context_lines.append(("+", pline[1:]))
+                new_lines.append(pline[1:])
+            elif pline == "":
+                # Could be trailing empty line or empty context line
+                if i + 1 < len(patch_lines) and (
+                    patch_lines[i + 1].startswith(" ")
+                    or patch_lines[i + 1].startswith("-")
+                    or patch_lines[i + 1].startswith("+")
+                ):
+                    context_lines.append((" ", ""))
+                    new_lines.append("")
+                else:
+                    break
+            else:
+                break
+            i += 1
+
+        hunks.append((old_start, old_count, new_lines, context_lines))
+
+    return hunks
+
+
+async def _sync_yjs(ws: Any, doc: Any) -> None:
+    """Perform Y.js sync handshake."""
     sync_msg = create_sync_message(doc)
     await ws.send(sync_msg)
 
-    # Receive SyncStep2: absorb room's current state
     while True:
         message = await asyncio.wait_for(ws.recv(), timeout=15.0)
         if not message:
             continue
         msg_type = message[0]
         payload = message[1:]
-        if msg_type == 0:  # sync message
+        if msg_type == 0:
             reply = handle_sync_message(payload, doc)
             if reply:
                 await ws.send(reply)
-            if payload and payload[0] == 1:  # SyncStep2
+            if payload and payload[0] == 1:
                 break
 
-    # Apply minimal diff to preserve peer scroll positions and reduce Y.js traffic
+
+async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
+    """Sync with the Y.js room, apply diff, broadcast."""
+    doc = Doc()
+    text = doc.get("text", type=Text)
+    await _sync_yjs(ws, doc)
+
     old_source = str(text)
     state_before = doc.get_state()
     with doc.transaction():
-        ops = _compute_diff_ops(old_source, new_source)
-        # Apply ops from end to start so earlier offsets stay valid
-        for op in reversed(ops):
-            if op[0] == "replace":
-                _, start, end, new_content = op
-                del text[start:end]
-                text.insert(start, new_content)
-            elif op[0] == "delete":
-                _, start, end = op
-                del text[start:end]
-            elif op[0] == "insert":
-                _, offset, content = op
-                text.insert(offset, content)
+        _apply_ops_to_ytext(text, old_source, new_source)
 
-    # Broadcast the update to all peers in the room
+    update = doc.get_update(state_before)
+    update_msg = create_message(update, YSyncMessageType.SYNC_UPDATE)
+    await ws.send(update_msg)
+
+    return {"file_id": file_id, "chars_written": len(new_source), "status": "ok"}
+
+
+async def _apply_patch(ws: Any, file_id: int, patch_text: str) -> dict[str, Any]:
+    """Sync with Y.js room, apply unified diff patch, broadcast."""
+    doc = Doc()
+    text = doc.get("text", type=Text)
+    await _sync_yjs(ws, doc)
+
+    old_source = str(text)
+    new_source = apply_unified_diff(old_source, patch_text)
+
+    state_before = doc.get_state()
+    with doc.transaction():
+        _apply_ops_to_ytext(text, old_source, new_source)
+
     update = doc.get_update(state_before)
     update_msg = create_message(update, YSyncMessageType.SYNC_UPDATE)
     await ws.send(update_msg)
@@ -88,7 +209,7 @@ async def _apply_edit(ws: Any, file_id: int, new_source: str) -> dict[str, Any]:
 
 
 def _run_edit(file_id: int, new_source: str) -> dict[str, Any]:
-    """Connect to Y.js WebSocket, apply edit, disconnect. Returns result dict."""
+    """Connect to Y.js WebSocket, apply edit, disconnect."""
     url = build_room_url(file_id)
 
     async def _do() -> dict[str, Any]:
@@ -98,20 +219,40 @@ def _run_edit(file_id: int, new_source: str) -> dict[str, Any]:
     return asyncio.run(_do())
 
 
+def _run_patch(file_id: int, patch_text: str) -> dict[str, Any]:
+    """Connect to Y.js WebSocket, apply patch, disconnect."""
+    url = build_room_url(file_id)
+
+    async def _do() -> dict[str, Any]:
+        async with connect(url, open_timeout=10, close_timeout=5) as ws:
+            return await _apply_patch(ws, file_id, patch_text)
+
+    return asyncio.run(_do())
+
+
 @click.command()
-@click.option("--source", "-s", type=click.Path(exists=True), help="Path to RSM source file")
-@click.option("--stdin", "from_stdin", is_flag=True, help="Read source from stdin")
+@click.option("--source", "-s", type=click.Path(exists=True), help="Path to RSM source file (full replacement)")
+@click.option("--patch", "-p", type=click.Path(exists=True), help="Path to unified diff patch file")
+@click.option("--stdin", "from_stdin", is_flag=True, help="Read source/patch from stdin")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 @click.pass_context
-def edit(ctx: click.Context, source: str | None, from_stdin: bool, as_json: bool) -> None:
-    """Edit document source via Y.js."""
+def edit(ctx: click.Context, source: str | None, patch: str | None, from_stdin: bool, as_json: bool) -> None:
+    """Edit document source via Y.js.
+
+    Two modes:
+      --source/-s: Full source replacement (computes minimal diff against live document)
+      --patch/-p:  Apply a unified diff patch (rejects if patch doesn't apply cleanly)
+      --stdin:     Read from stdin (interpreted as patch if it starts with ---, otherwise as source)
+    """
     file_id: int = ctx.obj["file_id"]
-    if not source and not from_stdin:
-        console.print("[red]✗ Provide --source <path> or --stdin.[/red]")
+
+    if not source and not patch and not from_stdin:
+        console.print("[red]✗ Provide --source, --patch, or --stdin.[/red]")
         sys.exit(1)
 
-    if source and from_stdin:
-        console.print("[red]✗ Cannot use both --source and --stdin.[/red]")
+    exclusive = [x for x in [source, patch, from_stdin] if x]
+    if len(exclusive) > 1:
+        console.print("[red]✗ Use only one of --source, --patch, or --stdin.[/red]")
         sys.exit(1)
 
     api = StudioAPI()
@@ -119,13 +260,26 @@ def edit(ctx: click.Context, source: str | None, from_stdin: bool, as_json: bool
         console.print("[red]✗ Not logged in. Run 'studio login' first.[/red]")
         sys.exit(1)
 
-    if source:
-        new_source = open(source).read()  # noqa: SIM115
-    else:
-        new_source = click.get_text_stream("stdin").read()
-
     try:
-        result = _run_edit(file_id, new_source)
+        if patch:
+            patch_text = open(patch).read()  # noqa: SIM115
+            result = _run_patch(file_id, patch_text)
+        elif source:
+            new_source = open(source).read()  # noqa: SIM115
+            result = _run_edit(file_id, new_source)
+        elif from_stdin:
+            content = click.get_text_stream("stdin").read()
+            # Auto-detect: if it looks like a unified diff, treat as patch
+            if content.lstrip().startswith("---") or content.lstrip().startswith("@@"):
+                result = _run_patch(file_id, content)
+            else:
+                result = _run_edit(file_id, content)
+    except ValueError as e:
+        if as_json:
+            click.echo(json.dumps({"status": "error", "error": str(e)}))
+        else:
+            console.print(f"[red]✗ Patch rejected: {e}[/red]")
+        sys.exit(1)
     except Exception as e:
         if as_json:
             click.echo(json.dumps({"status": "error", "error": str(e)}))

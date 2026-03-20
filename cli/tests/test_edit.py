@@ -10,7 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from cli import cli
-from cli.commands.edit import _apply_edit, _compute_diff_ops
+from cli.commands.edit import _apply_edit, _compute_diff_ops, apply_unified_diff
 from cli.core import build_room_url
 
 
@@ -275,3 +275,62 @@ class TestDiffOps:
         new = old.replace("line3", "LINE_THREE", 1)
         result = self._apply_ops(old, new)
         assert result == new
+
+
+class TestApplyUnifiedDiff:
+    """Tests for unified diff patch application."""
+
+    def test_simple_replacement(self):
+        source = "line1\nline2\nline3\nline4\n"
+        patch = """\
+--- a/file.rsm
++++ b/file.rsm
+@@ -2,1 +2,1 @@
+-line2
++LINE_TWO
+"""
+        result = apply_unified_diff(source, patch)
+        assert "LINE_TWO" in result
+        assert "line2" not in result
+
+    def test_insertion(self):
+        source = "line1\nline2\nline3\n"
+        patch = """\
+--- a/file.rsm
++++ b/file.rsm
+@@ -2,2 +2,3 @@
+ line2
++inserted
+ line3
+"""
+        result = apply_unified_diff(source, patch)
+        assert "inserted" in result
+
+    def test_context_mismatch_rejects(self):
+        source = "line1\nline2\nline3\n"
+        patch = """\
+--- a/file.rsm
++++ b/file.rsm
+@@ -2,1 +2,1 @@
+-wrong_line
++replacement
+"""
+        with pytest.raises(ValueError, match="mismatch"):
+            apply_unified_diff(source, patch)
+
+    def test_multiple_hunks(self):
+        source = "aaa\nbbb\nccc\nddd\neee\n"
+        patch = """\
+--- a/file.rsm
++++ b/file.rsm
+@@ -1,1 +1,1 @@
+-aaa
++AAA
+@@ -5,1 +5,1 @@
+-eee
++EEE
+"""
+        result = apply_unified_diff(source, patch)
+        assert result.startswith("AAA\n")
+        assert "EEE" in result
+        assert "bbb" in result
