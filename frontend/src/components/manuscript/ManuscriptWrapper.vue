@@ -42,15 +42,9 @@
 
   const api = inject("api");
 
-  // Key to force Manuscript re-creation when content changes
-  const manuscriptKey = ref(0);
-  watch(
-    () => props.htmlString,
-    () => {
-      manuscriptKey.value++;
-      onloadCalled.value = false;
-    }
-  );
+  // No need to reset onloadCalled — Manuscript is no longer destroyed/recreated
+  // on recompile. Subsequent renders use onrender() (math + icons) instead of
+  // onload() (full handrail/keyboard/minimap setup).
   const onload = ref(null);
   const onrender = ref(null);
   const onloadCalled = ref(false);
@@ -180,7 +174,6 @@
 
     <Manuscript
       ref="manuscript-ref"
-      :key="manuscriptKey"
       :html-string="htmlString"
       :settings="settings"
     />
