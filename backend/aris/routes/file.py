@@ -823,6 +823,30 @@ async def download_file_pdf(
         pdf_path = os.path.join(tmpdir, "manuscript.pdf")
         with open(typ_path, "w", encoding="utf-8") as f:
             f.write(typst_source)
+
+        # Write file assets (images, SVGs, static fallbacks) to temp dir
+        from sqlalchemy import select
+        from ..models.models import FileAsset
+        import base64
+        import binascii
+        asset_result = await db.execute(
+            select(FileAsset)
+            .where(FileAsset.file_id == file_id)
+            .where(FileAsset.deleted_at.is_(None))
+        )
+        for asset in asset_result.scalars().all():
+            asset_path = os.path.join(tmpdir, asset.filename)
+            try:
+                encoding = getattr(asset, "content_encoding", "plain")
+                if encoding == "base64":
+                    data = base64.b64decode(asset.content)
+                    with open(asset_path, "wb") as af:
+                        af.write(data)
+                else:
+                    with open(asset_path, "w", encoding="utf-8") as af:
+                        af.write(asset.content)
+            except (binascii.Error, OSError):
+                pass  # Skip assets that fail to write
         try:
             await asyncio.to_thread(
                 subprocess.run,
