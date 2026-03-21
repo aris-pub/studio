@@ -801,25 +801,10 @@ async def download_file_pdf(
     if not file_data or not file_data.source:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Strip HTML asset blocks — Typst can't render them as images.
-    # Matches :html: blocks and :figure: blocks with .html paths.
-    source_for_export = re.sub(
-        r':html:\s*\{[^}]*\}.*?::',
-        '',
-        file_data.source,
-        flags=re.DOTALL,
-    )
-    source_for_export = re.sub(
-        r':figure:\s*\{[^}]*\.html[^}]*\}.*?::',
-        '',
-        source_for_export,
-        flags=re.DOTALL,
-    )
-
     try:
         typst_source = await asyncio.to_thread(
             rsm_pandoc_export,
-            source_for_export,
+            file_data.source,
             to_format="typst",
         )
     except Exception as e:
@@ -828,9 +813,8 @@ async def download_file_pdf(
             detail=f"PDF export is not yet supported for this document. The RSM-to-PDF pipeline encountered an error: {e}",
         )
 
-    # Replace broken #link(<label>)[text] with just text — but preserve
-    # citation links (#link(<ref-...>)) which point to bibliography entries
-    typst_source = re.sub(r'#link\(<(?!ref-)[^>]*>\)\[([^\]]*)\]', r'\1', typst_source)
+    # Cross-references and citations are now handled by the RSM Pandoc
+    # translator with proper labels — no post-processing needed
 
     with tempfile.TemporaryDirectory() as tmpdir:
         typ_path = os.path.join(tmpdir, "manuscript.typ")
