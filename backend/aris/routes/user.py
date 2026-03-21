@@ -398,8 +398,8 @@ async def get_user_files(
         logger.info(f"[get_user_files route] Success: returning {len(result)} files")
 
         # Add rendered HTML for home page minimap
-        from ..services.file_service import get_file_service
-        file_service = get_file_service()
+        from ..deps import get_file_service
+        file_service = await get_file_service()
         await file_service.sync_from_database(db)
         for f in result:
             html = await file_service.get_file_html(f["id"], db=db)
