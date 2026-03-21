@@ -801,11 +801,18 @@ async def download_file_pdf(
     if not file_data or not file_data.source:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Strip :html: blocks — the Pandoc translator can't handle them
+    # Strip HTML asset blocks — Typst can't render them as images.
+    # Matches :html: blocks and :figure: blocks with .html paths.
     source_for_export = re.sub(
         r':html:\s*\{[^}]*\}.*?::',
         '',
         file_data.source,
+        flags=re.DOTALL,
+    )
+    source_for_export = re.sub(
+        r':figure:\s*\{[^}]*\.html[^}]*\}.*?::',
+        '',
+        source_for_export,
         flags=re.DOTALL,
     )
 
