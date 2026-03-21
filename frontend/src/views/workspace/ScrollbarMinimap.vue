@@ -308,7 +308,7 @@
     />
 
     <!-- Tooltip: avatar + name for presence, plain text for others -->
-    <Tooltip :anchor="hoveredEl" placement="left">
+    <Tooltip :anchor="hoveredEl" :placement="isCompact ? 'top' : 'left'">
       <div v-if="hoveredMark?.type === 'presence'" class="presence-tooltip">
         <Avatar
           :user="{
