@@ -858,8 +858,8 @@ async def download_file_pdf(
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail="typst not found; install typst")
 
-        # If compilation failed, strip broken image references and retry
-        if not os.path.exists(pdf_path) and result.stderr:
+        # If compilation had errors, strip broken image references and retry
+        if result.returncode != 0 and result.stderr:
             import re as _re
             fixed_source = typst_source
             # Find all files that failed to parse and replace their image() calls
@@ -871,6 +871,8 @@ async def download_file_pdf(
                 )
             with open(typ_path, "w", encoding="utf-8") as f:
                 f.write(fixed_source)
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
             try:
                 await asyncio.to_thread(
                     subprocess.run,
