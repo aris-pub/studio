@@ -828,9 +828,9 @@ async def download_file_pdf(
             detail=f"PDF export is not yet supported for this document. The RSM-to-PDF pipeline encountered an error: {e}",
         )
 
-    # Replace #link(<label>)[text] with just text — labels from RSM
-    # cross-references don't survive the Pandoc → Typst conversion
-    typst_source = re.sub(r'#link\(<[^>]*>\)\[([^\]]*)\]', r'\1', typst_source)
+    # Replace broken #link(<label>)[text] with just text — but preserve
+    # citation links (#link(<ref-...>)) which point to bibliography entries
+    typst_source = re.sub(r'#link\(<(?!ref-)[^>]*>\)\[([^\]]*)\]', r'\1', typst_source)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         typ_path = os.path.join(tmpdir, "manuscript.typ")
