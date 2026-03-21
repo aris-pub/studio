@@ -247,8 +247,9 @@
     position: absolute;
     visibility: hidden;
     width: 300px;
-    height: 0;
-    overflow: visible;
+    height: auto;
+    overflow: hidden;
+    pointer-events: none;
     pointer-events: none;
     z-index: -1;
   }
