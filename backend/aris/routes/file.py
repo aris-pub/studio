@@ -847,14 +847,39 @@ async def download_file_pdf(
                         af.write(asset.content)
             except (binascii.Error, OSError):
                 pass  # Skip assets that fail to write
+        # First compilation attempt
         try:
-            await asyncio.to_thread(
+            result = await asyncio.to_thread(
                 subprocess.run,
                 ["typst", "compile", typ_path, pdf_path],
                 capture_output=True,
+                text=True,
             )
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail="typst not found; install typst")
+
+        # If compilation failed, strip broken image references and retry
+        if not os.path.exists(pdf_path) and result.stderr:
+            import re as _re
+            fixed_source = typst_source
+            # Find all files that failed to parse and replace their image() calls
+            for m in _re.finditer(r'error:.*?─ [^\n]*?/([^\s:]+\.\w+)', result.stderr):
+                bad_file = m.group(1)
+                fixed_source = fixed_source.replace(
+                    f'image("{bad_file}")',
+                    f'text(fill: rgb("#888"))[Figure: {bad_file} — could not render]',
+                )
+            with open(typ_path, "w", encoding="utf-8") as f:
+                f.write(fixed_source)
+            try:
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["typst", "compile", typ_path, pdf_path],
+                    capture_output=True,
+                )
+            except FileNotFoundError:
+                pass
+
         if not os.path.exists(pdf_path):
             raise HTTPException(status_code=422, detail="PDF compilation produced no output")
         with open(pdf_path, "rb") as f:
