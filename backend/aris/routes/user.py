@@ -396,6 +396,15 @@ async def get_user_files(
     try:
         result = await crud.get_user_files(user_id, with_tags, db)
         logger.info(f"[get_user_files route] Success: returning {len(result)} files")
+
+        # Add rendered HTML for home page minimap
+        from ..services.file_service import get_file_service
+        file_service = get_file_service()
+        await file_service.sync_from_database(db)
+        for f in result:
+            html = await file_service.get_file_html(f["id"], db=db)
+            f["html"] = html or ""
+
         return result
     except ValueError as e:
         logger.error(f"[get_user_files route] ValueError: {e}")
