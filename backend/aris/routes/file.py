@@ -816,7 +816,10 @@ async def download_file_pdf(
             to_format="typst",
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"RSM export failed: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"PDF export is not yet supported for this document. The RSM-to-PDF pipeline encountered an error: {e}",
+        )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         typ_path = os.path.join(tmpdir, "manuscript.typ")
