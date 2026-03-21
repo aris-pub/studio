@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, computed, inject, isRef, watch, onMounted, onUnmounted } from "vue";
+  import { ref, computed, inject, isRef, watch, nextTick, onMounted, onUnmounted } from "vue";
   import {
     useMinimapMarks,
     computeSectionMarks,
@@ -109,7 +109,10 @@
       compactMarks.value = [...sectionMarks, ...annMarks, ...fbMarks];
     }
 
-    watch(() => manuscriptRef?.value, computeCompactMarks, { immediate: true });
+    watch(() => manuscriptRef?.value, async () => {
+      await nextTick();
+      computeCompactMarks();
+    }, { immediate: true });
     if (annotations) {
       watch(annotations, computeCompactMarks, { deep: true });
     }
