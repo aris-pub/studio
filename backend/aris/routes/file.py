@@ -99,19 +99,21 @@ async def get_files(
     # Get files from memory
     files = await file_service.get_all_files()
     
-    # Convert to response format with extracted titles
+    # Convert to response format with extracted titles and rendered HTML
     result = []
     for f in files:
         title = await file_service.get_file_title(f.id)
+        html = await file_service.get_file_html(f.id, db=db)
         result.append({
             "id": f.id,
-            "title": title or f.title,  # Use extracted title or fallback to original
+            "title": title or f.title,
             "abstract": f.abstract,
             "last_edited_at": f.last_edited_at,
             "source": f.source,
             "owner_id": f.owner_id,
             "status": f.status.value,
             "created_at": f.created_at,
+            "html": html or "",
         })
     return result
 
