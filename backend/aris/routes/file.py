@@ -847,15 +847,16 @@ async def download_file_pdf(
                         af.write(asset.content)
             except (binascii.Error, OSError):
                 pass  # Skip assets that fail to write
-        await asyncio.to_thread(
-            subprocess.run,
-            ["typst", "compile", typ_path, pdf_path],
-            capture_output=True,
-        )
-        if not os.path.exists(pdf_path):
-            raise HTTPException(status_code=422, detail="PDF compilation produced no output")
+        try:
+            await asyncio.to_thread(
+                subprocess.run,
+                ["typst", "compile", typ_path, pdf_path],
+                capture_output=True,
+            )
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail="typst not found; install typst")
+        if not os.path.exists(pdf_path):
+            raise HTTPException(status_code=422, detail="PDF compilation produced no output")
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
