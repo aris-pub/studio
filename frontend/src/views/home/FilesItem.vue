@@ -99,6 +99,7 @@
 
       const response = await api.get(`/files/${file.value.id}/download/pdf`, {
         responseType: "blob",
+        timeout: 120000,
       });
 
       const blob = new Blob([response.data], { type: "application/pdf" });
