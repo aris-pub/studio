@@ -50,6 +50,7 @@
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";
       const response = await api.get(`/files/${fileId.value}/download/pdf`, {
         responseType: "blob",
+        timeout: 120000,
       });
       const blob = new Blob([response.data], { type: "application/pdf" });
       downloadBlob(blob, filename);
