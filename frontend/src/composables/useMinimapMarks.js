@@ -30,12 +30,16 @@ export function computeSectionMarks(manuscriptEl) {
   for (const section of sections) {
     const levelClass = [...section.classList].find((c) => c.startsWith("level-"));
     const level = levelClass ? parseInt(levelClass.split("-")[1], 10) : 1;
+    // Extract heading text from the first heading-like element
+    const heading = section.querySelector("h1, h2, h3, h4, h5, h6, .heading .hr-content-zone");
+    const label = heading?.textContent?.trim() || "";
     marks.push({
       top: measureElement(section, container),
       color: "var(--gray-300)",
       type: "section",
       id: `section-${section.id || marks.length}`,
       level,
+      label,
     });
   }
   return marks;
