@@ -863,7 +863,7 @@ async def download_file_pdf(
             import re as _re
             fixed_source = typst_source
             # Find all files that failed to parse and replace their image() calls
-            for m in _re.finditer(r'error:.*?─ [^\n]*?/([^\s:]+\.\w+)', result.stderr):
+            for m in _re.finditer(r'/([^\s/:]+\.\w+):', result.stderr):
                 bad_file = m.group(1)
                 fixed_source = fixed_source.replace(
                     f'image("{bad_file}")',
