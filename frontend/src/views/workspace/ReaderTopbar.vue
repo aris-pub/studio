@@ -43,7 +43,7 @@
 
 <style scoped>
   .topbar {
-    display: flex;
+    display: none;
     justify-content: flex-start;
     align-items: center;
     position: relative;
@@ -55,6 +55,7 @@
   }
 
   .topbar.active {
+    display: flex;
     height: 48px;
     border-color: var(--border-primary);
     border-bottom: var(--border-extrathin) solid var(--border-primary);
@@ -62,6 +63,7 @@
   }
 
   .topbar.search {
+    display: flex;
     height: auto;
     min-height: 48px;
     overflow: visible;
