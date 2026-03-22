@@ -358,8 +358,9 @@ class InMemoryFileService(FileServiceInterface):
             if not file_data or file_data.is_deleted():
                 return None
             
-            # If file has an explicit title, use it
-            if file_data.title:
+            # If user has manually set a title, use it.
+            # Empty string or "New File" (default) means no manual title.
+            if file_data.title and file_data.title != "New File":
                 return file_data.title
             
             # Check cache first

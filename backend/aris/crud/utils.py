@@ -9,8 +9,8 @@ from ..models import File
 async def extract_title(file: File) -> str:
     if file is None:
         return ""
-    # Access the actual value, not the column definition
-    if file.title is not None:
+    # Use DB title only if user has manually set one (not the default)
+    if file.title and file.title != "New File":
         return str(file.title)
 
     source_content = str(file.source) if file.source is not None else ""
