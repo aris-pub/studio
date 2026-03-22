@@ -81,6 +81,12 @@
   });
   provide("file", file);
 
+  watch(() => file.value?.title, (title) => {
+    document.title = title ? `${title} — RSM Studio` : "RSM Studio";
+  }, { immediate: true });
+
+  onBeforeUnmount(() => { document.title = "RSM Studio"; });
+
   // Shared Y.Doc ref — EditorCodeMirror writes to it, useAnnotations observes it
   const ydoc = shallowRef(null);
   provide("ydoc", ydoc);
