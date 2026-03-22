@@ -736,6 +736,27 @@ async def create_asset_for_file(
     return asset
 
 
+@router.get("/{file_id}/assets/by-name/{filename:path}", response_model=FileAssetOut)
+async def get_asset_by_name(
+    file_id: int,
+    filename: str,
+    user_role: FileRole = Depends(require_view),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get an asset by filename. Requires view permission."""
+    from sqlalchemy import select
+    result = await db.execute(
+        select(FileAsset)
+        .where(FileAsset.file_id == file_id)
+        .where(FileAsset.filename == filename)
+        .where(FileAsset.deleted_at.is_(None))
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return asset
+
+
 @router.put("/{file_id}/assets/{asset_id}", response_model=FileAssetOut)
 async def update_asset_for_file(
     file_id: int,

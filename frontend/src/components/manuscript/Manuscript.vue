@@ -1,6 +1,7 @@
 <script>
   import { h, useTemplateRef } from "vue";
   import FeedbackIcon from "./FeedbackIcon.vue";
+  import FigureToggle from "./FigureToggle.vue";
   import MathElement from "./MathElement.vue";
 
   // Simple hash function for generating keys
@@ -142,6 +143,11 @@
             // If this is hr-info, append FeedbackIcon to children
             if (isHrInfo) {
               children.push(h(FeedbackIcon));
+            }
+
+            // If this is a figure with a :static: fallback, inject FigureToggle
+            if (node.tagName.toLowerCase() === "figure" && node.hasAttribute("data-static")) {
+              children.push(h(FigureToggle));
             }
 
             return h(node.tagName.toLowerCase(), data, children.length ? children : undefined);

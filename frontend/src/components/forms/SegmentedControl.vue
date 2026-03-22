@@ -31,6 +31,8 @@
     labels: { type: Array, default: null },
     tooltips: { type: Array, default: null },
     defaultActive: { type: Number, default: -1 },
+    vertical: { type: Boolean, default: false },
+    small: { type: Boolean, default: false },
   });
 
   const numItems = computed(() => {
@@ -63,7 +65,7 @@
 </script>
 
 <template>
-  <div class="sc-wrapper">
+  <div class="sc-wrapper" :class="{ vertical, small }">
     <template v-for="idx in numItems" :key="`segment-${idx}`">
       <button
         :ref="(el) => setButtonRef(el, idx - 1)"
@@ -163,6 +165,34 @@
           color: var(--extra-dark);
         }
       }
+    }
+  }
+
+  .sc-wrapper.small .sc-item {
+    --padding-inline: 6px;
+    padding-block: 4px;
+  }
+
+  .sc-wrapper.small .sc-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .sc-wrapper.small .sc-label {
+    font-size: 11px;
+  }
+
+  .sc-wrapper.vertical {
+    flex-direction: column;
+
+    & .sc-item:first-child {
+      border-radius: 16px 16px 4px 4px;
+      border-bottom-left-radius: 4px;
+    }
+
+    & .sc-item:last-child {
+      border-radius: 4px 4px 16px 16px;
+      border-top-right-radius: 4px;
     }
   }
 </style>
