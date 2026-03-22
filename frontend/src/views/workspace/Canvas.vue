@@ -15,6 +15,7 @@
     onUnmounted,
   } from "vue";
   import { useElementSize, useScroll } from "@vueuse/core";
+  import { useRoute } from "vue-router";
 
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
@@ -153,6 +154,26 @@
     onCleanup(() => (cancelled = true));
   });
   const fileSettings = inject("fileSettings");
+
+  // Scroll to hash target after manuscript renders (e.g. from home minimap click)
+  const route = useRoute();
+  watch(
+    () => file.value?.html,
+    async () => {
+      const hash = route.hash;
+      if (!hash) return;
+      await nextTick();
+      await nextTick();
+      const id = hash.slice(1);
+      const target =
+        document.getElementById(id) ||
+        document.querySelector(`[data-nodeid="${id}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        history.replaceState(null, "", route.path);
+      }
+    },
+  );
 
   // Progressive topbar reveal: height driven by scroll position, not a binary toggle.
   // As the title scrolls out of view, the topbar grows from 0→48px proportionally.

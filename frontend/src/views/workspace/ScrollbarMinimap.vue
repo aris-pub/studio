@@ -1,10 +1,6 @@
 <script setup>
-  import { ref, computed, inject, isRef, watch, nextTick, onMounted, onUnmounted } from "vue";
-  import {
-    useMinimapMarks,
-    computeSectionMarks,
-    FEEDBACK_COLORS,
-  } from "@/composables/useMinimapMarks.js";
+  import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
+  import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
   import { IconMessageFilled } from "@tabler/icons-vue";
   import Tooltip from "@/components/base/Tooltip.vue";
 
@@ -45,83 +41,14 @@
   const posStyle = (fraction) =>
     isHorizontal.value ? { left: `${fraction * 100}%` } : { top: `${fraction * 100}%` };
 
-  // Marks: full computation for workspace, sections-only for compact
-  const { marks, computeMarks } = isCompact.value
-    ? { marks: ref([]), computeMarks: () => {} }
-    : useMinimapMarks(manuscriptRef, { annotations, awareness, file: computed(() => props.file) });
+  const { marks, computeMarks } = useMinimapMarks(manuscriptRef, {
+    annotations,
+    awareness,
+    reactions,
+    file: computed(() => props.file),
+  });
 
-  const compactMarks = ref([]);
-  if (isCompact.value) {
-    function computeCompactMarks() {
-      const manuscriptEl = manuscriptRef?.value;
-      const sectionMarks = computeSectionMarks(manuscriptEl);
-      if (!manuscriptEl) {
-        compactMarks.value = sectionMarks;
-        return;
-      }
-
-      // Also compute annotation marks by finding their anchor node in the DOM
-      const el = manuscriptEl.$el || manuscriptEl;
-      const container = el.closest(".inner.right") || el;
-      const annList = annotations && isRef(annotations) ? annotations.value : annotations;
-      const annMarks = [];
-      if (Array.isArray(annList) && container) {
-        const scrollHeight = container.scrollHeight || 1;
-        const containerRect = container.getBoundingClientRect();
-        for (const ann of annList) {
-          if (!ann.anchor_data?.node_id) continue;
-          const block = el.querySelector(`[data-nodeid="${ann.anchor_data.node_id}"]`);
-          if (!block) continue;
-          const blockRect = block.getBoundingClientRect();
-          const top = (blockRect.top - containerRect.top + container.scrollTop) / scrollHeight;
-          const colorName = ann.color || "purple";
-          annMarks.push({
-            top: Math.max(0, Math.min(1, top)),
-            color: `var(--${colorName}-600)`,
-            type: "annotation",
-            id: `ann-${ann.id}`,
-          });
-        }
-      }
-
-      // Feedback (reaction) marks by finding their node in the hidden DOM
-      const rxnList = reactions && isRef(reactions) ? reactions.value : reactions;
-      const fbMarks = [];
-      if (Array.isArray(rxnList) && container) {
-        const scrollHeight = container.scrollHeight || 1;
-        const containerRect = container.getBoundingClientRect();
-        for (const rxn of rxnList) {
-          if (!rxn.node_id) continue;
-          const block = el.querySelector(`[data-nodeid="${rxn.node_id}"]`);
-          if (!block) continue;
-          const blockRect = block.getBoundingClientRect();
-          const top = (blockRect.top - containerRect.top + container.scrollTop) / scrollHeight;
-          fbMarks.push({
-            top: Math.max(0, Math.min(1, top)),
-            color: FEEDBACK_COLORS[rxn.reaction_type] || "var(--gray-500)",
-            type: "feedback",
-            id: `feedback-${rxn.node_id}`,
-            label: rxn.reaction_type?.charAt(0).toUpperCase() + rxn.reaction_type?.slice(1),
-          });
-        }
-      }
-
-      compactMarks.value = [...sectionMarks, ...annMarks, ...fbMarks];
-    }
-
-    watch(() => manuscriptRef?.value, async () => {
-      await nextTick();
-      computeCompactMarks();
-    }, { immediate: true });
-    if (annotations) {
-      watch(annotations, computeCompactMarks, { deep: true });
-    }
-    if (reactions) {
-      watch(reactions, computeCompactMarks, { deep: true });
-    }
-  }
-
-  const allMarks = computed(() => (isCompact.value ? compactMarks.value : marks.value));
+  const allMarks = computed(() => marks.value);
   const sectionMarks = computed(() => allMarks.value.filter((m) => m.type === "section"));
   const annotationMarks = computed(() => allMarks.value.filter((m) => m.type === "annotation"));
   const searchMarks = computed(() => allMarks.value.filter((m) => m.type === "search"));
@@ -176,9 +103,15 @@
     isDragging.value = false;
   }
 
+  const emit = defineEmits(["mark-click"]);
+
   function onMarkClick(event, mark) {
     event.stopPropagation();
-    if (isCompact.value || !scrollContainer.value) return;
+    if (isCompact.value) {
+      emit("mark-click", mark);
+      return;
+    }
+    if (!scrollContainer.value) return;
     const sh = scrollContainer.value.scrollHeight;
     const ch = scrollContainer.value.clientHeight;
     scrollContainer.value.scrollTo({
@@ -608,7 +541,8 @@
 
   /* No pointer/click interaction in compact mode */
   .scrollbar-minimap.compact .mm-section,
-  .scrollbar-minimap.compact .mm-annotation {
-    cursor: default;
+  .scrollbar-minimap.compact .mm-annotation,
+  .scrollbar-minimap.compact .mm-figure {
+    cursor: pointer;
   }
 </style>

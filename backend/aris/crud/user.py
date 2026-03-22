@@ -277,6 +277,21 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
                 "role": row[5].value,
             })
 
+    # Batch-load reactions for all files
+    reactions_by_file: dict[int, list[dict]] = {doc.id: [] for doc in docs}
+    if docs:
+        from ..models.models import Reaction
+        rxn_stmt = (
+            select(Reaction.file_id, Reaction.node_id, Reaction.reaction_type)
+            .where(Reaction.file_id.in_(file_ids))
+        )
+        rxn_result = await db.execute(rxn_stmt)
+        for row in rxn_result.all():
+            reactions_by_file[row[0]].append({
+                "node_id": row[1],
+                "reaction_type": row[2],
+            })
+
     return [
         {
             "id": doc.id,
@@ -288,6 +303,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
             "role": roles[doc].value,
             "tags": tags.get(doc, []),
             "collaborators": collaborators_by_file.get(doc.id, []),
+            "reactions": reactions_by_file.get(doc.id, []),
         }
         for doc in docs
     ]

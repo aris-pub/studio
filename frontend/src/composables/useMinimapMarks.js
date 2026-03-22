@@ -46,7 +46,7 @@ export function computeSectionMarks(manuscriptEl) {
 }
 
 export function useMinimapMarks(manuscriptRef, options = {}) {
-  const { annotations, awareness, file } = options;
+  const { annotations, awareness, file, reactions } = options;
   const marks = ref([]);
   let observer = null;
 
@@ -104,9 +104,9 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       });
     }
 
-    // Feedback icons
+    // Feedback icons (from live FeedbackIcon state, or from backend reactions data)
     const fileVal = file && isRef(file) ? file.value : file;
-    if (fileVal?.icons) {
+    if (fileVal?.icons && Object.keys(fileVal.icons).length > 0) {
       for (const [iconId, entry] of Object.entries(fileVal.icons)) {
         if (!entry.element) continue;
         const label = entry.class.charAt(0).toUpperCase() + entry.class.slice(1);
@@ -117,6 +117,23 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
           id: `feedback-${iconId}`,
           label,
         });
+      }
+    } else {
+      const rxnList = reactions && isRef(reactions) ? reactions.value : reactions;
+      if (Array.isArray(rxnList)) {
+        for (const rxn of rxnList) {
+          if (!rxn.node_id) continue;
+          const block = el.querySelector(`[data-nodeid="${rxn.node_id}"]`);
+          if (!block) continue;
+          const label = rxn.reaction_type?.charAt(0).toUpperCase() + rxn.reaction_type?.slice(1);
+          result.push({
+            top: measureElement(block, container),
+            color: FEEDBACK_COLORS[rxn.reaction_type] || "var(--gray-500)",
+            type: "feedback",
+            id: `feedback-${rxn.node_id}`,
+            label,
+          });
+        }
       }
     }
 
@@ -217,6 +234,11 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       },
       { deep: true }
     );
+  }
+
+  // Watch reactions (backend-persisted feedback, used when FeedbackIcon isn't mounted)
+  if (reactions) {
+    watch(reactions, () => computeMarks(), { deep: true });
   }
 
   // Watch file.html changes

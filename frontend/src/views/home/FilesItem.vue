@@ -53,6 +53,13 @@
 
   // File menu callbacks
   const open = () => File.openFile(file.value, router);
+  const onMarkClick = (mark) => {
+    // Extract the HTML element id from the mark id (e.g. "section-sec-1" → "sec-1")
+    const elementId = mark.id?.replace(/^(section|figure|ann|feedback)-/, "") || "";
+    const hash = elementId ? `#${elementId}` : "";
+    File.markSeen(file.value);
+    router.push(`/file/${file.value.id}${hash}`);
+  };
   const menuRef = useTemplateRef("menu-ref");
   const fileTitleRef = useTemplateRef("file-title-ref");
   const onRename = () => fileTitleRef.value?.startEditing();
@@ -201,7 +208,7 @@
 
       <template v-if="!xsMode">
         <div class="minimap-cell">
-          <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" />
+          <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" @mark-click="onMarkClick" />
         </div>
         <TagRow :file="file" />
         <div class="spacer"></div>

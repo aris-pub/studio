@@ -26,6 +26,7 @@ export class File {
       last_edited_at: rawData.last_edited_at || new Date().toISOString(),
       tags: rawData.tags || [],
       collaborators: rawData.collaborators || [],
+      reactions: rawData.reactions || [],
       minimap: rawData.minimap || null,
       ownerId: rawData.owner_id || null,
       role: rawData.role || null,
