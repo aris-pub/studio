@@ -610,6 +610,5 @@
   .scrollbar-minimap.compact .mm-section,
   .scrollbar-minimap.compact .mm-annotation {
     cursor: default;
-    pointer-events: none;
   }
 </style>
