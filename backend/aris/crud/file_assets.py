@@ -88,7 +88,27 @@ class FileAssetDB:
 
     @staticmethod
     async def create_asset(payload: FileAssetCreate, user_id: int, db: AsyncSession) -> FileAsset:
-        """Create a new file asset"""
+        """Create a new file asset, replacing any soft-deleted asset with the same filename."""
+        # If a soft-deleted asset with this filename exists, reuse the row
+        # to satisfy the UNIQUE(file_id, filename) constraint.
+        result = await db.execute(
+            select(FileAsset).where(
+                FileAsset.file_id == payload.file_id,
+                FileAsset.filename == payload.filename,
+                FileAsset.deleted_at.isnot(None),
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.content = payload.content
+            existing.mime_type = payload.mime_type
+            existing.content_encoding = payload.content_encoding
+            existing.owner_id = user_id
+            existing.deleted_at = None
+            await db.commit()
+            await db.refresh(existing)
+            return existing
+
         new_asset = FileAsset(
             filename=payload.filename,
             mime_type=payload.mime_type,
