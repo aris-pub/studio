@@ -317,7 +317,7 @@ async def test_create_file_missing_required_fields(client: AsyncClient, authenti
 # Download endpoint tests
 async def test_download_file_without_auth(client: AsyncClient):
     """Test that download endpoint requires authentication."""
-    response = await client.get("/files/1/download")
+    response = await client.post("/files/1/download")
     assert response.status_code == 401
 
 
@@ -339,7 +339,7 @@ async def test_download_file_success(client: AsyncClient, authenticated_user):
     file_id = create_response.json()["id"]
 
     # Download the file
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "attachment; filename=" in response.headers["content-disposition"]
@@ -368,7 +368,7 @@ async def test_download_file_returns_complete_html_document(client: AsyncClient,
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
     # Must be a complete HTML document with html, head, and body tags
@@ -400,7 +400,7 @@ async def test_download_file_permission_denied(client: AsyncClient, authenticate
     file_id = create_response.json()["id"]
 
     # Try to download with secondary user
-    response = await client.get(f"/files/{file_id}/download", headers=headers_secondary)
+    response = await client.post(f"/files/{file_id}/download", headers=headers_secondary)
     assert response.status_code == 403
     assert response.json()["detail"] == "Access denied"
 
@@ -426,7 +426,7 @@ async def test_download_file_uses_cdn_urls(client: AsyncClient, authenticated_us
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
     # Should NOT use /static/ paths (these fail when opened locally)
@@ -454,7 +454,7 @@ async def test_download_file_uses_correct_jquery_version(client: AsyncClient, au
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
     # Must use exact jQuery version to match bundled version
@@ -477,7 +477,7 @@ async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authentic
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
     # Should use Tooltipster 4.x from CDN
@@ -548,7 +548,7 @@ Here is the interactive chart:
     assert update_response.status_code == 200
 
     # Download the file
-    response = await client.get(f"/files/{file_id}/download", headers=headers)
+    response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
     # The asset content MUST be embedded in the downloaded HTML
@@ -566,7 +566,7 @@ Here is the interactive chart:
 
 async def test_download_pdf_without_auth(client: AsyncClient):
     """Test that PDF download endpoint requires authentication."""
-    response = await client.get("/files/1/download/pdf")
+    response = await client.post("/files/1/download/pdf")
     assert response.status_code == 401
 
 
@@ -587,7 +587,7 @@ async def test_download_pdf_permission_denied(client: AsyncClient, authenticated
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download/pdf", headers=headers_secondary)
+    response = await client.post(f"/files/{file_id}/download/pdf", headers=headers_secondary)
     assert response.status_code == 403
 
 
@@ -608,7 +608,7 @@ async def test_download_pdf_success(client: AsyncClient, authenticated_user):
     )
     file_id = create_response.json()["id"]
 
-    response = await client.get(f"/files/{file_id}/download/pdf", headers=headers)
+    response = await client.post(f"/files/{file_id}/download/pdf", headers=headers)
     assert response.status_code == 200
     assert "application/pdf" in response.headers["content-type"]
     assert "attachment; filename=" in response.headers["content-disposition"]

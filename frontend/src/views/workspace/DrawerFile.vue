@@ -9,7 +9,13 @@
   const user = inject("user");
   const file = inject("file");
   const fileStore = inject("fileStore");
+  const cmView = inject("cmView", ref(null));
   const router = useRouter();
+
+  function getCurrentSource() {
+    if (cmView.value) return cmView.value.state.doc.toString();
+    return file.value?.source || "";
+  }
 
   const isDownloading = ref(false);
   const isDownloadingPdf = ref(false);
@@ -28,11 +34,18 @@
     if (isDownloading.value || !fileId.value) return;
     isDownloading.value = true;
     try {
+      const source = getCurrentSource();
+      if (source) {
+        await api.put(`/files/${fileId.value}`, { source });
+      }
+
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".html";
-      const response = await api.get(`/files/${fileId.value}/download`, {
-        responseType: "blob",
-      });
+      const response = await api.post(
+        `/files/${fileId.value}/download`,
+        {},
+        { responseType: "blob" },
+      );
       const blob = new Blob([response.data], { type: "text/html" });
       downloadBlob(blob, filename);
     } catch (error) {
@@ -46,12 +59,20 @@
     if (isDownloadingPdf.value || !fileId.value) return;
     isDownloadingPdf.value = true;
     try {
+      // Persist editor source to DB before generating PDF so the backend
+      // uses the same source the user sees, including any unsaved edits.
+      const source = getCurrentSource();
+      if (source) {
+        await api.put(`/files/${fileId.value}`, { source });
+      }
+
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";
-      const response = await api.get(`/files/${fileId.value}/download/pdf`, {
-        responseType: "blob",
-        timeout: 120000,
-      });
+      const response = await api.post(
+        `/files/${fileId.value}/download/pdf`,
+        {},
+        { responseType: "blob", timeout: 120000 },
+      );
       const blob = new Blob([response.data], { type: "application/pdf" });
       downloadBlob(blob, filename);
     } catch (error) {
@@ -118,9 +139,9 @@
           <Icon name="ChevronRight" class="action-chevron" />
         </button>
         <button class="action-row" :disabled="isDownloadingPdf" @click="onDownloadPdf">
-          <Icon name="FileTypePdf" />
-          <span class="action-label">Download PDF</span>
-          <Icon name="ChevronRight" class="action-chevron" />
+          <Icon :name="isDownloadingPdf ? 'Loader2' : 'FileTypePdf'" :class="{ spinning: isDownloadingPdf }" />
+          <span class="action-label">{{ isDownloadingPdf ? "Generating PDF…" : "Download PDF" }}</span>
+          <Icon v-if="!isDownloadingPdf" name="ChevronRight" class="action-chevron" />
         </button>
       </template>
     </Section>
@@ -203,6 +224,15 @@
 
   .action-chevron {
     color: var(--text-subtle);
+  }
+
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .action-row--danger {

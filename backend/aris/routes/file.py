@@ -663,6 +663,11 @@ async def get_file_section(
 
 
 
+class _ExportBody(BaseModel):
+    """Optional request body for export routes — provides live editor source."""
+    source: str = ""
+
+
 class _AssetBody(BaseModel):
     """Request body for uploading a file asset (file_id comes from the URL path)."""
 
@@ -766,29 +771,19 @@ async def delete_asset_for_file(
     return {"message": f"Asset {asset_id} deleted"}
 
 
-@router.get("/{file_id}/download/pdf")
+@router.post("/{file_id}/download/pdf")
 async def download_file_pdf(
     file_id: int,
+    body: _ExportBody = None,
     user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Download file as a PDF document via Typst.
 
-    Parameters
-    ----------
-    file_id : int
-        The unique identifier of the file to download.
-
-    Returns
-    -------
-    Response
-        PDF document with Content-Disposition attachment header.
-
-    Raises
-    ------
-    HTTPException
-        404 if file not found, 500 if PDF generation fails.
+    Accepts an optional JSON body with ``source`` containing the live editor
+    content.  When omitted, falls back to the Y.js collaboration client or the
+    database.
     """
     import asyncio
     import os
@@ -800,13 +795,25 @@ async def download_file_pdf(
 
     await file_service.sync_from_database(db)
     file_data = await file_service.get_file(file_id)
-    if not file_data or not file_data.source:
+    if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
+
+    # Priority: request body > Y.js client > DB
+    source = (body.source if body and body.source else None)
+    if not source:
+        manager = get_collaboration_manager()
+        client = manager.clients.get(file_id)
+        if client and client.text and len(client.text) > 0:
+            source = str(client.text)
+    if not source:
+        source = file_data.source
+    if not source:
+        raise HTTPException(status_code=404, detail="File has no content")
 
     try:
         typst_source = await asyncio.to_thread(
             rsm_pandoc_export,
-            file_data.source,
+            source,
             to_format="typst",
         )
     except Exception as e:
@@ -862,8 +869,9 @@ async def download_file_pdf(
         if result.returncode != 0 and result.stderr:
             import re as _re
             fixed_source = typst_source
-            # Find all files that failed to parse and replace their image() calls
-            for m in _re.finditer(r'/([^\s/:]+\.\w+):', result.stderr):
+            # Match filenames from Typst errors like:
+            #   "searched at /tmp/.../file.svg)"  or  "/file.svg:"
+            for m in _re.finditer(r'/([^\s/]+\.\w+)[):\s]', result.stderr):
                 bad_file = m.group(1)
                 fixed_source = fixed_source.replace(
                     f'image("{bad_file}")',
@@ -883,7 +891,14 @@ async def download_file_pdf(
                 pass
 
         if not os.path.exists(pdf_path):
-            raise HTTPException(status_code=422, detail="PDF compilation produced no output")
+            stderr = getattr(result, 'stderr', '') or ''
+            # Filter out font warnings to show actual errors
+            error_lines = [l for l in stderr.splitlines() if 'error' in l.lower() and 'unknown font' not in l.lower()]
+            error_msg = '\n'.join(error_lines[:10]) if error_lines else stderr[:1000]
+            raise HTTPException(
+                status_code=422,
+                detail=f"PDF compilation failed: {error_msg}" if error_msg else "PDF compilation produced no output",
+            )
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
@@ -899,64 +914,49 @@ async def download_file_pdf(
     )
 
 
-@router.get("/{file_id}/download")
+@router.post("/{file_id}/download")
 async def download_file(
     file_id: int,
+    body: _ExportBody = None,
     user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Download file as a complete standalone HTML document.
 
-    Parameters
-    ----------
-    file_id : int
-        The unique identifier of the file to download.
-    user_role : FileRole
-        User's role for permission checking (injected by require_view).
-    file_service : InMemoryFileService
-        File service dependency.
-    db : AsyncSession
-        SQLAlchemy async database session dependency.
-
-    Returns
-    -------
-    Response
-        Complete HTML document for download with proper Content-Disposition header.
-
-    Raises
-    ------
-    HTTPException
-        404 error if file is not found or has been deleted.
-        403 error if user lacks VIEW permission.
-
-    Notes
-    -----
-    Requires authentication and VIEW permission. Uses rsm.build() to generate a complete HTML document
-    with all necessary CSS/JS includes for standalone viewing.
-    File is downloaded with .html extension using the file's title as filename.
+    Accepts an optional JSON body with ``source`` containing the live editor
+    content.  When omitted, falls back to the Y.js collaboration client or the
+    database.
     """
     import asyncio
     import re
 
     import rsm
 
-    # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
-
-    # Get file data for source
     file_data = await file_service.get_file(file_id)
-    if not file_data or not file_data.source:
+    if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
+
+    # Priority: request body > Y.js client > DB
+    source = (body.source if body and body.source else None)
+    if not source:
+        manager = get_collaboration_manager()
+        client = manager.clients.get(file_id)
+        if client and client.text and len(client.text) > 0:
+            source = str(client.text)
+    if not source:
+        source = file_data.source
+    if not source:
+        raise HTTPException(status_code=404, detail="File has no content")
 
     # Create asset resolver to load file assets from database
     from ..services.asset_resolver import FileAssetResolver
     asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
 
-    # Use rsm.build() with standalone=True to generate complete HTML document with CDN URLs
     html = await asyncio.to_thread(
         rsm.build,
-        file_data.source,
+        source,
         handrails=False,
         lint=False,
         standalone=True,

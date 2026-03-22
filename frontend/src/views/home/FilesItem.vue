@@ -76,17 +76,16 @@
       const title = file.value.title || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".html";
 
-      // Use axios to fetch with authentication headers
-      const response = await api.get(`/files/${file.value.id}/download`, {
-        responseType: "blob",
-      });
+      const response = await api.post(
+        `/files/${file.value.id}/download`,
+        {},
+        { responseType: "blob" },
+      );
 
-      // Create blob and download using utility
       const blob = new Blob([response.data], { type: "text/html" });
       downloadBlob(blob, filename);
     } catch (error) {
       console.error("Download failed:", error);
-      // Could add user notification here if needed
     }
   };
 
@@ -97,10 +96,11 @@
       const title = file.value.title || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";
 
-      const response = await api.get(`/files/${file.value.id}/download/pdf`, {
-        responseType: "blob",
-        timeout: 120000,
-      });
+      const response = await api.post(
+        `/files/${file.value.id}/download/pdf`,
+        {},
+        { responseType: "blob", timeout: 120000 },
+      );
 
       const blob = new Blob([response.data], { type: "application/pdf" });
       downloadBlob(blob, filename);
