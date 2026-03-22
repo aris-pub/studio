@@ -1,6 +1,6 @@
 <script setup>
   import { ref, inject, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from "vue";
-  import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
+  import { HIGHLIGHT_COLORS, SWATCH_COLORS } from "@/constants/annotationColors.js";
   import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
 
@@ -93,6 +93,24 @@
     } catch (err) {
       console.error("Failed to post reply:", err);
     }
+  }
+
+  const showColorPicker = ref(false);
+
+  const emit = defineEmits(["resize"]);
+
+  function toggleColorPicker() {
+    showColorPicker.value = !showColorPicker.value;
+    if (showColorPicker.value && collapsed.value) {
+      collapsed.value = false;
+    }
+    nextTick(() => emit("resize"));
+  }
+
+  async function onChangeColor(colorName) {
+    if (!annotationActions) return;
+    await annotationActions.updateAnnotation(props.annotation.id, { color: colorName });
+    showColorPicker.value = false;
   }
 
   const barColor = computed(() => {
@@ -311,6 +329,7 @@
           size="xs"
           :icon="confirmingShare ? '' : 'MessageShare'"
           :text="confirmingShare ? 'Share' : ''"
+          :title="confirmingShare ? 'Confirm share' : 'Share'"
           :aria-label="confirmingShare ? 'Confirm share' : 'Share annotation'"
           @click.stop="onShareClick"
         />
@@ -318,7 +337,17 @@
           v-if="isOwnAnnotation"
           kind="tertiary"
           size="xs"
+          icon="Highlight"
+          title="Color"
+          aria-label="Change color"
+          @click.stop="toggleColorPicker"
+        />
+        <Button
+          v-if="isOwnAnnotation"
+          kind="tertiary"
+          size="xs"
           icon="Edit"
+          title="Edit"
           aria-label="Edit annotation"
           @click.stop="onEdit"
         />
@@ -328,6 +357,7 @@
           size="xs"
           icon="CircleCheck"
           class="resolve-btn"
+          title="Resolve"
           aria-label="Resolve annotation"
           @click.stop="onDelete"
         />
@@ -337,6 +367,7 @@
           size="xs"
           :icon="confirmingDelete ? '' : 'Trash'"
           :text="confirmingDelete ? 'Delete' : ''"
+          :title="confirmingDelete ? 'Confirm delete' : 'Delete'"
           class="delete-btn"
           :aria-label="confirmingDelete ? 'Confirm delete' : 'Delete annotation'"
           @click.stop="onDeleteClick"
@@ -346,10 +377,25 @@
           kind="tertiary"
           size="xs"
           :icon="collapsed ? 'ChevronDown' : 'ChevronUp'"
+          :title="collapsed ? 'Expand' : 'Collapse'"
           :aria-label="collapsed ? 'Expand annotation' : 'Collapse annotation'"
           @click.stop="toggleCollapse"
         />
       </div>
+    </div>
+
+    <div v-if="showColorPicker" class="color-picker" @click.stop>
+      <button
+        v-for="(color, name) in SWATCH_COLORS"
+        :key="name"
+        type="button"
+        class="swatch-btn"
+        :class="{ active: annotation.color === name }"
+        :aria-label="`Change to ${name}`"
+        @click="onChangeColor(name)"
+      >
+        <span class="swatch-circle" :style="{ backgroundColor: color }" />
+      </button>
     </div>
 
     <p v-if="collapsed" class="collapsed-line note-text" v-html="highlightMatch(previewText)"></p>
@@ -430,7 +476,7 @@
   .note {
     border: none;
     border-left: 2px solid var(--note-color);
-    border-radius: 0;
+    border-radius: 0 8px 8px 0;
     padding: 4px 8px 6px;
     background-color: transparent;
     position: relative;
@@ -782,5 +828,48 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .color-picker {
+    display: flex;
+    gap: 2px;
+    padding: 2px 6px 4px;
+  }
+
+  .color-picker .swatch-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .color-picker .swatch-btn:hover {
+    background-color: var(--blue-100);
+  }
+
+  .color-picker .swatch-btn.active {
+    outline: 2px solid var(--border-action);
+    outline-offset: 1px;
+  }
+
+  .color-picker .swatch-btn:focus-visible {
+    outline: 2px solid var(--border-action);
+    outline-offset: 2px;
+  }
+
+  .color-picker .swatch-circle {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: var(--border-extrathin) solid var(--gray-800);
+    pointer-events: none;
   }
 </style>

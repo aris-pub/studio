@@ -230,23 +230,54 @@
   // Scroll-direction hysteresis
   const lastScrollTop = ref(0);
   const scrollingDown = ref(false);
+  let scrollRafId = null;
   function onManuscriptScroll() {
-    if (!innerRef.value) return;
-    const st = innerRef.value.scrollTop;
-    scrollingDown.value = st > lastScrollTop.value;
-    lastScrollTop.value = st;
-    updateTopbarHeight();
+    if (scrollRafId) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
+      if (!innerRef.value) return;
+      const st = innerRef.value.scrollTop;
+      scrollingDown.value = st > lastScrollTop.value;
+      lastScrollTop.value = st;
+      updateTopbarHeight();
+      updateSectionBreadcrumb();
+    });
   }
   onMounted(() => {
     innerRef.value?.addEventListener("scroll", onManuscriptScroll, { passive: true });
   });
   onUnmounted(() => {
     innerRef.value?.removeEventListener("scroll", onManuscriptScroll);
+    if (scrollRafId) cancelAnimationFrame(scrollRafId);
   });
 
   // Section breadcrumb: track the current visible section heading
   const currentSection = ref("");
   const activeSections = ref([]);
+  // Temporary debug — remove after fixing
+  window.__debugBreadcrumb = () => {
+    const el = manuscriptRef.value?.$el;
+    const inner = innerRef.value;
+    console.log("[breadcrumb] manuscriptRef.$el:", !!el);
+    console.log("[breadcrumb] innerRef:", !!inner);
+    if (!el || !inner) return;
+    const containerRect = inner.getBoundingClientRect();
+    const threshold = containerRect.top + 60;
+    console.log("[breadcrumb] containerRect.top:", containerRect.top, "threshold:", threshold);
+    const sections = el.querySelectorAll("section[class*='level-']");
+    console.log("[breadcrumb] sections found:", sections.length);
+    for (const section of sections) {
+      const heading = section.querySelector(":scope > .heading.hr .hr-content-zone :is(h1,h2,h3,h4,h5,h6)");
+      if (!heading) {
+        console.log("[breadcrumb] section missing heading:", section.className, section.id);
+        continue;
+      }
+      const rect = heading.getBoundingClientRect();
+      console.log("[breadcrumb]", heading.textContent.trim().slice(0, 30), "top:", rect.top, rect.top <= threshold ? "✓" : "✗");
+    }
+    console.log("[breadcrumb] currentSection:", currentSection.value);
+  };
+
   function updateSectionBreadcrumb() {
     if (!manuscriptRef.value?.$el || !innerRef.value) return;
     const el = manuscriptRef.value.$el;
@@ -304,12 +335,20 @@
       updateSectionBreadcrumb();
     }
   );
-  onMounted(() => {
-    innerRef.value?.addEventListener("scroll", updateSectionBreadcrumb, { passive: true });
-  });
-  onUnmounted(() => {
-    innerRef.value?.removeEventListener("scroll", updateSectionBreadcrumb);
-  });
+  watch(
+    () => file.value?.html,
+    async () => {
+      await nextTick();
+      await nextTick();
+      updateTopbarHeight();
+      updateSectionBreadcrumb();
+      // DOM may still be settling after VNode re-render
+      setTimeout(() => {
+        updateTopbarHeight();
+        updateSectionBreadcrumb();
+      }, 100);
+    }
+  );
 
   // Keyboard shortcuts
   registerAsFallback(manuscriptRef);

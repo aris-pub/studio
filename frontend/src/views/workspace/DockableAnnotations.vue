@@ -215,6 +215,7 @@
       :search-match-current="searchCurrentMarginaliaId === ann.id"
       :search-query="searchQueryForMarginalia"
       :data-card-id="ann.id"
+      @resize="refinePositions"
       :style="
         aligned && cardPositions.get(ann.id) != null
           ? {

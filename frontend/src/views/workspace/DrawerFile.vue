@@ -34,10 +34,8 @@
     if (isDownloading.value || !fileId.value) return;
     isDownloading.value = true;
     try {
-      const source = getCurrentSource();
-      if (source) {
-        await api.put(`/files/${fileId.value}`, { source });
-      }
+      // Flush Y.js content to DB before export (non-competing path)
+      await api.post(`/files/${fileId.value}/collab/flush`).catch(() => {});
 
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".html";
@@ -59,12 +57,8 @@
     if (isDownloadingPdf.value || !fileId.value) return;
     isDownloadingPdf.value = true;
     try {
-      // Persist editor source to DB before generating PDF so the backend
-      // uses the same source the user sees, including any unsaved edits.
-      const source = getCurrentSource();
-      if (source) {
-        await api.put(`/files/${fileId.value}`, { source });
-      }
+      // Flush Y.js content to DB before export (non-competing path)
+      await api.post(`/files/${fileId.value}/collab/flush`).catch(() => {});
 
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";

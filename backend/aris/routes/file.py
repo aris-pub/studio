@@ -356,6 +356,20 @@ async def collab_stop(file_id: int):
     return {"status": "ok"}
 
 
+@router.post("/{file_id}/collab/flush")
+async def collab_flush(file_id: int):
+    """Flush the Y.js client's content to the database immediately.
+
+    Called before export to ensure the DB has the latest content without
+    competing with the Y.js save loop.
+    """
+    manager = get_collaboration_manager()
+    client = manager.clients.get(file_id)
+    if client and client.text:
+        await client._save_to_db(force=True)
+    return {"status": "ok"}
+
+
 @router.put("/{file_id}")
 async def update_file(
     file_id: int,

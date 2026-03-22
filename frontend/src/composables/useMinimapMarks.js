@@ -101,6 +101,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
         type: "annotation",
         id: `ann-${annId}`,
         label,
+        visibility: ann?.visibility || "private",
       });
     }
 

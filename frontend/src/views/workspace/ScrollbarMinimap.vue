@@ -1,7 +1,7 @@
 <script setup>
   import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
-  import { IconMessageFilled } from "@tabler/icons-vue";
+  import { IconNote, IconMessages } from "@tabler/icons-vue";
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);
@@ -201,7 +201,7 @@
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
     >
-      <IconMessageFilled :size="isCompact ? 10 : 20" />
+      <component :is="mark.visibility === 'shared' ? IconMessages : IconNote" :size="isCompact ? 10 : 20" :style="{ color: mark.color }" />
     </div>
 
     <!-- Feedback dots -->
