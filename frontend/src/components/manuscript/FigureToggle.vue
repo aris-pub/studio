@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, watch, useTemplateRef, inject, onMounted, nextTick } from "vue";
+  import { ref, watch, useTemplateRef, inject, onMounted, onUnmounted, nextTick } from "vue";
   import SegmentedControl from "@/components/forms/SegmentedControl.vue";
 
   const selfRef = useTemplateRef("self-ref");
@@ -10,10 +10,12 @@
   const staticSvg = ref(null);
   const loading = ref(false);
   const mounted = ref(false);
+  const hrHovered = ref(false);
 
   let figureEl = null;
   let staticPath = null;
   let originalChildren = null;
+  let hrEl = null;
 
   async function fetchStatic() {
     if (staticSvg.value || loading.value || !staticPath) return;
@@ -93,12 +95,30 @@
       infoZone.style.justifyContent = "flex-start";
       infoZone.appendChild(selfRef.value);
     }
+
+    // Track handrail hover for opacity fade
+    hrEl = figureEl.querySelector("figcaption.hr") || figureEl.closest(".hr");
+    if (hrEl) {
+      hrEl.addEventListener("mouseenter", onHrEnter);
+      hrEl.addEventListener("mouseleave", onHrLeave);
+    }
+
     mounted.value = true;
+  });
+
+  function onHrEnter() { hrHovered.value = true; }
+  function onHrLeave() { hrHovered.value = false; }
+
+  onUnmounted(() => {
+    if (hrEl) {
+      hrEl.removeEventListener("mouseenter", onHrEnter);
+      hrEl.removeEventListener("mouseleave", onHrLeave);
+    }
   });
 </script>
 
 <template>
-  <div ref="self-ref" class="figure-toggle" :class="{ visible: mounted }">
+  <div ref="self-ref" class="figure-toggle" :class="{ visible: mounted, bright: hrHovered }">
     <SegmentedControl
       v-model="mode"
       :icons="['PlayerPlay', 'Photo']"
@@ -113,10 +133,14 @@
 <style scoped>
   .figure-toggle {
     opacity: 0;
-    transition: opacity var(--transition-duration, 0.3s) ease;
+    transition: opacity 0.15s ease-in-out;
   }
 
   .figure-toggle.visible {
+    opacity: 0.55;
+  }
+
+  .figure-toggle.visible.bright {
     opacity: 1;
   }
 
