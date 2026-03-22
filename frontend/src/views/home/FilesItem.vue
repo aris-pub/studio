@@ -260,7 +260,7 @@
     position: relative;
 
     color: var(--extra-dark);
-    overflow-y: visible;
+    overflow-y: clip;
     transition: var(--transition-bg-color);
     &:focus {
       outline: none;
@@ -305,6 +305,7 @@
       gap: 6px;
       overflow: hidden;
       position: relative;
+      min-width: 0;
     }
 
     & .title-cell.unseen::before {

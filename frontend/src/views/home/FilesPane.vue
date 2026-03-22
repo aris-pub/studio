@@ -140,7 +140,6 @@
     flex: 1;
   }
 
-  .pane-header,
   .files {
     overflow-y: auto;
     scrollbar-gutter: stable;
@@ -154,7 +153,7 @@
 
   .pane-header > *,
   .files .item > * {
-    overflow-x: auto;
+    overflow-x: hidden;
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
