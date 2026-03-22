@@ -187,7 +187,9 @@
 
       // Tell the backend to start its Y.js client for this file
       activeCollabFileId.value = fileId;
-      api.post(`/files/${fileId}/collab/start`).catch(() => {});
+      api.post(`/files/${fileId}/collab/start`).catch((err) => {
+        console.error(`[Collab] Failed to start backend client for file ${fileId}:`, err?.response?.status, err?.response?.data || err.message);
+      });
 
       // Log WebSocket errors only
       provider.value.ws?.addEventListener("error", (error) => {

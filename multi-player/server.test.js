@@ -1,149 +1,149 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
+import { handleDisconnect } from './server.js';
 
-describe('Multiplayer Server Cleanup Logic', () => {
-  let mockWss;
-  let mockDocs;
-  let setupWSConnection;
+/**
+ * Tests for the multiplayer server's room cleanup logic.
+ *
+ * The server distinguishes backend from frontend connections via a
+ * `?role=backend` query parameter.  Cleanup rules:
+ *
+ *   1. When the backend disconnects, do NOT touch frontends or the room.
+ *   2. When all frontends disconnect and only the backend remains, close
+ *      the backend and delete the room.
+ *   3. When a frontend disconnects but other frontends remain, do nothing.
+ *   4. When the last client (of any kind) disconnects, delete the room.
+ */
+
+function makeConn(role = 'frontend') {
+  const ws = new EventEmitter();
+  ws.close = vi.fn();
+  ws._role = role;
+  return ws;
+}
+
+describe('Room cleanup logic', () => {
+  let docs;
 
   beforeEach(() => {
-    // Mock the docs Map from y-websocket
-    mockDocs = new Map();
-
-    // Mock setupWSConnection
-    setupWSConnection = vi.fn();
-
-    // Mock WebSocketServer
-    mockWss = new EventEmitter();
-    mockWss.clients = new Set();
+    docs = new Map();
   });
 
-  it('should close backend client when only 1 client remains in room', () => {
-    // Setup: 2 clients in a room
-    const docName = 'file-123';
-    const client1 = new EventEmitter();
-    const client2 = new EventEmitter();
-    client2.close = vi.fn();
+  // -- CRITICAL: the bug that destroyed data ----------------------------------
+  it('backend disconnects first (hot-reload) — frontends stay alive', () => {
+    const docName = 'file-322-dev';
+    const backend = makeConn('backend');
+    const frontend = makeConn('frontend');
 
-    const mockDoc = {
-      conns: new Map([
-        ['client1', client1],
-        ['client2', client2]
-      ])
-    };
-    mockDocs.set(docName, mockDoc);
+    const doc = { conns: new Map([[backend, new Set()], [frontend, new Set()]]) };
+    docs.set(docName, doc);
 
-    // Simulate client1 disconnecting
-    // After disconnect, only client2 (backend) remains
-    mockDoc.conns.delete('client1');
+    // Backend disconnects (hot-reload)
+    doc.conns.delete(backend);
+    handleDisconnect(backend, docName, docs);
 
-    // Trigger close handler logic
-    const remainingClients = mockDoc.conns.size;
-    if (remainingClients === 1) {
-      // Close the last remaining client (backend)
-      for (const conn of mockDoc.conns.values()) {
-        conn.close();
-      }
-      mockDocs.delete(docName);
-    }
-
-    // Verify backend client was closed
-    expect(client2.close).toHaveBeenCalled();
-    expect(mockDocs.has(docName)).toBe(false);
+    // Frontend must NOT be closed; room must NOT be deleted
+    expect(frontend.close).not.toHaveBeenCalled();
+    expect(docs.has(docName)).toBe(true);
+    expect(doc.conns.size).toBe(1);
   });
 
-  it('should NOT close clients when multiple clients remain', () => {
-    // Setup: 3 clients in a room
-    const docName = 'file-456';
-    const client1 = new EventEmitter();
-    const client2 = new EventEmitter();
-    const client3 = new EventEmitter();
-    client2.close = vi.fn();
-    client3.close = vi.fn();
+  // -- Normal cleanup: all frontends leave, backend is last -------------------
+  it('all frontends leave — backend is closed and room deleted', () => {
+    const docName = 'file-100-dev';
+    const backend = makeConn('backend');
+    const frontend = makeConn('frontend');
 
-    const mockDoc = {
-      conns: new Map([
-        ['client1', client1],
-        ['client2', client2],
-        ['client3', client3]
-      ])
-    };
-    mockDocs.set(docName, mockDoc);
+    const doc = { conns: new Map([[backend, new Set()], [frontend, new Set()]]) };
+    docs.set(docName, doc);
 
-    // Simulate client1 disconnecting
-    // After disconnect, 2 clients remain (still has frontend clients)
-    mockDoc.conns.delete('client1');
+    // Frontend disconnects
+    doc.conns.delete(frontend);
+    handleDisconnect(frontend, docName, docs);
 
-    // Trigger close handler logic
-    const remainingClients = mockDoc.conns.size;
-    if (remainingClients === 1) {
-      // This should NOT execute - we have 2 clients remaining
-      for (const conn of mockDoc.conns.values()) {
-        conn.close();
-      }
-      mockDocs.delete(docName);
-    }
-
-    // Verify no clients were closed
-    expect(client2.close).not.toHaveBeenCalled();
-    expect(client3.close).not.toHaveBeenCalled();
-    expect(mockDocs.has(docName)).toBe(true);
+    // Only backend remains — should be closed, room deleted
+    expect(backend.close).toHaveBeenCalledWith(4000, 'all-frontends-left');
+    expect(docs.has(docName)).toBe(false);
   });
 
-  it('should handle document with no conns gracefully', () => {
-    const docName = 'file-789';
-    const mockDoc = {
-      conns: new Map()
-    };
-    mockDocs.set(docName, mockDoc);
+  // -- Multiple frontends: one leaves, others stay ----------------------------
+  it('one frontend leaves, another stays — no cleanup', () => {
+    const docName = 'file-200-dev';
+    const backend = makeConn('backend');
+    const fe1 = makeConn('frontend');
+    const fe2 = makeConn('frontend');
 
-    // Trigger close handler logic with empty conns
-    const remainingClients = mockDoc.conns.size;
+    const doc = { conns: new Map([[backend, new Set()], [fe1, new Set()], [fe2, new Set()]]) };
+    docs.set(docName, doc);
 
-    // Should not crash, should just be 0
-    expect(remainingClients).toBe(0);
-    expect(mockDocs.has(docName)).toBe(true);
+    doc.conns.delete(fe1);
+    handleDisconnect(fe1, docName, docs);
+
+    expect(backend.close).not.toHaveBeenCalled();
+    expect(fe2.close).not.toHaveBeenCalled();
+    expect(docs.has(docName)).toBe(true);
+    expect(doc.conns.size).toBe(2);
   });
 
-  it('should handle missing document gracefully', () => {
-    const docName = 'file-999';
-    const doc = mockDocs.get(docName);
+  // -- Last frontend leaves after backend already gone ------------------------
+  it('last frontend leaves after backend already gone — room deleted', () => {
+    const docName = 'file-300-dev';
+    const frontend = makeConn('frontend');
 
-    // Should not crash when doc doesn't exist
-    expect(doc).toBeUndefined();
+    const doc = { conns: new Map([[frontend, new Set()]]) };
+    docs.set(docName, doc);
 
-    // Logic should handle this case
-    if (doc && doc.conns) {
-      // This won't execute
-      const remainingClients = doc.conns.size;
-      expect(remainingClients).toBe(0);
-    }
+    doc.conns.delete(frontend);
+    handleDisconnect(frontend, docName, docs);
 
-    // Test passes if no error thrown
-    expect(true).toBe(true);
+    expect(docs.has(docName)).toBe(false);
   });
 
-  it('should clean up document from docs Map when last client closes', () => {
-    const docName = 'file-cleanup';
-    const client = new EventEmitter();
-    client.close = vi.fn();
+  // -- No backend connected at all (e.g. collab/start failed) -----------------
+  it('two frontends, no backend — one leaves, other stays', () => {
+    const docName = 'file-400-dev';
+    const fe1 = makeConn('frontend');
+    const fe2 = makeConn('frontend');
 
-    const mockDoc = {
-      conns: new Map([['client', client]])
-    };
-    mockDocs.set(docName, mockDoc);
+    const doc = { conns: new Map([[fe1, new Set()], [fe2, new Set()]]) };
+    docs.set(docName, doc);
 
-    // Only 1 client, close it
-    const remainingClients = mockDoc.conns.size;
-    if (remainingClients === 1) {
-      for (const conn of mockDoc.conns.values()) {
-        conn.close();
-      }
-      mockDocs.delete(docName);
-    }
+    doc.conns.delete(fe1);
+    handleDisconnect(fe1, docName, docs);
 
-    // Verify document was removed from docs Map
-    expect(mockDocs.has(docName)).toBe(false);
-    expect(mockDocs.size).toBe(0);
+    expect(fe2.close).not.toHaveBeenCalled();
+    expect(docs.has(docName)).toBe(true);
+  });
+
+  it('two frontends, no backend — both leave — room deleted', () => {
+    const docName = 'file-400-dev';
+    const fe1 = makeConn('frontend');
+    const fe2 = makeConn('frontend');
+
+    const doc = { conns: new Map([[fe1, new Set()], [fe2, new Set()]]) };
+    docs.set(docName, doc);
+
+    doc.conns.delete(fe1);
+    handleDisconnect(fe1, docName, docs);
+
+    doc.conns.delete(fe2);
+    handleDisconnect(fe2, docName, docs);
+
+    expect(docs.has(docName)).toBe(false);
+  });
+
+  // -- Edge cases -------------------------------------------------------------
+  it('handles missing doc gracefully', () => {
+    const ws = makeConn('frontend');
+    expect(() => handleDisconnect(ws, 'nonexistent', docs)).not.toThrow();
+  });
+
+  it('handles doc with empty conns', () => {
+    const docName = 'file-500-dev';
+    docs.set(docName, { conns: new Map() });
+    const ws = makeConn('frontend');
+
+    handleDisconnect(ws, docName, docs);
+    expect(docs.has(docName)).toBe(false);
   });
 });

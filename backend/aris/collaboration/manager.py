@@ -60,10 +60,9 @@ class CollaborationManager:
 
         try:
             # Room name must match the frontend's convention:
-            # frontend uses VITE_ENV (default "dev"), backend uses ENV.
-            # Normalize LOCAL → dev so both join the same Y.js room.
-            raw_env = os.getenv("ENV", "dev").lower()
-            env = "dev" if raw_env == "local" else raw_env
+            # frontend uses VITE_ENV (default "local"), lowercased.
+            # Backend uses ENV. Both must produce the same room name.
+            env = os.getenv("ENV", "local").lower()
             websocket_url = f"{self.websocket_base_url}/file-{file_id}-{env}"
             logger.info(f"Starting YDocClient for file {file_id} at {websocket_url}")
 

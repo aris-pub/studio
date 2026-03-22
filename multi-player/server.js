@@ -1,7 +1,7 @@
 /**
  * RSM Studio Y.js WebSocket Server
  *
- * Pure WebSocket relay for Y.js synchronization with automatic backend cleanup.
+ * Pure WebSocket relay for Y.js synchronization with role-aware cleanup.
  * No persistence logic - backend connects as a peer/client to handle persistence.
  *
  * Architecture: Backend-as-Client Pattern
@@ -10,70 +10,101 @@
  * - Frontend clients: Connect, edit, disconnect
  * - Backend client: Always-on peer that persists changes to database
  *
- * Benefits:
- * - Server has no database/persistence logic
- * - Backend is just another Y.js client (same as frontend)
- * - All clients are treated equally by the server
- * - Backend handles persistence via Y.Doc observation
+ * Connection Roles:
+ * - Backend identifies itself via `?role=backend` query parameter
+ * - All other connections are treated as frontends
  *
  * Cleanup Logic:
- * - When a client disconnects, check remaining clients in that room
- * - If only 1 client remains, it MUST be the backend (frontend count = 0)
- * - Close that last client to clean up resources
+ * - When the backend disconnects (hot-reload, crash), leave frontends alone.
+ *   The CRDT keeps their editing working. Backend auto-reconnects.
+ * - When all frontends disconnect and only the backend remains, close the
+ *   backend (nothing to relay for) and delete the room.
+ * - When the last client of any kind disconnects, delete the room.
  */
 
 import { WebSocketServer } from 'ws';
 import { setupWSConnection, docs } from 'y-websocket/bin/utils';
 
-if (!process.env.MULTIPLAYER_PORT) {
-  throw new Error('MULTIPLAYER_PORT environment variable is required');
-}
+/**
+ * Handle a client disconnection and decide whether to clean up the room.
+ *
+ * @param {WebSocket} ws - The disconnecting WebSocket (already removed from doc.conns by y-websocket)
+ * @param {string} docName - The room/document name
+ * @param {Map} docsMap - The y-websocket docs Map
+ */
+export function handleDisconnect(ws, docName, docsMap) {
+  const doc = docsMap.get(docName);
+  if (!doc || !doc.conns) return;
 
-if (!process.env.HOST) {
-  throw new Error('HOST environment variable is required');
-}
+  const remaining = doc.conns.size;
+  if (remaining === 0) {
+    docsMap.delete(docName);
+    console.log(`[Y.js Server] Room ${docName} empty, deleted`);
+    return;
+  }
 
-const PORT = process.env.MULTIPLAYER_PORT;
-const HOST = process.env.HOST;
+  // Backend disconnected — do NOT touch frontends or the room.
+  // The CRDT keeps frontend editing working. Backend will auto-reconnect.
+  if (ws._role === 'backend') {
+    console.log(`[Y.js Server] Backend disconnected from ${docName}, ${remaining} frontend(s) remain`);
+    return;
+  }
 
-const wss = new WebSocketServer({
-  host: HOST,
-  port: PORT
-});
+  // A frontend disconnected. Check if any frontends remain.
+  let hasFrontend = false;
+  for (const conn of doc.conns.keys()) {
+    if (conn._role !== 'backend') { hasFrontend = true; break; }
+  }
 
-wss.on('connection', (ws, req) => {
-  setupWSConnection(ws, req);
-  console.log(`[Y.js Server] Client connected (total: ${wss.clients.size})`);
-
-  // Track which document/room this connection belongs to
-  const docName = req.url?.slice(1).split('?')[0];
-
-  ws.on('close', () => {
-    console.log(`[Y.js Server] Client disconnected from ${docName} (total: ${wss.clients.size})`);
-
-    // Check if this document still has clients
-    const doc = docs.get(docName);
-    if (doc && doc.conns) {
-      const remainingClients = doc.conns.size;
-      console.log(`[Y.js Server] Remaining clients in ${docName}: ${remainingClients}`);
-
-      // If only 1 client remains, it must be the backend - close it
-      if (remainingClients === 1) {
-        console.log(`[Y.js Server] Only backend remaining in ${docName}, closing it`);
-        // Get the last remaining connection and close it
-        for (const conn of doc.conns.keys()) {
-          conn.close(4000, 'cleanup');
-        }
-        // Clean up the document
-        docs.delete(docName);
-        console.log(`[Y.js Server] Cleaned up document ${docName}`);
-      }
+  if (!hasFrontend) {
+    // Only backend remains — close it and clean up.
+    console.log(`[Y.js Server] All frontends left ${docName}, closing backend`);
+    for (const conn of doc.conns.keys()) {
+      conn.close(4000, 'all-frontends-left');
     }
+    docsMap.delete(docName);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Server bootstrap (skipped during test import)
+// ---------------------------------------------------------------------------
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+
+if (!isTestEnv) {
+  if (!process.env.MULTIPLAYER_PORT) {
+    throw new Error('MULTIPLAYER_PORT environment variable is required');
+  }
+  if (!process.env.HOST) {
+    throw new Error('HOST environment variable is required');
+  }
+
+  const PORT = process.env.MULTIPLAYER_PORT;
+  const HOST = process.env.HOST;
+
+  const wss = new WebSocketServer({ host: HOST, port: PORT });
+
+  wss.on('connection', (ws, req) => {
+    setupWSConnection(ws, req);
+    console.log(`[Y.js Server] Client connected (total: ${wss.clients.size})`);
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const docName = url.pathname.slice(1);
+    const role = url.searchParams.get('role');
+
+    // Tag the connection so cleanup logic can distinguish backend from frontend
+    ws._role = role === 'backend' ? 'backend' : 'frontend';
+    console.log(`[Y.js Server] ${ws._role} joined room ${docName}`);
+
+    ws.on('close', () => {
+      console.log(`[Y.js Server] ${ws._role} disconnected from ${docName} (total: ${wss.clients.size})`);
+      handleDisconnect(ws, docName, docs);
+    });
   });
-});
 
-wss.on('error', (error) => {
-  console.error('[Y.js Server] WebSocket error:', error);
-});
+  wss.on('error', (error) => {
+    console.error('[Y.js Server] WebSocket error:', error);
+  });
 
-console.log(`[Y.js Server] Running on ${HOST}:${PORT} (backend-as-client mode with auto-cleanup)`);
+  console.log(`[Y.js Server] Running on ${HOST}:${PORT} (backend-as-client mode with role-aware cleanup)`);
+}

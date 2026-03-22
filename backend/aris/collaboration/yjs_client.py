@@ -88,11 +88,8 @@ class YDocClient:
                     logger.warning(f"Connection closed for file {self.file_id}, reconnecting...")
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
-                # Code 4000 = intentional server-side cleanup, do not reconnect
                 if e.rcvd is not None and e.rcvd.code == 4000:
-                    logger.info(f"Server closed connection for cleanup (file {self.file_id}), shutting down client")
-                    self._shutdown = True
-                    break
+                    logger.info(f"Server cleanup close for file {self.file_id} (all frontends left)")
                 if not self._shutdown:
                     logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._wait_before_reconnect()
@@ -118,9 +115,12 @@ class YDocClient:
                 pass
         self._save_event.clear()
 
-        logger.info(f"Connecting to {self.websocket_url} for file {self.file_id}")
+        # Identify as the backend client so the server's cleanup logic
+        # knows not to kill frontends when we disconnect (hot-reload, crash).
+        url = self.websocket_url + ("&" if "?" in self.websocket_url else "?") + "role=backend"
+        logger.info(f"Connecting to {url} for file {self.file_id}")
 
-        async with connect(self.websocket_url, open_timeout=10, close_timeout=5) as websocket:
+        async with connect(url, open_timeout=10, close_timeout=5) as websocket:
             self._ws = websocket
             self._reconnect_attempt = 0
             # Scope the websockets library's internal logger to this file so that

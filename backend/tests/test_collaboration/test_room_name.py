@@ -1,12 +1,12 @@
 """
 Regression test for the Y.js room name mismatch bug.
 
-Bug: CollaborationManager used ENV directly to build room names. With ENV=LOCAL
-(the default for local dev), the backend joined room "file-{id}-local", while the
-frontend used VITE_ENV=DEV → "file-{id}-dev". They never shared a Y.js room, so
-the backend never seeded or persisted content for the frontend.
+Bug: CollaborationManager normalized ENV=LOCAL → "dev" for room names, while the
+frontend used VITE_ENV=local → "file-{id}-local". They never shared a Y.js room,
+so the backend never seeded or persisted content for the frontend.
 
-Fix: Normalize LOCAL → dev in manager.py so both sides join the same room.
+Fix: Use ENV as-is (lowercased), no normalization. Both sides produce "local"
+when running locally.
 """
 
 import asyncio
@@ -63,11 +63,12 @@ def manager():
 
 
 class TestRoomNameEnvNormalization:
-    """ENV=LOCAL must map to 'dev' so the backend joins the same room as the frontend."""
+    """ENV must be lowercased and used directly — no LOCAL→dev normalization."""
 
-    def test_env_local_uppercase_produces_dev(self, manager):
+    def test_env_local_stays_local(self, manager):
+        """ENV=LOCAL must produce 'local' to match frontend VITE_ENV=local."""
         url = _extract_room_url(manager, FILE_ID, "LOCAL")
-        assert url.endswith(f"file-{FILE_ID}-dev")
+        assert url.endswith(f"file-{FILE_ID}-local")
 
     def test_env_dev_unchanged(self, manager):
         url = _extract_room_url(manager, FILE_ID, "DEV")
@@ -89,13 +90,13 @@ class TestRoomNameEnvNormalization:
         url = _extract_room_url(manager, FILE_ID, "PROD")
         assert url.endswith(f"file-{FILE_ID}-prod")
 
-    def test_env_unset_defaults_to_dev(self, manager):
+    def test_env_unset_defaults_to_local(self, manager):
         url = _extract_room_url(manager, FILE_ID, None)
-        assert url.endswith(f"file-{FILE_ID}-dev")
+        assert url.endswith(f"file-{FILE_ID}-local")
 
     @pytest.mark.parametrize("env_value", ["Local", "local", "LOCAL", "LoCAl"])
     def test_case_insensitivity(self, manager, env_value):
         url = _extract_room_url(manager, FILE_ID, env_value)
-        assert url.endswith(f"file-{FILE_ID}-dev"), (
-            f"ENV={env_value!r} should produce room suffix 'dev', got URL: {url}"
+        assert url.endswith(f"file-{FILE_ID}-local"), (
+            f"ENV={env_value!r} should produce room suffix 'local', got URL: {url}"
         )
