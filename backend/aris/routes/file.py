@@ -867,10 +867,12 @@ async def download_file_pdf(
             f.write(typst_source)
 
         # Write file assets (images, SVGs, static fallbacks) to temp dir
-        from sqlalchemy import select
-        from ..models.models import FileAsset
         import base64
         import binascii
+
+        from sqlalchemy import select
+
+        from ..models.models import FileAsset
         asset_result = await db.execute(
             select(FileAsset)
             .where(FileAsset.file_id == file_id)
@@ -928,7 +930,7 @@ async def download_file_pdf(
         if not os.path.exists(pdf_path):
             stderr = getattr(result, 'stderr', '') or ''
             # Filter out font warnings to show actual errors
-            error_lines = [l for l in stderr.splitlines() if 'error' in l.lower() and 'unknown font' not in l.lower()]
+            error_lines = [line for line in stderr.splitlines() if 'error' in line.lower() and 'unknown font' not in line.lower()]
             error_msg = '\n'.join(error_lines[:10]) if error_lines else stderr[:1000]
             raise HTTPException(
                 status_code=422,
