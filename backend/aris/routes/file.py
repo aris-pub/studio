@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, field_validator, model_validator
@@ -809,7 +811,7 @@ async def delete_asset_for_file(
 @router.post("/{file_id}/download/pdf")
 async def download_file_pdf(
     file_id: int,
-    body: _ExportBody = None,
+    body: Optional[_ExportBody] = None,
     user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
@@ -954,7 +956,7 @@ async def download_file_pdf(
 @router.post("/{file_id}/download")
 async def download_file(
     file_id: int,
-    body: _ExportBody = None,
+    body: Optional[_ExportBody] = None,
     user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),

@@ -35,7 +35,7 @@ class FileAssetResolver(AssetResolver):
         """
         self._assets = assets
         
-    def resolve_asset(self, path: str) -> Optional[str]:
+    def resolve_asset(self, path: str) -> Optional[str | bytes]:
         """Resolve an asset path to its content.
         
         Parameters
