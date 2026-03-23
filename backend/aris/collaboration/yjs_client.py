@@ -59,6 +59,7 @@ class YDocClient:
         # Y.js state
         self.doc: Optional[Doc] = None
         self.text: Optional[Text] = None
+        self._has_seeded = False
 
         # Persistence state — single save loop with debounce event instead of
         # cancel+recreate, preventing overlapping DB connections.
@@ -146,15 +147,16 @@ class YDocClient:
             await self._send_sync_step1(websocket)
             await self._receive_sync_step2(websocket)
 
-            # Only seed from DB when the room was empty (first peer to connect,
-            # or room was reset). If the room already had content, we absorbed it
-            # via SyncStep2 above and must not insert stale DB content on top.
-            if len(self.text) == 0:
+            # Only seed from DB once, ever. The _has_seeded flag prevents
+            # re-seeding on reconnect (which creates a fresh Doc each time,
+            # so len(self.text)==0 would be true again on a new Doc).
+            if len(self.text) == 0 and not self._has_seeded:
                 # Set flag to prevent observer from saving during DB load
                 self._in_sync_operation = True
                 state_before_load = self.doc.get_state()
                 try:
                     await self._load_from_db()
+                    self._has_seeded = True
                 finally:
                     self._in_sync_operation = False
 
