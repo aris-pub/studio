@@ -55,8 +55,12 @@ class FileAssetResolver(AssetResolver):
         content, encoding = asset_info
         if encoding == "base64":
             try:
-                return base64.b64decode(content).decode('utf-8')
-            except (binascii.Error, UnicodeDecodeError) as e:
+                data = base64.b64decode(content)
+                try:
+                    return data.decode('utf-8')
+                except UnicodeDecodeError:
+                    return data
+            except binascii.Error as e:
                 logger.error(f"Failed to decode base64 asset {path}: {e}")
                 return None
         else:  # plain
