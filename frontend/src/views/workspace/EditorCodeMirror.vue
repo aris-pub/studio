@@ -257,7 +257,13 @@
         }
 
         // Create editor with yCollab binding
-        const undoManager = new Y.UndoManager(ytext.value);
+        const MAX_UNDO_STACK = 200;
+        const undoManager = new Y.UndoManager(ytext.value, { captureTimeout: 500 });
+        undoManager.on("stack-item-added", () => {
+          if (undoManager.undoStack.length > MAX_UNDO_STACK) {
+            undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK);
+          }
+        });
         const docContent = ytext.value.toString();
 
         const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });

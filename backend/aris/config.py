@@ -58,9 +58,9 @@ class Settings(BaseSettings):
     """Expiration time in minutes for JWT access tokens (default: 120)."""
 
     JWT_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(
-        10080, json_schema_extra={"env": "JWT_REFRESH_TOKEN_EXPIRE_MINUTES"}
+        129600, json_schema_extra={"env": "JWT_REFRESH_TOKEN_EXPIRE_MINUTES"}
     )
-    """Expiration time in minutes for JWT refresh tokens (default: 10080 = 7 days)."""
+    """Expiration time in minutes for JWT refresh tokens (default: 129600 = 90 days)."""
 
     TEST_USER_EMAIL: str = Field(..., json_schema_extra={"env": "TEST_USER_EMAIL"})
     """Test user email for visual tests."""
