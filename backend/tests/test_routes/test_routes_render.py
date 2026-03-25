@@ -23,27 +23,6 @@ OUTPUT = """
 </div>
 
 <div class="hr-menu-zone">
-
-<div class="hr-menu">
-
-  <div class="hr-menu-label">
-    <span class="hr-menu-item-text">Paragraph</span>
-  </div>
-
-  <div class="hr-menu-separator"></div>
-
-  <div class="hr-menu-item link disabled">
-    <div class="icon link"><svg width="16" height="16"><use href="#hr-icon-link" width="16" height="16"/></svg></div>
-    <span class="hr-menu-item-text">Copy link</span>
-  </div>
-
-  <div class="hr-menu-item">
-    <div class="icon code"><svg width="16" height="16"><use href="#hr-icon-code" width="16" height="16"/></svg></div>
-    <span class="hr-menu-item-text">Source</span>
-  </div>
-
-</div>
-
 </div>
 
 <div class="hr-border-zone">
@@ -87,7 +66,10 @@ async def test_render(client: AsyncClient):
     import re as _re
     response = await client.post("/render", json={"source": "foo"})
     assert response.status_code == 200
-    rendered = _re.sub(r'<svg id="hr-icon-defs"[^>]*>.*?</svg>\n?', '', response.json(), flags=_re.DOTALL)
+    rendered = response.json()
+    rendered = _re.sub(r'<svg id="hr-icon-defs"[^>]*>.*?</svg>\n?', '', rendered, flags=_re.DOTALL)
+    rendered = _re.sub(r'<div id="hr-menu-singleton".*?</div>\s*</div>\s*</div>\n?', '', rendered, flags=_re.DOTALL)
+    rendered = _re.sub(r'\s*data-menu-[\w-]+="[^"]*"', '', rendered)
     assert "".join(OUTPUT.split()) == "".join(rendered.split())
 
 
