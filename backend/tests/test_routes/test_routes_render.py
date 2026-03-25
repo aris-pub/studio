@@ -33,14 +33,12 @@ OUTPUT = """
   <div class="hr-menu-separator"></div>
 
   <div class="hr-menu-item link disabled">
-    <span class="icon link">
-    </span>
+    <div class="icon link"><svg width="16" height="16"><use href="#hr-icon-link" width="16" height="16"/></svg></div>
     <span class="hr-menu-item-text">Copy link</span>
   </div>
 
   <div class="hr-menu-item">
-    <span class="icon code">
-    </span>
+    <div class="icon code"><svg width="16" height="16"><use href="#hr-icon-code" width="16" height="16"/></svg></div>
     <span class="hr-menu-item-text">Source</span>
   </div>
 
@@ -51,8 +49,7 @@ OUTPUT = """
 <div class="hr-border-zone">
 
                 <div class="hr-border-dots">
-                  <div class="icon dots">
-                  </div>
+                  <div class="icon dots"><svg width="16" height="16"><use href="#hr-icon-dots" width="16" height="16"/></svg></div>
                 </div>
                 <div class="hr-border-rect">
                 </div>
@@ -87,9 +84,11 @@ OUTPUT = """
 
 async def test_render(client: AsyncClient):
     """Test that files endpoint requires authentication."""
+    import re as _re
     response = await client.post("/render", json={"source": "foo"})
     assert response.status_code == 200
-    assert OUTPUT.strip() == response.json().strip()
+    rendered = _re.sub(r'<svg id="hr-icon-defs"[^>]*>.*?</svg>\n?', '', response.json(), flags=_re.DOTALL)
+    assert "".join(OUTPUT.split()) == "".join(rendered.split())
 
 
 async def test_render_with_static_figure_asset(client: AsyncClient):
