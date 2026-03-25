@@ -819,7 +819,7 @@ class TestInMemoryFileServiceAssetIntegration:
 
         # Should contain the resolved asset content embedded in the HTML
         assert html is not None
-        assert "Test Asset Content" in html  # Asset content should be embedded
+        assert "Test Asset Content" in html  # HTML asset content should be embedded
 
         # Verify that the database was actually queried for assets
         mock_db.execute.assert_called_once()

@@ -19,22 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class FileAssetResolver(AssetResolver):
-    """Simple asset resolver that fetches assets from the database.
-    
-    This resolver loads all assets for a given file_id upfront and provides
-    synchronous access to them.
+    """Asset resolver that serves assets from the database.
+
+    In URL mode (default), returns URL paths for the browser to fetch.
+    In standalone mode, returns raw content for base64 inlining.
     """
-    
-    def __init__(self, assets: dict[str, tuple[str, str]]):
-        """Initialize resolver with pre-loaded assets.
-        
-        Parameters
-        ----------
-        assets
-            Dictionary mapping asset filenames to (content, encoding) tuples
-        """
+
+    def __init__(self, assets: dict[str, tuple[str, str]], file_id: int = 0, standalone: bool = False):
         self._assets = assets
-        
+        self._file_id = file_id
+        self._standalone = standalone
+
     def resolve_asset(self, path: str) -> Optional[str | bytes]:
         """Resolve an asset path to its content.
         
@@ -51,7 +46,13 @@ class FileAssetResolver(AssetResolver):
         asset_info = self._assets.get(path)
         if not asset_info:
             return None
-            
+
+        # Only return URL paths for image assets — HTML content must always
+        # be inlined since there's no browser-native way to embed HTML by URL.
+        is_image = any(path.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
+        if not self._standalone and is_image:
+            return f"/files/{self._file_id}/assets/raw/{path}"
+
         content, encoding = asset_info
         if encoding == "base64":
             try:
@@ -108,7 +109,7 @@ class FileAssetResolver(AssetResolver):
             
             logger.info(f"Loaded {len(assets_dict)} assets for file {file_id}")
             
-            return cls(assets_dict)
+            return cls(assets_dict, file_id=file_id)
             
         except (RuntimeError, OSError) as e:
             logger.error(f"Failed to load assets for file {file_id}: {e}")

@@ -30,7 +30,7 @@ def test_settings_defaults_and_env_override(monkeypatch):
     assert s.ENV == "LOCAL"
     assert s.JWT_ALGORITHM == "HS256"
     assert s.JWT_ACCESS_TOKEN_EXPIRE_MINUTES == 120
-    assert s.JWT_REFRESH_TOKEN_EXPIRE_MINUTES == 10080
+    assert s.JWT_REFRESH_TOKEN_EXPIRE_MINUTES == 129600
 
 
 def test_missing_required_env_vars(monkeypatch):

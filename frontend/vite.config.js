@@ -31,8 +31,24 @@ function loadEnvFile() {
 const envVars = loadEnvFile();
 
 // https://vite.dev/config/
+// Proxy target for the Vite dev server (runs inside Docker container).
+// PROXY_API_TARGET uses Docker service name (e.g. http://backend:8000).
+// Falls back to VITE_API_BASE_URL for local dev without Docker.
+const proxyTarget = process.env.PROXY_API_TARGET
+  || process.env.VITE_API_BASE_URL
+  || envVars.VITE_API_BASE_URL
+  || "http://localhost:8000";
+
 export default defineConfig({
   plugins: [vue()],
+  server: {
+    proxy: {
+      "/files/": {
+        target: proxyTarget,
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

@@ -18,6 +18,7 @@ from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFile
 
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(current_user)])
+public_router = APIRouter(prefix="/files", tags=["files"])
 
 
 class FileCreate(BaseModel):
@@ -752,6 +753,37 @@ async def create_asset_for_file(
     return asset
 
 
+@public_router.get("/{file_id}/assets/raw/{filename:path}")
+async def get_asset_raw(
+    file_id: int,
+    filename: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve raw asset binary for browser rendering (img src, etc.)."""
+    import base64 as b64
+    import mimetypes
+
+    from sqlalchemy import select
+    result = await db.execute(
+        select(FileAsset)
+        .where(FileAsset.file_id == file_id)
+        .where(FileAsset.filename == filename)
+        .where(FileAsset.deleted_at.is_(None))
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    encoding = getattr(asset, "content_encoding", "plain")
+    if encoding == "base64":
+        data = b64.b64decode(asset.content)
+    else:
+        data = asset.content.encode("utf-8") if isinstance(asset.content, str) else asset.content
+
+    return Response(content=data, media_type=mime)
+
+
 @router.get("/{file_id}/assets/by-name/{filename:path}", response_model=FileAssetOut)
 async def get_asset_by_name(
     file_id: int,
@@ -992,6 +1024,7 @@ async def download_file(
     # Create asset resolver to load file assets from database
     from ..services.asset_resolver import FileAssetResolver
     asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
+    asset_resolver._standalone = True
 
     html = await asyncio.to_thread(
         rsm.build,

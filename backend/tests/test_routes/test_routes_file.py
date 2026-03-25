@@ -507,11 +507,8 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
     file_id = create_response.json()["id"]
 
     # Upload an HTML asset (simulating a Plotly chart)
-    chart_html = """<!DOCTYPE html>
-<html><head><meta charset="utf-8" /></head>
-<body><div id="plotly-chart">Interactive Chart Content</div>
-<script>console.log("Chart initialized");</script>
-</body></html>"""
+    chart_html = """<div id="plotly-chart">Interactive Chart Content</div>
+<script>console.log("Chart initialized");</script>"""
 
     import base64
     asset_content = base64.b64encode(chart_html.encode()).decode()

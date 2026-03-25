@@ -21,6 +21,7 @@ from aris.routes import (
     feedback_router,
     file_annotations_router,
     file_reactions_router,
+    file_public_router,
     file_router,
     file_settings_router,
     lsp_router,
@@ -313,6 +314,7 @@ app.include_router(feedback_router, tags=["feedback"])
 app.include_router(auth_router, tags=["authentication"])
 app.include_router(user_router, tags=["users"])
 app.include_router(user_public_router, tags=["users"])
+app.include_router(file_public_router, tags=["files"])
 app.include_router(file_router, tags=["files"])
 app.include_router(permissions_router, prefix="/files", tags=["permissions"])
 app.include_router(versions_router, tags=["versions"])

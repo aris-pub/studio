@@ -18,20 +18,31 @@ class TestFileAssetResolver:
         result = resolver.resolve_asset("nonexistent.html")
         assert result is None
 
-    def test_resolver_with_assets(self):
-        """Test resolver with pre-loaded assets."""
+    def test_resolver_with_assets_url_mode(self):
+        """Test resolver returns URL paths for images, content for HTML."""
         assets = {
             "test.html": ("<div>Test HTML</div>", "plain"),
+            "chart.png": ("base64data", "plain"),
             "style.css": ("body { color: red; }", "plain"),
         }
-        resolver = FileAssetResolver(assets)
+        resolver = FileAssetResolver(assets, file_id=42)
 
-        # Test existing assets
+        # HTML assets always return content (no browser-native embed-by-URL)
         assert resolver.resolve_asset("test.html") == "<div>Test HTML</div>"
+        # Non-image non-HTML returns content
         assert resolver.resolve_asset("style.css") == "body { color: red; }"
-
-        # Test non-existent asset
+        # Image assets return URL paths
+        assert resolver.resolve_asset("chart.png") == "/files/42/assets/raw/chart.png"
         assert resolver.resolve_asset("missing.js") is None
+
+    def test_resolver_with_assets_standalone_mode(self):
+        """Test resolver always returns content in standalone mode."""
+        assets = {
+            "chart.png": ("base64data", "plain"),
+        }
+        resolver = FileAssetResolver(assets, file_id=42, standalone=True)
+
+        assert resolver.resolve_asset("chart.png") == "base64data"
 
     async def test_create_for_file_with_assets(self, db_session: AsyncSession, test_file):
         """Test creating resolver for file with assets."""
