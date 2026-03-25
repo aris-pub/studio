@@ -16,19 +16,28 @@
   const sortedAnnotations = ref([]);
 
   function sortByDomPosition(list) {
-    return [...list].sort((a, b) => {
-      const markA =
-        document.querySelector(`mark[data-annotation-id="${a.id}"]`) ||
-        document.querySelector(`[data-highlight-annotation="${a.id}"]`);
-      const markB =
-        document.querySelector(`mark[data-annotation-id="${b.id}"]`) ||
-        document.querySelector(`[data-highlight-annotation="${b.id}"]`);
-      if (!markA || !markB) return 0;
-      const pos = markA.compareDocumentPosition(markB);
+    // Separate anchored (have marks in DOM) from orphaned (no marks)
+    const anchored = [];
+    const orphaned = [];
+    for (const ann of list) {
+      const mark =
+        document.querySelector(`mark[data-annotation-id="${ann.id}"]`) ||
+        document.querySelector(`[data-highlight-annotation="${ann.id}"]`);
+      if (mark) anchored.push({ ann, mark });
+      else orphaned.push(ann);
+    }
+
+    anchored.sort((a, b) => {
+      const pos = a.mark.compareDocumentPosition(b.mark);
       if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
       if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
       return 0;
     });
+
+    // Orphaned annotations go at the end, sorted by creation date
+    orphaned.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    return [...anchored.map((a) => a.ann), ...orphaned];
   }
 
   function trySort() {
@@ -43,6 +52,7 @@
   // --- Aligned positioning: compute card top offsets to match highlight marks ---
 
   const cardPositions = ref(new Map());
+  const lastKnownMarkTop = new Map();
   const containerMinHeight = ref("auto");
   const MIN_GAP = 8;
 
@@ -73,10 +83,17 @@
       const mark =
         document.querySelector(`mark[data-annotation-id="${ann.id}"]`) ||
         document.querySelector(`[data-highlight-annotation="${ann.id}"]`);
-      if (!mark) continue;
 
-      const markTop = getOffsetTop(mark, dock);
-      const desiredTop = Math.max(markTop, lastBottom + MIN_GAP);
+      let desiredTop;
+      if (mark) {
+        const markTop = getOffsetTop(mark, dock);
+        lastKnownMarkTop.set(ann.id, markTop);
+        desiredTop = Math.max(markTop, lastBottom + MIN_GAP);
+      } else if (lastKnownMarkTop.has(ann.id)) {
+        desiredTop = Math.max(lastKnownMarkTop.get(ann.id), lastBottom + MIN_GAP);
+      } else {
+        desiredTop = lastBottom + MIN_GAP;
+      }
       positions.set(ann.id, desiredTop);
 
       const cardEl = document.querySelector(`[data-card-id="${ann.id}"]`);

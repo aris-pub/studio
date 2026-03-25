@@ -1,17 +1,6 @@
 <script>
   import { h, useTemplateRef } from "vue";
-  import FeedbackIcon from "./FeedbackIcon.vue";
-  import FigureToggle from "./FigureToggle.vue";
-  import MathElement from "./MathElement.vue";
-
-  // Simple hash function for generating keys
-  const hashString = (str) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-    }
-    return hash.toString(36);
-  };
+  import { parseHtmlToVNodes } from "./parseHtmlToVNodes.js";
 
   export default {
     name: "Manuscript",
@@ -41,130 +30,10 @@
       const mountPointRef = useTemplateRef("mountPointRef");
       expose({ mountPoint: mountPointRef });
 
-      const makeRenderFn = (htmlString) => {
-        const parser = new DOMParser();
-        const dom = parser.parseFromString(htmlString, "text/html");
-
-        const createVNode = (node) => {
-          // Handle text nodes
-          if (node.nodeType === Node.TEXT_NODE) {
-            return node.textContent;
-          }
-
-          // Handle element nodes
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            // Skip script tags — Vue's createElement + appendChild executes them,
-            // which causes MathJax to load and conflict with Temml math rendering.
-            if (node.tagName.toLowerCase() === "script") {
-              return null;
-            }
-            // Extract attributes
-            const data = {};
-            const attrs = {};
-
-            let isHrInfo = false;
-
-            if (node.tagName.toLowerCase() === "div" && node.hasAttribute("class")) {
-              const classNames = node.getAttribute("class").split(/\s+/).filter(Boolean);
-
-              // Check for hr-info class
-              if (classNames.includes("hr-info")) {
-                isHrInfo = true;
-              }
-            }
-
-            Array.from(node.attributes || []).forEach((attr) => {
-              // Handle event handlers (on*)
-              if (attr.name.startsWith("on") && attr.name.length > 2) {
-                attrs[attr.name] = attr.value;
-              }
-              // Handle style attribute
-              else if (attr.name === "style") {
-                const styleObj = {};
-                attr.value.split(";").forEach((style) => {
-                  const [prop, val] = style.split(":");
-                  if (prop && val) {
-                    const camelProp = prop
-                      .trim()
-                      .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-                    styleObj[camelProp] = val.trim();
-                  }
-                });
-                data.style = styleObj;
-              }
-              // Handle class attribute
-              else if (attr.name === "class") {
-                data.class = attr.value.split(/\s+/).filter(Boolean);
-              }
-              // Handle misc. attributes that need no processing
-              else if (["id", "href", "data-nodeid", "tabindex"].includes(attr.name)) {
-                data[attr.name] = attr.value;
-              }
-              // Handle other attributes
-              else {
-                attrs[attr.name] = attr.value;
-              }
-            });
-
-            if (Object.keys(attrs).length) {
-              Object.assign(data, attrs);
-            }
-
-            // Inline math: use MathElement component so Vue manages the
-            // Temml lifecycle. Raw h("span") creates a text node that Temml
-            // replaces, leaving Vue with a stale reference on recompile.
-            if (node.tagName.toLowerCase() === "span" && node.classList?.contains("math")) {
-              const text = node.textContent;
-              const latex = text.startsWith("\\(") && text.endsWith("\\)")
-                ? text.slice(2, -2)
-                : text;
-              return h(MathElement, { ...data, latex, display: false });
-            }
-
-            // Display math: the LaTeX lives inside .hr-content-zone within a
-            // .mathblock handrail. Replace its text children with a MathElement.
-            const isMathblockContent =
-              node.tagName.toLowerCase() === "div" &&
-              node.classList?.contains("hr-content-zone") &&
-              node.parentElement?.classList?.contains("mathblock");
-            if (isMathblockContent) {
-              const text = node.textContent.trim();
-              if (text.startsWith("$$") && text.endsWith("$$")) {
-                const latex = text.slice(2, -2).trim();
-                return h("div", data, [h(MathElement, { latex, display: true })]);
-              }
-            }
-
-            // Get child nodes recursively
-            const children = Array.from(node.childNodes)
-              .map(createVNode)
-              .filter((vnode) => vnode !== null && vnode !== "");
-
-            // If this is hr-info, append FeedbackIcon to children
-            if (isHrInfo) {
-              children.push(h(FeedbackIcon));
-            }
-
-            // If this is a figure with a :static: fallback, inject FigureToggle
-            if (node.tagName.toLowerCase() === "figure" && node.hasAttribute("data-static")) {
-              children.push(h(FigureToggle));
-            }
-
-            return h(node.tagName.toLowerCase(), data, children.length ? children : undefined);
-          }
-
-          // Skip comment nodes and other node types
-          return null;
-        };
-
-        const bodyContent = Array.from(dom.body.childNodes)
-          .map(createVNode)
-          .filter((vnode) => vnode !== null && vnode !== "");
-
-        return () => h("div", { ref: "mountPointRef" }, bodyContent);
+      return () => {
+        const children = parseHtmlToVNodes(props.htmlString);
+        return h("div", { ref: "mountPointRef" }, children);
       };
-
-      return () => makeRenderFn(props.htmlString)();
     },
   };
 </script>
