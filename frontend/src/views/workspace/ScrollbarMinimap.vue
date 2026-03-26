@@ -374,16 +374,12 @@
     position: absolute;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: var(--gray-500);
     z-index: 1;
     pointer-events: auto;
     cursor: pointer;
     transition: transform 0.15s ease;
     line-height: 0;
 
-    & :deep(svg) {
-      color: var(--gray-500);
-    }
     & :deep(svg *) {
       stroke: none;
     }
@@ -391,11 +387,6 @@
 
   .mm-annotation:hover {
     transform: translate(-50%, -50%) scale(1.2);
-    color: var(--gray-700);
-
-    & :deep(svg) {
-      color: var(--gray-700);
-    }
   }
 
   /* ── Feedback dots ── */
