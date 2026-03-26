@@ -225,10 +225,16 @@ export function resolveSourceAnchor(anchorData, manuscriptEl, ydoc) {
     absStart = Y.createAbsolutePositionFromRelativePosition(relStart, ydoc);
     absEnd = Y.createAbsolutePositionFromRelativePosition(relEnd, ydoc);
   } catch {
-    return null;
+    // Fall through to legacy
   }
 
-  if (!absStart || !absEnd) return null;
+  // Y.Doc not synced yet or positions deleted — fall back to legacy
+  if (!absStart || !absEnd) {
+    if (anchorData.node_id) {
+      return legacyResolveAnchor(anchorData, manuscriptEl);
+    }
+    return null;
+  }
 
   const sourceStart = absStart.index;
   const sourceEnd = absEnd.index;
