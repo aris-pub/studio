@@ -128,30 +128,75 @@ function computeSourceOffset(container, offset, manuscriptEl) {
 }
 
 /**
- * Compute the character offset of a specific text position within an element.
+ * Compute the SOURCE byte offset of a position within an element,
+ * relative to that element's data-source-start.
+ *
+ * Walks child nodes. For children that have their own data-source-start/end,
+ * uses the source byte length (not rendered text length) to advance the counter.
+ * For bare text nodes, advances by text length (1:1 with source for plain text).
  */
 function computeCharOffsetInElement(element, targetContainer, targetOffset) {
+  const blockStart = parseInt(element.getAttribute("data-source-start") || "0", 10);
+
+  // Walk direct and nested children, tracking source bytes
+  function walk(node) {
+    // If this element has its own source data, use source byte length
+    if (node !== element && node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("data-source-start")) {
+      const srcStart = parseInt(node.getAttribute("data-source-start"), 10);
+      const srcEnd = parseInt(node.getAttribute("data-source-end"), 10);
+
+      // Check if target is inside this element
+      if (node.contains(targetContainer)) {
+        // Target is inside a source-mapped inline element — delegate to it
+        return { found: true, offset: (srcStart - blockStart) + computeInner(node, targetContainer, targetOffset) };
+      }
+      // Skip this subtree, advance by source byte length
+      return { found: false, chars: srcEnd - srcStart };
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node === targetContainer) {
+        return { found: true, offset: targetOffset };
+      }
+      return { found: false, chars: node.textContent.length };
+    }
+
+    // Element without source data — walk children
+    let total = 0;
+    for (const child of node.childNodes) {
+      const result = walk(child);
+      if (result.found) {
+        return { found: true, offset: total + result.offset };
+      }
+      total += result.chars;
+    }
+
+    // targetContainer is this element node (offset = child index)
+    if (node === targetContainer) {
+      let count = 0;
+      const children = Array.from(node.childNodes);
+      for (let i = 0; i < targetOffset && i < children.length; i++) {
+        count += (children[i].textContent || "").length;
+      }
+      return { found: true, offset: count };
+    }
+
+    return { found: false, chars: total };
+  }
+
+  const result = walk(element);
+  return result.found ? result.offset : null;
+}
+
+function computeInner(element, targetContainer, targetOffset) {
+  // Simple offset within an inline element (no nested source-mapped children expected)
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   let charCount = 0;
-
   while (walker.nextNode()) {
-    const textNode = walker.currentNode;
-    if (textNode === targetContainer) {
-      return charCount + targetOffset;
-    }
-    charCount += textNode.textContent.length;
+    if (walker.currentNode === targetContainer) return charCount + targetOffset;
+    charCount += walker.currentNode.textContent.length;
   }
-
-  // targetContainer might be an element node (offset = child index)
-  if (targetContainer.nodeType === Node.ELEMENT_NODE) {
-    const childNodes = Array.from(targetContainer.childNodes);
-    for (let i = 0; i < targetOffset && i < childNodes.length; i++) {
-      charCount += (childNodes[i].textContent || "").length;
-    }
-    return charCount;
-  }
-
-  return null;
+  return 0;
 }
 
 /**
@@ -207,6 +252,14 @@ export function resolveSourceAnchor(anchorData, manuscriptEl, ydoc) {
   }
 
   if (!targetBlock) return null;
+
+  // Math elements: wrap the entire element instead of character-level ranging.
+  // The source bytes are LaTeX ($x^2$) but the DOM contains MathML — offsets don't correspond.
+  if (targetBlock.classList.contains("math") || targetBlock.querySelector("math")) {
+    const range = document.createRange();
+    range.selectNode(targetBlock);
+    return range;
+  }
 
   const blockSourceStart = parseInt(targetBlock.getAttribute("data-source-start"), 10);
   const charStart = sourceStart - blockSourceStart;
