@@ -201,7 +201,7 @@
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
     >
-      <component :is="mark.visibility === 'shared' ? IconMessages : IconNote" :size="isCompact ? 10 : 20" :style="{ color: mark.color }" />
+      <component :is="mark.visibility === 'shared' ? IconMessages : IconNote" :size="isCompact ? 8 : 12" :style="{ color: mark.color }" />
     </div>
 
     <!-- Feedback dots -->
@@ -379,7 +379,17 @@
     cursor: pointer;
     transition: transform 0.15s ease;
     line-height: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
+    & :deep(svg) {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+    }
     & :deep(svg *) {
       stroke: none;
     }
