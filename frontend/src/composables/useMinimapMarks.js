@@ -83,12 +83,12 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       });
     }
 
-    // Annotations
-    const annotationMarks = el.querySelectorAll("mark[data-annotation-id]");
+    // Annotations — both <mark> elements and math highlights (data-highlight-annotation)
+    const annotationMarks = el.querySelectorAll("mark[data-annotation-id], [data-highlight-annotation]");
     const annList = annotations && isRef(annotations) ? annotations.value : annotations;
     const seenAnnIds = new Set();
     for (const mark of annotationMarks) {
-      const annId = mark.getAttribute("data-annotation-id");
+      const annId = mark.getAttribute("data-annotation-id") || mark.getAttribute("data-highlight-annotation");
       if (seenAnnIds.has(annId)) continue;
       seenAnnIds.add(annId);
       const ann = annList?.find((a) => String(a.id) === annId);
@@ -213,7 +213,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       clearTimeout(observerDebounce);
       observerDebounce = setTimeout(() => computeMarks(), 100);
     });
-    observer.observe(el, { childList: true, subtree: true });
+    observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-highlight-annotation"] });
   }
 
   function teardownObserver() {
