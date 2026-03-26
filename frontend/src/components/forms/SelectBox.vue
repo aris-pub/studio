@@ -15,7 +15,7 @@
    */
   import { ref, computed, watch, useTemplateRef, nextTick } from "vue";
   import { useFloating, autoUpdate, offset, flip, shift } from "@floating-ui/vue";
-  import { IconChevronDown } from "@tabler/icons-vue";
+  import { IconChevronDown } from "@/components/base/iconRegistry.js";
 
   const props = defineProps({
     modelValue: { type: [String, Number], default: null },

@@ -1,6 +1,6 @@
 <script setup>
   import { ref, inject, onMounted } from "vue";
-  import { IconX } from "@tabler/icons-vue";
+  import { IconX } from "@/components/base/iconRegistry.js";
   import Button from "@/components/base/Button.vue";
 
   const props = defineProps({

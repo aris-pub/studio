@@ -1,6 +1,6 @@
 <script setup>
   import { ref, reactive, computed, inject, onMounted } from "vue";
-  import { IconQuote, IconUserEdit, IconCalendar, IconBook2 } from "@tabler/icons-vue";
+  import { IconQuote, IconUserEdit, IconCalendar, IconBook2 } from "@/components/base/iconRegistry.js";
 
   // Get file from workspace context
   const file = inject("file");

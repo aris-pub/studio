@@ -1,6 +1,6 @@
 <script setup>
   import { computed, inject, toRaw, useTemplateRef } from "vue";
-  import { IconClock, IconWifiOff, IconMapPin } from "@tabler/icons-vue";
+  import { IconClock, IconWifiOff, IconMapPin } from "@/components/base/iconRegistry.js";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
   import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 

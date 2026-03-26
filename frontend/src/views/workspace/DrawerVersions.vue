@@ -1,6 +1,6 @@
 <script setup>
   import { ref, inject, onMounted, computed, nextTick, watch } from "vue";
-  import { IconFileText, IconHistory } from "@tabler/icons-vue";
+  import { IconFileText, IconHistory } from "@/components/base/iconRegistry.js";
   import Button from "@/components/base/Button.vue";
   import EditableText from "@/components/forms/EditableText.vue";
   import Toast from "@/components/ui/Toast.vue";

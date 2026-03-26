@@ -1,6 +1,6 @@
 <script setup>
   import { ref, watch, computed } from "vue";
-  import { IconArrowsSort, IconArrowNarrowDown, IconArrowNarrowUp } from "@tabler/icons-vue";
+  import { IconArrowsSort, IconArrowNarrowDown, IconArrowNarrowUp } from "@/components/base/iconRegistry.js";
 
   const props = defineProps({
     name: { type: String, required: true },

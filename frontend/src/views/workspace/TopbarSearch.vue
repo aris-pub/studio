@@ -1,6 +1,6 @@
 <script setup>
   import { inject, onMounted, useTemplateRef, ref, shallowRef, watch } from "vue";
-  import { IconSearch, IconAdjustmentsHorizontal } from "@tabler/icons-vue";
+  import { IconSearch, IconAdjustmentsHorizontal } from "@/components/base/iconRegistry.js";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useSearch } from "@/composables/useSearch.js";
 

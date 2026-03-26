@@ -20,7 +20,7 @@
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { useSourcePreviewNav } from "@/composables/useSourcePreviewNav.js";
-  import { IconMessageFilled } from "@tabler/icons-vue";
+  import { IconMessageFilled } from "@/components/base/iconRegistry.js";
   import useClosable from "@/composables/useClosable.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
   import Dock from "./Dock.vue";

@@ -26,7 +26,7 @@
    */
   import { watch } from "vue";
   import ButtonToggle from "@/components/base/ButtonToggle.vue";
-  import { IconDotsVertical } from "@tabler/icons-vue";
+  import { IconDotsVertical } from "@/components/base/iconRegistry.js";
 
   defineOptions({
     name: "ButtonDots",

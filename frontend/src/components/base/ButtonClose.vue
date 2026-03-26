@@ -20,7 +20,7 @@
    *   <!-- ... modal content ... -->
    * </Modal>
    */
-  import { IconX } from "@tabler/icons-vue";
+  import { IconX } from "@/components/base/iconRegistry.js";
   defineEmits(["close"]);
 </script>
 

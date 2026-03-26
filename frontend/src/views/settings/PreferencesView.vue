@@ -1,7 +1,7 @@
 <script setup>
   import { ref, reactive, computed, onMounted, onUnmounted, watch, inject } from "vue";
   import { onBeforeRouteLeave } from "vue-router";
-  import { IconSettings2 } from "@tabler/icons-vue";
+  import { IconSettings2 } from "@/components/base/iconRegistry.js";
   import { toast } from "@/utils/toast.js";
   import SelectBox from "@/components/forms/SelectBox.vue";
 

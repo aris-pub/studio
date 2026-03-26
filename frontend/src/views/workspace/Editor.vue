@@ -6,7 +6,7 @@
   import EditorStatusBar from "./EditorStatusBar.vue";
   import EditorCodeMirror from "./EditorCodeMirror.vue";
   import EditorFiles from "./EditorFiles.vue";
-  import { IconLock } from "@tabler/icons-vue";
+  import { IconLock } from "@/components/base/iconRegistry.js";
 
   const props = defineProps({});
   const file = defineModel({ type: Object, required: true });

@@ -1,7 +1,7 @@
 <script setup>
   import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
-  import { IconNote, IconMessages } from "@tabler/icons-vue";
+  import { IconNote, IconMessages } from "@/components/base/iconRegistry.js";
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);

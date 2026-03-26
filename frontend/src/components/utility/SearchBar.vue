@@ -1,6 +1,6 @@
 <script setup>
   import { ref, useTemplateRef } from "vue";
-  import { IconSearch } from "@tabler/icons-vue";
+  import { IconSearch } from "@/components/base/iconRegistry.js";
 
   /**
    * SearchBar - Interactive search input component
