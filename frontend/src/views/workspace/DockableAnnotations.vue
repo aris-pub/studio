@@ -57,13 +57,10 @@
   const MIN_GAP = 8;
 
   function getOffsetTop(el, ancestor) {
-    let top = 0;
-    let current = el;
-    while (current && current !== ancestor) {
-      top += current.offsetTop;
-      current = current.offsetParent;
-    }
-    return top;
+    if (!el || !ancestor) return 0;
+    const elRect = el.getBoundingClientRect();
+    const ancestorRect = ancestor.getBoundingClientRect();
+    return elRect.top - ancestorRect.top + ancestor.scrollTop;
   }
 
   function computePositions() {
