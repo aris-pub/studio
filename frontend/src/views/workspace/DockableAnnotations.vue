@@ -58,13 +58,7 @@
 
   function getOffsetTop(el, ancestor) {
     if (!el || !ancestor) return 0;
-    // Use getBoundingClientRect for both, then add the scroll container's
-    // scrollTop to convert from viewport-relative to content-relative.
-    const scrollContainer = ancestor.closest(".inner.right") || ancestor.parentElement;
-    const elRect = el.getBoundingClientRect();
-    const ancestorRect = ancestor.getBoundingClientRect();
-    const scrollOffset = scrollContainer ? scrollContainer.scrollTop : 0;
-    return elRect.top - ancestorRect.top + scrollOffset;
+    return el.getBoundingClientRect().top - ancestor.getBoundingClientRect().top;
   }
 
   function computePositions() {
