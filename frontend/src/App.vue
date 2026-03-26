@@ -9,6 +9,7 @@
   import axios from "axios";
 
   const logger = getLogger("App");
+  const router = useRouter();
 
   // Create API instance with base URL and error handling
   const api = axios.create({
@@ -67,9 +68,10 @@
           try {
             const refreshToken = localStorage.getItem("refreshToken");
 
-            const response = await api.post("/refresh", {
-              refresh_token: refreshToken,
-            });
+            const response = await axios.post(
+              `${import.meta.env.VITE_API_BASE_URL}/refresh`,
+              { refresh_token: refreshToken },
+            );
 
             const newAccessToken = response.data.access_token;
 
@@ -87,8 +89,8 @@
             localStorage.removeItem("refreshToken");
             localStorage.removeItem("user");
 
-            window.location.href = "/login";
-            return Promise.reject(refreshError);
+            router.replace("/login");
+            return new Promise(() => {});
           }
         } else {
           return new Promise((resolve, reject) => {
@@ -196,7 +198,6 @@
   // available to other views.
   const user = ref(null);
   const fileStore = ref(null);
-  const router = useRouter();
 
   // Function to refresh user data from backend
   const refreshUser = async () => {
