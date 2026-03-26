@@ -287,7 +287,12 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       (newAwareness) => {
         if (awarenessCleanup) awarenessCleanup();
         if (!newAwareness) return;
-        const handler = () => computeMarks();
+        const handler = ({ added, removed }) => {
+          // Skip clock renewals (only "updated" with no actual state change).
+          // Only recompute when clients join or leave.
+          if (added.length === 0 && removed.length === 0) return;
+          computeMarks();
+        };
         newAwareness.on("change", handler);
         awarenessCleanup = () => newAwareness.off("change", handler);
       },

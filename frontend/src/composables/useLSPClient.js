@@ -20,12 +20,10 @@ function createWebSocketTransport(uri) {
     const socket = new WebSocket(uri);
 
     socket.onopen = () => {
-      console.log("[LSP] WebSocket connected");
       resolve({
         send(message) {
           if (socket.readyState === WebSocket.OPEN) {
-            console.log("[LSP Transport] Sending:", message.substring(0, 200));
-            socket.send(message);
+                  socket.send(message);
           }
         },
         subscribe(handler) {
@@ -42,7 +40,6 @@ function createWebSocketTransport(uri) {
 
     socket.onmessage = (event) => {
       const message = event.data.toString();
-      console.log("[LSP Transport] Received:", message.substring(0, 200));
       for (const handler of handlers) {
         handler(message);
       }
@@ -54,7 +51,6 @@ function createWebSocketTransport(uri) {
     };
 
     socket.onclose = () => {
-      console.log("[LSP] WebSocket closed");
     };
 
     // Store socket for cleanup
@@ -91,9 +87,7 @@ export function useLSPClient({ serverUrl, documentUri }) {
    * Returns the plugin extension that should be added to the editor.
    */
   async function connect() {
-    console.log("[LSP CONNECT] Function called - BUILD TIMESTAMP:", Date.now());
     try {
-      console.log("[LSP] Connecting to server:", serverUrl);
 
       // Create WebSocket transport (async)
       transport.value = await createWebSocketTransport(serverUrl);
@@ -107,9 +101,7 @@ export function useLSPClient({ serverUrl, documentUri }) {
       }).connect(transport.value);
 
       // Wait for client to initialize before creating plugin
-      console.log("[LSP] Waiting for client initialization...");
       await client.value.initializing;
-      console.log("[LSP] ✅ Client initialized");
 
       // Create CodeMirror plugin for this document (sync after initialization)
       const uri = getDocumentUri();
@@ -118,7 +110,6 @@ export function useLSPClient({ serverUrl, documentUri }) {
       plugin.value = toRaw(client.value).plugin(uri, "rsm");
 
       isConnected.value = true;
-      console.log("[LSP] ✅ Plugin created for:", uri);
 
       // Return unwrapped plugin - MUST be raw for CodeMirror to register ViewPlugins
       return toRaw(plugin.value);
@@ -143,7 +134,6 @@ export function useLSPClient({ serverUrl, documentUri }) {
     plugin.value = null;
     isConnected.value = false;
 
-    console.log("[LSP] Disconnected");
   }
 
   // Auto-cleanup on unmount
