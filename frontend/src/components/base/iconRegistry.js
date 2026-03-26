@@ -7,6 +7,7 @@
 
 export {
   IconActivity,
+  IconAdjustmentsHorizontal,
   IconAlertCircle,
   IconAlertTriangle,
   IconAlertTriangleFilled,
@@ -67,6 +68,7 @@ export {
   IconMessageChatbot,
   IconMessages,
   IconMessageShare,
+  IconMoodPlus,
   IconNote,
   IconPhoto,
   IconPlus,
@@ -87,6 +89,7 @@ export {
   IconUpload,
   IconUser,
   IconUserEdit,
+  IconVersions,
   IconUsers,
   IconUsersGroup,
   IconX,
