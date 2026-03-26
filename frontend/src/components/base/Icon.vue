@@ -43,8 +43,7 @@
    */
 
   import { computed } from "vue";
-  import * as RegisteredIcons from "./iconRegistry.js";
-  import { IconAlertTriangle } from "./iconRegistry.js";
+  import { icons, IconAlertTriangle } from "./iconRegistry.js";
   import IconTherefore from "./IconTherefore.vue";
 
   defineOptions({
@@ -52,7 +51,7 @@
   });
 
   const Icons = {
-    ...RegisteredIcons,
+    ...icons,
     IconTherefore,
   };
 

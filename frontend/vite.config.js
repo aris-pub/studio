@@ -57,7 +57,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["jquery", "tooltipster"],
-    exclude: ["@tabler/icons-vue"],
   },
   test: {
     environment: "jsdom",

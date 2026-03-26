@@ -18,7 +18,7 @@ describe("Icon.vue", () => {
     });
 
     vi.doMock("@/components/base/iconRegistry.js", () => ({
-      IconFoo: FooIcon,
+      icons: { IconFoo: FooIcon, IconAlertTriangle: AlertTriangleIcon },
       IconAlertTriangle: AlertTriangleIcon,
     }));
 
@@ -43,6 +43,7 @@ describe("Icon.vue", () => {
     });
 
     vi.doMock("@/components/base/iconRegistry.js", () => ({
+      icons: { IconAlertTriangle: AlertTriangleIcon },
       IconAlertTriangle: AlertTriangleIcon,
     }));
     vi.doMock("@/components/base/IconTherefore.vue", () => ({ default: ThereforeIcon }));
