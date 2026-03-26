@@ -43,7 +43,8 @@
    */
 
   import { computed } from "vue";
-  import * as TablerIcons from "@tabler/icons-vue";
+  import * as RegisteredIcons from "./iconRegistry.js";
+  import { IconAlertTriangle } from "./iconRegistry.js";
   import IconTherefore from "./IconTherefore.vue";
 
   defineOptions({
@@ -51,7 +52,7 @@
   });
 
   const Icons = {
-    ...TablerIcons,
+    ...RegisteredIcons,
     IconTherefore,
   };
 
@@ -108,7 +109,7 @@
     // Handle empty/null names
     if (!props.name || props.name.trim() === "") {
       console.warn("[Icon] Icon name cannot be empty. Using fallback error icon.");
-      return TablerIcons.IconAlertTriangle;
+      return IconAlertTriangle;
     }
 
     const iconName = `Icon${props.name}`;
@@ -117,7 +118,7 @@
     // Handle non-existent icons
     if (!component) {
       console.warn(`[Icon] Icon '${props.name}' not found. Using fallback error icon.`);
-      return TablerIcons.IconAlertTriangle;
+      return IconAlertTriangle;
     }
 
     return component;
@@ -140,7 +141,7 @@
     }
 
     // Add error fallback class when using fallback icon
-    if (iconComponent.value === TablerIcons.IconAlertTriangle) {
+    if (iconComponent.value === IconAlertTriangle) {
       classes.push("icon-error-fallback");
     }
 

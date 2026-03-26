@@ -21,10 +21,15 @@ router = APIRouter(
 
 
 class AnchorData(BaseModel):
-    node_id: str
+    node_id: Optional[str] = None
     element_id: Optional[str] = None
-    start_offset: int
-    end_offset: int
+    start_offset: int = 0
+    end_offset: int = 0
+    type: Optional[str] = None
+    start_relative: Optional[dict] = None
+    end_relative: Optional[dict] = None
+    source_start: Optional[int] = None
+    source_end: Optional[int] = None
 
 
 class AnnotationMessageCreate(BaseModel):

@@ -135,7 +135,7 @@ function toVNode(node) {
 
 // --- Attribute processing (ported from Manuscript.vue) ---
 
-const KNOWN_ATTRS = new Set(["id", "href", "data-nodeid", "tabindex"]);
+const KNOWN_ATTRS = new Set(["id", "href", "data-nodeid", "tabindex", "data-source-start", "data-source-end"]);
 
 function processAttrs(rawAttrs) {
   const data = {};

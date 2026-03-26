@@ -1,7 +1,8 @@
 <script setup>
-  import { ref, inject, onMounted, onUnmounted, useTemplateRef, nextTick } from "vue";
+  import { ref, shallowRef, inject, computed, onMounted, onUnmounted, useTemplateRef, nextTick } from "vue";
   import { useFloating, autoUpdate, offset, flip, shift } from "@floating-ui/vue";
   import { extractAnchor } from "@/utils/anchorExtraction.js";
+  import { extractSourceAnchor } from "@/utils/sourceAnchor.js";
   import { SWATCH_COLORS } from "@/constants/annotationColors.js";
 
   const selfRef = useTemplateRef("selfRef");
@@ -12,6 +13,8 @@
   let anchorRect = null;
 
   const annotationActions = inject("annotationActions", null);
+  const ydoc = inject("ydoc", shallowRef(null));
+  const ytext = computed(() => ydoc.value?.getText("text") || null);
 
   const getVirtualElementFromRect = (rect) => ({
     getBoundingClientRect: () => rect,
@@ -67,7 +70,9 @@
     // Extract anchor and snapshot the rect immediately while the Range
     // is still valid. DOM mutations from applyHighlights invalidate live Ranges.
     const manuscriptEl = getManuscriptEl();
-    const anchor = extractAnchor(range, manuscriptEl);
+    const anchor = ytext.value
+      ? extractSourceAnchor(range, manuscriptEl, ytext.value)
+      : extractAnchor(range, manuscriptEl);
     if (!anchor) {
       clearSelection();
       return;
@@ -145,14 +150,27 @@
     const anchor = currentAnchor.value;
 
     try {
+      const anchorData = anchor.type === "yjs_relative"
+        ? {
+            type: anchor.type,
+            node_id: anchor.node_id,
+            element_id: anchor.element_id,
+            start_offset: anchor.start_offset,
+            end_offset: anchor.end_offset,
+            start_relative: anchor.start_relative,
+            end_relative: anchor.end_relative,
+            source_start: anchor.source_start,
+            source_end: anchor.source_end,
+          }
+        : {
+            node_id: anchor.node_id,
+            element_id: anchor.element_id,
+            start_offset: anchor.start_offset,
+            end_offset: anchor.end_offset,
+          };
       await annotationActions.createAnnotation({
         color: colorName,
-        anchorData: {
-          node_id: anchor.node_id,
-          element_id: anchor.element_id,
-          start_offset: anchor.start_offset,
-          end_offset: anchor.end_offset,
-        },
+        anchorData,
         selectedText: anchor.selected_text,
       });
     } catch (err) {
@@ -168,15 +186,28 @@
     const anchor = currentAnchor.value;
 
     try {
+      const anchorData = anchor.type === "yjs_relative"
+        ? {
+            type: anchor.type,
+            node_id: anchor.node_id,
+            element_id: anchor.element_id,
+            start_offset: anchor.start_offset,
+            end_offset: anchor.end_offset,
+            start_relative: anchor.start_relative,
+            end_relative: anchor.end_relative,
+            source_start: anchor.source_start,
+            source_end: anchor.source_end,
+          }
+        : {
+            node_id: anchor.node_id,
+            element_id: anchor.element_id,
+            start_offset: anchor.start_offset,
+            end_offset: anchor.end_offset,
+          };
       const annotation = await annotationActions.createAnnotation({
         color: "purple",
         visibility,
-        anchorData: {
-          node_id: anchor.node_id,
-          element_id: anchor.element_id,
-          start_offset: anchor.start_offset,
-          end_offset: anchor.end_offset,
-        },
+        anchorData,
         selectedText: anchor.selected_text,
       });
 

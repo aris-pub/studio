@@ -1,8 +1,9 @@
 import { watch, nextTick, isRef } from "vue";
 import { resolveAnchor } from "@/utils/anchorExtraction.js";
+import { resolveSourceAnchor } from "@/utils/sourceAnchor.js";
 import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 
-export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotationId) {
+export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotationId, ydoc) {
   function clearHighlights(root) {
     if (!root) return;
     const marks = root.querySelectorAll("mark[data-annotation-id]");
@@ -148,7 +149,10 @@ export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotatio
         ...annotation.anchor_data,
         selected_text: annotation.selected_text,
       };
-      const range = resolveAnchor(anchorData, el);
+      const ydocVal = ydoc?.value || ydoc;
+      const range = anchorData.type === "yjs_relative" && ydocVal
+        ? resolveSourceAnchor(anchorData, el, ydocVal)
+        : resolveAnchor(anchorData, el);
       if (!range) continue;
 
       const mark = document.createElement("mark");

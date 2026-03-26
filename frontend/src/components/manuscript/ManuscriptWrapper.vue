@@ -1,6 +1,7 @@
 <script setup>
   import {
     ref,
+    shallowRef,
     watch,
     computed,
     inject,
@@ -144,6 +145,7 @@
   // Highlight rendering
   const annotations = inject("annotations", ref([]));
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
+  const ydoc = inject("ydoc", shallowRef(null));
   const { applyHighlights, setupClickHandler } = useHighlightRenderer(
     annotations,
     {
@@ -151,7 +153,8 @@
         return selfRef.value;
       },
     },
-    activeAnnotationId
+    activeAnnotationId,
+    ydoc
   );
 
   let cleanupClickHandler = null;

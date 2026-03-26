@@ -17,7 +17,7 @@ describe("Icon.vue", () => {
       template: '<div data-test="icon-alert-triangle"><slot/></div>',
     });
 
-    vi.doMock("@tabler/icons-vue", () => ({
+    vi.doMock("@/components/base/iconRegistry.js", () => ({
       IconFoo: FooIcon,
       IconAlertTriangle: AlertTriangleIcon,
     }));
@@ -42,7 +42,7 @@ describe("Icon.vue", () => {
       template: '<div data-test="icon-alert-triangle"><slot/></div>',
     });
 
-    vi.doMock("@tabler/icons-vue", () => ({
+    vi.doMock("@/components/base/iconRegistry.js", () => ({
       IconAlertTriangle: AlertTriangleIcon,
     }));
     vi.doMock("@/components/base/IconTherefore.vue", () => ({ default: ThereforeIcon }));
