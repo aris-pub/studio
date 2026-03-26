@@ -58,9 +58,13 @@
 
   function getOffsetTop(el, ancestor) {
     if (!el || !ancestor) return 0;
+    // Use getBoundingClientRect for both, then add the scroll container's
+    // scrollTop to convert from viewport-relative to content-relative.
+    const scrollContainer = ancestor.closest(".inner.right") || ancestor.parentElement;
     const elRect = el.getBoundingClientRect();
     const ancestorRect = ancestor.getBoundingClientRect();
-    return elRect.top - ancestorRect.top + ancestor.scrollTop;
+    const scrollOffset = scrollContainer ? scrollContainer.scrollTop : 0;
+    return elRect.top - ancestorRect.top + scrollOffset;
   }
 
   function computePositions() {
@@ -148,16 +152,20 @@
       const el = mRef?.$el || mRef;
       if (!el) return;
       observer = new MutationObserver((mutations) => {
-        const hasMarks = mutations.some((m) =>
-          [...m.addedNodes].some(
+        const hasMarks = mutations.some((m) => {
+          // Detect <mark> elements being added
+          if ([...m.addedNodes].some(
             (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
-          )
-        );
+          )) return true;
+          // Detect data-highlight-annotation attribute being set (math highlights)
+          if (m.type === "attributes" && m.attributeName === "data-highlight-annotation") return true;
+          return false;
+        });
         if (!hasMarks) return;
         clearTimeout(sortTimer);
         sortTimer = setTimeout(trySort, 50);
       });
-      observer.observe(el, { childList: true, subtree: true });
+      observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-highlight-annotation"] });
     },
     { immediate: true }
   );
