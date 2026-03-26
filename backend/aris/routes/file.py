@@ -779,7 +779,8 @@ async def get_asset_raw(
     if encoding == "base64":
         data = b64.b64decode(asset.content)
     else:
-        data = asset.content.encode("utf-8") if isinstance(asset.content, str) else asset.content
+        content_str: str = asset.content  # type: ignore[assignment]
+        data = content_str.encode("utf-8")
 
     return Response(content=data, media_type=mime)
 
