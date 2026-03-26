@@ -1,7 +1,7 @@
 <script setup>
   import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
-  import { IconNote, IconMessages } from "@/components/base/iconRegistry.js";
+  // IconNote/IconMessages no longer needed — annotation marks are CSS dots
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);
@@ -196,13 +196,11 @@
       v-for="mark in annotationMarks"
       :key="mark.id"
       class="mm-annotation"
-      :style="posStyle(mark.top)"
+      :style="{ ...posStyle(mark.top), '--ann-color': mark.color }"
       @mouseenter="onMarkEnter($event, mark)"
       @mouseleave="onMarkLeave"
       @click="onMarkClick($event, mark)"
-    >
-      <component :is="mark.visibility === 'shared' ? IconMessages : IconNote" :size="isCompact ? 8 : 12" :style="{ color: mark.color }" />
-    </div>
+    />
 
     <!-- Feedback dots -->
     <div
@@ -369,7 +367,7 @@
     background-color: var(--blue-500);
   }
 
-  /* ── Annotation bubble icons ── */
+  /* ── Annotation dots ── */
   .mm-annotation {
     position: absolute;
     left: 50%;
@@ -377,26 +375,16 @@
     z-index: 1;
     pointer-events: auto;
     cursor: pointer;
-    transition: transform 0.15s ease;
-    line-height: 0;
-    width: 14px;
-    height: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    & :deep(svg) {
-      width: 12px;
-      height: 12px;
-      flex-shrink: 0;
-    }
-    & :deep(svg *) {
-      stroke: none;
-    }
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--ann-color, var(--purple-500));
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .mm-annotation:hover {
-    transform: translate(-50%, -50%) scale(1.2);
+    transform: translate(-50%, -50%) scale(1.5);
+    box-shadow: 0 0 0 2px var(--ann-color, var(--purple-500));
   }
 
   /* ── Feedback dots ── */
