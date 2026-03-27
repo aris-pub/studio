@@ -65,16 +65,18 @@
   const onKeydown = (e) => {
     const names = colorNames.value;
     const idx = names.indexOf(activeColor.value || names[0]);
-    let next;
+    let nextIdx;
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
-      next = names[(idx + 1) % names.length];
+      nextIdx = (idx + 1) % names.length;
     } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
-      next = names[(idx - 1 + names.length) % names.length];
+      nextIdx = (idx - 1 + names.length) % names.length;
     }
-    if (next !== undefined) {
-      onClick(next);
+    if (nextIdx !== undefined) {
+      onClick(names[nextIdx]);
+      const swatches = e.currentTarget.querySelectorAll('[role="radio"]');
+      swatches[nextIdx]?.focus();
     }
   };
 </script>

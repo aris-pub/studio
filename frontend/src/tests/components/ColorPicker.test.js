@@ -150,6 +150,7 @@ describe("ColorPicker.vue", () => {
     it("navigates with arrow keys (ArrowRight/ArrowDown moves forward, wraps)", async () => {
       const wrapper = mount(ColorPicker, {
         props: { colors, defaultActive: "red" },
+        attachTo: document.body,
       });
 
       const container = wrapper.find('[role="radiogroup"]');
@@ -160,11 +161,15 @@ describe("ColorPicker.vue", () => {
       const radios = wrapper.findAll('[role="radio"]');
       expect(radios[1].attributes("aria-checked")).toBe("true");
       expect(radios[1].attributes("tabindex")).toBe("0");
+      expect(radios[1].element).toBe(document.activeElement);
+
+      wrapper.unmount();
     });
 
     it("navigates with ArrowLeft/ArrowUp (wraps around)", async () => {
       const wrapper = mount(ColorPicker, {
         props: { colors, defaultActive: "red" },
+        attachTo: document.body,
       });
 
       const container = wrapper.find('[role="radiogroup"]');
@@ -174,6 +179,33 @@ describe("ColorPicker.vue", () => {
       expect(wrapper.emitted("change")?.[0]).toEqual(["blue"]);
       const radios = wrapper.findAll('[role="radio"]');
       expect(radios[2].attributes("aria-checked")).toBe("true");
+      expect(radios[2].element).toBe(document.activeElement);
+
+      wrapper.unmount();
+    });
+
+    it("moves focus through multiple arrow presses sequentially", async () => {
+      const wrapper = mount(ColorPicker, {
+        props: { colors, defaultActive: "red" },
+        attachTo: document.body,
+      });
+
+      const container = wrapper.find('[role="radiogroup"]');
+
+      await container.trigger("keydown", { key: "ArrowRight" });
+      await wrapper.vm.$nextTick();
+      expect(wrapper.findAll('[role="radio"]')[1].element).toBe(document.activeElement);
+
+      await container.trigger("keydown", { key: "ArrowRight" });
+      await wrapper.vm.$nextTick();
+      expect(wrapper.findAll('[role="radio"]')[2].element).toBe(document.activeElement);
+
+      // Wraps to first
+      await container.trigger("keydown", { key: "ArrowRight" });
+      await wrapper.vm.$nextTick();
+      expect(wrapper.findAll('[role="radio"]')[0].element).toBe(document.activeElement);
+
+      wrapper.unmount();
     });
   });
 });
