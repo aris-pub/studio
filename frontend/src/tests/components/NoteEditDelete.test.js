@@ -111,7 +111,7 @@ describe("Note.vue — per-message edit/delete", () => {
     });
 
     it("onSaveMessageEdit calls annotationActions.updateNote", () => {
-      expect(noteScript).toMatch(/function onSaveMessageEdit\(msg\)/);
+      expect(noteScript).toMatch(/function onSaveMessageEdit\(msg, submittedValue\)/);
       expect(noteScript).toMatch(/annotationActions\.updateNote\(msg\.id/);
     });
 
