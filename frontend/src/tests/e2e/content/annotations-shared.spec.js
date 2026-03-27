@@ -246,7 +246,7 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
 
   // ─── Shared card UI ─────────────────────────────────────────────────────────
 
-  test("shared annotation card shows author avatar and Shared label", async ({
+  test("shared annotation card shows Shared label", async ({
     request,
     browser,
   }) => {
