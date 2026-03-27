@@ -287,7 +287,7 @@ async def create_annotation_message(
             )
         )
         count_result = await db.execute(count_query)
-        if count_result.scalar() >= 1:
+        if count_result.scalar_one() >= 1:
             raise HTTPException(
                 status_code=400, detail="Annotation already has a note"
             )
