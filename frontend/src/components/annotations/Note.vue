@@ -570,10 +570,10 @@
 
   .shared-label {
     font-size: 10px;
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-semi);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--note-color);
+    color: var(--gray-800);
   }
 
   .timestamp {
@@ -585,8 +585,8 @@
   }
 
   .note:not(.shared) .timestamp {
-    color: var(--gray-700);
-    font-size: 9px;
+    color: var(--gray-800);
+    font-size: 10px;
   }
 
   .actions {
@@ -655,7 +655,6 @@
   .note:not(.shared) .selected-text {
     color: var(--gray-700);
     font-size: 12px;
-    opacity: 0.75;
     line-height: 1.35;
   }
 
