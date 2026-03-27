@@ -130,10 +130,49 @@
     });
   }
 
-  async function onSaveMessageEdit(msg, submittedValue) {
+  async function onSaveMessageEdit(msg) {
     if (!annotationActions) return;
-    const content = submittedValue || editMessageText.value;
-    isSaving.value = true;
+    try {
+      await annotationActions.updateNote(msg.id, editMessageText.value);
+    } catch (err) {
+      console.error("Failed to update message:", err);
+    }
+    editingMessageId.value = null;
+    editMessageText.value = "";
+  }
+
+  function onCancelMessageEdit() {
+    editingMessageId.value = null;
+    editMessageText.value = "";
+  }
+
+  function onDeleteMessageClick(msg) {
+    if (confirmingDeleteMessageId.value === msg.id) {
+      if (Date.now() - deleteMessageArmedAt < DEBOUNCE_MS) return;
+      onDeleteMessage(msg);
+      confirmingDeleteMessageId.value = null;
+      clearTimeout(deleteMessageTimeout);
+    } else {
+      confirmingDeleteMessageId.value = msg.id;
+      deleteMessageArmedAt = Date.now();
+      clearTimeout(deleteMessageTimeout);
+      deleteMessageTimeout = setTimeout(() => {
+        confirmingDeleteMessageId.value = null;
+      }, 3000);
+    }
+  }
+
+  async function onDeleteMessage(msg) {
+    if (!annotationActions) return;
+    try {
+      await annotationActions.deleteNote(msg.id);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  }
+
+  async function onPostReply() {
+    if (!annotationActions || !replyText.value.trim()) return;
     try {
       await annotationActions.updateNote(msg.id, content);
       editingMessageId.value = null;
@@ -567,16 +606,14 @@
             </div>
             <template v-if="editingMessageId === msg.id">
               <div class="thread-message-edit-area" @click.stop>
-                <TextareaInput
+                <label :for="`msg-edit-${msg.id}`" class="sr-only">Edit message</label>
+                <textarea
+                  :id="`msg-edit-${msg.id}`"
                   ref="editMessageInput"
-                  :model-value="editMessageText"
-                  :rows="2"
-                  :compact="true"
-                  layout="inline"
-                  :show-buttons="false"
-                  :submit-on-enter="true"
-                  @update:model-value="editMessageText = $event"
-                  @submit="(val) => onSaveMessageEdit(msg, val)"
+                  v-model="editMessageText"
+                  class="edit-input thread-edit-input"
+                  rows="2"
+                  @keydown.enter.exact.prevent="onSaveMessageEdit(msg)"
                   @keydown.esc.stop="onCancelMessageEdit"
                 />
                 <div class="edit-actions">
@@ -624,16 +661,14 @@
       <template v-else-if="note">
         <template v-if="editingMessageId === note.id">
           <div class="thread-message-edit-area" @click.stop>
-            <TextareaInput
+            <label :for="`msg-edit-${note.id}`" class="sr-only">Edit note</label>
+            <textarea
+              :id="`msg-edit-${note.id}`"
               ref="editMessageInput"
-              :model-value="editMessageText"
-              :rows="2"
-              :compact="true"
-              layout="inline"
-              :show-buttons="false"
-              :submit-on-enter="true"
-              @update:model-value="editMessageText = $event"
-              @submit="(val) => onSaveMessageEdit(note, val)"
+              v-model="editMessageText"
+              class="edit-input thread-edit-input"
+              rows="2"
+              @keydown.enter.exact.prevent="onSaveMessageEdit(note)"
               @keydown.esc.stop="onCancelMessageEdit"
             />
             <div class="edit-actions">
@@ -1017,6 +1052,10 @@
     margin-top: 6px;
   }
 
+  .thread-edit-input {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
 
   /* ---------------------------------------------------------------
      REPLY AREA (shared threads)
@@ -1028,11 +1067,29 @@
     border-top: 1px solid var(--border-primary);
   }
 
-  .reply-area :deep(.textarea-input) {
-    padding: 0;
-    background: transparent;
-    border-top: none;
-    backdrop-filter: none;
+  .reply-input {
+    width: 100%;
+    border: var(--border-thin) solid var(--border-primary);
+    border-radius: 8px;
+    padding: 8px 10px;
+    padding-right: 32px;
+    font-family: inherit;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    background-color: var(--surface-page);
+    color: var(--extra-dark);
+    transition: var(--transition-bd-color);
+  }
+
+  .reply-input:focus {
+    border-color: var(--border-action);
+  }
+
+  .reply-send {
+    position: absolute;
+    right: 6px;
+    bottom: 10px;
   }
 
   /* ---------------------------------------------------------------
