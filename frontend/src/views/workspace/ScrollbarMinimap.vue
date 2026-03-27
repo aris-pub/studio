@@ -1,21 +1,10 @@
 <script setup>
   import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
-  // IconNote/IconMessages no longer needed — annotation marks are CSS dots
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);
   const hoveredEl = ref(null);
-
-  function onMarkEnter(event, mark) {
-    hoveredEl.value = event.currentTarget;
-    hoveredMark.value = mark;
-  }
-
-  function onMarkLeave() {
-    hoveredEl.value = null;
-    hoveredMark.value = null;
-  }
 
   const props = defineProps({
     file: { type: Object, required: true },
@@ -82,21 +71,90 @@
     scrollContainer.value.scrollTop = clamped * sh - ch / 2;
   }
 
+  // Proximity-based hover: find the nearest mark to the cursor
+  const PROXIMITY_THRESHOLD = 12; // pixels
+
+  function onGutterPointerMove(event) {
+    if (isDragging.value || isCompact.value) return;
+    const rect = stripRef.value.getBoundingClientRect();
+    const stripHeight = rect.height;
+    const stripWidth = rect.width;
+    const cursorFraction = (event.clientY - rect.top) / stripHeight;
+    const cursorX = (event.clientX - rect.left) / stripWidth; // 0=left, 1=right
+
+    let nearest = null;
+    let nearestDist = Infinity;
+
+    for (const mark of allMarks.value) {
+      const yDist = Math.abs(mark.top - cursorFraction) * stripHeight;
+      if (yDist >= PROXIMITY_THRESHOLD) continue;
+
+      // Horizontal affinity: prefer marks on the cursor's side of the strip
+      let xPenalty = 0;
+      if (mark.type === "annotation" && cursorX > 0.6) xPenalty = 4;
+      else if (mark.type === "feedback" && cursorX < 0.4) xPenalty = 4;
+
+      const dist = yDist + xPenalty;
+      if (dist < nearestDist) {
+        nearest = mark;
+        nearestDist = dist;
+      }
+    }
+
+    if (nearest !== hoveredMark.value) {
+      hoveredMark.value = nearest;
+      // Position the tooltip anchor at the mark's position
+      if (nearest) {
+        const markY = rect.top + nearest.top * stripHeight;
+        const noop = () => {};
+        hoveredEl.value = {
+          getBoundingClientRect: () => ({
+            top: markY - 4, bottom: markY + 4, left: rect.left, right: rect.right,
+            width: rect.width, height: 8, x: rect.left, y: markY - 4,
+          }),
+          addEventListener: noop,
+          removeEventListener: noop,
+          matches: () => true,
+        };
+      } else {
+        hoveredEl.value = null;
+      }
+    }
+  }
+
+  function onGutterPointerLeave() {
+    hoveredMark.value = null;
+    hoveredEl.value = null;
+  }
+
   function onStripPointerDown(event) {
     if (isCompact.value || !scrollContainer.value) return;
-    if (
-      event.target !== stripRef.value &&
-      event.target.classList.contains("viewport-indicator") === false
-    )
+
+    // If a mark is hovered, navigate to it
+    if (hoveredMark.value) {
+      const mark = hoveredMark.value;
+      const sh = scrollContainer.value.scrollHeight;
+      const ch = scrollContainer.value.clientHeight;
+      scrollContainer.value.scrollTo({
+        top: mark.top * sh - ch / 2,
+        behavior: "smooth",
+      });
+      if (mark.type === "annotation") {
+        const id = parseInt(mark.id.replace("ann-", ""), 10);
+        if (!isNaN(id)) activeAnnotationId.value = id;
+      }
       return;
+    }
+
+    // Otherwise, scroll to clicked position
     isDragging.value = true;
     stripRef.value.setPointerCapture(event.pointerId);
     scrollToFraction(event);
   }
 
   function onStripPointerMove(event) {
-    if (!isDragging.value) return;
-    scrollToFraction(event);
+    onGutterPointerMove(event);
+    if (isDragging.value) scrollToFraction(event);
   }
 
   function onStripPointerUp() {
@@ -105,23 +163,28 @@
 
   const emit = defineEmits(["mark-click"]);
 
-  function onMarkClick(event, mark) {
+  // Compact mode click handler (emits for parent)
+  function onCompactMarkClick(event, mark) {
     event.stopPropagation();
     if (isCompact.value) {
       emit("mark-click", mark);
-      return;
     }
-    if (!scrollContainer.value) return;
-    const sh = scrollContainer.value.scrollHeight;
-    const ch = scrollContainer.value.clientHeight;
-    scrollContainer.value.scrollTo({
-      top: mark.top * sh - ch / 2,
-      behavior: "smooth",
-    });
-    if (mark.type === "annotation") {
-      const id = parseInt(mark.id.replace("ann-", ""), 10);
-      if (!isNaN(id)) activeAnnotationId.value = id;
-    }
+  }
+
+  // Check if a mark is the currently hovered one
+  function isHovered(mark) {
+    return hoveredMark.value?.id === mark.id;
+  }
+
+  // Check if a mark is very close to the hovered mark (within 8px vertically)
+  const OVERLAP_THRESHOLD = 8;
+  function isNearHovered(mark) {
+    if (!hoveredMark.value || hoveredMark.value.id === mark.id) return false;
+    const stripEl = stripRef.value;
+    if (!stripEl) return false;
+    const stripHeight = stripEl.getBoundingClientRect().height;
+    const dist = Math.abs(mark.top - hoveredMark.value.top) * stripHeight;
+    return dist < OVERLAP_THRESHOLD;
   }
 
   onMounted(() => {
@@ -153,10 +216,11 @@
   <div
     ref="stripRef"
     class="scrollbar-minimap"
-    :class="[mode, orientation, { compact: isCompact, dragging: isDragging }]"
+    :class="[mode, orientation, { compact: isCompact, dragging: isDragging, 'has-hovered': hoveredMark }]"
     @pointerdown="onStripPointerDown"
     @pointermove="onStripPointerMove"
     @pointerup="onStripPointerUp"
+    @pointerleave="onGutterPointerLeave"
   >
     <!-- Viewport indicator (workspace mode only) -->
     <div
@@ -173,11 +237,8 @@
       v-for="mark in sectionMarks"
       :key="mark.id"
       class="mm-section"
-      :class="{ 'level-1': mark.level === 1 }"
+      :class="{ 'level-1': mark.level === 1, hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="posStyle(mark.top)"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
     <!-- Figure marks — short blue dashes -->
@@ -185,32 +246,26 @@
       v-for="mark in figureMarks"
       :key="mark.id"
       class="mm-figure"
+      :class="{ hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="posStyle(mark.top)"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
-    <!-- Annotation bubbles -->
+    <!-- Annotation ticks — left-aligned short colored marks -->
     <div
       v-for="mark in annotationMarks"
       :key="mark.id"
       class="mm-annotation"
+      :class="{ hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="{ ...posStyle(mark.top), '--ann-color': mark.color }"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
-    <!-- Feedback dots -->
+    <!-- Feedback ticks — right-aligned short colored marks -->
     <div
       v-for="mark in feedbackMarks"
       :key="mark.id"
       class="mm-feedback"
+      :class="{ hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="{ ...posStyle(mark.top), '--fb-color': mark.color }"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
     <!-- Search dashes -->
@@ -218,27 +273,23 @@
       v-for="mark in searchMarks"
       :key="mark.id"
       class="mm-search"
+      :class="{ hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="posStyle(mark.top)"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
-    <!-- Presence dots -->
+    <!-- Presence dots — stay interactive (sparse, never crowd) -->
     <div
       v-for="mark in presenceMarks"
       :key="mark.id"
       class="mm-presence"
+      :class="{ hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
       :style="{
         [isHorizontal ? 'left' : 'top']: `clamp(6px, ${mark.top * 100}%, calc(100% - 6px))`,
         backgroundColor: mark.avatarColor || mark.color,
       }"
-      @mouseenter="onMarkEnter($event, mark)"
-      @mouseleave="onMarkLeave"
-      @click="onMarkClick($event, mark)"
     />
 
-    <!-- Tooltip: avatar + name for presence, plain text for others -->
+    <!-- Tooltip -->
     <Tooltip :anchor="hoveredEl" :placement="isCompact ? 'top' : 'left'">
       <div v-if="hoveredMark?.type === 'presence'" class="presence-tooltip">
         <Avatar
@@ -268,13 +319,96 @@
     cursor: grabbing;
   }
 
+  /* All marks shrink to 75% + 30% opacity by default, grow to 100% + full opacity on strip hover */
+  .scrollbar-minimap .mm-section::after,
+  .scrollbar-minimap .mm-figure::after,
+  .scrollbar-minimap .mm-search::after {
+    transform: scaleX(0.75);
+    transform-origin: center;
+    opacity: 0.3;
+    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease, margin-inline 0.15s ease, background-color 0.15s ease, height 0.15s ease;
+  }
+
+  .scrollbar-minimap .mm-annotation::after {
+    transform: scaleX(0.75);
+    transform-origin: left;
+    opacity: 0.3;
+    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .scrollbar-minimap .mm-feedback::after {
+    transform: scaleX(0.75);
+    transform-origin: right;
+    opacity: 0.3;
+    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .scrollbar-minimap .mm-presence {
+    transform: translate(-50%, -50%) scale(0.75);
+    opacity: 0.3;
+    transition: transform 0.25s ease, opacity 0.25s ease, top 300ms ease-out;
+  }
+
+  .scrollbar-minimap:hover .mm-section::after,
+  .scrollbar-minimap:hover .mm-figure::after,
+  .scrollbar-minimap:hover .mm-search::after,
+  .scrollbar-minimap:hover .mm-annotation::after,
+  .scrollbar-minimap:hover .mm-feedback::after {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  .scrollbar-minimap:hover .mm-presence {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  /* When a mark is hovered, dim all others */
+  .scrollbar-minimap.has-hovered .mm-section::after,
+  .scrollbar-minimap.has-hovered .mm-figure::after,
+  .scrollbar-minimap.has-hovered .mm-search::after,
+  .scrollbar-minimap.has-hovered .mm-annotation::after,
+  .scrollbar-minimap.has-hovered .mm-feedback::after {
+    opacity: 0.35;
+  }
+
+  .scrollbar-minimap.has-hovered .mm-presence {
+    opacity: 0.35;
+  }
+
+  /* The hovered mark itself stays full opacity */
+  .scrollbar-minimap.has-hovered .mm-section.hovered::after,
+  .scrollbar-minimap.has-hovered .mm-figure.hovered::after,
+  .scrollbar-minimap.has-hovered .mm-search.hovered::after,
+  .scrollbar-minimap.has-hovered .mm-annotation.hovered::after,
+  .scrollbar-minimap.has-hovered .mm-feedback.hovered::after {
+    opacity: 1;
+  }
+
+  .scrollbar-minimap.has-hovered .mm-presence.hovered {
+    opacity: 1;
+  }
+
+  /* Marks very close to the hovered one dim further */
+  .scrollbar-minimap.has-hovered .mm-section.near-hovered::after,
+  .scrollbar-minimap.has-hovered .mm-figure.near-hovered::after,
+  .scrollbar-minimap.has-hovered .mm-search.near-hovered::after,
+  .scrollbar-minimap.has-hovered .mm-annotation.near-hovered::after,
+  .scrollbar-minimap.has-hovered .mm-feedback.near-hovered::after {
+    opacity: 0.1;
+  }
+
+  .scrollbar-minimap.has-hovered .mm-presence.near-hovered {
+    opacity: 0.1;
+  }
+
   /* Workspace mode: strip at right edge */
   .scrollbar-minimap.workspace.vertical {
-    width: 20px;
+    width: 24px;
     position: sticky;
     top: 0;
     height: calc(100vh - 32px);
-    flex: 0 0 20px;
+    flex: 0 0 24px;
     margin-left: 0;
     overflow: visible;
     z-index: 3;
@@ -290,8 +424,8 @@
 
   .viewport-indicator {
     position: absolute;
-    left: 6px;
-    right: 6px;
+    left: 8px;
+    right: 8px;
     background: var(--gray-600);
     opacity: 0.25;
     border-radius: 4px;
@@ -307,14 +441,13 @@
     align-items: center;
     height: 16px;
     transform: translateY(-50%);
-    pointer-events: auto;
-    cursor: pointer;
+    pointer-events: none;
 
     &::after {
       content: "";
       display: block;
       width: 100%;
-      margin-inline: 6px;
+      margin-inline: 4px;
       height: 3px;
       border-radius: 2px;
       background-color: var(--gray-500);
@@ -329,7 +462,11 @@
     height: 4px;
   }
 
-  .mm-section:hover::after {
+  .mm-section.hovered {
+    z-index: 10;
+  }
+
+  .mm-section.hovered::after {
     margin-inline: 2px;
     background-color: var(--gray-700);
   }
@@ -343,8 +480,7 @@
     align-items: center;
     height: 16px;
     transform: translateY(-50%);
-    pointer-events: auto;
-    cursor: pointer;
+    pointer-events: none;
 
     &::after {
       content: "";
@@ -361,49 +497,82 @@
     }
   }
 
-  .mm-figure:hover::after {
+  .mm-figure.hovered {
+    z-index: 10;
+  }
+
+  .mm-figure.hovered::after {
     width: 100%;
     margin-inline: 2px;
     background-color: var(--blue-500);
   }
 
-  /* ── Annotation dots ── */
+  /* ── Annotation ticks — left-aligned ── */
   .mm-annotation {
     position: absolute;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
-    pointer-events: auto;
-    cursor: pointer;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--ann-color, var(--purple-500));
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    height: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 50%;
+      margin-left: 3px;
+      margin-right: auto;
+      height: 3px;
+      border-radius: 1px;
+      background-color: var(--ann-color, var(--purple-500));
+      transition:
+        width 0.15s ease,
+        box-shadow 0.15s ease;
+    }
   }
 
-  .mm-annotation:hover {
-    transform: translate(-50%, -50%) scale(1.5);
-    box-shadow: 0 0 0 2px var(--ann-color, var(--purple-500));
+  .mm-annotation.hovered {
+    z-index: 10;
   }
 
-  /* ── Feedback dots ── */
+  .mm-annotation.hovered::after {
+    width: 70%;
+  }
+
+  /* ── Feedback ticks — right-aligned ── */
   .mm-feedback {
     position: absolute;
-    left: 50%;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    background-color: var(--fb-color);
-    pointer-events: auto;
-    cursor: pointer;
-    z-index: 1;
-    transition: transform 0.15s ease;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    height: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 50%;
+      margin-left: auto;
+      margin-right: 3px;
+      height: 3px;
+      border-radius: 1px;
+      background-color: var(--fb-color);
+      transition:
+        width 0.15s ease,
+        box-shadow 0.15s ease;
+    }
   }
 
-  .mm-feedback:hover {
-    transform: translate(-50%, -50%) scale(1.3);
+  .mm-feedback.hovered {
+    z-index: 10;
+  }
+
+  .mm-feedback.hovered::after {
+    width: 70%;
   }
 
   /* ── Search dashes ── */
@@ -413,10 +582,9 @@
     right: 0;
     display: flex;
     align-items: center;
-    height: 16px;
+    height: 12px;
     transform: translateY(-50%);
-    pointer-events: auto;
-    cursor: pointer;
+    pointer-events: none;
 
     &::after {
       content: "";
@@ -433,13 +601,17 @@
     }
   }
 
-  .mm-search:hover::after {
+  .mm-search.hovered {
+    z-index: 10;
+  }
+
+  .mm-search.hovered::after {
     margin-inline: 2px;
     height: 3px;
     background-color: var(--orange-400);
   }
 
-  /* ── Presence dots ── */
+  /* ── Presence dots — stay interactive ── */
   .mm-presence {
     position: absolute;
     left: 50%;
@@ -447,14 +619,14 @@
     height: 14px;
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    pointer-events: auto;
-    cursor: pointer;
+    pointer-events: none;
     z-index: 1;
-    transition: top 300ms ease-out;
+    transition: top 300ms ease-out, transform 0.15s ease;
     box-shadow: 0 0 0 2px var(--surface-page, #fff);
   }
 
-  .mm-presence:hover {
+  .mm-presence.hovered {
+    z-index: 10;
     transform: translate(-50%, -50%) scale(1.2);
   }
 
@@ -470,7 +642,7 @@
   .scrollbar-minimap.horizontal .mm-section {
     top: 0;
     height: 100%;
-    width: 12px;
+    width: 24px;
     right: auto;
     transform: translateX(-50%);
     display: flex;
@@ -512,23 +684,26 @@
     }
   }
 
+  /* Compact mode: annotation/feedback ticks become centered vertical ticks */
   .scrollbar-minimap.horizontal .mm-annotation,
   .scrollbar-minimap.horizontal .mm-feedback {
-    top: 50%;
-    transform: translate(-50%, -50%);
-  }
+    top: 0;
+    height: 100%;
+    width: 8px;
+    right: auto;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-  /* Compact mode: scale icons to fit the bar, neutral by default */
-  .scrollbar-minimap.compact .mm-annotation {
-    color: var(--gray-400);
-    transition: color 0.2s ease;
-
-    & :deep(svg) {
-      color: inherit;
+    &::after {
+      width: 2px;
+      height: 100%;
+      margin: 0;
+      border-radius: 1px;
     }
   }
 
-  /* No pointer/click interaction in compact mode */
   .scrollbar-minimap.compact .mm-section,
   .scrollbar-minimap.compact .mm-annotation,
   .scrollbar-minimap.compact .mm-figure {

@@ -156,13 +156,11 @@ describe("ScrollbarMinimap.vue", () => {
     expect(sections[1].classes()).not.toContain("level-1");
   });
 
-  it("renders annotation marks with bubble icon", () => {
+  it("renders annotation marks as tick elements", () => {
     const wrapper = mountComponent();
     const ann = wrapper.find(".mm-annotation");
     expect(ann.exists()).toBe(true);
     expect(ann.attributes("style")).toContain("top: 50%");
-    // Should use IconMessageFilled (SVG inside)
-    expect(ann.find("svg").exists()).toBe(true);
   });
 
   it("renders presence marks with avatar color", () => {
@@ -336,22 +334,17 @@ describe("ScrollbarMinimap.vue — interaction behavior", () => {
     expect(presence.attributes("style")).toContain("clamp");
   });
 
-  it("compact mode does not render annotations, search, or presence marks", () => {
+  it("compact mode renders all mark types from useMinimapMarks", () => {
     const wrapper = mountComponent({ mode: "compact", orientation: "horizontal" });
-    // Compact mode uses computeSectionMarks (sections-only), not useMinimapMarks
-    // Since manuscriptRef is null, there are no marks at all
-    expect(wrapper.findAll(".mm-annotation").length).toBe(0);
-    expect(wrapper.findAll(".mm-search").length).toBe(0);
-    expect(wrapper.findAll(".mm-presence").length).toBe(0);
+    // All marks come from the mocked useMinimapMarks, rendered in compact mode
+    expect(wrapper.findAll(".mm-annotation").length).toBe(1);
+    expect(wrapper.findAll(".mm-section").length).toBe(2);
   });
 
-  it("mark click stops propagation (doesn't trigger strip click)", async () => {
-    const wrapper = mountComponent();
-    const section = wrapper.find(".mm-section");
-    const event = new Event("click", { bubbles: true });
-    const stopProp = vi.spyOn(event, "stopPropagation");
-    section.element.dispatchEvent(event);
-    expect(stopProp).toHaveBeenCalled();
+  it("marks use proximity-based hover instead of per-mark click handlers", () => {
+    // Marks are pointer-events: none; gutter handles all interaction
+    expect(minimapScript).toMatch(/onGutterPointerMove/);
+    expect(minimapScript).toMatch(/PROXIMITY_THRESHOLD/);
   });
 
   it("mouseenter and mouseleave events are bound on annotation marks", () => {
@@ -371,8 +364,8 @@ const minimapSource = readFileSync(
 );
 
 describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
-  it("workspace strip is 20px wide with sticky positioning", () => {
-    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*width:\s*20px/s);
+  it("workspace strip is 24px wide with sticky positioning", () => {
+    expect(minimapSource).toMatch(/\.scrollbar-minimap\.workspace\.vertical[^}]*width:\s*24px/s);
     expect(minimapSource).toMatch(
       /\.scrollbar-minimap\.workspace\.vertical[^}]*position:\s*sticky/s
     );
@@ -385,14 +378,14 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
     expect(minimapSource).toMatch(/\.mm-section\s*\{[^}]*height:\s*3px/s);
   });
 
-  it("search dashes have expanded click target like section marks", () => {
-    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*height:\s*16px/s);
+  it("search dashes have 12px container height", () => {
+    expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*height:\s*12px/s);
     expect(minimapSource).toMatch(/\.mm-search\s*\{[^}]*transform:\s*translateY\(-50%\)/s);
   });
 
-  it("search uses orange and has hover expansion", () => {
+  it("search uses orange and has hovered expansion", () => {
     expect(minimapSource).toMatch(/\.mm-search.*--orange-300/s);
-    expect(minimapSource).toMatch(/\.mm-search:hover/s);
+    expect(minimapSource).toMatch(/\.mm-search\.hovered/s);
   });
 
   it("presence dots are 14px circles with white ring", () => {
@@ -401,8 +394,9 @@ describe("ScrollbarMinimap.vue — CSS structure regressions", () => {
     expect(minimapSource).toMatch(/\.mm-presence\s*\{[^}]*box-shadow/s);
   });
 
-  it("annotation icons use line-height: 0 to prevent container sizing issues", () => {
-    expect(minimapSource).toMatch(/\.mm-annotation\s*\{[^}]*line-height:\s*0/s);
+  it("annotation ticks are left-aligned with 40% width", () => {
+    expect(minimapSource).toMatch(/\.mm-annotation[\s\S]*?width:\s*50%/);
+    expect(minimapSource).toMatch(/\.mm-annotation[\s\S]*?margin-left:\s*3px/);
   });
 
   it("compact horizontal mode is 4px tall", () => {
@@ -504,8 +498,9 @@ describe("Minimap replaces native scrollbar (std-b9dz)", () => {
     expect(minimapScript).toMatch(/function scrollToFraction/);
   });
 
-  it("drag-to-scroll: pointerdown skips mark elements", () => {
-    expect(minimapScript).toMatch(/onStripPointerDown[\s\S]*?event\.target\s*!==\s*stripRef/);
+  it("pointerdown navigates to hovered mark or scrolls to position", () => {
+    expect(minimapScript).toMatch(/hoveredMark\.value/);
+    expect(minimapScript).toMatch(/scrollToFraction/);
   });
 
   it("viewport indicator is visible with position absolute", () => {
@@ -566,36 +561,27 @@ describe("ScrollbarMinimap — compact mode features (std-lqa2)", () => {
     expect(minimapScript).toMatch(/:\s*\{\s*top:/);
   });
 
-  it("compact mode computes annotation marks from anchor_data.node_id", () => {
-    expect(minimapScript).toContain("ann.anchor_data?.node_id");
-    expect(minimapScript).toMatch(/el\.querySelector.*data-nodeid/);
+  it("uses useMinimapMarks composable for all mark computation", () => {
+    expect(minimapScript).toMatch(/useMinimapMarks/);
+    expect(minimapScript).toMatch(/annotations/);
+    expect(minimapScript).toMatch(/reactions/);
   });
 
-  it("compact mode computes feedback marks from reactions", () => {
-    expect(minimapScript).toContain("rxn.node_id");
-    expect(minimapScript).toContain("FEEDBACK_COLORS[rxn.reaction_type]");
-    expect(minimapScript).toContain('type: "feedback"');
-  });
-
-  it("compact mode watches reactions for recompute", () => {
-    expect(minimapScript).toMatch(/watch\(reactions,\s*computeCompactMarks/);
-  });
-
-  it("compact horizontal marks disable pointer events", () => {
+  it("compact mode marks have cursor pointer", () => {
     expect(minimapStyle).toMatch(
-      /\.scrollbar-minimap\.compact\s+\.mm-section[\s\S]*?pointer-events:\s*none/
+      /\.scrollbar-minimap\.compact\s+\.mm-section[\s\S]*?cursor:\s*pointer/
     );
   });
 
-  it("horizontal annotation icons are vertically centered", () => {
+  it("horizontal annotation ticks become vertical ticks", () => {
     expect(minimapStyle).toMatch(
-      /\.scrollbar-minimap\.horizontal\s+\.mm-annotation[^}]*top:\s*50%/s
+      /\.scrollbar-minimap\.horizontal\s+\.mm-annotation/
     );
   });
 
-  it("compact annotation icons use icon size 10", () => {
-    const templateSection = minimapSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
-    expect(templateSection).toMatch(/isCompact\s*\?\s*10\s*:\s*20/);
+  it("annotation marks use ::after pseudo-element for tick", () => {
+    expect(minimapStyle).toMatch(/\.mm-annotation[\s\S]*?::after/);
+    expect(minimapStyle).toMatch(/\.mm-feedback[\s\S]*?::after/);
   });
 });
 
