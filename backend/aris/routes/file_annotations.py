@@ -117,24 +117,22 @@ async def create_annotation(
 
 @router.get("/", response_model=list[AnnotationResponse])
 async def get_annotations(
-    file_id: Optional[int] = None,
+    file_id: int,
     include_deleted: bool = False,
     skip: int = 0,
     limit: int = 100,
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if file_id:
-        if not await has_permission(file_id, user.id, PermissionLevel.VIEW, db):
-            raise HTTPException(status_code=403, detail="Access denied")
+    if not await has_permission(file_id, user.id, PermissionLevel.VIEW, db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     query = select(Annotation).options(selectinload(Annotation.messages).selectinload(AnnotationMessage.owner), selectinload(Annotation.owner))
 
     if not include_deleted:
         query = query.where(Annotation.deleted_at.is_(None))
 
-    if file_id:
-        query = query.where(Annotation.file_id == file_id)
+    query = query.where(Annotation.file_id == file_id)
 
     # Privacy filter: only see own private annotations + all shared annotations
     query = query.where(
