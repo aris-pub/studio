@@ -163,13 +163,13 @@ describe("AnnotationMenu.vue — action buttons have visible text labels (std-wz
   });
 
   it("Highlight button has visible text label", () => {
-    expect(menuTemplate).toMatch(/text="Highlight"/);
+    expect(menuTemplate).toMatch(/text="Mark"/);
   });
 });
 
-describe("AnnotationMenu.vue — separator aria-hidden (std-d0be)", () => {
-  it("separator has aria-hidden=true", () => {
-    expect(menuTemplate).toMatch(/class="separator"[\s\S]*?aria-hidden="true"/);
+describe("AnnotationMenu.vue — two-row layout (std-d0be)", () => {
+  it("uses flex-direction column for stacked layout", () => {
+    expect(menuStyle).toMatch(/flex-direction:\s*column/);
   });
 });
 

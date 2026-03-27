@@ -268,6 +268,30 @@
       tabindex="-1"
       @mouseup.stop
     >
+      <div class="annotation-actions" :style="{ '--action-icon-color': `var(--${selectedColor}-700)`, '--action-icon-bg': `var(--${selectedColor}-100)` }" @mousedown.prevent>
+        <Button
+          kind="tertiary"
+          size="xs"
+          icon="Highlight"
+          text="Mark"
+          @click="onHighlight"
+        />
+        <Button
+          kind="tertiary"
+          size="xs"
+          icon="Note"
+          text="Note"
+          @click="onCreateAnnotation('private')"
+        />
+        <Button
+          kind="tertiary"
+          size="xs"
+          icon="Messages"
+          text="Comment"
+          @click="onCreateAnnotation('shared')"
+        />
+      </div>
+
       <div class="swatches" role="radiogroup" aria-label="Highlight color" @mousedown.prevent @keydown="onSwatchKeydown">
         <button
           v-for="(color, name) in SWATCH_COLORS"
@@ -291,32 +315,6 @@
           />
         </button>
       </div>
-
-      <div class="separator" aria-hidden="true" />
-
-      <div class="annotation-actions" @mousedown.prevent>
-        <Button
-          kind="tertiary"
-          size="sm"
-          icon="Highlight"
-          text="Highlight"
-          @click="onHighlight"
-        />
-        <Button
-          kind="tertiary"
-          size="sm"
-          icon="Note"
-          text="Note"
-          @click="onCreateAnnotation('private')"
-        />
-        <Button
-          kind="tertiary"
-          size="sm"
-          icon="Messages"
-          text="Comment"
-          @click="onCreateAnnotation('shared')"
-        />
-      </div>
     </div>
   </Teleport>
 </template>
@@ -326,12 +324,13 @@
     position: fixed;
     background: var(--surface-page);
     border: var(--border-extrathin) solid var(--border-primary);
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 6px 8px;
     box-shadow: var(--shadow-soft);
-    display: flex;
+    display: inline-flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     z-index: 999;
     outline: none;
   }
@@ -339,7 +338,23 @@
   .swatches {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 2px;
+  }
+
+  .annotation-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+
+    & :deep(.tabler-icon) {
+      color: var(--action-icon-color) !important;
+      stroke-width: 2.25;
+      background-color: var(--action-icon-bg);
+      border-radius: 4px;
+      transition: color 0.15s ease, background-color 0.15s ease;
+    }
   }
 
   .swatch-btn {
@@ -375,16 +390,25 @@
     transition: box-shadow 0.15s ease;
   }
 
-  .separator {
-    width: 1px;
-    height: 20px;
-    background: var(--border-primary);
-    flex-shrink: 0;
-  }
+  .action-btn {
+    font-size: 12px;
+    font-weight: var(--weight-medium, 500);
+    color: var(--gray-800);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
-  .annotation-actions {
-    display: flex;
-    align-items: center;
-    gap: 0;
+    &:hover {
+      background-color: var(--gray-100);
+      color: var(--extra-dark);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--border-action);
+      outline-offset: 1px;
+    }
   }
 </style>

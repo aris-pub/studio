@@ -47,7 +47,7 @@ describe("AnnotationMenu redesign — swatches as color selectors", () => {
 
 describe("AnnotationMenu redesign — three labeled action buttons", () => {
   it("has a Highlight button with text label", () => {
-    expect(menuTemplate).toMatch(/text="Highlight"/);
+    expect(menuTemplate).toMatch(/text="Mark"/);
   });
 
   it("has a Note button with text label", () => {
