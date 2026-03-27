@@ -145,9 +145,9 @@ describe("Workspace Input Isolation @regression", () => {
         props: { colors },
       });
 
-      // ColorPicker has keydown handlers on its buttons, but they should be scoped
-      const buttons = wrapper.findAll("button");
-      expect(buttons.length).toBeGreaterThan(0);
+      // ColorPicker has keydown handlers on its radio swatches, but they should be scoped
+      const radios = wrapper.findAll('[role="radio"]');
+      expect(radios.length).toBeGreaterThan(0);
 
       // Verify no global keyboard listeners were added
       const globalKeyboardListeners = globalListeners.filter(

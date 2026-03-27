@@ -30,12 +30,13 @@
    *   default-active="brand-b"
    * />
    */
-  import { ref, watch } from "vue";
+  import { ref, watch, computed } from "vue";
 
   const props = defineProps({
     colors: { type: Object, required: true },
     defaultActive: { type: String, default: "" },
     labels: { type: Boolean, default: true },
+    groupLabel: { type: String, default: "Color" },
   });
   const emit = defineEmits(["change"]);
 
@@ -47,28 +48,53 @@
     }
   );
 
+  const colorNames = computed(() => Object.keys(props.colors));
+
+  const tabbableColor = computed(() => {
+    if (activeColor.value && colorNames.value.includes(activeColor.value)) {
+      return activeColor.value;
+    }
+    return colorNames.value[0] || "";
+  });
+
   const onClick = (name) => {
     activeColor.value = name;
     emit("change", name);
   };
+
+  const onKeydown = (e) => {
+    const names = colorNames.value;
+    const idx = names.indexOf(activeColor.value || names[0]);
+    let next;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      next = names[(idx + 1) % names.length];
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      next = names[(idx - 1 + names.length) % names.length];
+    }
+    if (next !== undefined) {
+      onClick(next);
+    }
+  };
 </script>
 
 <template>
-  <span class="cp-wrapper">
+  <span class="cp-wrapper" role="radiogroup" :aria-label="groupLabel" @keydown="onKeydown">
     <div
       v-for="(color, name) in colors"
       :key="name"
+      role="radio"
       class="swatch"
       :class="[name, activeColor === name ? 'active' : '']"
+      :aria-checked="activeColor === name ? 'true' : 'false'"
+      :aria-label="name"
+      :tabindex="tabbableColor === name ? 0 : -1"
       @click="onClick(name)"
+      @keydown.enter.prevent="onClick(name)"
+      @keydown.space.prevent="onClick(name)"
     >
-      <button
-        type="button"
-        class="circle"
-        :style="{ 'background-color': color }"
-        @keydown.enter.prevent="onClick(name)"
-        @keydown.space.prevent="onClick(name)"
-      />
+      <span class="circle" :style="{ 'background-color': color }" />
       <span v-if="labels" class="label text-caption">{{ name }}</span>
     </div>
   </span>
@@ -92,6 +118,7 @@
     padding: 8px;
     width: 60px;
     transition: var(--transition-bg-color);
+    outline: none;
 
     &:active {
       background-color: var(--blue-400) !important;
@@ -105,6 +132,11 @@
       & .circle {
         box-shadow: var(--shadow-strong);
       }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--border-action, var(--blue-500));
+      outline-offset: 2px;
     }
   }
 
@@ -129,11 +161,6 @@
     border-radius: 16px;
     border: var(--border-thin) solid var(--gray-700);
     pointer-events: none;
-
-    &:focus-visible {
-      border-color: var(--almost-black);
-      box-shadow: var(--shadow-strong);
-    }
   }
 
   .label {
