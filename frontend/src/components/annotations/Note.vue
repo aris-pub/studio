@@ -149,7 +149,12 @@
       .replace(/"/g, "&quot;");
   }
 
+  const timeTick = ref(0);
+  const tickInterval = setInterval(() => timeTick.value++, 60000);
+  onUnmounted(() => clearInterval(tickInterval));
+
   const timeAgo = computed(() => {
+    void timeTick.value;
     const created = new Date(props.annotation.created_at);
     const now = new Date();
     const diffMs = now - created;
@@ -680,7 +685,7 @@
 
   .note:not(.shared) .note-text {
     margin: 4px 0 0;
-    font-size: 13.5px;
+    font-size: 13px;
     line-height: 1.45;
   }
 
