@@ -9,12 +9,13 @@
   const visible = ref(false);
   const virtualEl = ref(null);
   const currentAnchor = ref(null);
-  // Static rect snapshot — immune to DOM mutations that invalidate live Ranges
+  const selectedColor = ref("purple");
   let anchorRect = null;
 
   const annotationActions = inject("annotationActions", null);
   const ydoc = inject("ydoc", shallowRef(null));
   const ytext = computed(() => ydoc.value?.getText("text") || null);
+  const activeAnnotationId = inject("activeAnnotationId", ref(null));
 
   const getVirtualElementFromRect = (rect) => ({
     getBoundingClientRect: () => rect,
@@ -40,6 +41,7 @@
     virtualEl.value = null;
     anchorRect = null;
     currentAnchor.value = null;
+    selectedColor.value = "purple";
 
     const selection = window.getSelection();
     if (selection && selection.removeAllRanges) {
@@ -67,8 +69,6 @@
       return;
     }
 
-    // Extract anchor and snapshot the rect immediately while the Range
-    // is still valid. DOM mutations from applyHighlights invalidate live Ranges.
     const manuscriptEl = getManuscriptEl();
     const anchor = ytext.value
       ? extractSourceAnchor(range, manuscriptEl, ytext.value)
@@ -124,8 +124,6 @@
       document.querySelector('[data-testid="manuscript-viewer"]') ||
       document.querySelector(".rsm-manuscript") ||
       document.querySelector('[data-testid="manuscript-container"]');
-    // Only clean up when mouseup is outside the manuscript (the leak scenario).
-    // Inside-manuscript mouseups are handled by handleMouseUp with proper sequencing.
     if (manuscriptContainer?.contains(e.target)) return;
     const wrapper = getManuscriptWrapper();
     if (wrapper?.hasAttribute("data-selecting")) {
@@ -140,80 +138,67 @@
     );
   }
 
-  // Color click is the terminal action: create annotation with whatever
-  // note text exists (empty string for highlight-only) and dismiss.
-  const activeAnnotationId = inject("activeAnnotationId", ref(null));
+  function buildAnchorData(anchor) {
+    return anchor.type === "yjs_relative"
+      ? {
+          type: anchor.type,
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+          start_relative: anchor.start_relative,
+          end_relative: anchor.end_relative,
+          source_start: anchor.source_start,
+          source_end: anchor.source_end,
+        }
+      : {
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+        };
+  }
 
-  async function onColorClick(colorName) {
+  function onSwatchSelect(name) {
+    selectedColor.value = name;
+  }
+
+  function onSwatchKeydown(e) {
+    const names = Object.keys(SWATCH_COLORS);
+    const idx = names.indexOf(selectedColor.value);
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedColor.value = names[(idx + 1) % names.length];
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedColor.value = names[(idx - 1 + names.length) % names.length];
+    }
+  }
+
+  async function onHighlight() {
     if (!annotationActions || !currentAnchor.value) return;
-
-    const anchor = currentAnchor.value;
-
     try {
-      const anchorData = anchor.type === "yjs_relative"
-        ? {
-            type: anchor.type,
-            node_id: anchor.node_id,
-            element_id: anchor.element_id,
-            start_offset: anchor.start_offset,
-            end_offset: anchor.end_offset,
-            start_relative: anchor.start_relative,
-            end_relative: anchor.end_relative,
-            source_start: anchor.source_start,
-            source_end: anchor.source_end,
-          }
-        : {
-            node_id: anchor.node_id,
-            element_id: anchor.element_id,
-            start_offset: anchor.start_offset,
-            end_offset: anchor.end_offset,
-          };
       await annotationActions.createAnnotation({
-        color: colorName,
-        anchorData,
-        selectedText: anchor.selected_text,
+        color: selectedColor.value,
+        anchorData: buildAnchorData(currentAnchor.value),
+        selectedText: currentAnchor.value.selected_text,
       });
     } catch (err) {
-      console.error("Failed to create annotation:", err);
+      console.error("Failed to create highlight:", err);
     }
-
     clearSelection();
   }
 
   async function onCreateAnnotation(visibility) {
     if (!annotationActions || !currentAnchor.value) return;
-
-    const anchor = currentAnchor.value;
-
     try {
-      const anchorData = anchor.type === "yjs_relative"
-        ? {
-            type: anchor.type,
-            node_id: anchor.node_id,
-            element_id: anchor.element_id,
-            start_offset: anchor.start_offset,
-            end_offset: anchor.end_offset,
-            start_relative: anchor.start_relative,
-            end_relative: anchor.end_relative,
-            source_start: anchor.source_start,
-            source_end: anchor.source_end,
-          }
-        : {
-            node_id: anchor.node_id,
-            element_id: anchor.element_id,
-            start_offset: anchor.start_offset,
-            end_offset: anchor.end_offset,
-          };
       const annotation = await annotationActions.createAnnotation({
-        color: "purple",
+        color: selectedColor.value,
         visibility,
-        anchorData,
-        selectedText: anchor.selected_text,
+        anchorData: buildAnchorData(currentAnchor.value),
+        selectedText: currentAnchor.value.selected_text,
       });
-
       clearSelection();
-
-      // Activate the annotation card so it opens in editing mode
       await nextTick();
       activeAnnotationId.value = annotation.id;
     } catch (err) {
@@ -283,16 +268,27 @@
       tabindex="-1"
       @mouseup.stop
     >
-      <div class="swatches" @mousedown.prevent>
+      <div class="swatches" role="radiogroup" aria-label="Highlight color" @mousedown.prevent @keydown="onSwatchKeydown">
         <button
           v-for="(color, name) in SWATCH_COLORS"
           :key="name"
           type="button"
+          role="radio"
           class="swatch-btn"
-          :aria-label="`Highlight ${name}`"
-          @click="onColorClick(name)"
+          :aria-checked="selectedColor === name"
+          :aria-label="`${name} color`"
+          :tabindex="selectedColor === name ? 0 : -1"
+          @click="onSwatchSelect(name)"
         >
-          <span class="swatch-circle" :style="{ backgroundColor: color }" />
+          <span
+            class="swatch-circle"
+            :style="{
+              backgroundColor: color,
+              boxShadow: selectedColor === name
+                ? `0 0 0 2px var(--surface-page), 0 0 0 4px var(--${name}-500)`
+                : 'none'
+            }"
+          />
         </button>
       </div>
 
@@ -302,17 +298,22 @@
         <Button
           kind="tertiary"
           size="sm"
+          icon="Highlight"
+          text="Highlight"
+          @click="onHighlight"
+        />
+        <Button
+          kind="tertiary"
+          size="sm"
           icon="Note"
-          aria-label="Private note"
-          title="Private note"
+          text="Note"
           @click="onCreateAnnotation('private')"
         />
         <Button
           kind="tertiary"
           size="sm"
           icon="Messages"
-          aria-label="Shared comment"
-          title="Shared comment"
+          text="Comment"
           @click="onCreateAnnotation('shared')"
         />
       </div>
@@ -355,11 +356,7 @@
     transition: background-color 0.15s ease;
 
     &:hover {
-      background-color: var(--blue-100);
-    }
-
-    &:active {
-      background-color: var(--blue-400);
+      background-color: var(--gray-100);
     }
 
     &:focus-visible {
@@ -375,6 +372,7 @@
     border-radius: 50%;
     border: var(--border-extrathin) solid var(--gray-800);
     pointer-events: none;
+    transition: box-shadow 0.15s ease;
   }
 
   .separator {
@@ -388,21 +386,5 @@
     display: flex;
     align-items: center;
     gap: 0;
-
-    & :deep(.tabler-icon) {
-      color: var(--dark) !important;
-    }
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

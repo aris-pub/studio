@@ -153,13 +153,17 @@ describe("Note.vue — visually-hidden textarea label (std-wz20)", () => {
   });
 });
 
-describe("AnnotationMenu.vue — action buttons have aria-labels (std-wz20)", () => {
-  it("private note button has aria-label", () => {
-    expect(menuTemplate).toMatch(/aria-label="Private note"/);
+describe("AnnotationMenu.vue — action buttons have visible text labels (std-wz20)", () => {
+  it("Note button has visible text label", () => {
+    expect(menuTemplate).toMatch(/text="Note"/);
   });
 
-  it("shared comment button has aria-label", () => {
-    expect(menuTemplate).toMatch(/aria-label="Shared comment"/);
+  it("Comment button has visible text label", () => {
+    expect(menuTemplate).toMatch(/text="Comment"/);
+  });
+
+  it("Highlight button has visible text label", () => {
+    expect(menuTemplate).toMatch(/text="Highlight"/);
   });
 });
 
