@@ -18,6 +18,7 @@
 
   const props = defineProps({
     annotation: { type: Object, required: true },
+    orphaned: { type: Boolean, default: false },
     searchMatch: { type: Boolean, default: false },
     searchMatchCurrent: { type: Boolean, default: false },
     searchQuery: { type: String, default: "" },
@@ -464,6 +465,7 @@
       editing,
       collapsed: collapsed && note,
       shared: isShared,
+      orphaned: orphaned,
       'search-match': searchMatch,
       'search-match-current': searchMatchCurrent,
     }"
@@ -564,6 +566,10 @@
     <p v-if="collapsed" class="collapsed-line note-text" v-html="highlightMatch(previewText)"></p>
 
     <div v-if="!collapsed" class="content">
+      <div v-if="orphaned" class="orphan-banner">
+        <Icon name="AlertTriangle" :size="14" class="orphan-icon" />
+        <span class="orphan-text">Original text no longer found</span>
+      </div>
       <p class="selected-text" v-html="highlightMatch(displayText)"></p>
 
       <div v-if="editing" class="edit-area" @click.stop>
@@ -1116,6 +1122,46 @@
     gap: 4px;
   }
 
+
+  /* ---------------------------------------------------------------
+     ORPHANED ANNOTATION — broken anchor indicator
+     --------------------------------------------------------------- */
+  .note.orphaned {
+    border-left-style: dashed;
+    opacity: 0.75;
+  }
+
+  .note.orphaned:hover,
+  .note.orphaned:focus-within {
+    opacity: 1;
+  }
+
+  .orphan-banner {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    background-color: color-mix(in srgb, var(--orange-200) 20%, transparent);
+    border: var(--border-extrathin) solid var(--orange-300);
+  }
+
+  .orphan-icon {
+    color: var(--orange-600);
+    flex-shrink: 0;
+  }
+
+  .orphan-text {
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+    color: var(--orange-700);
+    line-height: 1.3;
+  }
+
+  .note.shared .orphan-banner {
+    background-color: color-mix(in srgb, var(--orange-200) 15%, var(--surface-page));
+  }
 
   .color-picker {
     display: flex;

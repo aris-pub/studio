@@ -248,6 +248,104 @@ describe("DockableAnnotations — selection menu guard (std-epgb)", () => {
   });
 });
 
+describe("DockableAnnotations — orphaned annotation tracking (std-2roe)", () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  function addMark(id) {
+    const mark = document.createElement("mark");
+    mark.setAttribute("data-annotation-id", String(id));
+    container.appendChild(mark);
+    return mark;
+  }
+
+  function sortByDomPositionWithOrphans(list) {
+    const anchored = [];
+    const orphaned = [];
+    for (const ann of list) {
+      const mark =
+        document.querySelector(`mark[data-annotation-id="${ann.id}"]`) ||
+        document.querySelector(`[data-highlight-annotation="${ann.id}"]`);
+      if (mark) anchored.push({ ann, mark });
+      else orphaned.push(ann);
+    }
+    anchored.sort((a, b) => {
+      const pos = a.mark.compareDocumentPosition(b.mark);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+    orphaned.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const orphanedIds = new Set(orphaned.map((a) => a.id));
+    return { sorted: [...anchored.map((a) => a.ann), ...orphaned], orphanedIds };
+  }
+
+  it("identifies annotations without marks as orphaned", () => {
+    addMark(1);
+    // No mark for id=2
+    const annotations = [
+      { id: 1, created_at: "2026-01-01" },
+      { id: 2, created_at: "2026-01-02" },
+    ];
+    const { orphanedIds } = sortByDomPositionWithOrphans(annotations);
+    expect(orphanedIds.has(2)).toBe(true);
+    expect(orphanedIds.has(1)).toBe(false);
+  });
+
+  it("returns empty orphanedIds when all annotations have marks", () => {
+    addMark(1);
+    addMark(2);
+    const annotations = [
+      { id: 1, created_at: "2026-01-01" },
+      { id: 2, created_at: "2026-01-02" },
+    ];
+    const { orphanedIds } = sortByDomPositionWithOrphans(annotations);
+    expect(orphanedIds.size).toBe(0);
+  });
+
+  it("marks all annotations as orphaned when no marks exist", () => {
+    const annotations = [
+      { id: 1, created_at: "2026-01-01" },
+      { id: 2, created_at: "2026-01-02" },
+    ];
+    const { orphanedIds } = sortByDomPositionWithOrphans(annotations);
+    expect(orphanedIds.has(1)).toBe(true);
+    expect(orphanedIds.has(2)).toBe(true);
+  });
+
+  it("places orphaned annotations after anchored ones in sorted list", () => {
+    addMark(2);
+    // No mark for id=1
+    const annotations = [
+      { id: 1, created_at: "2026-01-01" },
+      { id: 2, created_at: "2026-01-02" },
+    ];
+    const { sorted } = sortByDomPositionWithOrphans(annotations);
+    expect(sorted.map((a) => a.id)).toEqual([2, 1]);
+  });
+
+  it("recognizes data-highlight-annotation (math) as anchored", () => {
+    const math = document.createElement("span");
+    math.setAttribute("data-highlight-annotation", "5");
+    container.appendChild(math);
+    const annotations = [
+      { id: 5, created_at: "2026-01-01" },
+      { id: 6, created_at: "2026-01-02" },
+    ];
+    const { orphanedIds } = sortByDomPositionWithOrphans(annotations);
+    expect(orphanedIds.has(5)).toBe(false);
+    expect(orphanedIds.has(6)).toBe(true);
+  });
+});
+
 describe("DockableAnnotations — MutationObserver re-sort (std-z99r cont.)", () => {
   it("observer filters for MARK additions only", () => {
     const callback = vi.fn();
