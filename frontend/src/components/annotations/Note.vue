@@ -689,7 +689,6 @@
      --------------------------------------------------------------- */
   .thread {
     margin-top: 10px;
-    border-top: none;
     padding-top: 0;
     display: flex;
     flex-direction: column;
@@ -700,10 +699,6 @@
     padding: 8px 8px;
     border-radius: 8px;
     background-color: color-mix(in srgb, var(--gray-800) 3%, transparent);
-  }
-
-  .thread-message + .thread-message {
-    border-top: none;
   }
 
   .thread-message--first {
@@ -817,17 +812,6 @@
     gap: 4px;
   }
 
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
 
   .color-picker {
     display: flex;
