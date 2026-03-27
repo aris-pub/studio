@@ -3,6 +3,7 @@
   import { HIGHLIGHT_COLORS, SWATCH_COLORS } from "@/constants/annotationColors.js";
   import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
+  import TextareaInput from "@/components/base/TextareaInput.vue";
 
   // Load Temml from CDN if not already loaded (e.g. by onload.js), then
   // flip a reactive flag so Vue re-renders cards with rendered math.
@@ -127,10 +128,11 @@
     });
   }
 
-  async function onSaveMessageEdit(msg) {
+  async function onSaveMessageEdit(msg, submittedValue) {
     if (!annotationActions) return;
+    const content = submittedValue || editMessageText.value;
     try {
-      await annotationActions.updateNote(msg.id, editMessageText.value);
+      await annotationActions.updateNote(msg.id, content);
     } catch (err) {
       console.error("Failed to update message:", err);
     }
@@ -168,10 +170,11 @@
     }
   }
 
-  async function onPostReply() {
-    if (!annotationActions || !replyText.value.trim()) return;
+  async function onPostReply(submittedValue) {
+    const content = submittedValue || replyText.value;
+    if (!annotationActions || !content.trim()) return;
     try {
-      await annotationActions.addNote(props.annotation.id, replyText.value.trim());
+      await annotationActions.addNote(props.annotation.id, content.trim());
       replyText.value = "";
     } catch (err) {
       console.error("Failed to post reply:", err);
@@ -320,13 +323,14 @@
     }
   }
 
-  async function onSaveEdit() {
+  async function onSaveEdit(submittedValue) {
     if (!annotationActions) return;
+    const content = submittedValue || editText.value;
     try {
       if (note.value) {
-        await annotationActions.updateNote(note.value.id, editText.value);
-      } else if (editText.value.trim()) {
-        await annotationActions.addNote(props.annotation.id, editText.value.trim());
+        await annotationActions.updateNote(note.value.id, content);
+      } else if (content.trim()) {
+        await annotationActions.addNote(props.annotation.id, content.trim());
       }
     } catch (err) {
       console.error("Failed to save note:", err);
@@ -501,17 +505,18 @@
     <div v-if="!collapsed" class="content">
       <p class="selected-text" v-html="highlightMatch(displayText)"></p>
 
-      <div v-if="editing" class="edit-area">
-        <label :for="`note-edit-${annotation.id}`" class="sr-only">Annotation note</label>
-        <textarea
-          :id="`note-edit-${annotation.id}`"
+      <div v-if="editing" class="edit-area" @click.stop>
+        <TextareaInput
           ref="editInput"
-          v-model="editText"
-          class="edit-input"
-          rows="2"
+          :model-value="editText"
           placeholder="Add a note..."
-          @click.stop
-          @keydown.enter.exact.prevent="onSaveEdit"
+          :rows="2"
+          :compact="true"
+          layout="inline"
+          :show-buttons="false"
+          :submit-on-enter="true"
+          @update:model-value="editText = $event"
+          @submit="onSaveEdit"
           @keydown.esc.stop="onCancelEdit"
         />
         <div class="edit-actions">
@@ -540,14 +545,16 @@
             </div>
             <template v-if="editingMessageId === msg.id">
               <div class="thread-message-edit-area" @click.stop>
-                <label :for="`msg-edit-${msg.id}`" class="sr-only">Edit message</label>
-                <textarea
-                  :id="`msg-edit-${msg.id}`"
+                <TextareaInput
                   ref="editMessageInput"
-                  v-model="editMessageText"
-                  class="edit-input thread-edit-input"
-                  rows="2"
-                  @keydown.enter.exact.prevent="onSaveMessageEdit(msg)"
+                  :model-value="editMessageText"
+                  :rows="2"
+                  :compact="true"
+                  layout="inline"
+                  :show-buttons="false"
+                  :submit-on-enter="true"
+                  @update:model-value="editMessageText = $event"
+                  @submit="(val) => onSaveMessageEdit(msg, val)"
                   @keydown.esc.stop="onCancelMessageEdit"
                 />
                 <div class="edit-actions">
@@ -571,27 +578,22 @@
             </template>
           </div>
 
-          <div v-if="isActive" class="reply-area">
-            <label :for="`note-reply-${annotation.id}`" class="sr-only">Reply</label>
-            <textarea
-              :id="`note-reply-${annotation.id}`"
+          <div v-if="isActive" class="reply-area" @click.stop>
+            <TextareaInput
               ref="replyInput"
-              v-model="replyText"
-              class="reply-input"
-              rows="1"
+              :model-value="replyText"
               placeholder="Reply..."
-              @click.stop
-              @keydown.enter.exact.prevent="onPostReply"
+              :rows="1"
+              :compact="true"
+              layout="inline"
+              :show-buttons="replyText.trim().length > 0"
+              :submit-on-enter="true"
+              submit-button-icon="Send"
+              submit-button-kind="primary"
+              submit-button-size="xs"
+              @update:model-value="replyText = $event"
+              @submit="onPostReply"
               @keydown.esc.stop="replyText = ''"
-            />
-            <Button
-              v-if="replyText.trim()"
-              kind="primary"
-              size="xs"
-              icon="Send"
-              aria-label="Post reply"
-              class="reply-send"
-              @click.stop="onPostReply"
             />
           </div>
         </div>
@@ -600,14 +602,16 @@
       <template v-else-if="note">
         <template v-if="editingMessageId === note.id">
           <div class="thread-message-edit-area" @click.stop>
-            <label :for="`msg-edit-${note.id}`" class="sr-only">Edit note</label>
-            <textarea
-              :id="`msg-edit-${note.id}`"
+            <TextareaInput
               ref="editMessageInput"
-              v-model="editMessageText"
-              class="edit-input thread-edit-input"
-              rows="2"
-              @keydown.enter.exact.prevent="onSaveMessageEdit(note)"
+              :model-value="editMessageText"
+              :rows="2"
+              :compact="true"
+              layout="inline"
+              :show-buttons="false"
+              :submit-on-enter="true"
+              @update:model-value="editMessageText = $event"
+              @submit="(val) => onSaveMessageEdit(note, val)"
               @keydown.esc.stop="onCancelMessageEdit"
             />
             <div class="edit-actions">
@@ -991,10 +995,6 @@
     margin-top: 6px;
   }
 
-  .thread-edit-input {
-    font-size: 13px;
-    padding: 6px 10px;
-  }
 
   /* ---------------------------------------------------------------
      REPLY AREA (shared threads)
@@ -1006,29 +1006,11 @@
     border-top: 1px solid var(--border-primary);
   }
 
-  .reply-input {
-    width: 100%;
-    border: var(--border-thin) solid var(--border-primary);
-    border-radius: 8px;
-    padding: 8px 10px;
-    padding-right: 32px;
-    font-family: inherit;
-    font-size: 13px;
-    resize: none;
-    outline: none;
-    background-color: var(--surface-page);
-    color: var(--extra-dark);
-    transition: var(--transition-bd-color);
-  }
-
-  .reply-input:focus {
-    border-color: var(--border-action);
-  }
-
-  .reply-send {
-    position: absolute;
-    right: 6px;
-    bottom: 10px;
+  .reply-area :deep(.textarea-input) {
+    padding: 0;
+    background: transparent;
+    border-top: none;
+    backdrop-filter: none;
   }
 
   /* ---------------------------------------------------------------
@@ -1041,24 +1023,12 @@
     margin-top: 6px;
   }
 
-  .edit-input {
-    width: 100%;
-    border: var(--border-thin) solid var(--border-primary);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: none;
-    outline: none;
-    background-color: var(--surface-hover);
-    color: var(--extra-dark);
-    transition: var(--transition-bd-color);
-  }
-
-  .edit-input:focus {
-    border-color: var(--border-action);
-    outline: 2px solid var(--border-action);
-    outline-offset: -2px;
+  .edit-area :deep(.textarea-input),
+  .thread-message-edit-area :deep(.textarea-input) {
+    padding: 0;
+    background: transparent;
+    border-top: none;
+    backdrop-filter: none;
   }
 
   .edit-actions {
