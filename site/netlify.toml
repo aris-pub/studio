@@ -1,6 +1,6 @@
 [build]
   publish = ".output/public"
-  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter site run generate"
+  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter nuxt-app run generate"
 
 [build.environment]
   NUXT_TELEMETRY_DISABLED = "1"
