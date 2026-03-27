@@ -300,6 +300,60 @@ describe("useHighlightRenderer — highlight colors", () => {
     expect(mark.textContent).toBe("Hello");
   });
 
+  it("clearHighlights unwraps nested marks without losing text", () => {
+    const { el, clearHighlights } = setup('<p data-nodeid="n1">Hello world today</p>', [
+      {
+        id: 1,
+        color: "purple",
+        anchor_data: { node_id: "n1", start_offset: 0, end_offset: 11 },
+        selected_text: "Hello world",
+      },
+      {
+        id: 2,
+        color: "orange",
+        anchor_data: { node_id: "n1", start_offset: 6, end_offset: 17 },
+        selected_text: "world today",
+      },
+    ]);
+
+    // Verify marks are nested before clearing
+    const marksBefore = el.querySelectorAll("mark[data-annotation-id]");
+    expect(marksBefore.length).toBeGreaterThanOrEqual(2);
+
+    clearHighlights(el);
+
+    expect(el.querySelectorAll("mark[data-annotation-id]").length).toBe(0);
+    expect(el.querySelector("p").textContent).toBe("Hello world today");
+  });
+
+  it("clearHighlights handles deeply nested marks (3 annotations overlapping)", () => {
+    const { el, clearHighlights } = setup('<p data-nodeid="n1">ABCDEFGHIJ</p>', [
+      {
+        id: 1,
+        color: "purple",
+        anchor_data: { node_id: "n1", start_offset: 0, end_offset: 10 },
+        selected_text: "ABCDEFGHIJ",
+      },
+      {
+        id: 2,
+        color: "orange",
+        anchor_data: { node_id: "n1", start_offset: 2, end_offset: 8 },
+        selected_text: "CDEFGH",
+      },
+      {
+        id: 3,
+        color: "green",
+        anchor_data: { node_id: "n1", start_offset: 4, end_offset: 6 },
+        selected_text: "EF",
+      },
+    ]);
+
+    clearHighlights(el);
+
+    expect(el.querySelectorAll("mark[data-annotation-id]").length).toBe(0);
+    expect(el.querySelector("p").textContent).toBe("ABCDEFGHIJ");
+  });
+
   it("cross-boundary range produces a single contiguous mark", () => {
     const { el } = setup('<p data-nodeid="n1">Hello <em>beautiful</em> world</p>', [
       {

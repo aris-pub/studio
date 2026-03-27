@@ -6,15 +6,24 @@ import { HIGHLIGHT_COLORS } from "@/constants/annotationColors.js";
 export function useHighlightRenderer(annotations, manuscriptRef, activeAnnotationId, ydoc) {
   function clearHighlights(root) {
     if (!root) return;
-    const marks = root.querySelectorAll("mark[data-annotation-id]");
-    marks.forEach((mark) => {
+    // Sort marks innermost-first (deepest nesting) so unwrapping inner marks
+    // before outer ones avoids stale parent references from normalize().
+    const marks = [...root.querySelectorAll("mark[data-annotation-id]")];
+    marks.sort((a, b) => {
+      let depthA = 0, depthB = 0;
+      for (let n = a; n !== root && n; n = n.parentNode) depthA++;
+      for (let n = b; n !== root && n; n = n.parentNode) depthB++;
+      return depthB - depthA;
+    });
+    for (const mark of marks) {
       const parent = mark.parentNode;
+      if (!parent) continue;
       while (mark.firstChild) {
         parent.insertBefore(mark.firstChild, mark);
       }
       parent.removeChild(mark);
-      parent.normalize();
-    });
+    }
+    root.normalize();
     // Remove highlight styling from math elements
     root.querySelectorAll("[data-highlight-annotation]").forEach((el) => {
       el.style.removeProperty("background-color");

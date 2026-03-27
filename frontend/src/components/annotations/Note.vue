@@ -85,6 +85,89 @@
   const replyText = ref("");
   const replyInput = ref(null);
 
+  // Per-message edit/delete state
+  const editingMessageId = ref(null);
+  const editMessageText = ref("");
+  const editMessageInput = ref(null);
+  const confirmingDeleteMessageId = ref(null);
+  let deleteMessageTimeout = null;
+  let deleteMessageArmedAt = 0;
+
+  function isOwnMessage(msg) {
+    return user.value?.id && msg.owner_id === user.value.id;
+  }
+
+  function isMessageEdited(msg) {
+    return msg.updated_at && msg.updated_at !== msg.created_at;
+  }
+
+  function editedTimeAgo(msg) {
+    if (!msg.updated_at) return "";
+    void timeTick.value;
+    const updated = new Date(msg.updated_at);
+    const now = new Date();
+    const diffMs = now - updated;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "Edited just now";
+    if (diffMin < 60) return `Edited ${diffMin}min ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `Edited ${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `Edited ${diffDay}d ago`;
+  }
+
+  function onEditMessage(msg) {
+    editingMessageId.value = msg.id;
+    editMessageText.value = msg.content;
+    nextTick(() => {
+      const el = editMessageInput.value;
+      // In v-for, ref is an array; outside v-for, it's a single element
+      const textarea = Array.isArray(el) ? el[0] : el;
+      textarea?.focus();
+    });
+  }
+
+  async function onSaveMessageEdit(msg) {
+    if (!annotationActions) return;
+    try {
+      await annotationActions.updateNote(msg.id, editMessageText.value);
+    } catch (err) {
+      console.error("Failed to update message:", err);
+    }
+    editingMessageId.value = null;
+    editMessageText.value = "";
+  }
+
+  function onCancelMessageEdit() {
+    editingMessageId.value = null;
+    editMessageText.value = "";
+  }
+
+  function onDeleteMessageClick(msg) {
+    if (confirmingDeleteMessageId.value === msg.id) {
+      if (Date.now() - deleteMessageArmedAt < DEBOUNCE_MS) return;
+      onDeleteMessage(msg);
+      confirmingDeleteMessageId.value = null;
+      clearTimeout(deleteMessageTimeout);
+    } else {
+      confirmingDeleteMessageId.value = msg.id;
+      deleteMessageArmedAt = Date.now();
+      clearTimeout(deleteMessageTimeout);
+      deleteMessageTimeout = setTimeout(() => {
+        confirmingDeleteMessageId.value = null;
+      }, 3000);
+    }
+  }
+
+  async function onDeleteMessage(msg) {
+    if (!annotationActions) return;
+    try {
+      await annotationActions.deleteNote(msg.id);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  }
+
   async function onPostReply() {
     if (!annotationActions || !replyText.value.trim()) return;
     try {
@@ -113,8 +196,9 @@
     showColorPicker.value = false;
   }
 
+  const colorName = computed(() => props.annotation.color || "purple");
   const barColor = computed(() => {
-    const colors = HIGHLIGHT_COLORS[props.annotation.color] || HIGHLIGHT_COLORS.purple;
+    const colors = HIGHLIGHT_COLORS[colorName.value] || HIGHLIGHT_COLORS.purple;
     return colors.border;
   });
 
@@ -227,9 +311,13 @@
   }
 
   function onEdit() {
-    editText.value = note.value ? note.value.content : "";
-    editing.value = true;
-    nextTick(() => editInput.value?.focus());
+    if (note.value) {
+      onEditMessage(note.value);
+    } else {
+      editText.value = "";
+      editing.value = true;
+      nextTick(() => editInput.value?.focus());
+    }
   }
 
   async function onSaveEdit() {
@@ -298,6 +386,7 @@
   onUnmounted(() => {
     clearTimeout(deleteTimeout);
     clearTimeout(shareTimeout);
+    clearTimeout(deleteMessageTimeout);
   });
 </script>
 
@@ -313,20 +402,24 @@
       'search-match': searchMatch,
       'search-match-current': searchMatchCurrent,
     }"
-    :style="{ '--note-color': barColor }"
+    :style="{
+      '--note-color': barColor,
+      '--note-color-50': `var(--${colorName}-50)`,
+      '--note-color-100': `var(--${colorName}-100)`,
+      '--note-color-200': `var(--${colorName}-200)`,
+    }"
     tabindex="0"
     @click="onSelect"
     @keydown.esc="onEsc"
   >
     <div class="header">
-      <Avatar
-        v-if="isShared && annotationOwner"
-        :user="annotationOwner"
-        size="sm"
-        :tooltip="true"
-      />
       <span v-if="isShared" class="shared-label">Shared</span>
       <span class="timestamp">{{ timeAgo }}</span>
+      <span
+        v-if="!isShared && note && isMessageEdited(note)"
+        class="edited-tag"
+        :title="editedTimeAgo(note)"
+      >edited</span>
       <div class="actions">
         <Button
           v-if="isOwnAnnotation && !isShared"
@@ -439,8 +532,43 @@
               <Avatar v-if="msg.owner" :user="msg.owner" size="sm" :tooltip="true" />
               <span class="thread-author">{{ msg.owner?.name || "Unknown" }}</span>
               <span class="thread-time">{{ messageTimeAgo(msg) }}</span>
+              <span
+                v-if="isMessageEdited(msg)"
+                class="edited-tag"
+                :title="editedTimeAgo(msg)"
+              >edited</span>
             </div>
-            <p class="thread-body" v-html="highlightMatch(msg.content)"></p>
+            <template v-if="editingMessageId === msg.id">
+              <div class="thread-message-edit-area" @click.stop>
+                <label :for="`msg-edit-${msg.id}`" class="sr-only">Edit message</label>
+                <textarea
+                  :id="`msg-edit-${msg.id}`"
+                  ref="editMessageInput"
+                  v-model="editMessageText"
+                  class="edit-input thread-edit-input"
+                  rows="2"
+                  @keydown.enter.exact.prevent="onSaveMessageEdit(msg)"
+                  @keydown.esc.stop="onCancelMessageEdit"
+                />
+                <div class="edit-actions">
+                  <Button kind="tertiary" size="xs" @click.stop="onCancelMessageEdit">Cancel</Button>
+                  <Button kind="primary" size="xs" @click.stop="onSaveMessageEdit(msg)">Save</Button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="thread-body-row">
+                <p class="thread-body" v-html="highlightMatch(msg.content)"></p>
+                <button
+                  v-if="isActive && isOwnMessage(msg)"
+                  class="inline-edit-btn"
+                  aria-label="Edit message"
+                  @click.stop="onEditMessage(msg)"
+                >
+                  <Icon name="Edit" :size="13" />
+                </button>
+              </div>
+            </template>
           </div>
 
           <div v-if="isActive" class="reply-area">
@@ -469,7 +597,47 @@
         </div>
       </template>
 
-      <p v-else-if="note" class="note-text" v-html="highlightMatch(note.content)"></p>
+      <template v-else-if="note">
+        <template v-if="editingMessageId === note.id">
+          <div class="thread-message-edit-area" @click.stop>
+            <label :for="`msg-edit-${note.id}`" class="sr-only">Edit note</label>
+            <textarea
+              :id="`msg-edit-${note.id}`"
+              ref="editMessageInput"
+              v-model="editMessageText"
+              class="edit-input thread-edit-input"
+              rows="2"
+              @keydown.enter.exact.prevent="onSaveMessageEdit(note)"
+              @keydown.esc.stop="onCancelMessageEdit"
+            />
+            <div class="edit-actions">
+              <Button kind="tertiary" size="xs" @click.stop="onCancelMessageEdit">Cancel</Button>
+              <Button kind="primary" size="xs" @click.stop="onSaveMessageEdit(note)">Save</Button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <p class="note-text" v-html="highlightMatch(note.content)"></p>
+          <div v-if="isActive && isOwnMessage(note)" class="message-actions">
+            <Button
+              kind="tertiary"
+              size="xs"
+              icon="Edit"
+              text="Edit"
+              aria-label="Edit note"
+              @click.stop="onEditMessage(note)"
+            />
+            <Button
+              :kind="confirmingDeleteMessageId === note.id ? 'danger' : 'danger-ghost'"
+              size="xs"
+              :icon="confirmingDeleteMessageId === note.id ? '' : 'Trash'"
+              :text="confirmingDeleteMessageId === note.id ? 'Delete' : 'Delete'"
+              :aria-label="confirmingDeleteMessageId === note.id ? 'Confirm delete note' : 'Delete note'"
+              @click.stop="onDeleteMessageClick(note)"
+            />
+          </div>
+        </template>
+      </template>
     </div>
   </div>
 </template>
@@ -498,8 +666,12 @@
     outline-offset: 2px;
   }
 
-  .note.active:not(:hover) {
+  .note:not(.shared).active:not(:hover) {
     background-color: color-mix(in srgb, var(--note-color) 6%, transparent);
+  }
+
+  .note.shared.active:not(:hover) {
+    background-color: var(--surface-page);
   }
 
   .note.search-match {
@@ -514,54 +686,51 @@
     opacity: 1;
   }
 
-  .note:hover,
-  .note:focus-within {
+  .note:not(.shared):hover,
+  .note:not(.shared):focus-within {
     background-color: color-mix(in srgb, var(--note-color) 4%, transparent);
     box-shadow: none;
-
-    & .actions > * {
-      opacity: 1;
-    }
   }
 
-  .note.active:hover {
+  .note:hover .actions > *,
+  .note:focus-within .actions > * {
+    opacity: 1;
+  }
+
+  .note:not(.shared).active:hover {
     background-color: color-mix(in srgb, var(--note-color) 8%, transparent);
     box-shadow: none;
   }
 
   /* ---------------------------------------------------------------
-     SHARED COMMENT THREAD — full card treatment, proper UI element
+     SHARED COMMENT THREAD — clean card, subtle shadow, no heavy borders
      --------------------------------------------------------------- */
   .note.shared {
-    border: var(--border-extrathin) solid var(--border-primary);
-    border-top: 3px solid var(--note-color);
-    border-radius: 12px;
-    padding: 10px 12px 12px;
+    border: none;
+    border-left: none;
+    border-radius: var(--radius-lg);
+    padding: 12px 14px 14px;
     background-color: var(--surface-page);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
   }
 
   .note.shared.active:not(:focus-within) {
-    border-color: var(--border-action);
-    border-top-color: var(--note-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 10px var(--note-color-100);
   }
 
   .note.shared:hover:not(.active) {
-    border-color: var(--border-primary);
-    border-top-color: var(--note-color);
     background-color: var(--surface-page);
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 10px var(--note-color-100);
   }
 
   .note.shared.search-match {
     background-color: color-mix(in srgb, var(--yellow-200) 20%, var(--surface-page));
-    border-color: var(--yellow-300);
-    border-top-color: var(--note-color);
+    box-shadow: var(--shadow-soft);
   }
 
   .note.shared.search-match-current {
     background-color: color-mix(in srgb, var(--orange-200) 25%, var(--surface-page));
-    border-color: var(--orange-300);
-    border-top-color: var(--note-color);
+    box-shadow: var(--shadow-soft);
   }
 
   /* ---------------------------------------------------------------
@@ -613,12 +782,7 @@
   }
 
   .resolve-btn :deep(.tabler-icon) {
-    color: var(--gray-600);
     transition: color 0.15s ease;
-  }
-
-  .resolve-btn:hover :deep(.tabler-icon) {
-    color: var(--green-500);
   }
 
   .delete-label {
@@ -664,10 +828,14 @@
   }
 
   .note.shared .selected-text {
-    padding: 6px 8px;
-    background-color: color-mix(in srgb, var(--note-color) 6%, transparent);
+    padding: 4px 8px;
+    background-color: var(--note-color-50);
+    border: var(--border-extrathin) solid var(--note-color-100);
     border-radius: 6px;
-    border-left: 2px solid var(--note-color);
+    border-left: none;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--gray-700);
     -webkit-line-clamp: 3;
   }
 
@@ -701,13 +869,17 @@
   }
 
   .thread-message {
-    padding: 8px 8px;
-    border-radius: 8px;
-    background-color: color-mix(in srgb, var(--gray-800) 3%, transparent);
+    padding: 6px 0;
+    border-radius: 0;
+    background-color: transparent;
+  }
+
+  .thread-message + .thread-message {
+    border-top: var(--border-extrathin) solid var(--border-primary);
   }
 
   .thread-message--first {
-    background-color: color-mix(in srgb, var(--gray-800) 5%, transparent);
+    background-color: transparent;
   }
 
   .thread-message-header {
@@ -746,6 +918,84 @@
     white-space: pre-wrap;
   }
 
+  .edited-tag {
+    font-size: 10px;
+    color: var(--gray-600);
+    font-style: italic;
+    flex-shrink: 0;
+  }
+
+  .thread-time + .edited-tag::before,
+  .timestamp + .edited-tag::before {
+    content: "\00B7\00A0";
+    font-style: normal;
+  }
+
+  .message-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    margin: 4px 0 0;
+  }
+
+  .thread-body-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin: 3px 0 0 22px;
+  }
+
+  .thread-body-row .thread-body {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .inline-edit-btn {
+    flex-shrink: 0;
+    padding: 2px;
+    border: none;
+    background: none;
+    color: var(--gray-600);
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+
+  .thread-message:hover .inline-edit-btn,
+  .inline-edit-btn:focus-visible {
+    opacity: 1;
+  }
+
+  .inline-edit-btn:hover {
+    color: var(--extra-dark);
+    background-color: var(--surface-hover);
+  }
+
+  .inline-edit-btn:focus-visible {
+    outline: 2px solid var(--border-action);
+    outline-offset: 1px;
+  }
+
+
+  .thread-message-edit-area {
+    margin: 3px 0 0 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .note:not(.shared) .thread-message-edit-area {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+
+  .thread-edit-input {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
   /* ---------------------------------------------------------------
      REPLY AREA (shared threads)
      --------------------------------------------------------------- */
@@ -766,7 +1016,7 @@
     font-size: 13px;
     resize: none;
     outline: none;
-    background-color: color-mix(in srgb, var(--gray-800) 2%, var(--surface-page));
+    background-color: var(--surface-page);
     color: var(--extra-dark);
     transition: var(--transition-bd-color);
   }
