@@ -292,6 +292,43 @@ describe("extractAnchor → resolveAnchor round-trip", () => {
     expect(resolved.toString()).toBe("quick");
   });
 
+  it("anchors the SECOND occurrence when duplicate text is selected", () => {
+    manuscriptEl.innerHTML = '<p data-nodeid="n1">the model shows that the model works</p>';
+    const textNode = manuscriptEl.querySelector("p").firstChild;
+
+    // Select the second "the model" (starts at char 21)
+    const range = document.createRange();
+    range.setStart(textNode, 21);
+    range.setEnd(textNode, 30);
+    expect(range.toString()).toBe("the model");
+
+    const anchor = extractAnchor(range, manuscriptEl);
+    expect(anchor).not.toBeNull();
+    expect(anchor.selected_text).toBe("the model");
+    // Must point to the SECOND occurrence, not the first
+    expect(anchor.start_offset).toBe(21);
+    expect(anchor.end_offset).toBe(30);
+  });
+
+  it("round-trips the second occurrence of duplicate text", () => {
+    manuscriptEl.innerHTML = '<p data-nodeid="n1">the model shows that the model works</p>';
+    const textNode = manuscriptEl.querySelector("p").firstChild;
+
+    // Select the second "the model"
+    const range = document.createRange();
+    range.setStart(textNode, 21);
+    range.setEnd(textNode, 30);
+
+    const anchor = extractAnchor(range, manuscriptEl);
+    const resolved = resolveAnchor(anchor, manuscriptEl);
+
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("the model");
+    // The resolved range should start at the same position as the original
+    expect(resolved.startContainer).toBe(textNode);
+    expect(resolved.startOffset).toBe(21);
+  });
+
   it("round-trips a cross-element selection", () => {
     manuscriptEl.innerHTML = '<p data-nodeid="n1">Hello <strong>brave</strong> world</p>';
     const p = manuscriptEl.querySelector("p");

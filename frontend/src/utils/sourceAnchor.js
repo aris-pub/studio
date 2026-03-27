@@ -63,15 +63,24 @@ export function extractSourceAnchor(range, manuscriptEl, ytext) {
   const nodeId = block?.getAttribute("data-nodeid") || null;
   const elementId = block?.getAttribute("id") || null;
 
-  // Compute rendered-text offsets within the block for backward compat
+  // Compute rendered-text offsets within the block for backward compat.
+  // Use tree-walker to match exact Range containers (handles duplicate text).
   let startOffset = 0;
   let endOffset = 0;
   if (block) {
-    const fullText = block.textContent;
-    const idx = fullText.indexOf(selectedText);
-    if (idx !== -1) {
-      startOffset = idx;
-      endOffset = idx + selectedText.length;
+    const tw = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    let cc = 0;
+    let fs = false;
+    while (tw.nextNode()) {
+      const tn = tw.currentNode;
+      const len = tn.textContent.length;
+      if (!fs && tn === range.startContainer) { startOffset = cc + range.startOffset; fs = true; }
+      if (fs && tn === range.endContainer) { endOffset = cc + range.endOffset; break; }
+      cc += len;
+    }
+    if (!fs) {
+      const idx = block.textContent.indexOf(selectedText);
+      if (idx !== -1) { startOffset = idx; endOffset = idx + selectedText.length; }
     }
   }
 

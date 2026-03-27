@@ -36,43 +36,39 @@ export function extractAnchor(range, manuscriptEl) {
   const selectedText = range.toString();
   if (!selectedText) return null;
 
-  // Compute character offsets within the block's text content.
-  // Use text search rather than node identity matching, because
-  // selections spanning MathML elements may have element-type
-  // containers that the tree walker can't match.
-  const fullText = block.textContent;
-  const idx = fullText.indexOf(selectedText);
-  let startOffset, endOffset;
+  // Compute character offsets by walking text nodes and matching the
+  // Range's exact start/end containers. This handles duplicate text
+  // correctly (indexOf would always match the first occurrence).
+  const treeWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let charCount = 0;
+  let foundStart = false;
+  let foundEnd = false;
+  let startOffset = 0;
+  let endOffset = 0;
 
-  if (idx !== -1) {
+  while (treeWalker.nextNode()) {
+    const textNode = treeWalker.currentNode;
+    const len = textNode.textContent.length;
+
+    if (!foundStart && textNode === range.startContainer) {
+      startOffset = charCount + range.startOffset;
+      foundStart = true;
+    }
+    if (!foundEnd && textNode === range.endContainer) {
+      endOffset = charCount + range.endOffset;
+      foundEnd = true;
+      break;
+    }
+    charCount += len;
+  }
+
+  // Fallback for MathML selections where containers are element nodes
+  if (!foundStart || !foundEnd) {
+    const fullText = block.textContent;
+    const idx = fullText.indexOf(selectedText);
+    if (idx === -1) return null;
     startOffset = idx;
     endOffset = idx + selectedText.length;
-  } else {
-    // Fallback: try node-matching for simple same-node selections
-    const treeWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-    let charCount = 0;
-    let foundStart = false;
-    let foundEnd = false;
-    startOffset = 0;
-    endOffset = 0;
-
-    while (treeWalker.nextNode()) {
-      const textNode = treeWalker.currentNode;
-      const len = textNode.textContent.length;
-
-      if (!foundStart && textNode === range.startContainer) {
-        startOffset = charCount + range.startOffset;
-        foundStart = true;
-      }
-      if (!foundEnd && textNode === range.endContainer) {
-        endOffset = charCount + range.endOffset;
-        foundEnd = true;
-        break;
-      }
-      charCount += len;
-    }
-
-    if (!foundStart || !foundEnd) return null;
   }
 
   return {
