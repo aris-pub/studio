@@ -18,6 +18,7 @@ vi.mock("vue-router", () => ({
 
 const mockApi = {
   get: vi.fn(),
+  post: vi.fn(),
 };
 
 const mockUser = {
@@ -153,20 +154,22 @@ describe("DrawerFile", () => {
   describe("download HTML", () => {
     it("downloads HTML blob on click", async () => {
       const blobData = new Blob(["<html></html>"], { type: "text/html" });
-      mockApi.get.mockResolvedValue({ data: blobData });
+      mockApi.post.mockResolvedValue({ data: blobData });
 
       wrapper = createWrapper();
       const rows = wrapper.findAll(".action-row");
       await rows[0].trigger("click");
       await flushPromises();
 
-      expect(mockApi.get).toHaveBeenCalledWith("/files/123/download", {
-        responseType: "blob",
-      });
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/files/123/download",
+        {},
+        { responseType: "blob" },
+      );
     });
 
     it("sanitizes filename from title", async () => {
-      mockApi.get.mockResolvedValue({ data: new Blob() });
+      mockApi.post.mockResolvedValue({ data: new Blob() });
 
       wrapper = createWrapper({
         file: { ...mockFile, title: 'File: "Test" <v1>' },
@@ -176,14 +179,16 @@ describe("DrawerFile", () => {
       await rows[0].trigger("click");
       await flushPromises();
 
-      expect(mockApi.get).toHaveBeenCalledWith("/files/123/download", {
-        responseType: "blob",
-      });
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/files/123/download",
+        {},
+        { responseType: "blob" },
+      );
     });
 
     it("disables button during download", async () => {
       let resolveDownload;
-      mockApi.get.mockImplementation(
+      mockApi.post.mockImplementation(
         () =>
           new Promise((resolve) => {
             resolveDownload = resolve;
@@ -193,8 +198,9 @@ describe("DrawerFile", () => {
       wrapper = createWrapper();
       const rows = wrapper.findAll(".action-row");
       await rows[0].trigger("click");
+      await flushPromises();
 
-      // Row should be disabled
+      // Row should be disabled while download is in progress
       expect(rows[0].attributes("disabled")).toBeDefined();
 
       resolveDownload?.({ data: new Blob() });
@@ -207,23 +213,25 @@ describe("DrawerFile", () => {
       await rows[0].trigger("click");
       await flushPromises();
 
-      expect(mockApi.get).not.toHaveBeenCalled();
+      expect(mockApi.post).not.toHaveBeenCalled();
     });
   });
 
   describe("download PDF", () => {
     it("downloads PDF blob on click", async () => {
       const blobData = new Blob(["%PDF"], { type: "application/pdf" });
-      mockApi.get.mockResolvedValue({ data: blobData });
+      mockApi.post.mockResolvedValue({ data: blobData });
 
       wrapper = createWrapper();
       const rows = wrapper.findAll(".action-row");
       await rows[1].trigger("click");
       await flushPromises();
 
-      expect(mockApi.get).toHaveBeenCalledWith("/files/123/download/pdf", {
-        responseType: "blob",
-      });
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/files/123/download/pdf",
+        {},
+        { responseType: "blob", timeout: 120000 },
+      );
     });
   });
 
