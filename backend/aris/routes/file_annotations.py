@@ -5,7 +5,7 @@ from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -274,15 +274,20 @@ async def create_annotation_message(
         raise HTTPException(status_code=403, detail="Comment permission required")
 
     # Private annotations: single note only. Shared annotations: unlimited (thread).
+    # Lock the annotation row to prevent race conditions where two concurrent
+    # requests both pass the count check before either inserts.
     if annotation.visibility != AnnotationVisibility.SHARED:
-        count_query = select(AnnotationMessage).where(
+        await db.execute(
+            select(Annotation).where(Annotation.id == annotation_id).with_for_update()
+        )
+        count_query = select(func.count()).select_from(AnnotationMessage).where(
             and_(
                 AnnotationMessage.annotation_id == annotation_id,
                 AnnotationMessage.deleted_at.is_(None),
             )
         )
         count_result = await db.execute(count_query)
-        if len(count_result.scalars().all()) >= 1:
+        if count_result.scalar_one() >= 1:
             raise HTTPException(
                 status_code=400, detail="Annotation already has a note"
             )

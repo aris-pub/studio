@@ -444,6 +444,35 @@ async def test_private_annotation_single_note_limit(
     assert "already has a note" in resp2.json()["detail"]
 
 
+async def test_private_annotation_note_limit_after_delete_and_recreate(
+    client: AsyncClient, authenticated_user
+):
+    """After deleting a note, a new one can be created (soft-delete aware)."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id)
+
+    resp1 = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Original note"},
+    )
+    assert resp1.status_code == 201
+    msg_id = resp1.json()["id"]
+
+    delete_resp = await client.delete(
+        f"/annotations/messages/{msg_id}", headers=headers
+    )
+    assert delete_resp.status_code == 204
+
+    resp2 = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Replacement note"},
+    )
+    assert resp2.status_code == 201
+
+
 async def test_shared_annotation_multiple_notes(
     client: AsyncClient,
     authenticated_user,
