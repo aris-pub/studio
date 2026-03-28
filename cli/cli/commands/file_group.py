@@ -1,10 +1,8 @@
 """File command group: studio file -f <file_id> [read|edit|comments|reply|resolve|assets]."""
 
-import sys
 
 import click
 
-from cli.core import console
 
 
 @click.group(invoke_without_command=True)

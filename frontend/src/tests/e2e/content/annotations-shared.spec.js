@@ -266,8 +266,8 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
       // Should show "Shared" label
       await expect(card.locator(".shared-label")).toHaveText("Shared");
 
-      // Should show author avatar in header
-      await expect(card.locator(".header .av-wrapper")).toBeVisible();
+      // Should show shared label in header
+      await expect(card.locator(".header .shared-label")).toBeVisible();
     } finally {
       await collab.context.close();
     }
@@ -294,14 +294,15 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
       await expect(card).toBeVisible({ timeout: 10000 });
 
       // Reply input should NOT be visible before card is active
-      await expect(card.locator(".reply-input")).not.toBeVisible();
+      await expect(card.locator(".reply-area")).not.toBeVisible();
 
       // Click to activate
       await card.click();
 
       // Reply input should now be visible
-      const replyInput = card.locator(".reply-input");
-      await expect(replyInput).toBeVisible({ timeout: 5000 });
+      const replyArea = card.locator(".reply-area");
+      await expect(replyArea).toBeVisible({ timeout: 5000 });
+      const replyInput = replyArea.locator("textarea");
 
       // Type and submit a reply
       await replyInput.fill("Reply from collaborator");

@@ -53,7 +53,7 @@ class TestOnDocChangeErrorLogging:
         loop = asyncio.new_event_loop()
         try:
             with patch("asyncio.get_event_loop", return_value=loop):
-                with patch.object(client, "_signal_save") as mock_signal:
+                with patch.object(client, "_signal_save"):
                     loop.call_soon_threadsafe = MagicMock()
                     client._on_doc_change(MagicMock())
                     loop.call_soon_threadsafe.assert_called_once_with(client._signal_save)

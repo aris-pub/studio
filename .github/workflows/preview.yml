@@ -66,6 +66,9 @@ jobs:
             FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
+    - name: Generate lockfiles for rsm packages
+      run: cd rsm/tree-sitter-rsm && npm install --package-lock-only
+
     - name: Deploy backend to Fly
       run: |
         flyctl deploy --app "$APP_NAME" \

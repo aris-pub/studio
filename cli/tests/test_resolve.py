@@ -10,7 +10,6 @@ import responses
 from click.testing import CliRunner
 
 from cli import cli
-from cli.core import SESSION_FILE
 
 
 def _make_session(tmp_path: Path) -> Path:

@@ -3,7 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import jwt
 import pytest
@@ -41,7 +41,6 @@ class TestApplyEdit:
         ws = AsyncMock()
         # Simulate SyncStep2 response: msg_type=0 (sync), sub-type=1 (step2), empty update
         from pycrdt import Doc, create_sync_message, handle_sync_message
-        from pycrdt._sync import YSyncMessageType, create_message
 
         # Build a real SyncStep2 reply from a fresh doc
         server_doc = Doc()
@@ -73,7 +72,6 @@ class TestApplyEdit:
     def test_apply_edit_replaces_existing_content(self, mock_ws: AsyncMock) -> None:
         """_apply_edit replaces pre-existing text in the room."""
         from pycrdt import Doc, Text, create_sync_message, handle_sync_message
-        from pycrdt._sync import create_message, YSyncMessageType
 
         # Build a server doc with existing content
         server_doc = Doc()
