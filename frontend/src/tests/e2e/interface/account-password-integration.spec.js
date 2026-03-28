@@ -1,6 +1,11 @@
 import { test, expect } from "../fixtures.js";
 import { AuthHelpers } from "../utils/auth-helpers.js";
+import { TEST_CREDENTIALS } from "../setup/test-data.js";
+import { getBackendURL } from "../utils/test-config.js";
 import { TIMEOUTS } from "../utils/timeout-constants.js";
+
+const ORIGINAL_PASSWORD = TEST_CREDENTIALS.valid.password;
+const TEMP_PASSWORD = "tempNewPassword123";
 
 // @auth @auth-interface
 test.describe("Account Password Change Integration E2E Tests @auth", () => {
@@ -11,7 +16,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await authHelpers.ensureLoggedIn();
   });
 
-  test.skip("successful password change with backend validation", async ({ page }) => {
+  test("successful password change with backend validation", async ({ page }) => {
     // Verify auth state
     const accessToken = await page.evaluate(() => localStorage.getItem("accessToken"));
     const user = await page.evaluate(() => localStorage.getItem("user"));
@@ -41,10 +46,9 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await expect(newPasswordInput).toBeVisible();
     await expect(confirmPasswordInput).toBeVisible();
 
-    // Use valid test credentials
-    await currentPasswordInput.fill("testpass123");
-    await newPasswordInput.fill("newpassword123");
-    await confirmPasswordInput.fill("newpassword123");
+    await currentPasswordInput.fill(ORIGINAL_PASSWORD);
+    await newPasswordInput.fill(TEMP_PASSWORD);
+    await confirmPasswordInput.fill(TEMP_PASSWORD);
 
     // Submit password change
     const updateButton = page.locator('button:has-text("Update Password")');
@@ -60,9 +64,6 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     ]);
 
     expect(response.status()).toBe(200);
-
-    // Check current URL after API call
-    const _currentUrl = page.url();
 
     // Check auth state after API call
     const accessTokenAfter = await page.evaluate(() => localStorage.getItem("accessToken"));
@@ -85,9 +86,21 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
 
     // Update button should be disabled (no unsaved changes)
     await expect(updateButton).toBeDisabled();
+
+    // Restore original password via direct API call
+    const userData = JSON.parse(await page.evaluate(() => localStorage.getItem("user")));
+    const token = await page.evaluate(() => localStorage.getItem("accessToken"));
+    const restoreResponse = await page.request.post(
+      `${getBackendURL()}/users/${userData.id}/change-password`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { current_password: TEMP_PASSWORD, new_password: ORIGINAL_PASSWORD },
+      }
+    );
+    expect(restoreResponse.status()).toBe(200);
   });
 
-  test.skip("password change with wrong current password", async ({ page }) => {
+  test("password change with wrong current password", async ({ page }) => {
     await page.goto("/account");
 
     // Fill in password change form with wrong current password
@@ -139,7 +152,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
       .filter({ hasText: /^Confirm New Password/ })
       .locator("input");
 
-    await currentPasswordInput.fill("testpass123");
+    await currentPasswordInput.fill(ORIGINAL_PASSWORD);
     await newPasswordInput.fill("123"); // Too short
     await confirmPasswordInput.fill("123");
 
@@ -169,7 +182,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
       .filter({ hasText: /^Confirm New Password/ })
       .locator("input");
 
-    await currentPasswordInput.fill("testpass123");
+    await currentPasswordInput.fill(ORIGINAL_PASSWORD);
     await newPasswordInput.fill("newpassword123");
     await confirmPasswordInput.fill("differentpassword123");
 
@@ -213,21 +226,11 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     // Check unsaved changes warning appears
     await expect(page.locator(".status-message.warning")).toContainText("unsaved password changes");
 
-    // Get current values before cancel
-    const _currentValueBefore = await currentPasswordInput.inputValue();
-    const _newValueBefore = await newPasswordInput.inputValue();
-    const _confirmValueBefore = await confirmPasswordInput.inputValue();
-
     // Cancel should reset form
     await cancelButton.click();
 
     // Wait a moment for the form to reset
     await page.waitForTimeout(TIMEOUTS.ANIMATION);
-
-    // Check values after cancel
-    const _currentValueAfter = await currentPasswordInput.inputValue();
-    const _newValueAfter = await newPasswordInput.inputValue();
-    const _confirmValueAfter = await confirmPasswordInput.inputValue();
 
     await expect(currentPasswordInput).toHaveValue("");
     await expect(newPasswordInput).toHaveValue("");
@@ -238,12 +241,11 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await expect(cancelButton).toBeDisabled();
   });
 
-  test.skip("password change loading state", async ({ page }) => {
+  test("password change loading state", async ({ page }) => {
     await page.goto("/account");
 
     // Mock slow response to test loading state
     await page.route("**/change-password", async (route) => {
-      // Use timeout constant for mock delay
       await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.CONTENT_LOAD));
       route.fulfill({
         status: 200,
@@ -265,7 +267,7 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
       .filter({ hasText: /^Confirm New Password/ })
       .locator("input");
 
-    await currentPasswordInput.fill("testpass123");
+    await currentPasswordInput.fill(ORIGINAL_PASSWORD);
     await newPasswordInput.fill("newpassword123");
     await confirmPasswordInput.fill("newpassword123");
 
