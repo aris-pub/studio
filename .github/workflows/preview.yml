@@ -29,7 +29,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
-        submodules: true
+        submodules: recursive
         path: rsm
 
     - name: Setup Fly CLI
@@ -66,6 +66,15 @@ jobs:
             RESEND_API_KEY="" \
             FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
+
+    - name: Debug rsm checkout
+      run: |
+        echo "=== rsm root ==="
+        ls rsm/
+        echo "=== tree-sitter-rsm ==="
+        ls rsm/tree-sitter-rsm/ || echo "MISSING"
+        echo "=== submodule status ==="
+        cd rsm && git submodule status
 
     - name: Generate lockfiles for rsm native packages
       run: |
