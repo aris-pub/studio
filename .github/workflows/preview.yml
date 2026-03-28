@@ -69,8 +69,8 @@ jobs:
 
     - name: Generate lockfiles for rsm native packages
       run: |
-        cd rsm/tree-sitter-rsm && npm install --package-lock-only
-        cd ../packages/rsm-lsp && npm install --package-lock-only
+        cd rsm/tree-sitter-rsm && npm install --package-lock-only --ignore-scripts
+        cd ../packages/rsm-lsp && npm install --package-lock-only --ignore-scripts
 
     - name: Deploy backend to Fly
       run: |
