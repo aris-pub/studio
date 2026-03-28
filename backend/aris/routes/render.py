@@ -7,6 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user
 from ..deps import get_db
+from ..logging_config import get_logger
+
+
+logger = get_logger(__name__)
 
 
 router = APIRouter(prefix="/render", tags=["files"])
@@ -47,7 +51,7 @@ async def render(data: RenderObject):
                 return {"head": "", "body": html, "init_script": ""}
             return structured_content
         except Exception:
-            # Fallback to regular HTML on error
+            logger.exception("Structured render failed, falling back to HTML")
             html = await crud.render(data.source)
             return {"head": "", "body": html, "init_script": ""}
     else:

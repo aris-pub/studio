@@ -1,6 +1,8 @@
 """Test file routes."""
 
+import logging
 import shutil
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -611,3 +613,99 @@ async def test_download_pdf_success(client: AsyncClient, authenticated_user):
     assert "attachment; filename=" in response.headers["content-disposition"]
     assert "PDF Export Test.pdf" in response.headers["content-disposition"]
     assert response.content[:4] == b"%PDF"
+
+
+async def test_pdf_retry_logs_when_typst_not_found(client: AsyncClient, authenticated_user, caplog):
+    """Test that PDF retry compilation logs an error when typst disappears."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Typst Missing Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Test\n\nContent",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    typst_call_count = 0
+
+    original_run = __import__("subprocess").run
+
+    def mock_subprocess_run(cmd, *args, **kwargs):
+        nonlocal typst_call_count
+        if isinstance(cmd, list) and cmd[0] == "typst":
+            typst_call_count += 1
+            if typst_call_count == 1:
+                result = MagicMock()
+                result.returncode = 1
+                result.stderr = 'error: file not found (searched at /tmp/test/figure.svg)'
+                result.stdout = ''
+                return result
+            else:
+                raise FileNotFoundError("typst")
+        return original_run(cmd, *args, **kwargs)
+
+    with patch("subprocess.run", side_effect=mock_subprocess_run):
+        with caplog.at_level(logging.ERROR, logger="aris.routes.file"):
+            response = await client.post(
+                f"/files/{file_id}/download/pdf",
+                headers=headers,
+            )
+
+    assert response.status_code == 422
+    assert "typst binary not found during retry" in caplog.text
+
+
+async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authenticated_user, caplog):
+    """Test that asset write failures during PDF export are logged."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Asset Fail Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Test\n\nContent",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    # Insert a file asset with corrupted base64 content
+    from sqlalchemy import text as sql_text
+
+    from aris.deps import get_db as _get_db
+    from main import app
+    async for db in app.dependency_overrides.get(_get_db, _get_db)():
+        await db.execute(
+            sql_text(
+                "INSERT INTO file_assets (file_id, filename, content, content_encoding, mime_type) "
+                "VALUES (:fid, :fname, :content, :encoding, :mime)"
+            ),
+            {"fid": file_id, "fname": "bad.svg", "content": "not-valid-base64!!!", "encoding": "base64", "mime": "image/svg+xml"},
+        )
+        await db.commit()
+        break
+
+    original_run = __import__("subprocess").run
+
+    def mock_subprocess_run(cmd, *args, **kwargs):
+        if isinstance(cmd, list) and cmd[0] == "typst":
+            raise FileNotFoundError("typst")
+        return original_run(cmd, *args, **kwargs)
+
+    with patch("subprocess.run", side_effect=mock_subprocess_run):
+        with caplog.at_level(logging.WARNING, logger="aris.routes.file"):
+            response = await client.post(
+                f"/files/{file_id}/download/pdf",
+                headers=headers,
+            )
+
+    assert response.status_code == 500
+    assert "Failed to write asset" in caplog.text
+    assert "bad.svg" in caplog.text
