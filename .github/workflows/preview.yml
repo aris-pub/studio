@@ -29,6 +29,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
+        submodules: true
         path: rsm
 
     - name: Setup Fly CLI
