@@ -18,7 +18,7 @@ COPY rsm/tree-sitter-rsm ./rsm/tree-sitter-rsm/
 # Compile native bindings from source for the current platform
 # (prebuilds from host may target a different architecture)
 RUN cd rsm/tree-sitter-rsm && rm -rf prebuilds build \
-    && npm ci --ignore-scripts \
+    && npm install --ignore-scripts \
     && npx node-gyp rebuild
 
 # Install rsm-lsp production deps (creates symlink for file: dep)
