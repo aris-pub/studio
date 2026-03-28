@@ -30,6 +30,7 @@ jobs:
       with:
         repository: aris-pub/rsm
         path: rsm
+        submodules: true
 
     - name: Setup Fly CLI
       uses: superfly/flyctl-actions/setup-flyctl@master
