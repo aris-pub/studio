@@ -79,7 +79,7 @@ jobs:
           --dockerfile studio/backend/Dockerfile \
           --ha=false \
           --yes \
-          --remote-only
+          --local-only
 
     # --- Frontend: build locally, upload to Netlify ---
 
