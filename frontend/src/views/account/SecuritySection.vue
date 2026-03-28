@@ -121,7 +121,7 @@
 
 <template>
   <!-- Account Status -->
-  <Section variant="enhanced">
+  <Section variant="enhanced" heading-tag="h2">
     <template #title>Account Status</template>
     <template #content>
       <p>Your account security status and verification</p>
@@ -154,7 +154,7 @@
   </Section>
 
   <!-- Password -->
-  <Section variant="enhanced">
+  <Section variant="enhanced" heading-tag="h2">
     <template #title>Password</template>
     <template #content>
       <p>Change your account password</p>

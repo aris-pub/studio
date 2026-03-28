@@ -439,6 +439,7 @@
     @keydown.esc="onEsc"
   >
     <div class="header">
+      <Avatar v-if="isShared && annotationOwner" :user="annotationOwner" size="sm" />
       <span v-if="isShared" class="shared-label">Shared</span>
       <span class="timestamp">{{ timeAgo }}</span>
       <span
