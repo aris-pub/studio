@@ -5,6 +5,7 @@
  * - Shared threads: edit button only (no delete) when card is active and message is own
  * - "edited" indicator shown when updated_at differs from created_at
  * - Inline edit mode with textarea, save/cancel
+ * - Error feedback: toast on failure, preserve input, isSaving state
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
@@ -141,6 +142,63 @@ describe("Note.vue — per-message edit/delete", () => {
     it("delete confirmation has 3-second timeout", () => {
       expect(noteScript).toMatch(/deleteMessageTimeout = setTimeout/);
       expect(noteScript).toMatch(/3000/);
+    });
+  });
+
+  describe("error feedback", () => {
+    it("imports toast utility", () => {
+      expect(noteScript).toMatch(/import.*toast.*from.*toast/);
+    });
+
+    it("has isSaving ref to disable buttons during save", () => {
+      expect(noteScript).toMatch(/isSaving.*ref\(false\)/);
+    });
+
+    it("onSaveEdit shows toast on error and preserves input", () => {
+      // Should call toast.error on catch
+      expect(noteScript).toMatch(/onSaveEdit[\s\S]*?toast\.error/);
+      // Should NOT clear editing state on error — only on success
+      // The editing=false and editText="" should be inside try, after await
+      const saveEditFn = noteScript.match(
+        /async function onSaveEdit[\s\S]*?^  \}/m,
+      )?.[0];
+      expect(saveEditFn).toBeDefined();
+      // editing.value = false should be inside try block, not after catch
+      expect(saveEditFn).toMatch(/try\s*\{[\s\S]*editing\.value = false/);
+    });
+
+    it("onSaveMessageEdit shows toast on error and preserves input", () => {
+      expect(noteScript).toMatch(/onSaveMessageEdit[\s\S]*?toast\.error/);
+      const fn = noteScript.match(
+        /async function onSaveMessageEdit[\s\S]*?^  \}/m,
+      )?.[0];
+      expect(fn).toBeDefined();
+      expect(fn).toMatch(/try\s*\{[\s\S]*editingMessageId\.value = null/);
+    });
+
+    it("onPostReply shows toast on error", () => {
+      expect(noteScript).toMatch(/onPostReply[\s\S]*?toast\.error/);
+    });
+
+    it("onDelete shows toast on error", () => {
+      expect(noteScript).toMatch(/onDelete[\s\S]*?toast\.error/);
+    });
+
+    it("onDeleteMessage shows toast on error", () => {
+      expect(noteScript).toMatch(/onDeleteMessage[\s\S]*?toast\.error/);
+    });
+
+    it("onChangeColor shows toast on error", () => {
+      expect(noteScript).toMatch(/onChangeColor[\s\S]*?toast\.error/);
+    });
+
+    it("onShare shows toast on error", () => {
+      expect(noteScript).toMatch(/onShare[\s\S]*?toast\.error/);
+    });
+
+    it("sets isSaving true during save operations", () => {
+      expect(noteScript).toMatch(/isSaving\.value = true/);
+      expect(noteScript).toMatch(/isSaving\.value = false/);
     });
   });
 

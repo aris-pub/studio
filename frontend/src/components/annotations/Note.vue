@@ -4,6 +4,7 @@
   import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
   import TextareaInput from "@/components/base/TextareaInput.vue";
+  import { toast } from "@/utils/toast.js";
 
   // Load Temml from CDN if not already loaded (e.g. by onload.js), then
   // flip a reactive flag so Vue re-renders cards with rendered math.
@@ -132,13 +133,17 @@
   async function onSaveMessageEdit(msg, submittedValue) {
     if (!annotationActions) return;
     const content = submittedValue || editMessageText.value;
+    isSaving.value = true;
     try {
       await annotationActions.updateNote(msg.id, content);
+      editingMessageId.value = null;
+      editMessageText.value = "";
     } catch (err) {
       console.error("Failed to update message:", err);
+      toast.error("Couldn't save edit");
+    } finally {
+      isSaving.value = false;
     }
-    editingMessageId.value = null;
-    editMessageText.value = "";
   }
 
   function onCancelMessageEdit() {
@@ -168,12 +173,14 @@
       await annotationActions.deleteNote(msg.id);
     } catch (err) {
       console.error("Failed to delete message:", err);
+      toast.error("Couldn't delete note");
     }
   }
 
   async function onPostReply(submittedValue) {
     const content = submittedValue || replyText.value;
     if (!annotationActions || !content.trim()) return;
+    isSaving.value = true;
     try {
       await annotationActions.addNote(props.annotation.id, content.trim());
       replyText.value = "";
@@ -336,6 +343,7 @@
   async function onSaveEdit(submittedValue) {
     if (!annotationActions) return;
     const content = submittedValue || editText.value;
+    isSaving.value = true;
     try {
       if (note.value) {
         await annotationActions.updateNote(note.value.id, content);
