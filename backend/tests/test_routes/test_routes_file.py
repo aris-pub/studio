@@ -649,12 +649,13 @@ async def test_pdf_retry_logs_when_typst_not_found(client: AsyncClient, authenti
                 raise FileNotFoundError("typst")
         return original_run(cmd, *args, **kwargs)
 
-    with patch("subprocess.run", side_effect=mock_subprocess_run):
-        with caplog.at_level(logging.ERROR, logger="aris.routes.file"):
-            response = await client.post(
-                f"/files/{file_id}/download/pdf",
-                headers=headers,
-            )
+    with patch("rsm.app.pandoc_export", return_value='#set text(size: 12pt)\nTest content'):
+        with patch("subprocess.run", side_effect=mock_subprocess_run):
+            with caplog.at_level(logging.ERROR, logger="aris.routes.file"):
+                response = await client.post(
+                    f"/files/{file_id}/download/pdf",
+                    headers=headers,
+                )
 
     assert response.status_code == 422
     assert "typst binary not found during retry" in caplog.text
@@ -699,12 +700,13 @@ async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authent
             raise FileNotFoundError("typst")
         return original_run(cmd, *args, **kwargs)
 
-    with patch("subprocess.run", side_effect=mock_subprocess_run):
-        with caplog.at_level(logging.WARNING, logger="aris.routes.file"):
-            response = await client.post(
-                f"/files/{file_id}/download/pdf",
-                headers=headers,
-            )
+    with patch("rsm.app.pandoc_export", return_value='#set text(size: 12pt)\nTest content'):
+        with patch("subprocess.run", side_effect=mock_subprocess_run):
+            with caplog.at_level(logging.WARNING, logger="aris.routes.file"):
+                response = await client.post(
+                    f"/files/{file_id}/download/pdf",
+                    headers=headers,
+                )
 
     assert response.status_code == 500
     assert "Failed to write asset" in caplog.text
