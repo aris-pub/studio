@@ -273,8 +273,11 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
 
     // Use text locator for click, then position-based locator for post-click assertions
     // (button text changes from "Update Password" to "Updating..." during loading)
+    const passwordSection = page
+      .locator(".section")
+      .filter({ has: page.locator("h2:has-text('Password')") });
     await page.locator('button:has-text("Update Password")').click();
-    const submitButton = page.locator(".form-actions button:last-of-type");
+    const submitButton = passwordSection.locator(".form-actions button:last-of-type");
 
     // Should show loading state - button should be disabled and show loading text
     await expect(submitButton).toBeDisabled();
