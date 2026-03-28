@@ -67,19 +67,10 @@ jobs:
             FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
-    - name: Debug rsm checkout
-      run: |
-        echo "=== rsm root ==="
-        ls rsm/
-        echo "=== tree-sitter-rsm ==="
-        ls rsm/tree-sitter-rsm/ || echo "MISSING"
-        echo "=== submodule status ==="
-        cd rsm && git submodule status
-
     - name: Generate lockfiles for rsm native packages
       run: |
-        cd rsm/tree-sitter-rsm && npm install --package-lock-only
-        cd ../packages/rsm-lsp && npm install --package-lock-only
+        cd rsm/tree-sitter-rsm && npm install --package-lock-only --ignore-scripts
+        cd ../packages/rsm-lsp && npm install --package-lock-only --ignore-scripts
 
     - name: Deploy backend to Fly
       run: |
