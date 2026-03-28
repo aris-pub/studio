@@ -4,6 +4,7 @@
   import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
   import TextareaInput from "@/components/base/TextareaInput.vue";
+  import { toast } from "@/utils/toast.js";
 
   // Load Temml from CDN if not already loaded (e.g. by onload.js), then
   // flip a reactive flag so Vue re-renders cards with rendered math.
@@ -49,6 +50,7 @@
   }
   const editing = ref(false);
   const editText = ref("");
+  const isSaving = ref(false);
   const editInput = ref(null);
   const confirmingDelete = ref(false);
   const confirmingShare = ref(false);
@@ -131,13 +133,17 @@
   async function onSaveMessageEdit(msg, submittedValue) {
     if (!annotationActions) return;
     const content = submittedValue || editMessageText.value;
+    isSaving.value = true;
     try {
       await annotationActions.updateNote(msg.id, content);
+      editingMessageId.value = null;
+      editMessageText.value = "";
     } catch (err) {
       console.error("Failed to update message:", err);
+      toast.error("Couldn't save edit");
+    } finally {
+      isSaving.value = false;
     }
-    editingMessageId.value = null;
-    editMessageText.value = "";
   }
 
   function onCancelMessageEdit() {
@@ -167,17 +173,22 @@
       await annotationActions.deleteNote(msg.id);
     } catch (err) {
       console.error("Failed to delete message:", err);
+      toast.error("Couldn't delete note");
     }
   }
 
   async function onPostReply(submittedValue) {
     const content = submittedValue || replyText.value;
     if (!annotationActions || !content.trim()) return;
+    isSaving.value = true;
     try {
       await annotationActions.addNote(props.annotation.id, content.trim());
       replyText.value = "";
     } catch (err) {
       console.error("Failed to post reply:", err);
+      toast.error("Couldn't post reply");
+    } finally {
+      isSaving.value = false;
     }
   }
 
@@ -195,8 +206,13 @@
 
   async function onChangeColor(colorName) {
     if (!annotationActions) return;
-    await annotationActions.updateAnnotation(props.annotation.id, { color: colorName });
-    showColorPicker.value = false;
+    try {
+      await annotationActions.updateAnnotation(props.annotation.id, { color: colorName });
+      showColorPicker.value = false;
+    } catch (err) {
+      console.error("Failed to change color:", err);
+      toast.error("Couldn't change color");
+    }
   }
 
   const colorName = computed(() => props.annotation.color || "purple");
@@ -310,6 +326,7 @@
       await annotationActions.deleteAnnotation(props.annotation.id);
     } catch (err) {
       console.error("Failed to delete annotation:", err);
+      toast.error("Couldn't delete annotation");
     }
   }
 
@@ -326,17 +343,21 @@
   async function onSaveEdit(submittedValue) {
     if (!annotationActions) return;
     const content = submittedValue || editText.value;
+    isSaving.value = true;
     try {
       if (note.value) {
         await annotationActions.updateNote(note.value.id, content);
       } else if (content.trim()) {
         await annotationActions.addNote(props.annotation.id, content.trim());
       }
+      editing.value = false;
+      editText.value = "";
     } catch (err) {
       console.error("Failed to save note:", err);
+      toast.error("Couldn't save note");
+    } finally {
+      isSaving.value = false;
     }
-    editing.value = false;
-    editText.value = "";
   }
 
   function onCancelEdit() {
@@ -384,6 +405,7 @@
       await annotationActions.updateAnnotation(props.annotation.id, { visibility: "shared" });
     } catch (err) {
       console.error("Failed to share annotation:", err);
+      toast.error("Couldn't share annotation");
     }
   }
 
