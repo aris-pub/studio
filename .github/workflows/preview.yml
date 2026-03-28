@@ -67,13 +67,14 @@ jobs:
             FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
-    - name: Generate lockfiles for rsm native packages
-      run: |
-        cd rsm/tree-sitter-rsm && npm install --package-lock-only --ignore-scripts
-        cd ../packages/rsm-lsp && npm install --package-lock-only --ignore-scripts
-
     - name: Deploy backend to Fly
       run: |
+        # Dockerfile uses npm ci which requires package-lock.json.
+        # tree-sitter-rsm and rsm-lsp don't track lockfiles in git.
+        # Use npm install instead of npm ci for these packages.
+        sed -i 's/npm ci --ignore-scripts/npm install --ignore-scripts/' studio/backend/Dockerfile
+        sed -i 's/npm ci --omit=dev/npm install --omit=dev/' studio/backend/Dockerfile
+
         flyctl deploy --app "$APP_NAME" \
           --config studio/backend/fly.toml \
           --dockerfile studio/backend/Dockerfile \
