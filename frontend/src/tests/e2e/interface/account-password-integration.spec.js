@@ -271,18 +271,21 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await newPasswordInput.fill("newpassword123");
     await confirmPasswordInput.fill("newpassword123");
 
-    const updateButton = page.locator('button:has-text("Update Password")');
-    await updateButton.click();
+    // Use text locator for click, then position-based locator for post-click assertions
+    // (button text changes from "Update Password" to "Updating..." during loading)
+    await page.locator('button:has-text("Update Password")').click();
+    const submitButton = page.locator(".form-actions button:last-of-type");
 
-    // Should show loading state - button should be disabled and either show loading or have completed
-    await expect(updateButton).toBeDisabled();
+    // Should show loading state - button should be disabled and show loading text
+    await expect(submitButton).toBeDisabled();
+    await expect(submitButton).toContainText("Updating");
 
     // All inputs should be disabled during update
     await expect(currentPasswordInput).toBeDisabled();
     await expect(newPasswordInput).toBeDisabled();
     await expect(confirmPasswordInput).toBeDisabled();
 
-    // Wait for completion
-    await expect(updateButton).toContainText("Update Password");
+    // Wait for completion - text reverts back
+    await expect(submitButton).toContainText("Update Password");
   });
 });
