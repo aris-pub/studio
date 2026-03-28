@@ -4,6 +4,9 @@
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useAnnotations } from "@/composables/useAnnotations.js";
+  import { extractSourceAnchor } from "@/utils/sourceAnchor.js";
+  import { extractAnchor } from "@/utils/anchorExtraction.js";
+  import { toast } from "@/utils/toast.js";
   import { useReactions } from "@/composables/useReactions.js";
   import { File } from "@/models/File.js";
   import Sidebar from "./Sidebar.vue";
@@ -211,6 +214,114 @@
   useKeyboardShortcuts({
     "g,h": goHome,
     c: () => (focusMode.value = !focusMode.value),
+  });
+
+  // Annotation creation shortcuts (Cmd+Shift+H, Cmd+Alt+M, Cmd+Alt+C)
+  function getSelectionAnchor() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!range || range.collapsed) return null;
+    const manuscriptEl =
+      document.querySelector('[data-testid="manuscript-viewer"]') ||
+      document.querySelector(".rsm-manuscript");
+    if (!manuscriptEl || !manuscriptEl.contains(range.commonAncestorContainer)) return null;
+    const ytext = ydoc.value?.getText("content");
+    const anchor = ytext
+      ? extractSourceAnchor(range, manuscriptEl, ytext)
+      : extractAnchor(range, manuscriptEl);
+    return anchor;
+  }
+
+  function buildAnchorData(anchor) {
+    return anchor.type === "yjs_relative"
+      ? {
+          type: anchor.type,
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+          start_relative: anchor.start_relative,
+          end_relative: anchor.end_relative,
+          source_start: anchor.source_start,
+          source_end: anchor.source_end,
+        }
+      : {
+          node_id: anchor.node_id,
+          element_id: anchor.element_id,
+          start_offset: anchor.start_offset,
+          end_offset: anchor.end_offset,
+        };
+  }
+
+  async function handleAnnotationShortcut(e) {
+    const key = e.key.toLowerCase();
+    const isMod = e.metaKey || e.ctrlKey;
+
+    // Cmd+Shift+H — Mark (highlight only)
+    if (isMod && e.shiftKey && key === "h") {
+      e.preventDefault();
+      const anchor = getSelectionAnchor();
+      if (!anchor) return;
+      try {
+        await createAnnotation({
+          color: "purple",
+          anchorData: buildAnchorData(anchor),
+          selectedText: anchor.selected_text,
+        });
+        window.getSelection()?.removeAllRanges();
+      } catch (err) {
+        toast.error("Couldn't create highlight");
+      }
+      return;
+    }
+
+    // Cmd+Shift+M — Note (private)
+    if (isMod && e.shiftKey && key === "m") {
+      e.preventDefault();
+      const anchor = getSelectionAnchor();
+      if (!anchor) return;
+      try {
+        const annotation = await createAnnotation({
+          color: "purple",
+          visibility: "private",
+          anchorData: buildAnchorData(anchor),
+          selectedText: anchor.selected_text,
+        });
+        window.getSelection()?.removeAllRanges();
+        activeAnnotationId.value = annotation.id;
+      } catch (err) {
+        toast.error("Couldn't create note");
+      }
+      return;
+    }
+
+    // Cmd+Shift+K — Comment (shared)
+    if (isMod && e.shiftKey && key === "k") {
+      e.preventDefault();
+      const anchor = getSelectionAnchor();
+      if (!anchor) return;
+      try {
+        const annotation = await createAnnotation({
+          color: "purple",
+          visibility: "shared",
+          anchorData: buildAnchorData(anchor),
+          selectedText: anchor.selected_text,
+        });
+        window.getSelection()?.removeAllRanges();
+        activeAnnotationId.value = annotation.id;
+      } catch (err) {
+        toast.error("Couldn't create comment");
+      }
+      return;
+    }
+  }
+
+  onMounted(() => {
+    document.addEventListener("keydown", handleAnnotationShortcut);
+  });
+  onBeforeUnmount(() => {
+    document.removeEventListener("keydown", handleAnnotationShortcut);
   });
 </script>
 
