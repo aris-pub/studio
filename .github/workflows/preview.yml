@@ -29,7 +29,6 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
-        submodules: recursive
         path: rsm
 
     - name: Setup Fly CLI
@@ -59,7 +58,7 @@ jobs:
           # flyctl postgres attach sets DATABASE_URL automatically.
           # Backend config falls back DB_URL_PROD -> DATABASE_URL with scheme conversion.
           flyctl secrets set --app "$APP_NAME" \
-            ENV="PROD" \
+            ENV="PREVIEW" \
             JWT_SECRET_KEY="preview-${{ github.event.pull_request.number }}" \
             TEST_USER_EMAIL="preview@aris.pub" \
             TEST_USER_PASSWORD="preview-pass-${{ github.event.pull_request.number }}" \
@@ -69,75 +68,54 @@ jobs:
 
     - name: Deploy backend to Fly
       run: |
-        # Dockerfile uses npm ci which requires package-lock.json.
-        # tree-sitter-rsm and rsm-lsp don't track lockfiles in git.
-        # Use npm install instead of npm ci for these packages.
-        sed -i 's/npm ci --ignore-scripts/npm install --ignore-scripts/' studio/backend/Dockerfile
-        sed -i 's/npm ci --omit=dev/npm install/' studio/backend/Dockerfile
-
         flyctl deploy --app "$APP_NAME" \
           --config studio/backend/fly.toml \
           --dockerfile studio/backend/Dockerfile \
           --ha=false \
           --yes \
-          --local-only
+          --remote-only
 
     # --- Frontend: build locally, upload to Netlify ---
 
     - uses: pnpm/action-setup@v5
-      with:
-        package_json_file: studio/package.json
 
     - uses: actions/setup-node@v4
       with:
         node-version: 20
         cache: pnpm
-        cache-dependency-path: studio/pnpm-lock.yaml
+        cache-dependency-path: studio/frontend/pnpm-lock.yaml
 
     - name: Install frontend dependencies
-      working-directory: studio
-      run: pnpm install --frozen-lockfile --filter aris
+      working-directory: studio/frontend
+      run: pnpm install --frozen-lockfile
 
     - name: Build frontend with preview env vars
-      working-directory: studio
+      working-directory: studio/frontend
       env:
         VITE_API_BASE_URL: https://${{ env.APP_NAME }}.fly.dev
-        VITE_MULTIPLAYER_URL: ""
+        VITE_MULTIPLAYER_URL: wss://${{ env.APP_NAME }}.fly.dev:1234
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
-        BACKEND_PORT: "8000"
-        FRONTEND_PORT: "5173"
-        SITE_PORT: "3000"
-        STORYBOOK_PORT: "6006"
-        DB_PORT: "5432"
-        DB_NAME: "aris"
-        TEST_DB_NAME: "aris_test"
-        NUXT_BACKEND_URL: https://${{ env.APP_NAME }}.fly.dev
-      run: pnpm --filter aris run build
+      run: pnpm run build
 
     - name: Deploy frontend to Netlify
-      uses: nwtgck/actions-netlify@v3
-      with:
-        publish-dir: studio/frontend/dist
-        production-deploy: false
-        alias: pr-${{ github.event.pull_request.number }}
-        deploy-message: "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        enable-commit-comment: false
-        enable-pull-request-comment: false
+      working-directory: studio/frontend
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
+      run: |
+        npx netlify-cli deploy \
+          --dir=dist \
+          --alias=pr-${{ github.event.pull_request.number }} \
+          --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
     - name: Comment preview URLs
       uses: actions/github-script@v7
-      env:
-        NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
       with:
         script: |
           const prNum = context.issue.number;
           const appName = process.env.APP_NAME;
-          const netlifySite = process.env.NETLIFY_SITE_NAME;
+          const netlifySite = '${{ secrets.NETLIFY_FRONTEND_SITE }}';
           const frontendUrl = `https://pr-${prNum}--${netlifySite}.netlify.app`;
           const backendUrl = `https://${appName}.fly.dev`;
           const body = [
