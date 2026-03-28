@@ -9,6 +9,37 @@ import { ref } from "vue";
 import { linter } from "@codemirror/lint";
 
 /**
+ * Convert LSP position {line, character} to CodeMirror absolute offset.
+ * LSP lines are 0-based; CodeMirror doc.line() is 1-based.
+ * Returns null if the position is out of range.
+ */
+export function positionToOffset(doc, position) {
+  const lineNumber = position.line + 1;
+  if (lineNumber < 1 || lineNumber > doc.lines) return null;
+  const line = doc.line(lineNumber);
+  const offset = line.from + position.character;
+  return Math.min(offset, line.to);
+}
+
+/**
+ * Convert LSP severity (1-4) to CodeMirror severity string.
+ */
+export function severityToString(severity) {
+  switch (severity) {
+    case 1:
+      return "error";
+    case 2:
+      return "warning";
+    case 3:
+      return "info";
+    case 4:
+      return "hint";
+    default:
+      return "error";
+  }
+}
+
+/**
  * Create a CodeMirror linter that displays LSP diagnostics.
  *
  * @param {string} serverUrl - WebSocket URL for LSP server
@@ -17,12 +48,28 @@ import { linter } from "@codemirror/lint";
  */
 export function useLSPDiagnostics(serverUrl, documentUri) {
   const diagnostics = ref([]);
+  const rawDiagnostics = ref([]);
   let socket = null;
 
-  // Create linter extension that returns current diagnostics
-  const linterExtension = linter((_view) => {
-    console.log(`[LSP Diagnostics] Providing ${diagnostics.value.length} diagnostics`);
-    return diagnostics.value;
+  // Create linter extension that converts raw LSP diagnostics using the actual document
+  const linterExtension = linter((view) => {
+    const doc = view.state.doc;
+    const cmDiagnostics = rawDiagnostics.value
+      .map((diag) => {
+        const from = positionToOffset(doc, diag.range.start);
+        const to = positionToOffset(doc, diag.range.end);
+        if (from === null || to === null) return null;
+        return {
+          from,
+          to,
+          severity: severityToString(diag.severity),
+          message: diag.message,
+        };
+      })
+      .filter(Boolean);
+    diagnostics.value = cmDiagnostics;
+    console.log(`[LSP Diagnostics] Providing ${cmDiagnostics.length} diagnostics`);
+    return cmDiagnostics;
   });
 
   /**
@@ -78,16 +125,8 @@ export function useLSPDiagnostics(serverUrl, documentUri) {
               `[LSP Diagnostics] Received ${lspDiagnostics.length} diagnostics for ${uri}`
             );
 
-            // Convert LSP diagnostics to CodeMirror format
-            const cmDiagnostics = lspDiagnostics.map((diag) => ({
-              from: positionToOffset(diag.range.start),
-              to: positionToOffset(diag.range.end),
-              severity: severityToString(diag.severity),
-              message: diag.message,
-            }));
-
-            diagnostics.value = cmDiagnostics;
-            console.log("[LSP Diagnostics] Converted diagnostics:", cmDiagnostics);
+            rawDiagnostics.value = lspDiagnostics;
+            console.log("[LSP Diagnostics] Stored raw diagnostics for next lint pass");
           }
         } catch (err) {
           console.error("[LSP Diagnostics] Message parse error:", err);
@@ -156,30 +195,6 @@ export function useLSPDiagnostics(serverUrl, documentUri) {
     if (socket) {
       socket.close();
       socket = null;
-    }
-  }
-
-  // Helper: Convert LSP position to CodeMirror offset
-  // NOTE: This is a simplified version - assumes line/character are correct
-  function positionToOffset(position) {
-    // For now, return approximate offset
-    // TODO: Calculate actual offset from line/character
-    return position.line * 80 + position.character;
-  }
-
-  // Helper: Convert LSP severity to CodeMirror severity string
-  function severityToString(severity) {
-    switch (severity) {
-      case 1:
-        return "error";
-      case 2:
-        return "warning";
-      case 3:
-        return "info";
-      case 4:
-        return "hint";
-      default:
-        return "error";
     }
   }
 
