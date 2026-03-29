@@ -113,9 +113,8 @@ jobs:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
       run: |
-        npx netlify-cli deploy \
+        npx netlify-cli@latest deploy \
           --dir=dist \
-          --no-build \
           --alias=pr-${{ github.event.pull_request.number }} \
           --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
