@@ -96,7 +96,7 @@ jobs:
 
     - name: Install frontend dependencies
       working-directory: studio
-      run: pnpm install --frozen-lockfile --filter frontend...
+      run: pnpm install --frozen-lockfile
 
     - name: Build frontend with preview env vars
       working-directory: studio
