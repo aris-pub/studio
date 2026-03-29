@@ -22,6 +22,10 @@ concurrency:
   group: preview-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+concurrency:
+  group: preview-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: write
 
@@ -251,8 +255,7 @@ jobs:
             `**Test user:** \`${process.env.TEST_USER}\``,
             '',
             'This preview will be destroyed when the PR is closed.',
-          ].join('
-');
+          ].join('\n');
 
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
