@@ -56,8 +56,6 @@ def get_database_url() -> str:
                     url = url.replace("+asyncpg://", "+psycopg2://")
                 elif url.startswith("postgres://"):
                     url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-                if "?" in url:
-                    url = url.split("?")[0]
     elif env == "CI":
         # In CI, use the production DB URL which points to PostgreSQL test instance
         url = os.getenv("ALEMBIC_DB_URL_PROD")
