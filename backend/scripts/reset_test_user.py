@@ -19,7 +19,17 @@ sys.path.insert(0, str(backend_dir))
 
 # Import aris modules after adding to path
 from aris.deps import ArisSession  # noqa: E402
-from aris.models.models import Annotation, AnnotationMessage, AnnotationVisibility, File, FilePermission, FileRole, FileStatus, Tag, User  # noqa: E402
+from aris.models.models import (  # noqa: E402
+    Annotation,
+    AnnotationMessage,
+    AnnotationVisibility,
+    File,
+    FilePermission,
+    FileRole,
+    FileStatus,
+    Tag,
+    User,
+)
 from aris.security import hash_password  # noqa: E402
 
 
