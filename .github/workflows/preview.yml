@@ -96,7 +96,7 @@ jobs:
 
     - name: Install frontend dependencies
       working-directory: studio
-      run: pnpm install --frozen-lockfile --filter frontend
+      run: pnpm install --frozen-lockfile --filter aris
 
     - name: Build frontend with preview env vars
       working-directory: studio
@@ -105,7 +105,7 @@ jobs:
         VITE_MULTIPLAYER_URL: wss://${{ env.APP_NAME }}.fly.dev:1234
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
-      run: pnpm --filter frontend run build
+      run: pnpm --filter aris run build
 
     - name: Deploy frontend to Netlify
       uses: nwtgck/actions-netlify@v3
