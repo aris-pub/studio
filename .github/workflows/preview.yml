@@ -251,7 +251,8 @@ jobs:
             `**Test user:** \`${process.env.TEST_USER}\``,
             '',
             'This preview will be destroyed when the PR is closed.',
-          ].join('\n');
+          ].join('
+');
 
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
