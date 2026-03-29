@@ -115,6 +115,7 @@ jobs:
       run: |
         npx netlify-cli deploy \
           --dir=dist \
+          --no-build \
           --alias=pr-${{ github.event.pull_request.number }} \
           --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
