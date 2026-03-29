@@ -3,14 +3,12 @@ name: Preview Deploy
 on:
   pull_request:
     types: [opened, reopened, synchronize, closed]
+  push:
+    branches-ignore: [main]
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number }}
+  group: preview-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
-
-env:
-  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  APP_NAME: aris-backend-pr-${{ github.event.pull_request.number }}
 
 permissions:
   pull-requests: write
@@ -20,27 +18,56 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
 
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
     steps:
+    - name: Resolve PR number
+      id: pr
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+        else
+          PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found for branch ${{ github.ref_name }}, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        fi
+        echo "skip=false" >> "$GITHUB_OUTPUT"
+
+    - name: Skip if no PR
+      if: steps.pr.outputs.skip == 'true'
+      run: echo "No PR found, skipping deploy"
+
     - uses: actions/checkout@v6
+      if: steps.pr.outputs.skip != 'true'
       with:
         path: studio
 
     - name: Clone RSM repository
+      if: steps.pr.outputs.skip != 'true'
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
-        submodules: true
+        submodules: recursive
         path: rsm
 
     - name: Setup Fly CLI
+      if: steps.pr.outputs.skip != 'true'
       uses: superfly/flyctl-actions/setup-flyctl@master
 
     - name: Create preview app and database
+      if: steps.pr.outputs.skip != 'true'
       env:
-        DB_APP: ${{ env.APP_NAME }}-db
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        DB_APP: aris-backend-pr-${{ steps.pr.outputs.number }}-db
       run: |
         if ! flyctl status --app "$APP_NAME" 2>/dev/null; then
-          # Create ephemeral Postgres for this PR
           flyctl postgres create \
             --name "$DB_APP" \
             --org personal \
@@ -50,30 +77,28 @@ jobs:
             --volume-size 1 \
             --initial-cluster-size 1
 
-          # Create the app
           flyctl apps create "$APP_NAME" --org personal
-
-          # Attach database (sets DATABASE_URL)
+          flyctl ips allocate-v6 --app "$APP_NAME"
+          flyctl ips allocate-v4 --shared --app "$APP_NAME"
           flyctl postgres attach "$DB_APP" --app "$APP_NAME"
 
-          # flyctl postgres attach sets DATABASE_URL automatically.
-          # Backend config falls back DB_URL_PROD -> DATABASE_URL with scheme conversion.
           flyctl secrets set --app "$APP_NAME" \
-            ENV="PREVIEW" \
-            JWT_SECRET_KEY="preview-${{ github.event.pull_request.number }}" \
+            ENV="PROD" \
+            JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}" \
             TEST_USER_EMAIL="preview@aris.pub" \
-            TEST_USER_PASSWORD="preview-pass-${{ github.event.pull_request.number }}" \
+            TEST_USER_PASSWORD="preview-pass-${{ steps.pr.outputs.number }}" \
             RESEND_API_KEY="" \
-            FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
+            FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
-    - name: Generate lockfiles for rsm native packages
-      run: |
-        cd rsm/tree-sitter-rsm && npm install --package-lock-only --ignore-scripts
-        cd ../packages/rsm-lsp && npm install --package-lock-only --ignore-scripts
-
     - name: Deploy backend to Fly
+      if: steps.pr.outputs.skip != 'true'
+      env:
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
       run: |
+        sed -i 's/npm ci --ignore-scripts/npm install --ignore-scripts/' studio/backend/Dockerfile
+        sed -i 's/npm ci --omit=dev/npm install/' studio/backend/Dockerfile
+
         flyctl deploy --app "$APP_NAME" \
           --config studio/backend/fly.toml \
           --dockerfile studio/backend/Dockerfile \
@@ -81,47 +106,88 @@ jobs:
           --yes \
           --local-only
 
+    - name: Seed preview database
+      if: steps.pr.outputs.skip != 'true'
+      env:
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+      run: |
+        # Wait for backend to be ready (cold start can take 30s+)
+        for i in $(seq 1 30); do
+          if curl -sf --max-time 10 "https://$APP_NAME.fly.dev/docs" > /dev/null 2>&1; then
+            echo "Backend is ready"
+            break
+          fi
+          echo "Waiting for backend... ($i/30)"
+          sleep 10
+        done
+        # Run seed script via SSH
+        flyctl ssh console --app "$APP_NAME" \
+          -C "sh -c 'cd /app && python scripts/reset_test_user.py'" || echo "Seed failed (non-fatal)"
+
     # --- Frontend: build locally, upload to Netlify ---
 
     - uses: pnpm/action-setup@v5
+      if: steps.pr.outputs.skip != 'true'
       with:
         package_json_file: studio/package.json
 
     - uses: actions/setup-node@v4
+      if: steps.pr.outputs.skip != 'true'
       with:
         node-version: 20
+        cache: pnpm
+        cache-dependency-path: studio/pnpm-lock.yaml
 
     - name: Install frontend dependencies
-      working-directory: studio/frontend
-      run: pnpm install --frozen-lockfile
+      if: steps.pr.outputs.skip != 'true'
+      working-directory: studio
+      run: pnpm install --frozen-lockfile --filter aris
 
     - name: Build frontend with preview env vars
-      working-directory: studio/frontend
+      if: steps.pr.outputs.skip != 'true'
+      working-directory: studio
       env:
-        VITE_API_BASE_URL: https://${{ env.APP_NAME }}.fly.dev
-        VITE_MULTIPLAYER_URL: wss://${{ env.APP_NAME }}.fly.dev:1234
+        VITE_API_BASE_URL: https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev
+        VITE_MULTIPLAYER_URL: ""
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
-      run: pnpm run build
+        BACKEND_PORT: "8000"
+        FRONTEND_PORT: "5173"
+        SITE_PORT: "3000"
+        STORYBOOK_PORT: "6006"
+        DB_PORT: "5432"
+        DB_NAME: "aris"
+        TEST_DB_NAME: "aris_test"
+        NUXT_BACKEND_URL: https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev
+      run: pnpm --filter aris run build
 
     - name: Deploy frontend to Netlify
-      working-directory: studio/frontend
+      if: steps.pr.outputs.skip != 'true'
+      uses: nwtgck/actions-netlify@v3
+      with:
+        publish-dir: studio/frontend/dist
+        production-deploy: false
+        alias: pr-${{ steps.pr.outputs.number }}
+        deploy-message: "PR #${{ steps.pr.outputs.number }}"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        enable-commit-comment: false
+        enable-pull-request-comment: false
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
-      run: |
-        npx netlify-cli deploy \
-          --dir=dist \
-          --alias=pr-${{ github.event.pull_request.number }} \
-          --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
     - name: Comment preview URLs
+      if: steps.pr.outputs.skip != 'true'
       uses: actions/github-script@v7
+      env:
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
       with:
         script: |
-          const prNum = context.issue.number;
+          const prNum = parseInt(process.env.PR_NUMBER);
           const appName = process.env.APP_NAME;
-          const netlifySite = '${{ secrets.NETLIFY_FRONTEND_SITE }}';
+          const netlifySite = process.env.NETLIFY_SITE_NAME;
           const frontendUrl = `https://pr-${prNum}--${netlifySite}.netlify.app`;
           const backendUrl = `https://${appName}.fly.dev`;
           const body = [
@@ -158,8 +224,12 @@ jobs:
           }
 
   destroy:
-    if: github.event.action == 'closed'
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
+
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      APP_NAME: aris-backend-pr-${{ github.event.pull_request.number }}
 
     steps:
     - name: Setup Fly CLI

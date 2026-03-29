@@ -19,7 +19,7 @@ sys.path.insert(0, str(backend_dir))
 
 # Import aris modules after adding to path
 from aris.deps import ArisSession  # noqa: E402
-from aris.models.models import File, FilePermission, FileRole, FileStatus, Tag, User  # noqa: E402
+from aris.models.models import Annotation, AnnotationMessage, AnnotationVisibility, File, FilePermission, FileRole, FileStatus, Tag, User  # noqa: E402
 from aris.security import hash_password  # noqa: E402
 
 
@@ -191,6 +191,44 @@ This is another stable test file for visual tests.
             session.add(permission)
         await session.commit()
         print(f"✅ [RESET-USER-DEBUG] Created OWNER permissions for {len(test_files)} files")
+
+        # Create test annotations on the first file
+        print("🔍 [RESET-USER-DEBUG] Creating test annotations...")
+        first_file = test_files[0]
+        annotations = [
+            Annotation(
+                file_id=first_file.id,
+                owner_id=user_id,
+                color="purple",
+                visibility=AnnotationVisibility.PRIVATE,
+                anchor_data={"node_id": "0", "start_offset": 0, "end_offset": 20},
+                selected_text="Test Visual Regression",
+            ),
+            Annotation(
+                file_id=first_file.id,
+                owner_id=user_id,
+                color="blue",
+                visibility=AnnotationVisibility.SHARED,
+                anchor_data={"node_id": "0", "start_offset": 40, "end_offset": 60},
+                selected_text="visual regression testing",
+            ),
+        ]
+        session.add_all(annotations)
+        await session.commit()
+
+        # Add messages to annotations
+        session.add(AnnotationMessage(
+            annotation_id=annotations[0].id,
+            owner_id=user_id,
+            content="This is a private note on the test file.",
+        ))
+        session.add(AnnotationMessage(
+            annotation_id=annotations[1].id,
+            owner_id=user_id,
+            content="This is a shared comment for discussion.",
+        ))
+        await session.commit()
+        print(f"✅ [RESET-USER-DEBUG] Created {len(annotations)} annotations with messages")
 
         # Create stable test tags
         print("🔍 [RESET-USER-DEBUG] Creating test tags...")
