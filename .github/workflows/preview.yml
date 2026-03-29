@@ -12,9 +12,7 @@ permissions:
 jobs:
   deploy:
     # Skip: push events to non-PR branches, and PR close events
-    if: >-
-      (github.event_name == 'pull_request' && github.event.action != 'closed') ||
-      github.event_name == 'push'
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     concurrency:
       group: preview-${{ github.head_ref || github.ref_name }}
