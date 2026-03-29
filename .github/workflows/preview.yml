@@ -92,20 +92,20 @@ jobs:
       with:
         node-version: 20
         cache: pnpm
-        cache-dependency-path: studio/frontend/pnpm-lock.yaml
+        cache-dependency-path: studio/pnpm-lock.yaml
 
     - name: Install frontend dependencies
-      working-directory: studio/frontend
-      run: pnpm install --frozen-lockfile
+      working-directory: studio
+      run: pnpm install --frozen-lockfile --filter frontend...
 
     - name: Build frontend with preview env vars
-      working-directory: studio/frontend
+      working-directory: studio
       env:
         VITE_API_BASE_URL: https://${{ env.APP_NAME }}.fly.dev
         VITE_MULTIPLAYER_URL: wss://${{ env.APP_NAME }}.fly.dev:1234
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
-      run: pnpm run build
+      run: pnpm --filter frontend run build
 
     - name: Deploy frontend to Netlify
       working-directory: studio/frontend
