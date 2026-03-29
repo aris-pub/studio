@@ -46,12 +46,16 @@ def get_database_url() -> str:
     """
     env = os.getenv("ENV", "LOCAL").upper()
     if env == "PROD":
-        # Prefer ALEMBIC_DB_URL_PROD, but fall back to DB_URL_PROD with driver conversion
+        # Prefer ALEMBIC_DB_URL_PROD, then DB_URL_PROD, then DATABASE_URL (Fly Postgres)
         url = os.getenv("ALEMBIC_DB_URL_PROD")
         if not url:
-            url = os.getenv("DB_URL_PROD")
-            if url and "+asyncpg://" in url:
-                url = url.replace("+asyncpg://", "+psycopg2://")
+            url = os.getenv("DB_URL_PROD") or os.getenv("DATABASE_URL")
+            if url:
+                # Normalize driver: asyncpg → psycopg2, postgres:// → postgresql+psycopg2://
+                if "+asyncpg://" in url:
+                    url = url.replace("+asyncpg://", "+psycopg2://")
+                elif url.startswith("postgres://"):
+                    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
     elif env == "CI":
         # In CI, use the production DB URL which points to PostgreSQL test instance
         url = os.getenv("ALEMBIC_DB_URL_PROD")

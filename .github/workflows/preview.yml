@@ -78,6 +78,8 @@ jobs:
             --initial-cluster-size 1
 
           flyctl apps create "$APP_NAME" --org personal
+          flyctl ips allocate-v6 --app "$APP_NAME"
+          flyctl ips allocate-v4 --shared --app "$APP_NAME"
           flyctl postgres attach "$DB_APP" --app "$APP_NAME"
 
           flyctl secrets set --app "$APP_NAME" \
