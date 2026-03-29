@@ -114,6 +114,7 @@ jobs:
       run: |
         npx netlify-cli@latest deploy \
           --dir=studio/frontend/dist \
+          --site=${{ secrets.NETLIFY_FRONTEND_SITE_ID }} \
           --alias=pr-${{ github.event.pull_request.number }} \
           --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
