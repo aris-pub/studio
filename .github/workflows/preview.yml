@@ -106,6 +106,24 @@ jobs:
           --yes \
           --local-only
 
+    - name: Seed preview database
+      if: steps.pr.outputs.skip != 'true'
+      env:
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+      run: |
+        # Wait for backend to be ready (cold start can take 30s+)
+        for i in $(seq 1 30); do
+          if curl -sf --max-time 10 "https://$APP_NAME.fly.dev/docs" > /dev/null 2>&1; then
+            echo "Backend is ready"
+            break
+          fi
+          echo "Waiting for backend... ($i/30)"
+          sleep 10
+        done
+        # Run seed script via SSH
+        flyctl ssh console --app "$APP_NAME" \
+          -C "cd /app && python scripts/reset_test_user.py" || echo "Seed failed (non-fatal)"
+
     # --- Frontend: build locally, upload to Netlify ---
 
     - uses: pnpm/action-setup@v5
