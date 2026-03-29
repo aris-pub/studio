@@ -244,9 +244,10 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
   test("password change loading state", async ({ page }) => {
     await page.goto("/account");
 
-    // Mock slow response to test loading state
+    // Mock slow response to test loading state — delay must be short enough
+    // that the response completes well within the assertion timeout
     await page.route("**/change-password", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.CONTENT_LOAD));
+      await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.QUICK_ACTION));
       route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -288,7 +289,9 @@ test.describe("Account Password Change Integration E2E Tests @auth", () => {
     await expect(newPasswordInput).toBeDisabled();
     await expect(confirmPasswordInput).toBeDisabled();
 
-    // Wait for completion - text reverts back
-    await expect(submitButton).toContainText("Update Password");
+    // Wait for completion - text reverts back after mock delay + response processing
+    await expect(submitButton).toContainText("Update Password", {
+      timeout: TIMEOUTS.CONTENT_LOAD,
+    });
   });
 });
