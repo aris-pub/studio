@@ -21,9 +21,9 @@ RUN cd rsm/tree-sitter-rsm && rm -rf prebuilds build \
     && npm install --ignore-scripts \
     && npx node-gyp rebuild
 
-# Install rsm-lsp production deps (creates symlink for file: dep)
+# Install rsm-lsp deps including devDependencies (typescript needed for build)
 COPY rsm/packages/rsm-lsp/package*.json ./rsm/packages/rsm-lsp/
-RUN cd rsm/packages/rsm-lsp && npm ci --omit=dev
+RUN cd rsm/packages/rsm-lsp && npm ci
 
 # Copy source files for multiplayer and rsm-lsp
 COPY studio/multi-player/ ./multi-player/
@@ -34,8 +34,8 @@ COPY rsm/packages/rsm-lsp/ ./rsm/packages/rsm-lsp/
 RUN rm -rf rsm/packages/rsm-lsp/node_modules/tree-sitter-rsm \
     && cp -r rsm/tree-sitter-rsm rsm/packages/rsm-lsp/node_modules/tree-sitter-rsm
 
-# Build rsm-lsp TypeScript
-RUN cd rsm/packages/rsm-lsp && npm run build
+# Build rsm-lsp TypeScript, then prune devDependencies
+RUN cd rsm/packages/rsm-lsp && npm run build && npm prune --omit=dev
 
 # Stage 2: Python runtime + Node.js + supervisord
 FROM python:3.13-slim AS runtime
