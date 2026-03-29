@@ -90,8 +90,6 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: pnpm
-        cache-dependency-path: studio/frontend/pnpm-lock.yaml
 
     - name: Install frontend dependencies
       working-directory: studio/frontend
