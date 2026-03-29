@@ -6,17 +6,17 @@ on:
   push:
     branches-ignore: [main]
 
+concurrency:
+  group: preview-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: write
 
 jobs:
   deploy:
-    # Skip: push events to non-PR branches, and PR close events
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    concurrency:
-      group: preview-${{ github.head_ref || github.ref_name }}
-      cancel-in-progress: true
 
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
