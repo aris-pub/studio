@@ -59,7 +59,7 @@ jobs:
           # flyctl postgres attach sets DATABASE_URL automatically.
           # Backend config falls back DB_URL_PROD -> DATABASE_URL with scheme conversion.
           flyctl secrets set --app "$APP_NAME" \
-            ENV="PREVIEW" \
+            ENV="PROD" \
             JWT_SECRET_KEY="preview-${{ github.event.pull_request.number }}" \
             TEST_USER_EMAIL="preview@aris.pub" \
             TEST_USER_PASSWORD="preview-pass-${{ github.event.pull_request.number }}" \
@@ -102,7 +102,7 @@ jobs:
       working-directory: studio
       env:
         VITE_API_BASE_URL: https://${{ env.APP_NAME }}.fly.dev
-        VITE_MULTIPLAYER_URL: wss://${{ env.APP_NAME }}.fly.dev:1234
+        VITE_MULTIPLAYER_URL: ""
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
       run: pnpm --filter aris run build
@@ -123,11 +123,13 @@ jobs:
 
     - name: Comment preview URLs
       uses: actions/github-script@v7
+      env:
+        NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
       with:
         script: |
           const prNum = context.issue.number;
           const appName = process.env.APP_NAME;
-          const netlifySite = '${{ secrets.NETLIFY_FRONTEND_SITE }}';
+          const netlifySite = process.env.NETLIFY_SITE_NAME;
           const frontendUrl = `https://pr-${prNum}--${netlifySite}.netlify.app`;
           const backendUrl = `https://${appName}.fly.dev`;
           const body = [
