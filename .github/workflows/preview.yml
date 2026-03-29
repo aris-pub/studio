@@ -105,6 +105,14 @@ jobs:
         VITE_MULTIPLAYER_URL: ""
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
+        BACKEND_PORT: "8000"
+        FRONTEND_PORT: "5173"
+        SITE_PORT: "3000"
+        STORYBOOK_PORT: "6006"
+        DB_PORT: "5432"
+        DB_NAME: "aris"
+        TEST_DB_NAME: "aris_test"
+        NUXT_BACKEND_URL: https://${{ env.APP_NAME }}.fly.dev
       run: pnpm --filter aris run build
 
     - name: Deploy frontend to Netlify
