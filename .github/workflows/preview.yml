@@ -73,9 +73,7 @@ jobs:
         # tree-sitter-rsm and rsm-lsp don't track lockfiles in git.
         # Use npm install instead of npm ci for these packages.
         sed -i 's/npm ci --ignore-scripts/npm install --ignore-scripts/' studio/backend/Dockerfile
-        sed -i 's/npm ci --omit=dev/npm install --omit=dev/' studio/backend/Dockerfile
-        # Debug: list what COPY brought into the container
-        sed -i '/cd rsm\/tree-sitter-rsm && rm -rf/i RUN echo "=== tree-sitter-rsm contents ===" && ls -la rsm/tree-sitter-rsm/ && echo "=== end ==="' studio/backend/Dockerfile
+        sed -i 's/npm ci --omit=dev/npm install/' studio/backend/Dockerfile
 
         flyctl deploy --app "$APP_NAME" \
           --config studio/backend/fly.toml \
