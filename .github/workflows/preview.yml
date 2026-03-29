@@ -84,6 +84,8 @@ jobs:
     # --- Frontend: build locally, upload to Netlify ---
 
     - uses: pnpm/action-setup@v5
+      with:
+        package_json_file: studio/package.json
 
     - uses: actions/setup-node@v4
       with:
