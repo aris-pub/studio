@@ -100,6 +100,8 @@ class Settings(BaseSettings):
         # converting the scheme to postgresql+asyncpg:// for SQLAlchemy async.
         if not self.DB_URL_PROD and self.DATABASE_URL:
             url = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            if "?" in url:
+                url = url.split("?")[0]
             self.DB_URL_PROD = url
 
         # Test environment: use SQLite for local testing
