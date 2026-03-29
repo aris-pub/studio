@@ -108,13 +108,12 @@ jobs:
       run: pnpm --filter frontend run build
 
     - name: Deploy frontend to Netlify
-      working-directory: studio/frontend
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
       run: |
         npx netlify-cli@latest deploy \
-          --dir=dist \
+          --dir=studio/frontend/dist \
           --alias=pr-${{ github.event.pull_request.number }} \
           --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
