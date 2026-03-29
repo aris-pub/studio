@@ -108,15 +108,18 @@ jobs:
       run: pnpm --filter frontend run build
 
     - name: Deploy frontend to Netlify
+      uses: nwtgck/actions-netlify@v3
+      with:
+        publish-dir: studio/frontend/dist
+        production-deploy: false
+        alias: pr-${{ github.event.pull_request.number }}
+        deploy-message: "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        enable-commit-comment: false
+        enable-pull-request-comment: false
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
-      run: |
-        npx netlify-cli@latest deploy \
-          --no-build \
-          --dir=studio/frontend/dist \
-          --alias="pr-${{ github.event.pull_request.number }}" \
-          --message="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
 
     - name: Comment preview URLs
       uses: actions/github-script@v7
