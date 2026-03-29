@@ -113,7 +113,7 @@ class YDocClient:
             try:
                 await self._save_task
             except asyncio.CancelledError:
-                pass
+                logger.debug(f"Cancelled lingering save task for file {self.file_id}")
         self._save_event.clear()
 
         # Identify as the backend client so the server's cleanup logic
@@ -302,7 +302,10 @@ class YDocClient:
             loop = asyncio.get_event_loop()
             loop.call_soon_threadsafe(self._signal_save)
         except RuntimeError:
-            pass
+            logger.warning(
+                f"No event loop available for file {self.file_id} — "
+                f"document change will not trigger persistence"
+            )
 
     def _signal_save(self):
         """Schedule a save — runs on the event loop thread."""
@@ -329,7 +332,7 @@ class YDocClient:
             await asyncio.sleep(self.checkpoint_idle_timeout_secs)
             await self._maybe_create_checkpoint()
         except asyncio.CancelledError:
-            pass
+            logger.debug(f"Idle checkpoint timer cancelled for file {self.file_id}")
 
     async def _safety_net_loop(self):
         """Periodically checkpoint if edits have accumulated without a pause."""
@@ -339,7 +342,7 @@ class YDocClient:
                 if self._edit_count_since_checkpoint > 0:
                     await self._maybe_create_checkpoint(force=True)
         except asyncio.CancelledError:
-            pass
+            logger.debug(f"Safety net checkpoint loop cancelled for file {self.file_id}")
 
     async def _maybe_create_checkpoint(self, force: bool = False) -> None:
         """Create a checkpoint if heuristic conditions are satisfied.
@@ -425,7 +428,7 @@ class YDocClient:
                         break  # No new edits within debounce window — save now
                 await self._save_to_db()
         except asyncio.CancelledError:
-            pass
+            logger.debug(f"Save loop cancelled for file {self.file_id}")
 
     async def _save_to_db(self, force: bool = False):
         """Persist current Y.Text content to database."""
@@ -468,7 +471,7 @@ class YDocClient:
             try:
                 await self._save_task
             except asyncio.CancelledError:
-                pass
+                logger.debug(f"Cancelled save task during shutdown for file {self.file_id}")
 
         try:
             await asyncio.wait_for(self._save_to_db(force=True), timeout=2.0)
