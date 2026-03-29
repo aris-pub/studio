@@ -42,6 +42,7 @@ class AnnotationMessageResponse(BaseModel):
     owner_id: int
     content: str
     created_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     owner: Optional["AnnotationOwnerResponse"] = None
 
@@ -390,6 +391,7 @@ async def update_annotation_message(
         raise HTTPException(status_code=403, detail="You can only edit your own messages")
 
     message.content = message_update.content  # type: ignore
+    message.updated_at = datetime.now(timezone.utc)  # type: ignore
     await db.commit()
 
     result = await db.execute(
@@ -422,6 +424,10 @@ async def delete_annotation_message(
     if annotation:
         if not await has_permission(annotation.file_id, user.id, PermissionLevel.COMMENT, db):
             raise HTTPException(status_code=403, detail="Comment permission required")
+        if annotation.visibility == AnnotationVisibility.SHARED:
+            raise HTTPException(
+                status_code=403, detail="Cannot delete messages on shared annotations"
+            )
 
     if message.owner_id != user.id:
         raise HTTPException(status_code=403, detail="You can only delete your own messages")

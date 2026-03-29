@@ -654,3 +654,65 @@ async def test_delete_nonexistent_message(client: AsyncClient, authenticated_use
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
     resp = await client.delete("/annotations/messages/99999", headers=headers)
     assert resp.status_code == 404
+
+
+async def test_update_message_sets_updated_at(client: AsyncClient, authenticated_user):
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id)
+
+    msg = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Original"},
+    )
+    msg_data = msg.json()
+    assert msg_data["updated_at"] is None
+
+    resp = await client.put(
+        f"/annotations/messages/{msg_data['id']}",
+        headers=headers,
+        json={"content": "Edited"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["updated_at"] is not None
+    assert resp.json()["content"] == "Edited"
+
+
+async def test_delete_message_blocked_on_shared_annotation(
+    client: AsyncClient,
+    authenticated_user,
+):
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id, visibility="shared")
+
+    msg = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Shared comment"},
+    )
+    msg_id = msg.json()["id"]
+
+    resp = await client.delete(f"/annotations/messages/{msg_id}", headers=headers)
+    assert resp.status_code == 403
+    assert "shared" in resp.json()["detail"].lower()
+
+
+async def test_delete_message_allowed_on_private_annotation(
+    client: AsyncClient,
+    authenticated_user,
+):
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id, visibility="private")
+
+    msg = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Private note"},
+    )
+    msg_id = msg.json()["id"]
+
+    resp = await client.delete(f"/annotations/messages/{msg_id}", headers=headers)
+    assert resp.status_code == 204

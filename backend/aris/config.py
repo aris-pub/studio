@@ -34,8 +34,11 @@ class Settings(BaseSettings):
     DB_URL_LOCAL: str = Field(default="", json_schema_extra={"env": "DB_URL_LOCAL"})
     """Database URL for local development."""
 
-    DB_URL_PROD: str = Field(..., json_schema_extra={"env": "DB_URL_PROD"})
-    """Database URL for production environment."""
+    DB_URL_PROD: str = Field(default="", json_schema_extra={"env": "DB_URL_PROD"})
+    """Database URL for production environment. Falls back to DATABASE_URL if empty."""
+
+    DATABASE_URL: str = Field(default="", json_schema_extra={"env": "DATABASE_URL"})
+    """Standard database URL (set by Fly Postgres attach). Used as fallback for DB_URL_PROD."""
 
     ALEMBIC_DB_URL_LOCAL: str = Field(default="", json_schema_extra={"env": "ALEMBIC_DB_URL_LOCAL"})
     """Database URL for Alembic local development."""
@@ -93,6 +96,12 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def build_database_urls(self):
         """Build database URLs from DB_PORT and DB_NAME if not explicitly set."""
+        # Fly Postgres sets DATABASE_URL (postgres://...). Use as fallback for DB_URL_PROD,
+        # converting the scheme to postgresql+asyncpg:// for SQLAlchemy async.
+        if not self.DB_URL_PROD and self.DATABASE_URL:
+            url = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            self.DB_URL_PROD = url
+
         # Test environment: use SQLite for local testing
         if self.ENV == "TEST":
             if not self.DB_URL_LOCAL:

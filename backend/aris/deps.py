@@ -34,7 +34,7 @@ load_dotenv()
 
 
 # PostgreSQL-specific connect_args (not compatible with SQLite)
-_db_url = settings.DB_URL_PROD if settings.ENV == "PROD" else settings.DB_URL_LOCAL
+_db_url = settings.DB_URL_LOCAL if settings.ENV in ("LOCAL", "TEST", "CI") else settings.DB_URL_PROD
 _connect_args = (
     {"statement_cache_size": 0, "prepared_statement_name_func": lambda: ""}
     if not _db_url.startswith("sqlite")

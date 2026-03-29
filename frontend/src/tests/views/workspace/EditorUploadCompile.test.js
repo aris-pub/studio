@@ -73,6 +73,7 @@ function createWrapper({ apiMock } = {}) {
 
 describe("Editor: auto-recompile on asset upload", () => {
   it("calls compile after a successful asset upload", async () => {
+    vi.useFakeTimers();
     const api = {
       post: vi.fn().mockResolvedValue({ data: { id: 1, filename: "img.png" } }),
       get: vi.fn().mockResolvedValue({ data: [] }),
@@ -89,11 +90,16 @@ describe("Editor: auto-recompile on asset upload", () => {
     await flushPromises();
     await flushPromises();
 
+    // compile() uses a debounced setTimeout (up to 500ms)
+    vi.advanceTimersByTime(600);
+    await flushPromises();
+
     const postCalls = api.post.mock.calls;
     expect(postCalls.length).toBe(2);
     expect(postCalls[0][0]).toBe("/assets");
     expect(postCalls[1][0]).toBe("render/private");
     expect(postCalls[1][1]).toEqual({ source: "test source", file_id: 42 });
+    vi.useRealTimers();
   });
 
   it("does not compile when upload fails", async () => {
