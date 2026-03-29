@@ -20,7 +20,7 @@ COPY rsm/tree-sitter-rsm ./rsm/tree-sitter-rsm/
 # binding.gyp may be absent from Depot's cached COPY layer; regenerate if missing
 RUN cd rsm/tree-sitter-rsm && rm -rf prebuilds build \
     && npm install --ignore-scripts \
-    && [ -f binding.gyp ] || npx tree-sitter generate \
+    && if [ ! -f binding.gyp ]; then npx -y tree-sitter-cli generate; fi \
     && npx node-gyp rebuild
 
 # Install rsm-lsp production deps (creates symlink for file: dep)
