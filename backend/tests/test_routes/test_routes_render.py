@@ -366,3 +366,22 @@ async def test_render_structured_has_no_theme_toggle(client: AsyncClient):
     # Verify theme toggle button does NOT exist in the rendered output
     assert "rsm-theme-toggle" not in result["body"]
     assert "theme-toggle" not in result["body"]
+
+
+async def test_render_structured_logs_on_build_error(client: AsyncClient, caplog):
+    """Test that structured render logs exceptions instead of silently swallowing them."""
+    import logging
+
+    with patch("rsm.build", side_effect=RuntimeError("parse explosion")):
+        with caplog.at_level(logging.ERROR, logger="aris.routes.render"):
+            response = await client.post(
+                "/render", json={"source": "# Broken", "format": "structured"}
+            )
+
+    assert response.status_code == 200
+    result = response.json()
+    # Should fall back to HTML
+    assert "body" in result
+    # The error should have been logged
+    assert "Structured render failed" in caplog.text
+    assert "parse explosion" in caplog.text

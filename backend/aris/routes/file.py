@@ -12,9 +12,13 @@ from ..collaboration import get_collaboration_manager
 from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..crud.permissions import create_permission
 from ..deps import UserRead
+from ..logging_config import get_logger
 from ..models import FileAsset
 from ..models.models import FileRole
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
+
+
+logger = get_logger(__name__)
 
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(current_user)])
@@ -925,7 +929,7 @@ async def download_file_pdf(
                     with open(asset_path, "w", encoding="utf-8") as af:
                         af.write(asset.content)
             except (binascii.Error, OSError):
-                pass  # Skip assets that fail to write
+                logger.warning("Failed to write asset %s for file %s", asset.filename, file_id, exc_info=True)
         # First compilation attempt
         try:
             result = await asyncio.to_thread(
@@ -960,7 +964,7 @@ async def download_file_pdf(
                     capture_output=True,
                 )
             except FileNotFoundError:
-                pass
+                logger.error("typst binary not found during retry compilation for file %s", file_id)
 
         if not os.path.exists(pdf_path):
             stderr = getattr(result, 'stderr', '') or ''
