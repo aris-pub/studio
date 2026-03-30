@@ -69,7 +69,7 @@
     "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.5.0",
-    "eslint-plugin-storybook": "^0.11.6",
+    "eslint-plugin-storybook": "^10.3.3",
     "eslint-plugin-vue": "~10.6.2",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
