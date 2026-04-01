@@ -179,7 +179,7 @@ jobs:
       with:
         package_json_file: studio/package.json
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v6
       if: steps.pr.outputs.skip != 'true'
       with:
         node-version: 20
@@ -226,7 +226,7 @@ jobs:
 
     - name: Comment preview URLs
       if: steps.pr.outputs.skip != 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       env:
         BACKEND_ENV: ${{ steps.backend.outputs.env }}
         BACKEND_URL: ${{ steps.backend.outputs.url }}

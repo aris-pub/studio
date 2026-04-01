@@ -49,12 +49,12 @@ jobs:
         echo "Cloned RSM repository to ../rsm"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.13'
 
@@ -101,7 +101,7 @@ jobs:
       uses: pnpm/action-setup@v5
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '23'
         cache: 'pnpm'
@@ -217,7 +217,7 @@ jobs:
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
       uses: actions/cache@v5
@@ -308,7 +308,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: playwright-results-site-${{ matrix.browser }}-${{ matrix.device }}
         path: site/test-results/
@@ -394,7 +394,7 @@ jobs:
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
       uses: actions/cache@v5
@@ -489,7 +489,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: playwright-results-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
         path: frontend/test-results/
@@ -581,7 +581,7 @@ jobs:
         echo "✅ Docker cleanup complete"
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
       uses: actions/cache@v5
@@ -647,7 +647,7 @@ jobs:
 
     - name: Upload test results on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: playwright-results-docker-${{ matrix.browser }}
         path: frontend/test-results/
