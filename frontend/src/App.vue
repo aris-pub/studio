@@ -3,6 +3,7 @@
   import { useRouter } from "vue-router";
   import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
+  // test: verify staging preview workflow
   import { createFileStore } from "@/store/FileStore.js";
   import { getLogger } from "@/utils/logger.js";
   import { loadDesignAssets } from "@/utils/cssLoader.js";
