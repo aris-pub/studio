@@ -7,9 +7,10 @@
 [![Node.js 23+](https://img.shields.io/badge/node.js-23+-green.svg)](https://nodejs.org/)
 
 **RSM Studio** is the reference implementation and collaborative editor for RSM (Readable
-Science Markup). Write documents that preserve semantic meaning, render beautifully on
-any device, and enable true interactivity. Real-time collaboration, universal device
-support, planned Pandoc integration for import/export.
+Science Markup). Part of [Aris: the open research stack](https://aris.pub). Write
+documents that preserve semantic meaning, render beautifully on any device, and enable
+true interactivity. Real-time collaboration, universal device support, planned Pandoc
+integration for import/export.
 
 **Governance**: Studio is community-maintained—open source, bug reports and maintenance
 contributions accepted. Part of the Aris Program, supported by community donations and
