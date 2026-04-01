@@ -131,49 +131,10 @@
     });
   }
 
-  async function onSaveMessageEdit(msg) {
+  async function onSaveMessageEdit(msg, submittedValue) {
     if (!annotationActions) return;
-    try {
-      await annotationActions.updateNote(msg.id, editMessageText.value);
-    } catch (err) {
-      console.error("Failed to update message:", err);
-    }
-    editingMessageId.value = null;
-    editMessageText.value = "";
-  }
-
-  function onCancelMessageEdit() {
-    editingMessageId.value = null;
-    editMessageText.value = "";
-  }
-
-  function onDeleteMessageClick(msg) {
-    if (confirmingDeleteMessageId.value === msg.id) {
-      if (Date.now() - deleteMessageArmedAt < DEBOUNCE_MS) return;
-      onDeleteMessage(msg);
-      confirmingDeleteMessageId.value = null;
-      clearTimeout(deleteMessageTimeout);
-    } else {
-      confirmingDeleteMessageId.value = msg.id;
-      deleteMessageArmedAt = Date.now();
-      clearTimeout(deleteMessageTimeout);
-      deleteMessageTimeout = setTimeout(() => {
-        confirmingDeleteMessageId.value = null;
-      }, 3000);
-    }
-  }
-
-  async function onDeleteMessage(msg) {
-    if (!annotationActions) return;
-    try {
-      await annotationActions.deleteNote(msg.id);
-    } catch (err) {
-      console.error("Failed to delete message:", err);
-    }
-  }
-
-  async function onPostReply() {
-    if (!annotationActions || !replyText.value.trim()) return;
+    const content = submittedValue || editMessageText.value;
+    isSaving.value = true;
     try {
       await annotationActions.updateNote(msg.id, content);
       editingMessageId.value = null;
@@ -612,14 +573,16 @@
             </div>
             <template v-if="editingMessageId === msg.id">
               <div class="thread-message-edit-area" @click.stop>
-                <label :for="`msg-edit-${msg.id}`" class="sr-only">Edit message</label>
-                <textarea
-                  :id="`msg-edit-${msg.id}`"
+                <TextareaInput
                   ref="editMessageInput"
-                  v-model="editMessageText"
-                  class="edit-input thread-edit-input"
-                  rows="2"
-                  @keydown.enter.exact.prevent="onSaveMessageEdit(msg)"
+                  :model-value="editMessageText"
+                  :rows="2"
+                  :compact="true"
+                  layout="inline"
+                  :show-buttons="false"
+                  :submit-on-enter="true"
+                  @update:model-value="editMessageText = $event"
+                  @submit="(val) => onSaveMessageEdit(msg, val)"
                   @keydown.esc.stop="onCancelMessageEdit"
                 />
                 <div class="edit-actions">
@@ -667,14 +630,16 @@
       <template v-else-if="note">
         <template v-if="editingMessageId === note.id">
           <div class="thread-message-edit-area" @click.stop>
-            <label :for="`msg-edit-${note.id}`" class="sr-only">Edit note</label>
-            <textarea
-              :id="`msg-edit-${note.id}`"
+            <TextareaInput
               ref="editMessageInput"
-              v-model="editMessageText"
-              class="edit-input thread-edit-input"
-              rows="2"
-              @keydown.enter.exact.prevent="onSaveMessageEdit(note)"
+              :model-value="editMessageText"
+              :rows="2"
+              :compact="true"
+              layout="inline"
+              :show-buttons="false"
+              :submit-on-enter="true"
+              @update:model-value="editMessageText = $event"
+              @submit="(val) => onSaveMessageEdit(note, val)"
               @keydown.esc.stop="onCancelMessageEdit"
             />
             <div class="edit-actions">
@@ -874,6 +839,46 @@
   }
 
   /* ---------------------------------------------------------------
+     ORPHANED ANNOTATIONS
+     --------------------------------------------------------------- */
+  .note.orphaned {
+    border-left-style: dashed;
+    opacity: 0.75;
+  }
+
+  .note.orphaned:hover,
+  .note.orphaned:focus-within {
+    opacity: 1;
+  }
+
+  .orphan-banner {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    background-color: color-mix(in srgb, var(--orange-200) 20%, transparent);
+    border: var(--border-extrathin) solid var(--orange-300);
+  }
+
+  .note.shared .orphan-banner {
+    background-color: color-mix(in srgb, var(--orange-200) 15%, var(--surface-page));
+  }
+
+  .orphan-icon {
+    color: var(--orange-600);
+    flex-shrink: 0;
+  }
+
+  .orphan-text {
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+    color: var(--orange-700);
+    line-height: 1.3;
+  }
+
+  /* ---------------------------------------------------------------
      SELECTED TEXT — different treatment per type
      --------------------------------------------------------------- */
   .selected-text {
@@ -1058,10 +1063,6 @@
     margin-top: 6px;
   }
 
-  .thread-edit-input {
-    font-size: 13px;
-    padding: 6px 10px;
-  }
 
   /* ---------------------------------------------------------------
      REPLY AREA (shared threads)
@@ -1073,29 +1074,11 @@
     border-top: 1px solid var(--border-primary);
   }
 
-  .reply-input {
-    width: 100%;
-    border: var(--border-thin) solid var(--border-primary);
-    border-radius: 8px;
-    padding: 8px 10px;
-    padding-right: 32px;
-    font-family: inherit;
-    font-size: 13px;
-    resize: none;
-    outline: none;
-    background-color: var(--surface-page);
-    color: var(--extra-dark);
-    transition: var(--transition-bd-color);
-  }
-
-  .reply-input:focus {
-    border-color: var(--border-action);
-  }
-
-  .reply-send {
-    position: absolute;
-    right: 6px;
-    bottom: 10px;
+  .reply-area :deep(.textarea-input) {
+    padding: 0;
+    background: transparent;
+    border-top: none;
+    backdrop-filter: none;
   }
 
   /* ---------------------------------------------------------------
@@ -1122,46 +1105,6 @@
     gap: 4px;
   }
 
-
-  /* ---------------------------------------------------------------
-     ORPHANED ANNOTATION — broken anchor indicator
-     --------------------------------------------------------------- */
-  .note.orphaned {
-    border-left-style: dashed;
-    opacity: 0.75;
-  }
-
-  .note.orphaned:hover,
-  .note.orphaned:focus-within {
-    opacity: 1;
-  }
-
-  .orphan-banner {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 8px;
-    margin-bottom: 6px;
-    border-radius: 6px;
-    background-color: color-mix(in srgb, var(--orange-200) 20%, transparent);
-    border: var(--border-extrathin) solid var(--orange-300);
-  }
-
-  .orphan-icon {
-    color: var(--orange-600);
-    flex-shrink: 0;
-  }
-
-  .orphan-text {
-    font-size: 11px;
-    font-weight: var(--weight-medium);
-    color: var(--orange-700);
-    line-height: 1.3;
-  }
-
-  .note.shared .orphan-banner {
-    background-color: color-mix(in srgb, var(--orange-200) 15%, var(--surface-page));
-  }
 
   .color-picker {
     display: flex;
