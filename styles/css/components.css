@@ -1,5 +1,7 @@
 /* Shared Component Styles - Aris Design System */
 
+@layer aris {
+
 :root {
   --scrollbar-size: 8px;
   --overlay-backdrop: rgba(0, 0, 0, 0.5);
@@ -83,6 +85,10 @@ button {
 .item:focus-visible {
   background-color: var(--surface-hover);
 }
+.manuscriptwrapper .item:hover,
+.manuscriptwrapper .item:focus-visible {
+  background-color: unset;
+}
 
 /* Focus outline for accessibility */
 button:focus-visible,
@@ -91,3 +97,5 @@ button:focus-visible,
   outline: var(--border-med) solid var(--border-action);
   outline-offset: var(--border-extrathin);
 }
+
+} /* @layer aris */

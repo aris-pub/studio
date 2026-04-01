@@ -1,5 +1,7 @@
 /* Layout and Base Styles - Aris Design System */
 
+@layer aris {
+
 /* Full viewport layout */
 html, body {
   height: 100%;
@@ -15,3 +17,5 @@ body {
   margin: 0;
   padding: 0;
 }
+
+} /* @layer aris */
