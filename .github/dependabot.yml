@@ -33,6 +33,10 @@ updates:
     commit-message:
       prefix: "frontend"
       include: "scope"
+    groups:
+      frontend-deps:
+        patterns:
+          - "*"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -50,3 +54,7 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
