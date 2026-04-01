@@ -3,8 +3,20 @@ name: Preview Deploy
 on:
   pull_request:
     types: [opened, reopened, synchronize, closed]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/preview.yml'
   push:
     branches-ignore: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/preview.yml'
 
 concurrency:
   group: preview-${{ github.head_ref || github.ref_name }}
@@ -48,9 +60,44 @@ jobs:
       if: steps.pr.outputs.skip != 'true'
       with:
         path: studio
+        fetch-depth: 0
+
+    - name: Detect changed paths
+      if: steps.pr.outputs.skip != 'true'
+      id: changes
+      working-directory: studio
+      run: |
+        BASE=${{ github.event.pull_request.base.sha || github.event.before }}
+        HEAD=${{ github.sha }}
+        CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- . 2>/dev/null || echo "")
+        if [ -z "$CHANGED" ]; then
+          echo "backend=true" >> "$GITHUB_OUTPUT"
+          echo "frontend=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "backend=$(echo "$CHANGED" | grep -q '^backend/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "frontend=$(echo "$CHANGED" | grep -qE '^(frontend/|pnpm-lock\.yaml|package\.json)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Resolve backend environment
+      if: steps.pr.outputs.skip != 'true'
+      id: backend
+      run: |
+        PR_NUM="${{ steps.pr.outputs.number }}"
+        echo "test_user=preview-pr-${PR_NUM}@aris.pub" >> "$GITHUB_OUTPUT"
+        if [ "${{ steps.changes.outputs.backend }}" = "true" ]; then
+          echo "env=testing" >> "$GITHUB_OUTPUT"
+          echo "url=https://aris-backend-pr-${PR_NUM}.fly.dev" >> "$GITHUB_OUTPUT"
+          echo "app=aris-backend-pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
+        else
+          echo "env=staging" >> "$GITHUB_OUTPUT"
+          echo "url=${{ secrets.STAGING_BACKEND_URL }}" >> "$GITHUB_OUTPUT"
+          echo "app=${{ secrets.STAGING_BACKEND_APP }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    # --- Testing backend: only when backend/ files changed ---
 
     - name: Clone RSM repository
-      if: steps.pr.outputs.skip != 'true'
+      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
@@ -62,7 +109,7 @@ jobs:
       uses: superfly/flyctl-actions/setup-flyctl@master
 
     - name: Create preview app and database
-      if: steps.pr.outputs.skip != 'true'
+      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
       env:
         APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
         DB_APP: aris-backend-pr-${{ steps.pr.outputs.number }}-db
@@ -85,14 +132,14 @@ jobs:
           flyctl secrets set --app "$APP_NAME" \
             ENV="PROD" \
             JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}" \
-            TEST_USER_EMAIL="preview@aris.pub" \
-            TEST_USER_PASSWORD="preview-pass-${{ steps.pr.outputs.number }}" \
+            TEST_USER_EMAIL="${{ steps.backend.outputs.test_user }}" \
+            TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
             RESEND_API_KEY="" \
             FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
     - name: Deploy backend to Fly
-      if: steps.pr.outputs.skip != 'true'
+      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
       env:
         APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
       run: |
@@ -106,12 +153,13 @@ jobs:
           --yes \
           --local-only
 
-    - name: Seed preview database
+    - name: Seed test user
       if: steps.pr.outputs.skip != 'true'
       env:
-        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        APP_NAME: ${{ steps.backend.outputs.app }}
+        TEST_USER: ${{ steps.backend.outputs.test_user }}
+        TEST_PASSWORD: ${{ secrets.PREVIEW_TEST_PASSWORD }}
       run: |
-        # Wait for backend to be ready (cold start can take 30s+)
         for i in $(seq 1 30); do
           if curl -sf --max-time 10 "https://$APP_NAME.fly.dev/docs" > /dev/null 2>&1; then
             echo "Backend is ready"
@@ -120,9 +168,9 @@ jobs:
           echo "Waiting for backend... ($i/30)"
           sleep 10
         done
-        # Run seed script via SSH
         flyctl ssh console --app "$APP_NAME" \
-          -C "sh -c 'cd /app && python scripts/reset_test_user.py'" || echo "Seed failed (non-fatal)"
+          -C "sh -c 'cd /app && TEST_USER_EMAIL=$TEST_USER TEST_USER_PASSWORD=$TEST_PASSWORD python scripts/reset_test_user.py'" \
+          || echo "Seed failed (non-fatal)"
 
     # --- Frontend: build locally, upload to Netlify ---
 
@@ -147,7 +195,7 @@ jobs:
       if: steps.pr.outputs.skip != 'true'
       working-directory: studio
       env:
-        VITE_API_BASE_URL: https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev
+        VITE_API_BASE_URL: ${{ steps.backend.outputs.url }}
         VITE_MULTIPLAYER_URL: ""
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
@@ -158,7 +206,7 @@ jobs:
         DB_PORT: "5432"
         DB_NAME: "aris"
         TEST_DB_NAME: "aris_test"
-        NUXT_BACKEND_URL: https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev
+        NUXT_BACKEND_URL: ${{ steps.backend.outputs.url }}
       run: pnpm --filter aris run build
 
     - name: Deploy frontend to Netlify
@@ -180,22 +228,27 @@ jobs:
       if: steps.pr.outputs.skip != 'true'
       uses: actions/github-script@v7
       env:
-        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        BACKEND_ENV: ${{ steps.backend.outputs.env }}
+        BACKEND_URL: ${{ steps.backend.outputs.url }}
         NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
         PR_NUMBER: ${{ steps.pr.outputs.number }}
+        TEST_USER: ${{ steps.backend.outputs.test_user }}
       with:
         script: |
           const prNum = parseInt(process.env.PR_NUMBER);
-          const appName = process.env.APP_NAME;
+          const backendUrl = process.env.BACKEND_URL;
+          const backendEnv = process.env.BACKEND_ENV;
           const netlifySite = process.env.NETLIFY_SITE_NAME;
           const frontendUrl = `https://pr-${prNum}--${netlifySite}.netlify.app`;
-          const backendUrl = `https://${appName}.fly.dev`;
+          const backendLabel = backendEnv === 'testing' ? 'testing' : 'staging';
           const body = [
             '### Preview Deploy',
             '',
             `**Frontend:** ${frontendUrl}`,
-            `**Backend:** ${backendUrl}`,
+            `**Backend:** ${backendUrl} (${backendLabel})`,
             `**API docs:** ${backendUrl}/docs`,
+            '',
+            `**Test user:** \`${process.env.TEST_USER}\``,
             '',
             'This preview will be destroyed when the PR is closed.',
           ].join('\n');

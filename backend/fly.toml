@@ -1,4 +1,5 @@
-# fly.toml app configuration file generated for aris-backend on 2025-05-29T20:32:41+02:00
+# fly.toml app configuration file
+# Generated for aris-backend on 2025-05-29T20:32:41+02:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
