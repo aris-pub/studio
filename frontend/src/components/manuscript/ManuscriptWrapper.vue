@@ -5,23 +5,23 @@
     watch,
     computed,
     inject,
+    provide,
     onBeforeMount,
     onMounted,
     onUnmounted,
     useTemplateRef,
     nextTick,
   } from "vue";
-  import Manuscript from "./Manuscript.vue";
+  import ManuscriptFeedback from "./ManuscriptFeedback.vue";
+  import ManuscriptFigureToggles from "./ManuscriptFigureToggles.vue";
   import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
+  import { useManuscriptSlots } from "@/composables/useManuscriptSlots.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
   import tooltipsterUrl from "tooltipster/dist/js/tooltipster.bundle.min.js?url";
 
-  // Load jQuery via import, then Tooltipster via script tag to bypass CommonJS detection
   async function initializeTooltipster() {
     const jqueryModule = await import("jquery");
     window.$ = window.jQuery = jqueryModule.default;
-
-    // Load Tooltipster via script tag - this makes UMD use the global jQuery path
     await new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = tooltipsterUrl;
@@ -43,9 +43,6 @@
 
   const api = inject("api");
 
-  // No need to reset onloadCalled — Manuscript is no longer destroyed/recreated
-  // on recompile. Subsequent renders use onrender() (math + icons) instead of
-  // onload() (full handrail/keyboard/minimap setup).
   const onload = ref(null);
   const onrender = ref(null);
   const onloadCalled = ref(false);
@@ -58,10 +55,7 @@
     staticPath = `${base}/static/`;
 
     try {
-      // Wait for jQuery and Tooltipster to be ready
       await tooltipsterReady;
-
-      // Load RSM's onload.js
       const module = await import(/* @vite-ignore */ `${base}/static/onload.js`);
       onload.value = module.onload;
       onrender.value = module.onrender;
@@ -71,18 +65,21 @@
   });
 
   const selfRef = useTemplateRef("self-ref");
+  const mountPointRef = useTemplateRef("mount-point-ref");
+
+  // Expose mountPoint for external access (Canvas.vue, etc.)
+  defineExpose({ mountPoint: computed(() => mountPointRef.value) });
+
+  // Manuscript slots — Teleport targets for FeedbackIcon and FigureToggle
+  const { hrInfoSlots, figureToggleSlots, setContainer, clear: clearSlots, scan: scanSlots } =
+    useManuscriptSlots();
+  provide("hrInfoSlots", hrInfoSlots);
+  provide("figureToggleSlots", figureToggleSlots);
 
   const executeRender = async () => {
-    if (executeRenderInProgress) {
-      return;
-    }
-
-    if (!selfRef.value || !props.htmlString || !onload.value) {
-      return;
-    }
-    if (props.htmlString === lastHtmlString) {
-      return;
-    }
+    if (executeRenderInProgress) return;
+    if (!selfRef.value || !props.htmlString || !onload.value) return;
+    if (props.htmlString === lastHtmlString) return;
 
     executeRenderInProgress = true;
     lastHtmlString = props.htmlString;
@@ -90,44 +87,39 @@
     await nextTick();
 
     try {
-      const mountPoint = manuscriptRef.value?.mountPoint;
+      const mountPoint = mountPointRef.value;
       if (!mountPoint) {
         executeRenderInProgress = false;
         return;
       }
 
-      // Strip stale MathJax output and restore raw LaTeX ONLY when MathJax
-      // containers are present. Without this guard, Temml's rendered output
-      // gets reset to raw LaTeX on every recompile, causing a visual flash.
-      const mjxContainers = mountPoint.querySelectorAll('span.math mjx-container, div.mathblock mjx-container');
-      if (mjxContainers.length) {
-        mjxContainers.forEach(el => el.remove());
-        mountPoint.querySelectorAll('span.math[data-latex]').forEach(el => {
-          el.textContent = '\\(' + el.dataset.latex + '\\)';
-        });
-        mountPoint.querySelectorAll('div.mathblock[data-latex]').forEach(el => {
-          const contentEl = el.querySelector('.hr-content-zone') || el;
-          contentEl.textContent = '$$' + el.dataset.latex + '$$';
-        });
-      }
+      // Clear Teleport targets before replacing DOM
+      clearSlots();
+
+      // Inject compiled HTML as raw DOM
+      mountPoint.innerHTML = props.htmlString;
+
+      // Set container for slot scanning
+      setContainer(mountPoint);
 
       if (!onloadCalled.value) {
-        // Reset __rsmInitialized so onload re-runs setup() (handrails)
-        // and setup2() (keyboard) on the new DOM after Manuscript recreation.
         window.__rsmInitialized = false;
         await onload.value(mountPoint, { keys: props.keys, path: staticPath });
         onloadCalled.value = true;
       } else if (onrender.value) {
         await onrender.value(mountPoint);
       }
-      // Remove non-handrail focusable elements from the tab order so j/k
-      // navigation only stops on handrails, not on inline links or math.
+
+      // Remove non-handrail focusable elements from the tab order
       mountPoint.querySelectorAll('mjx-container[tabindex]').forEach(el => {
         el.removeAttribute('tabindex');
       });
       mountPoint.querySelectorAll('.hr a[href]').forEach(el => {
         el.setAttribute('tabindex', '-1');
       });
+
+      // Discover Teleport targets after DOM is fully set up
+      scanSlots();
     } catch (err) {
       console.error("Render error:", err);
     } finally {
@@ -138,9 +130,6 @@
   };
 
   watch([onload, () => selfRef.value, () => props.htmlString], executeRender);
-
-  const manuscriptRef = useTemplateRef("manuscript-ref");
-  defineExpose({ mountPoint: computed(() => manuscriptRef.value?.mountPoint) });
 
   // Highlight rendering
   const annotations = inject("annotations", ref([]));
@@ -164,9 +153,6 @@
   onUnmounted(() => {
     cleanupClickHandler?.();
   });
-
-  // No separate highlight watch needed — executeRender calls applyHighlights
-  // after Temml math rendering completes.
 </script>
 
 <template>
@@ -175,10 +161,16 @@
       <link rel="stylesheet" :href="`${api.defaults.baseURL}/static/pseudocode.min.css`" />
     </div>
 
-    <Manuscript
-      ref="manuscript-ref"
-      :html-string="htmlString"
-      :settings="settings"
+    <div
+      ref="mount-point-ref"
+      class="manuscriptwrapper"
+      :style="{
+        backgroundColor: settings.background,
+        fontSize: settings.fontSize,
+        lineHeight: settings.lineHeight,
+        fontFamily: settings.fontFamily,
+        padding: `0 ${settings.marginWidth} 0 ${settings.marginWidth}`,
+      }"
     />
 
     <div v-if="showFooter" class="middle-footer">
@@ -186,12 +178,26 @@
     </div>
 
     <AnnotationMenu />
+    <ManuscriptFeedback />
+    <ManuscriptFigureToggles />
   </div>
 </template>
 
 <style scoped>
   .rsm-manuscript {
     background-color: v-bind(settings.background) !important;
+  }
+
+  .manuscriptwrapper {
+    overflow: visible;
+    margin: 0 !important;
+    max-width: unset !important;
+    padding-bottom: 48px !important;
+    border-radius: 0px !important;
+  }
+
+  .manuscriptwrapper :deep(section.level-1) {
+    margin-block: 0px !important;
   }
 
   .footer-logo {
