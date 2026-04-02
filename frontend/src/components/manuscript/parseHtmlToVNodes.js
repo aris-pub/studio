@@ -11,7 +11,6 @@
 import { Parser } from "htmlparser2";
 import { h } from "vue";
 import FeedbackIcon from "./FeedbackIcon.vue";
-import FigureToggle from "./FigureToggle.vue";
 import MathElement from "./MathElement.vue";
 
 /**
@@ -123,11 +122,6 @@ function toVNode(node) {
   // Inject FeedbackIcon into .hr-info divs
   if (tag === "div" && classes.includes("hr-info")) {
     vnodeChildren.push(h(FeedbackIcon));
-  }
-
-  // Inject FigureToggle into figure[data-static]
-  if (tag === "figure" && attrs["data-static"] != null) {
-    vnodeChildren.push(h(FigureToggle));
   }
 
   return h(tag, data, vnodeChildren.length ? vnodeChildren : undefined);

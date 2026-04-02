@@ -13,7 +13,6 @@
     nextTick,
   } from "vue";
   import ManuscriptFeedback from "./ManuscriptFeedback.vue";
-  import ManuscriptFigureToggles from "./ManuscriptFigureToggles.vue";
   import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
   import { useManuscriptSlots } from "@/composables/useManuscriptSlots.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
@@ -70,11 +69,10 @@
   // Expose mountPoint for external access (Canvas.vue, etc.)
   defineExpose({ mountPoint: computed(() => mountPointRef.value) });
 
-  // Manuscript slots — Teleport targets for FeedbackIcon and FigureToggle
-  const { hrInfoSlots, figureToggleSlots, setContainer, clear: clearSlots, scan: scanSlots } =
+  // Manuscript slots — Teleport targets for FeedbackIcon
+  const { hrInfoSlots, setContainer, clear: clearSlots, scan: scanSlots } =
     useManuscriptSlots();
   provide("hrInfoSlots", hrInfoSlots);
-  provide("figureToggleSlots", figureToggleSlots);
 
   const executeRender = async () => {
     if (executeRenderInProgress) return;
@@ -179,7 +177,6 @@
 
     <AnnotationMenu />
     <ManuscriptFeedback />
-    <ManuscriptFigureToggles />
   </div>
 </template>
 
