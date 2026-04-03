@@ -56,6 +56,10 @@
   const cmView = shallowRef(null);
   provide("cmView", cmView);
 
+  // Shared readOnly compartment — EditorCodeMirror writes, useEditor reads for toggling read-only
+  const readOnlyCompartment = shallowRef(null);
+  provide("readOnlyCompartment", readOnlyCompartment);
+
   // LSP client and document URI — EditorCodeMirror writes, used for source/preview navigation
   const lspClient = shallowRef(null);
   const documentUri = ref("");
