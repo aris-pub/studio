@@ -40,6 +40,35 @@ describe("RegisterView", () => {
     });
   });
 
+  it("does not throw when localStorage has malformed user JSON", async () => {
+    localStorage.setItem("user", "NOT-VALID-JSON");
+    localStorage.setItem("accessToken", "some-token");
+    const w = mount(RegisterView, {
+      global: {
+        components: { AuthLayout, InputText, PasswordInput, Button, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api, user },
+      },
+    });
+    await nextTick();
+    expect(w.find("form").exists()).toBe(true);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("clears malformed user entry from localStorage on mount", async () => {
+    localStorage.setItem("user", "NOT-VALID-JSON");
+    localStorage.setItem("accessToken", "some-token");
+    mount(RegisterView, {
+      global: {
+        components: { AuthLayout, InputText, PasswordInput, Button, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api, user },
+      },
+    });
+    await nextTick();
+    expect(localStorage.getItem("user")).toBeNull();
+  });
+
   it("shows an error when fields are empty", async () => {
     await wrapper.find("form").trigger("submit");
     await nextTick();

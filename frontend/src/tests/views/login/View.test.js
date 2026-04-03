@@ -325,6 +325,47 @@ describe("LoginView", () => {
     expect(errorEl.text()).toBe("Email is required. Password is required");
   });
 
+  it("does not throw when localStorage has malformed user JSON", async () => {
+    localStorage.setItem("user", "NOT-VALID-JSON");
+    localStorage.setItem("accessToken", "some-token");
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: {
+          api: { post: vi.fn(), get: vi.fn(), defaults: { baseURL: "" } },
+          user: ref(null),
+          fileStore: ref(null),
+          isDev: false,
+        },
+      },
+    });
+    await nextTick();
+    expect(w.find("form").exists()).toBe(true);
+    expect(pushMock).not.toHaveBeenCalled();
+    localStorage.clear();
+  });
+
+  it("clears malformed user entry from localStorage on mount", async () => {
+    localStorage.setItem("user", "NOT-VALID-JSON");
+    localStorage.setItem("accessToken", "some-token");
+    mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: {
+          api: { post: vi.fn(), get: vi.fn(), defaults: { baseURL: "" } },
+          user: ref(null),
+          fileStore: ref(null),
+          isDev: false,
+        },
+      },
+    });
+    await nextTick();
+    expect(localStorage.getItem("user")).toBeNull();
+    localStorage.clear();
+  });
+
   it("pre-populates credentials when isDev is true", async () => {
     vi.stubEnv("VITE_DEV_LOGIN_EMAIL", "dev@example.com");
     vi.stubEnv("VITE_DEV_LOGIN_PASSWORD", "devpassword");
