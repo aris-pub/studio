@@ -10,7 +10,6 @@
 
 import { Parser } from "htmlparser2";
 import { h } from "vue";
-import FeedbackIcon from "./FeedbackIcon.vue";
 import MathElement from "./MathElement.vue";
 
 /**
@@ -118,11 +117,6 @@ function toVNode(node) {
   }
 
   const vnodeChildren = children.map(toVNode).filter((v) => v != null && v !== "");
-
-  // Inject FeedbackIcon into .hr-info divs
-  if (tag === "div" && classes.includes("hr-info")) {
-    vnodeChildren.push(h(FeedbackIcon));
-  }
 
   return h(tag, data, vnodeChildren.length ? vnodeChildren : undefined);
 }

@@ -105,7 +105,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
       });
     }
 
-    // Feedback icons (from live FeedbackIcon state, or from backend reactions data)
+    // Feedback icons (from backend reactions data)
     const fileVal = file && isRef(file) ? file.value : file;
     if (fileVal?.icons && Object.keys(fileVal.icons).length > 0) {
       for (const [iconId, entry] of Object.entries(fileVal.icons)) {
@@ -241,7 +241,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
     );
   }
 
-  // Watch reactions (backend-persisted feedback, used when FeedbackIcon isn't mounted)
+  // Watch reactions (backend-persisted feedback)
   if (reactions) {
     watch(reactions, () => computeMarks(), { deep: true });
   }

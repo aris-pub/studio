@@ -200,7 +200,7 @@ jobs:
       working-directory: studio
       env:
         VITE_API_BASE_URL: ${{ steps.backend.outputs.url }}
-        VITE_MULTIPLAYER_URL: ""
+        VITE_MULTIPLAYER_URL: wss://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev:1234
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
         BACKEND_PORT: "8000"

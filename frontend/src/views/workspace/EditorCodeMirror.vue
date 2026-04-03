@@ -12,7 +12,7 @@
     crosshairCursor,
     highlightActiveLine,
   } from "@codemirror/view";
-  import { EditorState, Compartment } from "@codemirror/state";
+  import { EditorState, Compartment, StateEffect } from "@codemirror/state";
   import {
     defaultHighlightStyle,
     syntaxHighlighting,
@@ -206,153 +206,129 @@
         console.error("[Y.js] Connection error:", event);
       });
 
-      // Wait for initial sync before creating editor
-      provider.value.once("synced", async () => {
-        // Backend Y.js client is the primary authority for seeding from DB.
-        // Give it a brief window to deliver content before falling back to
-        // frontend seeding (prevents dual-insertion duplication).
-        if (ytext.value.toString().length === 0 && file.value?.source) {
-          const seedTimeout = 10000;
-          await new Promise((resolve) => {
-            const observer = () => {
-              if (ytext.value.toString().length > 0) {
-                ytext.value.unobserve(observer);
-                resolve();
-              }
-            };
-            ytext.value.observe(observer);
-            setTimeout(() => {
-              ytext.value.unobserve(observer);
-              resolve();
-            }, seedTimeout);
-          });
+      // Seed Y.Doc immediately from the already-fetched file source so the
+      // editor appears instantly. The backend Y.js client will connect and
+      // merge via CRDT — if the content is identical (typical case), it's a
+      // no-op. If a collaborator made changes, the CRDT merge applies them.
+      if (ytext.value.toString().length === 0 && file.value?.source) {
+        ydoc.value.transact(() => {
+          ytext.value.insert(0, file.value.source);
+        });
+      }
 
-          // Fallback: seed from frontend if backend didn't deliver in time
-          if (ytext.value.toString().length === 0) {
-            ydoc.value.transact(() => {
-              ytext.value.insert(0, file.value.source);
-            });
-          }
+      // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
+      if (compile) {
+        const handleYtextChange = () => {
+          compile();
+        };
+
+        ytext.value.observe(handleYtextChange);
+
+        ytextObserverCleanup = () => {
+          ytext.value.unobserve(handleYtextChange);
+        };
+      }
+
+      // Create editor immediately — don't wait for WebSocket sync
+      const MAX_UNDO_STACK = 200;
+      const undoManager = new Y.UndoManager(ytext.value, { captureTimeout: 500 });
+      undoManager.on("stack-item-added", () => {
+        if (undoManager.undoStack.length > MAX_UNDO_STACK) {
+          undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK);
         }
+      });
+      const docContent = ytext.value.toString();
 
-        // Initialize LSP client and get plugin
+      const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
+
+      const isReadOnly = file.value?.role === "COMMENTER" || mobileMode.value;
+      const roExts = isReadOnly
+        ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+        : [];
+      const readOnlyExtension = readOnlyCompartment.of(roExts);
+
+      // Semantic tokens extension (works without LSP — falls back gracefully)
+      const semanticTokens = semanticTokensExtension(
+        lsp.client,
+        computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
+      );
+
+      const state = EditorState.create({
+        doc: docContent,
+        extensions: [
+          customSetup,
+          cmSearchExtension(),
+          yCollabExtension,
+          keymap.of(yUndoManagerKeymap),
+          readOnlyExtension,
+          semanticTokens,
+          lintExtensions,
+          EditorView.lineWrapping,
+          EditorView.theme({
+            "&": {
+              height: "100%",
+              fontSize: "14px",
+            },
+            ".cm-scroller": {
+              fontFamily: '"Source Code Pro", monospace',
+              overflow: "auto",
+            },
+            ".cm-content": {
+              padding: "16px",
+              minHeight: "100%",
+            },
+          }),
+        ],
+      });
+
+      view.value = new EditorView({
+        state,
+        parent: container,
+      });
+
+      if (parentCmView) parentCmView.value = view.value;
+
+      // Expose for testing
+      if (!import.meta.env.PROD) {
+        window.__cmView = view.value;
+        window.__ydoc = ydoc.value;
+        window.__ytext = ytext.value;
+        window.__provider = provider.value;
+        window.EditorView = EditorView;
+        window.__awareness = awareness.value;
+      }
+
+      // LSP and semantic tokens connect asynchronously after sync
+      provider.value.once("synced", async () => {
         let lspPlugin = null;
         try {
           lspPlugin = await lsp.connect();
+          if (lspPlugin && view.value) {
+            view.value.dispatch({
+              effects: StateEffect.appendConfig.of(lspPlugin),
+            });
+          }
         } catch {
-          // LSP is optional — editor works without it
+          // LSP is optional
         }
 
-        // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
-        if (compile) {
-          const handleYtextChange = () => {
-            compile();
-          };
-
-          ytext.value.observe(handleYtextChange);
-
-          ytextObserverCleanup = () => {
-            ytext.value.unobserve(handleYtextChange);
-          };
+        if (!import.meta.env.PROD) {
+          window.__lspClient = toRaw(lsp.client.value);
         }
 
-        // Create editor with yCollab binding
-        const MAX_UNDO_STACK = 200;
-        const undoManager = new Y.UndoManager(ytext.value, { captureTimeout: 500 });
-        undoManager.on("stack-item-added", () => {
-          if (undoManager.undoStack.length > MAX_UNDO_STACK) {
-            undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK);
+        if (lsp.client.value && view.value) {
+          const uri = `file:///${file.value?.id || "untitled"}.rsm`;
+          const ok = await requestSemanticTokens(lsp.client, uri, view.value);
+          if (!ok) {
+            setTimeout(() => {
+              if (lsp.client.value && view.value) {
+                requestSemanticTokens(lsp.client, uri, view.value);
+              }
+            }, 2000);
           }
-        });
-        const docContent = ytext.value.toString();
+        }
 
-        const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
-
-        const isReadOnly = file.value?.role === "COMMENTER" || mobileMode.value;
-        const roExts = isReadOnly
-          ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
-          : [];
-        const readOnlyExtension = readOnlyCompartment.of(roExts);
-
-        // Add LSP plugin extension if it was created successfully
-        // Note: client.plugin() returns a single Extension, not an array
-        const lspExtension = lspPlugin;
-
-        // Add semantic tokens extension for syntax highlighting
-        const semanticTokens = semanticTokensExtension(
-          lsp.client,
-          computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
-        );
-
-        const state = EditorState.create({
-          // CRITICAL: Initialize with Y.text content explicitly
-          // yCollab only handles incremental changes, not initial state
-          doc: docContent,
-          extensions: [
-            customSetup,
-            cmSearchExtension(),
-            yCollabExtension,
-            keymap.of(yUndoManagerKeymap),
-            readOnlyExtension,
-            ...(lspExtension ? [lspExtension] : []),
-            semanticTokens,
-            lintExtensions,
-            EditorView.lineWrapping,
-            EditorView.theme({
-              "&": {
-                height: "100%",
-                fontSize: "14px",
-              },
-              ".cm-scroller": {
-                fontFamily: '"Source Code Pro", monospace',
-                overflow: "auto",
-              },
-              ".cm-content": {
-                padding: "16px",
-                minHeight: "100%",
-              },
-            }),
-          ],
-        });
-
-        view.value = new EditorView({
-          state,
-          parent: container,
-        });
-
-        // Share view with sibling components (toolbar, status bar)
-        if (parentCmView) parentCmView.value = view.value;
-
-        // Wait for editor to fully mount before marking as synced
-        setTimeout(async () => {
-          // Expose view and Y.js instances globally for testing (dev, CI, test - not prod)
-          if (!import.meta.env.PROD) {
-            window.__cmView = view.value;
-            window.__ydoc = ydoc.value;
-            window.__ytext = ytext.value;
-            window.__provider = provider.value;
-            window.EditorView = EditorView;
-            window.__awareness = awareness.value;
-            window.__lspClient = toRaw(lsp.client.value);
-          }
-
-          // Request initial semantic tokens for syntax highlighting
-          // Retry once if it fails — the LSP server may still be warming up
-          // (especially when the editor panel restores immediately from localStorage)
-          if (lsp.client.value && view.value) {
-            const uri = `file:///${file.value?.id || "untitled"}.rsm`;
-            const ok = await requestSemanticTokens(lsp.client, uri, view.value);
-            if (!ok) {
-              setTimeout(() => {
-                if (lsp.client.value && view.value) {
-                  requestSemanticTokens(lsp.client, uri, view.value);
-                }
-              }, 2000);
-            }
-          }
-
-          isSynced.value = true;
-        }, 100);
+        isSynced.value = true;
       });
     },
     { immediate: true }

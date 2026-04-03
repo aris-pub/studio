@@ -12,9 +12,7 @@
     useTemplateRef,
     nextTick,
   } from "vue";
-  import ManuscriptFeedback from "./ManuscriptFeedback.vue";
   import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
-  import { useManuscriptSlots } from "@/composables/useManuscriptSlots.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
   import tooltipsterUrl from "tooltipster/dist/js/tooltipster.bundle.min.js?url";
 
@@ -69,11 +67,6 @@
   // Expose mountPoint for external access (Canvas.vue, etc.)
   defineExpose({ mountPoint: computed(() => mountPointRef.value) });
 
-  // Manuscript slots — Teleport targets for FeedbackIcon
-  const { hrInfoSlots, setContainer, clear: clearSlots, scan: scanSlots } =
-    useManuscriptSlots();
-  provide("hrInfoSlots", hrInfoSlots);
-
   const executeRender = async () => {
     if (executeRenderInProgress) return;
     if (!selfRef.value || !props.htmlString || !onload.value) return;
@@ -82,8 +75,6 @@
     executeRenderInProgress = true;
     lastHtmlString = props.htmlString;
 
-    await nextTick();
-
     try {
       const mountPoint = mountPointRef.value;
       if (!mountPoint) {
@@ -91,14 +82,8 @@
         return;
       }
 
-      // Clear Teleport targets before replacing DOM
-      clearSlots();
-
       // Inject compiled HTML as raw DOM
       mountPoint.innerHTML = props.htmlString;
-
-      // Set container for slot scanning
-      setContainer(mountPoint);
 
       if (!onloadCalled.value) {
         window.__rsmInitialized = false;
@@ -108,7 +93,6 @@
         await onrender.value(mountPoint);
       }
 
-      // Remove non-handrail focusable elements from the tab order
       mountPoint.querySelectorAll('mjx-container[tabindex]').forEach(el => {
         el.removeAttribute('tabindex');
       });
@@ -116,8 +100,6 @@
         el.setAttribute('tabindex', '-1');
       });
 
-      // Discover Teleport targets after DOM is fully set up
-      scanSlots();
     } catch (err) {
       console.error("Render error:", err);
     } finally {
@@ -176,12 +158,12 @@
     </div>
 
     <AnnotationMenu />
-    <ManuscriptFeedback />
   </div>
 </template>
 
 <style scoped>
   .rsm-manuscript {
+    position: relative;
     background-color: v-bind(settings.background) !important;
   }
 
