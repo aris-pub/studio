@@ -252,10 +252,11 @@ test.describe("Shared Annotations E2E @auth @annotations", () => {
   }) => {
     test.setTimeout(45000);
 
-    await createAnnotation(request, ownerAuth.token, fileId, {
+    const annotation = await createAnnotation(request, ownerAuth.token, fileId, {
       visibility: "shared",
       selected_text: "labeled highlight",
     });
+    await addMessage(request, ownerAuth.token, annotation.id, "first thread message");
 
     const collab = await createAuthenticatedContext(browser, collabAuth);
     try {
