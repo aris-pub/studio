@@ -206,15 +206,15 @@
         console.error("[Y.js] Connection error:", event);
       });
 
-      // Seed Y.Doc immediately from the already-fetched file source so the
-      // editor appears instantly. The backend Y.js client will connect and
-      // merge via CRDT — if the content is identical (typical case), it's a
-      // no-op. If a collaborator made changes, the CRDT merge applies them.
-      if (ytext.value.toString().length === 0 && file.value?.source) {
-        ydoc.value.transact(() => {
-          ytext.value.insert(0, file.value.source);
-        });
-      }
+      provider.value.once("synced", async () => {
+        // Seed from already-fetched file source if backend hasn't delivered
+        // content yet. No 10s wait — seed immediately after sync handshake.
+        if (ytext.value.toString().length === 0 && file.value?.source) {
+          ydoc.value.transact(() => {
+            ytext.value.insert(0, file.value.source);
+          });
+        }
+      });
 
       // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
       if (compile) {
