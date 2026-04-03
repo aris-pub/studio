@@ -69,20 +69,23 @@ test.describe("Mobile Workspace — hidden desktop-only features @auth @mobile-o
       await mobileHelpers.clickElement(menuButton);
       await mobileHelpers.waitForMobileRendering();
 
+      const menu = page.locator('[data-testid="context-menu"]');
+      await expect(menu).toBeVisible();
+
       // Versions should NOT be in the menu
-      const versionsItem = page.locator('.item:has(.cmi-caption:text("versions"))');
+      const versionsItem = menu.locator(".item").filter({ hasText: "versions" });
       await expect(versionsItem).not.toBeVisible();
 
       // Share should NOT be in the menu
-      const shareItem = page.locator('.item:has(.cmi-caption:text("share"))');
+      const shareItem = menu.locator(".item").filter({ hasText: "share" });
       await expect(shareItem).not.toBeVisible();
 
       // Settings SHOULD be in the menu
-      const settingsItem = page.locator('.item:has(.cmi-caption:text("settings"))');
+      const settingsItem = menu.locator(".item").filter({ hasText: "settings" });
       await expect(settingsItem).toBeVisible();
 
       // File SHOULD be in the menu
-      const fileItem = page.locator('.item:has(.cmi-caption:text("file"))');
+      const fileItem = menu.locator(".item").filter({ hasText: "file" });
       await expect(fileItem).toBeVisible();
     }
 
