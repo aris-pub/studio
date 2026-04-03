@@ -20,6 +20,7 @@
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { useSourcePreviewNav } from "@/composables/useSourcePreviewNav.js";
+  import { useRestoreNotification } from "@/composables/useRestoreNotification";
   import { IconMessageFilled } from "@/components/base/iconRegistry.js";
   import useClosable from "@/composables/useClosable.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
@@ -51,6 +52,13 @@
   // Shared awareness ref — EditorCodeMirror writes to it, ScrollbarMinimap reads it
   const awareness = shallowRef(null);
   provide("awareness", awareness);
+
+  // Notify current user when another connected user restores a version
+  const user = inject("user");
+  useRestoreNotification(
+    awareness,
+    computed(() => user.value?.id),
+  );
 
   // Shared CodeMirror view — EditorCodeMirror writes, TopbarSearch reads for Source scope search
   const cmView = shallowRef(null);
