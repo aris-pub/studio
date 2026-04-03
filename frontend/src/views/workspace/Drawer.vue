@@ -1,6 +1,7 @@
 <script setup>
-  import { ref, inject } from "vue";
+  import { inject, computed } from "vue";
   import useClosable from "@/composables/useClosable.js";
+  import BottomSheet from "@/components/base/BottomSheet.vue";
   import DrawerMargins from "./DrawerMargins.vue";
   import DrawerActivity from "./DrawerActivity.vue";
   import DrawerSettings from "./DrawerSettings.vue";
@@ -11,10 +12,13 @@
   const props = defineProps({ component: { type: String, required: true } });
   const active = inject("drawerOpen");
   const focusMode = inject("focusMode");
+  const mobileMode = inject("mobileMode", false);
+
   useClosable({
     onClose: () => (active.value = false),
     closeOnOutsideClick: false,
   });
+
   const componentMap = {
     DrawerMargins: DrawerMargins,
     DrawerActivity: DrawerActivity,
@@ -23,10 +27,29 @@
     DrawerShare: DrawerShare,
     DrawerFile: DrawerFile,
   };
+
+  const mobileDrawers = new Set(["DrawerSettings", "DrawerFile"]);
+  const useMobileSheet = computed(() => mobileMode?.value && mobileDrawers.has(props.component));
+
+  const drawerTitle = computed(() => {
+    const titles = {
+      DrawerSettings: "Document Display",
+      DrawerFile: "File Info",
+    };
+    return titles[props.component] || "";
+  });
 </script>
 
 <template>
-  <div class="drawer" :class="{ active, focus: focusMode }">
+  <BottomSheet
+    v-if="useMobileSheet"
+    :model-value="active"
+    :title="drawerTitle"
+    @update:model-value="active = $event"
+  >
+    <component :is="componentMap[component]" />
+  </BottomSheet>
+  <div v-else class="drawer" :class="{ active, focus: focusMode }">
     <component :is="componentMap[component]" v-if="component" />
   </div>
 </template>
