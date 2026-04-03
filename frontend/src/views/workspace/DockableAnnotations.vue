@@ -14,6 +14,7 @@
   const searchQueryForMarginalia = inject("searchQueryForMarginalia", ref(""));
 
   const sortedAnnotations = ref([]);
+  const orphanedIds = ref(new Set());
 
   function sortByDomPosition(list) {
     // Separate anchored (have marks in DOM) from orphaned (no marks)
@@ -36,6 +37,8 @@
 
     // Orphaned annotations go at the end, sorted by creation date
     orphaned.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    orphanedIds.value = new Set(orphaned.map((a) => a.id));
 
     return [...anchored.map((a) => a.ann), ...orphaned];
   }
@@ -227,6 +230,7 @@
       v-for="ann in sortedAnnotations"
       :key="ann.id"
       :annotation="ann"
+      :orphaned="orphanedIds.has(ann.id)"
       :search-match="searchMatchedAnnotationIds.has(ann.id)"
       :search-match-current="searchCurrentMarginaliaId === ann.id"
       :search-query="searchQueryForMarginalia"

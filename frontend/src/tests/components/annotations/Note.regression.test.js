@@ -622,6 +622,144 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
   });
 });
 
+describe("Note.vue — orphaned annotation indicator (std-2roe)", () => {
+  it("shows .orphaned class when orphaned prop is true", () => {
+    const { wrapper } = createWrapper(makeAnnotation(), {});
+    // Default: not orphaned
+    expect(wrapper.find(".note").classes()).not.toContain("orphaned");
+  });
+
+  it("applies .orphaned class when orphaned prop is true", () => {
+    const wrapper = mount(Note, {
+      props: { annotation: makeAnnotation(), orphaned: true },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
+          file: ref(null),
+        },
+      },
+    });
+    expect(wrapper.find(".note").classes()).toContain("orphaned");
+  });
+
+  it("shows orphan banner with warning text when orphaned", () => {
+    const wrapper = mount(Note, {
+      props: { annotation: makeAnnotation(), orphaned: true },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
+          file: ref(null),
+        },
+      },
+    });
+    const banner = wrapper.find(".orphan-banner");
+    expect(banner.exists()).toBe(true);
+    expect(banner.text()).toContain("Original text no longer found");
+  });
+
+  it("does NOT show orphan banner when not orphaned", () => {
+    const { wrapper } = createWrapper(makeAnnotation());
+    expect(wrapper.find(".orphan-banner").exists()).toBe(false);
+  });
+
+  it("still shows selected_text alongside orphan banner", () => {
+    const wrapper = mount(Note, {
+      props: {
+        annotation: makeAnnotation({ selected_text: "deleted paragraph" }),
+        orphaned: true,
+      },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
+          file: ref(null),
+        },
+      },
+    });
+    expect(wrapper.find(".orphan-banner").exists()).toBe(true);
+    expect(wrapper.find(".selected-text").text()).toBe("deleted paragraph");
+  });
+
+  it("orphan banner is hidden when collapsed", async () => {
+    const wrapper = mount(Note, {
+      props: {
+        annotation: makeAnnotationWithNote(),
+        orphaned: true,
+      },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
+          file: ref(null),
+        },
+      },
+    });
+    expect(wrapper.find(".orphan-banner").exists()).toBe(true);
+    const chevronBtn = findButtonByIcon(wrapper, "ChevronUp");
+    await chevronBtn.trigger("click");
+    await nextTick();
+    expect(wrapper.find(".orphan-banner").exists()).toBe(false);
+  });
+
+  it("delete button still works on orphaned annotations", async () => {
+    vi.useFakeTimers();
+    const deleteAnnotation = vi.fn().mockResolvedValue({});
+    const wrapper = mount(Note, {
+      props: {
+        annotation: makeAnnotation({ id: 42 }),
+        orphaned: true,
+      },
+      global: {
+        components: { Button },
+        provide: {
+          annotationActions: {
+            deleteAnnotation,
+            updateNote: vi.fn().mockResolvedValue({}),
+            addNote: vi.fn().mockResolvedValue({}),
+          },
+          activeAnnotationId: ref(null),
+          user: ref(TEST_USER),
+          file: ref(null),
+        },
+      },
+    });
+    const deleteBtn = wrapper.find(".delete-btn");
+    await deleteBtn.trigger("click");
+    await nextTick();
+    vi.advanceTimersByTime(500);
+    await deleteBtn.trigger("click");
+    await nextTick();
+    expect(deleteAnnotation).toHaveBeenCalledWith(42);
+    vi.useRealTimers();
+  });
+});
+
 describe("Note.vue — inline math rendering (std-kg55)", () => {
   it("renders inline math in selected_text", () => {
     const ann = makeAnnotation({ selected_text: "the value $x_e$ is key" });
