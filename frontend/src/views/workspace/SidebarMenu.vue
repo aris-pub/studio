@@ -1,5 +1,5 @@
 <script setup>
-  import { toRef, watch, watchEffect, inject, useTemplateRef } from "vue";
+  import { toRef, watch, watchEffect, inject, useTemplateRef, computed } from "vue";
   import { useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import SidebarItem from "./SidebarItem.vue";
@@ -70,6 +70,9 @@
   const mobileMode = inject("mobileMode");
   const xsMode = inject("xsMode");
   const router = useRouter();
+
+  const MOBILE_HIDDEN = new Set(["DockableEditor", "DrawerVersions", "DrawerShare"]);
+  const mobileItems = computed(() => items.value.filter((it) => !MOBILE_HIDDEN.has(it.name)));
 </script>
 
 <template>
@@ -99,27 +102,27 @@
 
     <template v-if="mobileMode">
       <SidebarItem icon="Home" label="Home" @click="router.push('/')" />
-      <template v-for="(it, idx) in items" :key="it.name + idx">
+      <template v-for="(it, idx) in mobileItems" :key="it.name + idx">
         <SidebarItem
           v-if="it.type === 'toggle'"
           v-model="it.state"
           :icon="it.icon"
           :label="it.label"
-          @on="emit('on', idx)"
-          @off="emit('off', idx)"
+          @on="emit('on', items.indexOf(it))"
+          @off="emit('off', items.indexOf(it))"
         />
       </template>
       <ContextMenu variant="slot">
         <template #trigger="{ toggle }">
           <Button icon="Menu3" kind="ghost" data-testid="mobile-menu-button" @click="toggle" />
         </template>
-        <template v-for="(it, idx) in items" :key="it.name + idx">
+        <template v-for="(it, idx) in mobileItems" :key="it.name + idx">
           <ContextMenuItem
             v-if="it.type === 'drawer'"
             :icon="it.icon"
             :caption="it.label"
-            @on="emit('on', idx)"
-            @off="emit('off', idx)"
+            @on="emit('on', items.indexOf(it))"
+            @off="emit('off', items.indexOf(it))"
           />
         </template>
       </ContextMenu>
