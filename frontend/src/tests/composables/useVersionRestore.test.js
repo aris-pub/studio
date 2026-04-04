@@ -63,7 +63,10 @@ vi.mock("@codemirror/view", () => ({
   },
 }));
 
-global.fetch = vi.fn();
+const mockApi = {
+  get: vi.fn(),
+};
+
 global.confirm = vi.fn();
 
 import { inject } from "vue";
@@ -71,6 +74,7 @@ const { useVersionRestore } = await import("@/composables/useVersionRestore");
 
 function setupInjects({ ydoc = mockYDoc, awareness = mockAwareness, cmView = mockView, compartment = mockCompartment, user = { id: 1, name: "User 1", email: "u@t.com" } } = {}) {
   inject.mockImplementation((key) => {
+    if (key === "api") return mockApi;
     if (key === "ydoc") return shallowRef(ydoc);
     if (key === "awareness") return shallowRef(awareness);
     if (key === "cmView") return shallowRef(cmView);
@@ -91,9 +95,8 @@ describe("useVersionRestore", () => {
       ])
     );
 
-    global.fetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("# Original Content\n\nThis is the first version."),
+    mockApi.get.mockResolvedValue({
+      data: { rsm_content: "# Original Content\n\nThis is the first version." },
     });
     global.confirm.mockReturnValue(true);
   });
@@ -124,10 +127,7 @@ describe("useVersionRestore", () => {
       const { restoreVersion } = useVersionRestore(123);
       await restoreVersion(456);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/files/123/versions/456/preview"),
-        expect.any(Object)
-      );
+      expect(mockApi.get).toHaveBeenCalledWith("/files/123/versions/456/preview");
     });
 
     it("detects concurrent editors and shows confirmation", async () => {
@@ -193,7 +193,7 @@ describe("useVersionRestore", () => {
     });
 
     it("handles fetch errors gracefully", async () => {
-      global.fetch.mockRejectedValue(new Error("Network error"));
+      mockApi.get.mockRejectedValue(new Error("Network error"));
       setupInjects();
       const { restoreVersion } = useVersionRestore(123);
 
@@ -229,7 +229,7 @@ describe("useVersionRestore", () => {
     });
 
     it("resets to false after failed restore", async () => {
-      global.fetch.mockRejectedValue(new Error("fail"));
+      mockApi.get.mockRejectedValue(new Error("fail"));
       setupInjects();
       const { restoreVersion, isRestoring } = useVersionRestore(123);
 

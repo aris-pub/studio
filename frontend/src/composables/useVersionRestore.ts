@@ -24,6 +24,7 @@ export function useVersionRestore(fileId: number) {
   const isRestoring = ref(false)
 
   // Lazy inject: grab refs at setup, access .value only inside restoreVersion()
+  const api = inject<any>('api')
   const ydocRef = inject<ShallowRef<Y.Doc | null>>('ydoc', null as any)
   const awarenessRef = inject<ShallowRef<any>>('awareness', null as any)
   const cmViewRef = inject<ShallowRef<any>>('cmView', null as any)
@@ -64,20 +65,8 @@ export function useVersionRestore(fileId: number) {
     try {
       isRestoring.value = true
 
-      const response = await fetch(
-        `/api/files/${fileId}/versions/${versionId}/preview`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch version: ${response.statusText}`)
-      }
-
-      const versionContent = await response.text()
+      const response = await api.get(`/files/${fileId}/versions/${versionId}/preview`)
+      const versionContent = response.data.rsm_content
 
       // Check for concurrent editors
       if (awareness) {
