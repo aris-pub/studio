@@ -65,7 +65,7 @@
     () => props.modelValue,
     (open) => {
       if (open) dragOffset.value = 0;
-    },
+    }
   );
 </script>
 

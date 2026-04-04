@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mount } from "@vue/test-utils";
-import { ref, nextTick } from "vue";
+import { ref } from "vue";
 import Drawer from "@/views/workspace/Drawer.vue";
 
 vi.mock("@/composables/useClosable.js", () => ({
