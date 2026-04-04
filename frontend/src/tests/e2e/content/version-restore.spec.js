@@ -6,9 +6,9 @@
  * preview modal, content is replaced via Y.js (useVersionRestore composable),
  * and all connected clients receive the update.
  *
- * Tests for concurrent-editor detection, read-only lock, and in-progress
- * guard are skipped pending implementation of the useAwareness /
- * useEditor composables (currently stubs).
+ * Tests for concurrent-editor detection and read-only lock exercise the
+ * useAwareness / useEditor composables via the useVersionRestore flow.
+ * The in-progress guard is covered by unit tests (race condition is fragile in e2e).
  */
 
 import { test, expect } from "../fixtures.js";
@@ -187,16 +187,122 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     }
   });
 
-  test("concurrent editor detection shows warning", async () => {
-    // Requires useAwareness composable (currently a stub that throws).
-    // Implement once useAwareness is wired to the Y.js provider.
-    test.skip();
+  test("concurrent editor detection shows warning", async ({ page, browser, request }) => {
+    test.setTimeout(90000);
+
+    const backendURL = getBackendURL();
+    const timeouts = getTimeouts();
+
+    // Register + login a second user
+    await request
+      .post(`${backendURL}/register`, {
+        data: {
+          email: "concurrenttest@example.com",
+          name: "Concurrent Test User",
+          initials: "CT",
+          password: "testpass123",
+        },
+      })
+      .catch(() => {});
+    const editorAuth = await loginUser(request, "concurrenttest@example.com", "testpass123");
+
+    // Share the file with the second user as EDITOR
+    const { accessToken } = await authHelpers.getStoredTokens();
+    await request.post(`${backendURL}/files/${fileId}/permissions`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      data: { user_id: editorAuth.userData.id, role: "EDITOR" },
+    });
+
+    // Open the file as the editor in a separate browser context
+    const editor = await createAuthenticatedContext(browser, editorAuth);
+    try {
+      await openFileInEditor(editor.page, fileId);
+
+      // Simulate active editing by setting awareness cursor state
+      await editor.page.evaluate(() => {
+        if (window.__awareness) {
+          window.__awareness.setLocalStateField("cursor", { anchor: 0, head: 5 });
+          window.__awareness.setLocalStateField("editing", true);
+        }
+      });
+
+      // Wait for awareness to propagate
+      await page.waitForTimeout(500);
+
+      // page1 (owner): open version preview and attempt restore
+      await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
+      await page.waitForSelector('[data-testid="version-preview-modal"]', {
+        timeout: timeouts.heavyOperation,
+      });
+      await page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
+
+      await page.click('[data-testid="restore-version-button"]');
+      await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+
+      // Set up dialog handler to capture the confirm() prompt about concurrent editors
+      let dialogMessage = "";
+      page.once("dialog", async (dialog) => {
+        dialogMessage = dialog.message();
+        await dialog.accept();
+      });
+
+      await page.click('[data-testid="confirm-restore-button"]');
+
+      // Wait for restore to complete (dialog + Y.js transaction)
+      await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+        timeout: timeouts.heavyOperation,
+      });
+
+      // Verify the confirm dialog was shown with concurrent editor info
+      expect(dialogMessage).toContain("other user");
+    } finally {
+      await cleanupYjs(editor.page).catch(() => {});
+      await editor.context.close();
+    }
   });
 
-  test("editor is read-only during restore", async () => {
-    // Requires useEditor composable (currently a stub that throws).
-    // The read-only lock feature will be enabled when useEditor is implemented.
-    test.skip();
+  test("editor is read-only during restore", async ({ page }) => {
+    test.setTimeout(60000);
+    const timeouts = getTimeouts();
+
+    // Open version preview
+    await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
+    await page.waitForSelector('[data-testid="version-preview-modal"]', {
+      timeout: timeouts.heavyOperation,
+    });
+    await page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
+
+    // Set up a promise to check read-only state during restore.
+    // useVersionRestore locks the editor and waits 1000ms, giving us time to observe.
+    const readOnlyDuringRestore = page.evaluate(() => {
+      return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (window.__cmView?.state?.readOnly) {
+            clearInterval(checkInterval);
+            resolve(true);
+          }
+        }, 50);
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve(false);
+        }, 5000);
+      });
+    });
+
+    await page.click('[data-testid="restore-version-button"]');
+    await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+    await page.click('[data-testid="confirm-restore-button"]');
+
+    // Verify editor was read-only at some point during the restore
+    const wasReadOnly = await readOnlyDuringRestore;
+    expect(wasReadOnly).toBe(true);
+
+    // After restore completes, editor should be editable again
+    await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+      timeout: timeouts.heavyOperation,
+    });
+    const isEditableAfter = await page.evaluate(() => !window.__cmView?.state?.readOnly);
+    expect(isEditableAfter).toBe(true);
   });
 
   test("all connected clients see restored content", async ({ page, context }) => {
@@ -239,9 +345,9 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
   });
 
   test("cannot restore while another restore is in progress", async () => {
-    // The current dispatch-based restore is synchronous, so isRestoring flips
-    // true→false within a single microtask — no observable window to assert.
-    // Implement once restore becomes async (e.g., awaiting backend persistence).
+    // The isRestoring ref gates the UI (buttons disabled while restoring),
+    // but testing a race condition between two simultaneous restores in e2e
+    // is fragile. The unit tests in useVersionRestore.test.js cover this.
     test.skip();
   });
 });
