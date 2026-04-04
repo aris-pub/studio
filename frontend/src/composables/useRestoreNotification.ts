@@ -17,7 +17,7 @@ export function useRestoreNotification(
   const previousRestoring = new Map<number, any>()
   let currentAwareness: any = null
 
-  function onAwarenessChange([changes]: [{ added: number[]; updated: number[]; removed: number[] }]) {
+  function onAwarenessChange(changes: { added: number[]; updated: number[]; removed: number[] }) {
     const awareness = currentAwareness
     if (!awareness) return
 

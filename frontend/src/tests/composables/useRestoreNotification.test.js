@@ -40,8 +40,8 @@ function createMockAwareness(initialStates = new Map()) {
     off(event, fn) {
       listeners.get(event)?.delete(fn);
     },
-    _emit(event, changes) {
-      listeners.get(event)?.forEach((fn) => fn(changes));
+    _emit(event, ...args) {
+      listeners.get(event)?.forEach((fn) => fn(...args));
     },
     _listeners: listeners,
   };
@@ -74,10 +74,7 @@ describe("useRestoreNotification", () => {
       user: { id: 2, name: "Alice" },
       restoring: 42,
     });
-    awareness._emit("change", [
-      { added: [], updated: [2], removed: [] },
-      "local",
-    ]);
+    awareness._emit("change", { added: [], updated: [2], removed: [] }, "local");
 
     expect(mockToast.info).toHaveBeenCalledTimes(1);
     expect(mockToast.info).toHaveBeenCalledWith(
@@ -101,10 +98,7 @@ describe("useRestoreNotification", () => {
       user: { id: 1, name: "Me" },
       restoring: 99,
     });
-    awareness._emit("change", [
-      { added: [], updated: [0], removed: [] },
-      "local",
-    ]);
+    awareness._emit("change", { added: [], updated: [0], removed: [] }, "local");
 
     expect(mockToast.info).not.toHaveBeenCalled();
   });
@@ -132,10 +126,7 @@ describe("useRestoreNotification", () => {
       user: { id: 2, name: "Alice" },
       restoring: null,
     });
-    awareness._emit("change", [
-      { added: [], updated: [2], removed: [] },
-      "local",
-    ]);
+    awareness._emit("change", { added: [], updated: [2], removed: [] }, "local");
 
     expect(mockToast.info).not.toHaveBeenCalled();
   });
@@ -153,10 +144,7 @@ describe("useRestoreNotification", () => {
 
     // Client 2 sets restoring but has no user info
     awareness._states.set(2, { restoring: 42 });
-    awareness._emit("change", [
-      { added: [], updated: [2], removed: [] },
-      "local",
-    ]);
+    awareness._emit("change", { added: [], updated: [2], removed: [] }, "local");
 
     expect(mockToast.info).toHaveBeenCalledTimes(1);
     expect(mockToast.info).toHaveBeenCalledWith(
@@ -179,10 +167,7 @@ describe("useRestoreNotification", () => {
       user: { id: 2, name: "Bob" },
       restoring: 10,
     });
-    awareness._emit("change", [
-      { added: [2], updated: [], removed: [] },
-      "local",
-    ]);
+    awareness._emit("change", { added: [2], updated: [], removed: [] }, "local");
 
     expect(mockToast.info).not.toHaveBeenCalled();
   });

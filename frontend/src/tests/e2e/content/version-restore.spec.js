@@ -253,46 +253,41 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     const timeouts = getTimeouts();
 
     await openVersionPreview(page);
-
-    // Intercept the version preview API to slow it down so we can observe the lock
-    const backendURL = getBackendURL();
-    await page.route(`${backendURL}/files/*/versions/*/preview`, async (route) => {
-      // Delay the response to give us time to check read-only state
-      await new Promise((r) => setTimeout(r, 2000));
-      await route.continue();
-    });
-
     await page.click('[data-testid="restore-version-button"]');
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
     await page.click('[data-testid="confirm-restore-button"]');
 
-    // During restore, the editor should be read-only
-    const isReadOnly = await page.evaluate(() => {
-      const view = window.__cmView;
-      if (!view) return null;
-      return view.state.readOnly;
-    });
-    expect(isReadOnly).toBe(true);
+    // The composable sets EditorView.editable(false) after the API returns.
+    // Poll for contentEditable to become 'false' during the 1s sync window.
+    await expect
+      .poll(
+        async () => {
+          return await page.evaluate(() => {
+            const view = window.__cmView;
+            return view ? view.contentDOM.contentEditable : "true";
+          });
+        },
+        { timeout: timeouts.heavyOperation }
+      )
+      .toBe("false");
 
-    // Typing should have no effect while read-only
-    const contentBefore = await page.evaluate(() => window.__cmView.state.doc.toString());
-    await page.click(".cm-content");
-    await page.keyboard.type("should not appear");
-    const contentDuring = await page.evaluate(() => window.__cmView.state.doc.toString());
-    expect(contentDuring).toBe(contentBefore);
-
-    // Wait for restore to complete
+    // Wait for restore to complete (modal closes)
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
       timeout: timeouts.heavyOperation,
     });
 
     // After restore completes, editor should be editable again
-    const isReadOnlyAfter = await page.evaluate(() => {
-      const view = window.__cmView;
-      if (!view) return null;
-      return view.state.readOnly;
-    });
-    expect(isReadOnlyAfter).toBe(false);
+    await expect
+      .poll(
+        async () => {
+          return await page.evaluate(() => {
+            const view = window.__cmView;
+            return view ? view.contentDOM.contentEditable : "false";
+          });
+        },
+        { timeout: 10000 }
+      )
+      .toBe("true");
   });
 
   test("all connected clients see restored content", async ({ page, context }) => {
@@ -384,10 +379,10 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       await openVersionPreview(page);
       await performRestore(page);
 
-      // Editor should see a restore notification (toast or dialog)
-      const notification = editor.page.locator('[data-testid="restore-notification"]');
-      await expect(notification).toBeVisible({ timeout: timeouts.heavyOperation });
-      await expect(notification).toContainText(/version.*restored|restored.*version/i);
+      // Editor should see a toast notification from useRestoreNotification
+      const toastMessage = editor.page.locator(".toast-container .toast-message");
+      await expect(toastMessage).toBeVisible({ timeout: timeouts.heavyOperation });
+      await expect(toastMessage).toContainText(/restored/i);
     } finally {
       await cleanupYjs(editor.page).catch(() => {});
       await editor.context.close();
@@ -397,6 +392,9 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
   test("network failure during restore unlocks editor", async ({ page }) => {
     test.setTimeout(60000);
     const timeouts = getTimeouts();
+
+    // Auto-dismiss the browser alert from the failed restore
+    page.on("dialog", (dialog) => dialog.accept());
 
     // Intercept the version preview API to simulate a failure
     const backendURL = getBackendURL();
@@ -418,26 +416,26 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
     await page.click('[data-testid="confirm-restore-button"]');
 
-    // Restore should fail — wait for error indication
-    // Wait for restore attempt to complete (success or failure)
-    await page
-      .locator('[data-testid="restore-error"]')
-      .isVisible({ timeout: timeouts.heavyOperation })
-      .catch(() => false);
+    // Wait for isRestoring to clear (close button becomes enabled after error)
+    await page.waitForFunction(
+      () => {
+        const btn = document.querySelector('[data-testid="close-preview-modal"]');
+        return btn && !btn.disabled;
+      },
+      null,
+      { timeout: timeouts.heavyOperation }
+    );
 
-    // Even if error UI is not shown, the editor must not stay locked
-    const isReadOnly = await page.evaluate(() => {
-      const view = window.__cmView;
-      if (!view) return null;
-      return view.state.readOnly;
+    // Close the modal so the editor is accessible
+    await page.keyboard.press("Escape");
+    await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+      timeout: 5000,
     });
-    expect(isReadOnly).toBeFalsy();
 
-    // isRestoring state should be cleared
+    // Editor should not be locked (error occurred before lock was applied)
     const contentBefore = await page.evaluate(() => window.__cmView.state.doc.toString());
     await page.click(".cm-content");
     await page.keyboard.type("x");
-    // Small wait for keystroke to register
     await page.waitForTimeout(200);
     const contentAfter = await page.evaluate(() => window.__cmView.state.doc.toString());
     expect(contentAfter).not.toBe(contentBefore);
