@@ -62,6 +62,8 @@
   const isInitialized = ref(false);
   const roomName = ref("");
   const readOnlyCompartment = new Compartment();
+  const parentReadOnlyCompartment = inject("readOnlyCompartment", null);
+  if (parentReadOnlyCompartment) parentReadOnlyCompartment.value = readOnlyCompartment;
 
   // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");

@@ -94,6 +94,16 @@
   const ydoc = shallowRef(null);
   provide("ydoc", ydoc);
 
+  // Shared awareness + cmView refs — lifted here so both Canvas and Sidebar subtrees can inject
+  const awareness = shallowRef(null);
+  provide("awareness", awareness);
+
+  const cmView = shallowRef(null);
+  provide("cmView", cmView);
+
+  const readOnlyCompartment = shallowRef(null);
+  provide("readOnlyCompartment", readOnlyCompartment);
+
   const fileId = computed(() => file.value?.id);
   const {
     annotations,

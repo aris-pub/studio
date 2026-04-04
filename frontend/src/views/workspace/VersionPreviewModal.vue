@@ -1,7 +1,8 @@
 <script setup>
-  import { ref, inject, onMounted } from "vue";
+  import { ref, inject, onMounted, onBeforeUnmount } from "vue";
   import { IconX } from "@/components/base/iconRegistry.js";
   import Button from "@/components/base/Button.vue";
+  import { useVersionRestore } from "@/composables/useVersionRestore.ts";
 
   const props = defineProps({
     version: { type: Object, required: true },
@@ -12,14 +13,13 @@
   const emit = defineEmits(["close", "restored"]);
 
   const api = inject("api");
+  const { restoreVersion, isRestoring } = useVersionRestore(props.fileId);
 
   const versionContent = ref("");
   const isLoadingContent = ref(false);
   const contentError = ref(null);
-  const isRestoring = ref(false);
   const showConfirmation = ref(false);
 
-  // Fetch version content for preview
   async function fetchVersionContent() {
     isLoadingContent.value = true;
     contentError.value = null;
@@ -35,59 +35,43 @@
     }
   }
 
-  // Handle restore button click
   function handleRestoreClick() {
     showConfirmation.value = true;
   }
 
-  // Confirm and execute restore via Y.js (window.__cmView is the live CodeMirror/Y.js binding)
   async function confirmRestore() {
-    const view = window.__cmView;
-    if (!view) {
-      alert("Editor not available. Please open the source editor and try again.");
-      return;
-    }
-
     if (!versionContent.value) {
       alert("Version content not loaded. Please wait and try again.");
       return;
     }
 
-    isRestoring.value = true;
-
     try {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: versionContent.value },
-      });
-      emit("restored");
+      const success = await restoreVersion(props.version.id);
+      if (success) {
+        emit("restored");
+      }
     } catch (err) {
       console.error("Failed to restore version:", err);
       alert("Failed to restore version. Please try again.");
-    } finally {
-      isRestoring.value = false;
     }
   }
 
-  // Cancel restore
   function cancelRestore() {
     showConfirmation.value = false;
   }
 
-  // Close modal
   function close() {
     if (!isRestoring.value) {
       emit("close");
     }
   }
 
-  // Handle backdrop click
   function handleBackdropClick(event) {
     if (event.target === event.currentTarget) {
       close();
     }
   }
 
-  // Handle ESC key
   function handleKeydown(event) {
     if (event.key === "Escape" && !isRestoring.value) {
       event.stopImmediatePropagation();
@@ -98,12 +82,9 @@
 
   onMounted(() => {
     fetchVersionContent();
-    // Use capture phase to run before drawer's ESC handler
     window.addEventListener("keydown", handleKeydown, { capture: true });
   });
 
-  // Cleanup
-  import { onBeforeUnmount } from "vue";
   onBeforeUnmount(() => {
     window.removeEventListener("keydown", handleKeydown, { capture: true });
   });

@@ -1,8 +1,4 @@
-/**
- * @file useYText composable stub
- * @description Provides access to Y.Text instance for collaborative editing
- */
-
+import { inject, type ShallowRef } from 'vue'
 import type * as Y from 'yjs'
 
 interface YTextReturn {
@@ -11,7 +7,28 @@ interface YTextReturn {
 }
 
 export function useYText(_fileId: number): YTextReturn {
-  // This is a stub - actual implementation will be in EditorCodeMirror
-  throw new Error('useYText must be mocked in tests or implemented properly')
-}
+  const ydocRef = inject<ShallowRef<Y.Doc | null>>('ydoc', null)
 
+  // Return proxies that defer to the current ref value at access time.
+  // At setup time, ydoc may be null (EditorCodeMirror hasn't mounted yet).
+  // By the time restoreVersion() runs, it will be populated.
+  const ydoc = new Proxy({} as Y.Doc, {
+    get(_target, prop) {
+      const instance = ydocRef?.value
+      if (!instance) throw new Error('Y.Doc not initialized — editor must be mounted first')
+      const val = (instance as any)[prop]
+      return typeof val === 'function' ? val.bind(instance) : val
+    },
+  })
+
+  const ytext = new Proxy({} as Y.Text, {
+    get(_target, prop) {
+      const instance = ydocRef?.value?.getText('text')
+      if (!instance) throw new Error('Y.Text not initialized — editor must be mounted first')
+      const val = (instance as any)[prop]
+      return typeof val === 'function' ? val.bind(instance) : val
+    },
+  })
+
+  return { ytext, ydoc }
+}

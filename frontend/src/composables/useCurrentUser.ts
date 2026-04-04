@@ -1,9 +1,4 @@
-/**
- * @file useCurrentUser composable stub
- * @description Provides access to current user information
- */
-
-import type { Ref } from 'vue'
+import { inject, type Ref } from 'vue'
 
 interface User {
   id: number
@@ -16,6 +11,6 @@ interface CurrentUserReturn {
 }
 
 export function useCurrentUser(): CurrentUserReturn {
-  // This is a stub - actual implementation will use inject('user')
-  throw new Error('useCurrentUser must be mocked in tests or implemented properly')
+  const user = inject<Ref<User | null>>('user', null)
+  return { user: user! }
 }

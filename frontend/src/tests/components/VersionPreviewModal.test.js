@@ -4,10 +4,20 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
+import { ref } from "vue";
 import VersionPreviewModal from "@/views/workspace/VersionPreviewModal.vue";
 import Button from "@/components/base/Button.vue";
 
-// Mock API
+const mockRestoreVersion = vi.fn();
+const mockIsRestoring = ref(false);
+
+vi.mock("@/composables/useVersionRestore.ts", () => ({
+  useVersionRestore: vi.fn(() => ({
+    restoreVersion: mockRestoreVersion,
+    isRestoring: mockIsRestoring,
+  })),
+}));
+
 const mockApi = {
   get: vi.fn(),
 };
@@ -27,6 +37,8 @@ describe("VersionPreviewModal", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsRestoring.value = false;
+    mockRestoreVersion.mockResolvedValue(true);
     mockApi.get.mockResolvedValue({
       data: {
         rsm_content: mockVersionContent,
@@ -36,7 +48,6 @@ describe("VersionPreviewModal", () => {
         created_by: mockVersion.created_by,
       },
     });
-    // Mock window.addEventListener for ESC key
     global.addEventListener = vi.fn();
     global.removeEventListener = vi.fn();
   });
@@ -58,6 +69,11 @@ describe("VersionPreviewModal", () => {
       global: {
         provide: {
           api: mockApi,
+          awareness: { value: null },
+          cmView: { value: null },
+          readOnlyCompartment: { value: null },
+          ydoc: { value: null },
+          user: { value: { id: 1, name: "Test User", email: "test@example.com" } },
         },
         components: {
           Button,
@@ -78,7 +94,7 @@ describe("VersionPreviewModal", () => {
     });
 
     it("displays loading state while fetching content", async () => {
-      mockApi.get.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockApi.get.mockImplementation(() => new Promise(() => {}));
       wrapper = createWrapper();
       await wrapper.vm.$nextTick();
 
@@ -106,7 +122,6 @@ describe("VersionPreviewModal", () => {
 
       expect(wrapper.find(".error-state").exists()).toBe(true);
 
-      // Click retry button
       await wrapper.find(".error-state button").trigger("click");
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
@@ -189,19 +204,10 @@ describe("VersionPreviewModal", () => {
   });
 
   describe("restore functionality for owner", () => {
-    let mockDispatch;
-
     beforeEach(async () => {
-      mockDispatch = vi.fn();
-      window.__cmView = { dispatch: mockDispatch, state: { doc: { length: 50 } } };
-
       wrapper = createWrapper({ isOwner: true });
       await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
-    });
-
-    afterEach(() => {
-      delete window.__cmView;
     });
 
     it("displays restore button for owner", () => {
@@ -224,61 +230,56 @@ describe("VersionPreviewModal", () => {
       await wrapper.find('[data-testid="cancel-restore-button"]').trigger("click");
 
       expect(wrapper.find(".confirmation").exists()).toBe(false);
-      expect(mockDispatch).not.toHaveBeenCalled();
+      expect(mockRestoreVersion).not.toHaveBeenCalled();
     });
 
-    it("dispatches version content to __cmView on confirm", async () => {
+    it("calls restoreVersion on confirm", async () => {
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
       await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
+      await wrapper.vm.$nextTick();
 
-      expect(mockDispatch).toHaveBeenCalledWith({
-        changes: { from: 0, to: 50, insert: mockVersionContent },
-      });
+      expect(mockRestoreVersion).toHaveBeenCalledWith(1);
     });
 
     it("emits restored event on successful restore", async () => {
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
       await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
       await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
 
       expect(wrapper.emitted("restored")).toBeTruthy();
       expect(wrapper.emitted("restored")).toHaveLength(1);
     });
 
-    it("shows alert when editor is not available", async () => {
-      delete window.__cmView;
-      const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-
-      await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
-      await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
-
-      expect(alertSpy).toHaveBeenCalledWith(
-        "Editor not available. Please open the source editor and try again."
-      );
-
-      alertSpy.mockRestore();
-    });
-
-    it("shows alert on dispatch failure", async () => {
-      const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-      mockDispatch.mockImplementation(() => {
-        throw new Error("Dispatch failed");
-      });
+    it("does not emit restored when restoreVersion returns false", async () => {
+      mockRestoreVersion.mockResolvedValue(false);
 
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
       await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
       await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.emitted("restored")).toBeFalsy();
+    });
+
+    it("shows alert on restore failure", async () => {
+      const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+      mockRestoreVersion.mockRejectedValue(new Error("Restore failed"));
+
+      await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
+      await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
 
       expect(alertSpy).toHaveBeenCalledWith("Failed to restore version. Please try again.");
-      expect(wrapper.find(".confirmation").exists()).toBe(true);
 
       alertSpy.mockRestore();
     });
 
-    it("close is allowed after synchronous restore completes", async () => {
-      // dispatch is synchronous — isRestoring resets before any UI interaction can occur
+    it("close is allowed after restore completes", async () => {
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
       await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
+      await wrapper.vm.$nextTick();
       await wrapper.vm.$nextTick();
 
       await wrapper.find(".btn-close").trigger("click");

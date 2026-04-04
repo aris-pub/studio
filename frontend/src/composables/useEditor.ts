@@ -1,7 +1,7 @@
-/**
- * @file useEditor composable stub
- * @description Provides access to CodeMirror editor instance
- */
+import { inject, type ShallowRef } from 'vue'
+import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
+import type { Compartment } from '@codemirror/state'
 
 interface EditorReturn {
   editor: {
@@ -11,6 +11,24 @@ interface EditorReturn {
 }
 
 export function useEditor(): EditorReturn {
-  // This is a stub - actual implementation will be in EditorCodeMirror
-  throw new Error('useEditor must be mocked in tests or implemented properly')
+  const cmView = inject<ShallowRef<EditorView | null>>('cmView', null)
+  const readOnlyCompartment = inject<ShallowRef<Compartment | null>>('readOnlyCompartment', null)
+
+  const editor = {
+    isReadOnly(): boolean {
+      return cmView?.value?.state?.readOnly ?? false
+    },
+    setReadOnly(readOnly: boolean): void {
+      const view = cmView?.value
+      const compartment = readOnlyCompartment?.value
+      if (!view || !compartment) return
+
+      const exts = readOnly
+        ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+        : []
+      view.dispatch({ effects: compartment.reconfigure(exts) })
+    },
+  }
+
+  return { editor }
 }
