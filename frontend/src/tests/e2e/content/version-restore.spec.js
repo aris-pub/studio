@@ -3,7 +3,7 @@
  * @tags @auth @version-restore
  *
  * Tests the core restore flow: owner restores a named version via the
- * preview modal, content is replaced via Y.js (window.__cmView.dispatch),
+ * preview modal, content is replaced via Y.js (useVersionRestore composable),
  * and all connected clients receive the update.
  *
  * Tests for concurrent-editor detection, read-only lock, and in-progress
@@ -118,7 +118,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       timeout: 5000,
     });
 
-    // Content is replaced via __cmView.dispatch (synchronous, no Y.js propagation delay)
+    // Content is replaced via Y.js transaction (useVersionRestore composable)
     const content = await page.evaluate(() => window.__cmView?.state.doc.toString());
     expect(content).toContain("Original Content");
     expect(content).not.toContain("Modified Content");

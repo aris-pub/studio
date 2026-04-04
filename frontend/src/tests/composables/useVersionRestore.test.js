@@ -64,7 +64,21 @@ vi.mock("@/composables/useCurrentUser", () => ({
   })),
 }));
 
-global.fetch = vi.fn();
+const mockApi = {
+  get: vi.fn(),
+};
+
+vi.mock("vue", async () => {
+  const actual = await vi.importActual("vue");
+  return {
+    ...actual,
+    inject: vi.fn((key) => {
+      if (key === "api") return mockApi;
+      return actual.inject(key);
+    }),
+  };
+});
+
 global.confirm = vi.fn();
 
 // Import after mocks are set up
@@ -83,10 +97,9 @@ describe("useVersionRestore (simplified)", () => {
       ])
     );
 
-    // Setup fetch mock
-    global.fetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("# Original Content\n\nThis is the first version."),
+    // Setup api mock
+    mockApi.get.mockResolvedValue({
+      data: { rsm_content: "# Original Content\n\nThis is the first version." },
     });
 
     // Default confirm to true
@@ -98,10 +111,7 @@ describe("useVersionRestore (simplified)", () => {
       const { restoreVersion } = useVersionRestore(123);
       await restoreVersion(456);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/files/123/versions/456/preview"),
-        expect.any(Object)
-      );
+      expect(mockApi.get).toHaveBeenCalledWith("/files/123/versions/456/preview");
     });
 
     it("detects concurrent editors and shows confirmation", async () => {
@@ -170,12 +180,11 @@ describe("useVersionRestore (simplified)", () => {
     });
 
     it("handles fetch errors gracefully", async () => {
-      global.fetch.mockRejectedValue(new Error("Network error"));
+      mockApi.get.mockRejectedValue(new Error("Network error"));
 
       const { restoreVersion } = useVersionRestore(123);
 
       await expect(restoreVersion(456)).rejects.toThrow("Network error");
-      // Editor was never locked since fetch failed early, so setReadOnly shouldn't be called
       expect(mockEditor.setReadOnly).not.toHaveBeenCalled();
     });
 

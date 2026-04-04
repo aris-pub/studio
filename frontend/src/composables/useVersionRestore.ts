@@ -9,7 +9,7 @@
  * 4. Permission: Owner-only (enforced by backend)
  */
 
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import { useYText } from './useYText'
 import { useAwareness } from './useAwareness'
 import { useEditor } from './useEditor'
@@ -28,6 +28,7 @@ interface RestoreOrigin {
  */
 export function useVersionRestore(fileId: number) {
   const isRestoring = ref(false)
+  const api = inject<any>('api')
   const { ytext, ydoc } = useYText(fileId)
   const { awareness, currentUser } = useAwareness()
   const { editor } = useEditor()
@@ -64,21 +65,9 @@ export function useVersionRestore(fileId: number) {
     try {
       isRestoring.value = true
 
-      // 1. Fetch version content
-      const response = await fetch(
-        `/api/files/${fileId}/versions/${versionId}/preview`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch version: ${response.statusText}`)
-      }
-
-      const versionContent = await response.text()
+      // 1. Fetch version content via injected axios client
+      const response = await api.get(`/files/${fileId}/versions/${versionId}/preview`)
+      const versionContent = response.data.rsm_content
 
       // 2. Check for concurrent editors
       const activeUsers = getActiveUsers(currentUser.id)
