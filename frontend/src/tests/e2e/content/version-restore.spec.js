@@ -234,14 +234,28 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
         { timeout: timeouts.heavyOperation }
       );
 
-      // Owner opens version preview and clicks restore
+      // useVersionRestore shows a native confirm() dialog for concurrent editors.
+      // Capture the message and auto-accept it.
+      let dialogMessage = "";
+      page.on("dialog", async (dialog) => {
+        dialogMessage = dialog.message();
+        await dialog.accept();
+      });
+
+      // Owner opens version preview and goes through the full restore flow
       await openVersionPreview(page);
       await page.click('[data-testid="restore-version-button"]');
+      await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+      await page.click('[data-testid="confirm-restore-button"]');
 
-      // The concurrent editor warning should appear, mentioning the other user
-      const concurrentWarning = page.locator('[data-testid="concurrent-editor-warning"]');
-      await expect(concurrentWarning).toBeVisible({ timeout: timeouts.heavyOperation });
-      await expect(concurrentWarning).toContainText(SECOND_USER.name);
+      // Wait for restore to complete (native confirm was auto-accepted)
+      await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+        timeout: timeouts.heavyOperation,
+      });
+
+      // Verify the native confirm mentioned the concurrent editor by name
+      expect(dialogMessage).toContain(SECOND_USER.name);
+      expect(dialogMessage).toContain("currently editing");
     } finally {
       await cleanupYjs(editor.page).catch(() => {});
       await editor.context.close();
@@ -255,39 +269,44 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     await openVersionPreview(page);
     await page.click('[data-testid="restore-version-button"]');
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
-    await page.click('[data-testid="confirm-restore-button"]');
 
-    // The composable sets EditorView.editable(false) after the API returns.
-    // Poll for contentEditable to become 'false' during the 1s sync window.
-    await expect
-      .poll(
-        async () => {
-          return await page.evaluate(() => {
-            const view = window.__cmView;
-            return view ? view.contentDOM.contentEditable : "true";
-          });
-        },
-        { timeout: timeouts.heavyOperation }
-      )
-      .toBe("false");
+    // Install a MutationObserver BEFORE clicking confirm to catch the
+    // brief contentEditable='false' window during the 1s sync period.
+    await page.evaluate(() => {
+      window.__sawReadOnly = false;
+      window.__sawEditableAgain = false;
+      const cm = document.querySelector(".cm-content");
+      if (cm) {
+        const obs = new MutationObserver(() => {
+          if (cm.contentEditable === "false") {
+            window.__sawReadOnly = true;
+          } else if (window.__sawReadOnly && cm.contentEditable !== "false") {
+            window.__sawEditableAgain = true;
+          }
+        });
+        obs.observe(cm, { attributes: true, attributeFilter: ["contenteditable"] });
+        window.__readOnlyObserver = obs;
+      }
+    });
+
+    await page.click('[data-testid="confirm-restore-button"]');
 
     // Wait for restore to complete (modal closes)
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
       timeout: timeouts.heavyOperation,
     });
 
-    // After restore completes, editor should be editable again
-    await expect
-      .poll(
-        async () => {
-          return await page.evaluate(() => {
-            const view = window.__cmView;
-            return view ? view.contentDOM.contentEditable : "false";
-          });
-        },
-        { timeout: 10000 }
-      )
-      .toBe("true");
+    // Verify the editor was locked during restore and then unlocked
+    const result = await page.evaluate(() => {
+      window.__readOnlyObserver?.disconnect();
+      return {
+        sawReadOnly: window.__sawReadOnly,
+        sawEditableAgain: window.__sawEditableAgain,
+      };
+    });
+
+    expect(result.sawReadOnly).toBe(true);
+    expect(result.sawEditableAgain).toBe(true);
   });
 
   test("all connected clients see restored content", async ({ page, context }) => {
@@ -375,12 +394,23 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     try {
       await openFileInEditor(editor.page, fileId);
 
+      // Ensure both contexts can see each other via awareness before restoring
+      await editor.page.waitForFunction(
+        () => {
+          const states = window.__awareness?.getStates();
+          return states && states.size > 1;
+        },
+        null,
+        { timeout: timeouts.heavyOperation }
+      );
+
       // Owner restores version
       await openVersionPreview(page);
       await performRestore(page);
 
-      // Editor should see a toast notification from useRestoreNotification
-      const toastMessage = editor.page.locator(".toast-container .toast-message");
+      // Editor should see a toast notification from useRestoreNotification.
+      // Toast.vue renders .toast-message inside .toast-container (teleported to body).
+      const toastMessage = editor.page.locator(".toast-message");
       await expect(toastMessage).toBeVisible({ timeout: timeouts.heavyOperation });
       await expect(toastMessage).toContainText(/restored/i);
     } finally {
@@ -457,12 +487,15 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     });
     expect(otherUsers).toBe(0);
 
+    // Track whether a native confirm() dialog fires (it shouldn't)
+    let nativeDialogShown = false;
+    page.on("dialog", async (dialog) => {
+      nativeDialogShown = true;
+      await dialog.accept();
+    });
+
     await openVersionPreview(page);
     await page.click('[data-testid="restore-version-button"]');
-
-    // Should go straight to the standard confirm dialog — no concurrent editor warning
-    const concurrentWarning = page.locator('[data-testid="concurrent-editor-warning"]');
-    await expect(concurrentWarning).not.toBeVisible({ timeout: 2000 });
 
     // The normal restore confirmation should appear
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
@@ -471,6 +504,9 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
       timeout: 5000,
     });
+
+    // No native concurrent editor confirm() should have fired
+    expect(nativeDialogShown).toBe(false);
 
     const content = await page.evaluate(() => window.__cmView?.state.doc.toString());
     expect(content).toContain("Original Content");
