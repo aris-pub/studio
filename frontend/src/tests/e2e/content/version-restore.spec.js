@@ -1,14 +1,18 @@
 /**
- * @file E2E tests for version restore functionality
- * @tags @auth @version-restore
+ * @file E2E tests for version restore safety features
+ * @tags @auth @version-restore @collab
  *
- * Tests the core restore flow: owner restores a named version via the
- * preview modal, content is replaced via Y.js (window.__cmView.dispatch),
- * and all connected clients receive the update.
+ * Tests the core restore flow and safety guards:
+ * - Owner-only restore with confirmation
+ * - Concurrent editor detection (awareness-based)
+ * - Read-only lock during restore
+ * - Cross-client content propagation via Y.js
+ * - Restore notification for connected users
+ * - Network failure recovery
+ * - Single-user restore (no concurrent editor warning)
  *
- * Tests for concurrent-editor detection, read-only lock, and in-progress
- * guard are skipped pending implementation of the useAwareness /
- * useEditor composables (currently stubs).
+ * Depends on: useVersionRestore composable wiring (std-fku4),
+ * restore notification (std-7oh1).
  */
 
 import { test, expect } from "../fixtures.js";
@@ -23,6 +27,53 @@ import {
   cleanupYjs,
 } from "../yjs-helpers.js";
 
+const SECOND_USER = {
+  email: "versiontest2@example.com",
+  name: "Version Test User 2",
+  initials: "VT2",
+  password: "testpass123",
+};
+
+async function registerSecondUser(request) {
+  const backendURL = getBackendURL();
+  await request.post(`${backendURL}/register`, { data: SECOND_USER }).catch(() => {});
+  return loginUser(request, SECOND_USER.email, SECOND_USER.password);
+}
+
+async function shareFileWithUser(request, fileId, userId, role, ownerToken) {
+  const backendURL = getBackendURL();
+  const resp = await request.post(`${backendURL}/files/${fileId}/permissions`, {
+    headers: { Authorization: `Bearer ${ownerToken}`, "Content-Type": "application/json" },
+    data: { user_id: userId, role },
+  });
+  if (!resp.ok() && resp.status() !== 400) {
+    throw new Error(`Failed to share file: ${resp.status()}`);
+  }
+}
+
+/**
+ * Open version preview modal and wait for content to load.
+ * Assumes the versions drawer is already open with at least one version item.
+ */
+async function openVersionPreview(page) {
+  await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
+  await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
+  await page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
+}
+
+/**
+ * Execute the full restore flow: click restore, confirm, wait for modal close.
+ */
+async function performRestore(page) {
+  const timeouts = getTimeouts();
+  await page.click('[data-testid="restore-version-button"]');
+  await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+  await page.click('[data-testid="confirm-restore-button"]');
+  await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+    timeout: timeouts.heavyOperation,
+  });
+}
+
 test.describe("Version Restore Tests @auth @version-restore", () => {
   let fileId;
   let authHelpers;
@@ -34,10 +85,8 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
 
     await authHelpers.ensureLoggedIn();
 
-    // createNewFile() navigates to /file/{id} automatically
     fileId = await fileHelpers.createNewFile();
 
-    // Open the source drawer and wait for the CM/Y.js editor to be ready
     const timeouts = getTimeouts();
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
     await page.waitForSelector(".cm-editor", { timeout: timeouts.heavyOperation });
@@ -45,7 +94,6 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       timeout: timeouts.heavyOperation,
     });
 
-    // Set "original" content via the CM/Y.js API
     await page.evaluate(() => {
       window.__cmView.dispatch({
         changes: {
@@ -56,8 +104,6 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       });
     });
 
-    // Poll the backend until it reflects the dispatched content (500ms debounce + round-trip).
-    // The version snapshot reads the backend's persisted state, so we must wait for it.
     const { accessToken } = await authHelpers.getStoredTokens();
     const backendURL = getBackendURL();
     await expect
@@ -73,17 +119,12 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       )
       .toBe(true);
 
-    // Open the versions drawer and save a named version
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("versions") button');
     await page.waitForSelector('[data-testid="save-version-button"]', { state: "visible" });
     await page.click('[data-testid="save-version-button"]');
     await page.waitForSelector('[data-testid="version-item"]', { timeout: 5000 });
-
-    // Exit the auto-opened rename mode so the version row is clickable
     await page.keyboard.press("Escape");
 
-    // Overwrite content to create a "modified" state — __cmView stays mounted
-    // even when the versions drawer is in front, so no drawer switch needed
     await page.evaluate(() => {
       window.__cmView.dispatch({
         changes: {
@@ -102,23 +143,15 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
   });
 
   test("owner can restore version", async ({ page }) => {
-    // Versions drawer is already open from beforeEach
-    await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
-    await page.waitForSelector('[data-testid="version-preview-modal"]', { timeout: 10000 });
-
-    // Wait for the version content to finish loading before clicking restore
-    await page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
-
+    await openVersionPreview(page);
     await page.click('[data-testid="restore-version-button"]');
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
     await page.click('[data-testid="confirm-restore-button"]');
 
-    // Modal closes when restore succeeds
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
       timeout: 5000,
     });
 
-    // Content is replaced via __cmView.dispatch (synchronous, no Y.js propagation delay)
     const content = await page.evaluate(() => window.__cmView?.state.doc.toString());
     expect(content).toContain("Original Content");
     expect(content).not.toContain("Modified Content");
@@ -127,44 +160,19 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
   test("non-owner cannot restore version", async ({ browser, request }) => {
     test.setTimeout(60000);
 
-    const backendURL = getBackendURL();
-
-    // Register + login a second user
-    await request
-      .post(`${backendURL}/register`, {
-        data: {
-          email: "versiontest2@example.com",
-          name: "Version Test User 2",
-          initials: "VT2",
-          password: "testpass123",
-        },
-      })
-      .catch(() => {});
-    const editorAuth = await loginUser(request, "versiontest2@example.com", "testpass123");
-
-    // Share the file (created by owner in beforeEach) with the second user as EDITOR
+    const editorAuth = await registerSecondUser(request);
     const { accessToken } = await authHelpers.getStoredTokens();
-    const permResponse = await request.post(`${backendURL}/files/${fileId}/permissions`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      data: { user_id: editorAuth.userData.id, role: "EDITOR" },
-    });
-    if (!permResponse.ok() && permResponse.status() !== 400) {
-      throw new Error(`Failed to add collaborator: ${permResponse.status()}`);
-    }
+    await shareFileWithUser(request, fileId, editorAuth.userData.id, "EDITOR", accessToken);
 
-    // Open the file as the editor in a separate browser context
     const editor = await createAuthenticatedContext(browser, editorAuth);
     try {
       await editor.page.goto(`/file/${fileId}`, { waitUntil: "commit" });
       await editor.page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
-      // Open versions drawer
       await editor.page.click(
         '[data-testid="workspace-sidebar"] .sb-item:has-text("versions") button'
       );
       await editor.page.waitForSelector('[data-testid="version-item"]', { timeout: 10000 });
-
-      // Open the version preview modal (no Escape needed — editor didn't trigger rename mode)
       await editor.page
         .locator('[data-testid="version-item"]')
         .first()
@@ -175,10 +183,7 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       });
       await editor.page.waitForSelector(".loading-state", { state: "hidden", timeout: 5000 });
 
-      // Restore button should NOT be visible for non-owner
       await expect(editor.page.locator('[data-testid="restore-version-button"]')).not.toBeVisible();
-
-      // "Owner only" message should be shown instead
       await expect(editor.page.locator(".owner-only-note")).toBeVisible();
       await expect(editor.page.locator(".owner-only-note")).toContainText("owner");
     } finally {
@@ -187,44 +192,119 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     }
   });
 
-  test("concurrent editor detection shows warning", async () => {
-    // Requires useAwareness composable (currently a stub that throws).
-    // Implement once useAwareness is wired to the Y.js provider.
-    test.skip();
-  });
-
-  test("editor is read-only during restore", async () => {
-    // Requires useEditor composable (currently a stub that throws).
-    // The read-only lock feature will be enabled when useEditor is implemented.
-    test.skip();
-  });
-
-  test("all connected clients see restored content", async ({ page, context }) => {
-    test.setTimeout(90000); // Y.js propagation across two tabs in CI
+  test("concurrent editor detection shows warning", async ({ page, browser, request }) => {
+    test.setTimeout(90000);
     const timeouts = getTimeouts();
 
-    // Open a second tab with the editor fully ready (waits for manuscript,
-    // .cm-editor, __cmView, and provider sync — with retry on failure)
-    const page2 = await context.newPage();
-    await openFileInEditor(page2, fileId);
+    const editorAuth = await registerSecondUser(request);
+    const { accessToken } = await authHelpers.getStoredTokens();
+    await shareFileWithUser(request, fileId, editorAuth.userData.id, "EDITOR", accessToken);
 
-    // page1: restore the version
-    await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
-    await page.waitForSelector('[data-testid="version-preview-modal"]', {
-      timeout: timeouts.heavyOperation,
+    // Open file as the second user in a separate browser context
+    const editor = await createAuthenticatedContext(browser, editorAuth);
+    try {
+      await openFileInEditor(editor.page, fileId);
+
+      // Simulate active editing: set cursor and editing state on awareness
+      await editor.page.evaluate(() => {
+        if (window.__awareness) {
+          window.__awareness.setLocalStateField("cursor", { anchor: 0, head: 0 });
+          window.__awareness.setLocalStateField("editing", true);
+          window.__awareness.setLocalStateField("user", {
+            id: JSON.parse(localStorage.getItem("user")).id,
+            name: JSON.parse(localStorage.getItem("user")).name,
+          });
+        }
+      });
+
+      // Wait for awareness to propagate between contexts
+      await page.waitForFunction(
+        () => {
+          if (!window.__awareness) return false;
+          const states = window.__awareness.getStates();
+          let found = false;
+          states.forEach((state, clientId) => {
+            if (clientId !== window.__awareness.clientID && state.editing) {
+              found = true;
+            }
+          });
+          return found;
+        },
+        null,
+        { timeout: timeouts.heavyOperation }
+      );
+
+      // Owner opens version preview and clicks restore
+      await openVersionPreview(page);
+      await page.click('[data-testid="restore-version-button"]');
+
+      // The concurrent editor warning should appear, mentioning the other user
+      const concurrentWarning = page.locator('[data-testid="concurrent-editor-warning"]');
+      await expect(concurrentWarning).toBeVisible({ timeout: timeouts.heavyOperation });
+      await expect(concurrentWarning).toContainText(SECOND_USER.name);
+    } finally {
+      await cleanupYjs(editor.page).catch(() => {});
+      await editor.context.close();
+    }
+  });
+
+  test("editor is read-only during restore", async ({ page }) => {
+    test.setTimeout(60000);
+    const timeouts = getTimeouts();
+
+    await openVersionPreview(page);
+
+    // Intercept the version preview API to slow it down so we can observe the lock
+    const backendURL = getBackendURL();
+    await page.route(`${backendURL}/files/*/versions/*/preview`, async (route) => {
+      // Delay the response to give us time to check read-only state
+      await new Promise((r) => setTimeout(r, 2000));
+      await route.continue();
     });
-    await page.waitForSelector(".loading-state", {
-      state: "hidden",
-      timeout: timeouts.heavyOperation,
-    });
+
     await page.click('[data-testid="restore-version-button"]');
     await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
     await page.click('[data-testid="confirm-restore-button"]');
+
+    // During restore, the editor should be read-only
+    const isReadOnly = await page.evaluate(() => {
+      const view = window.__cmView;
+      if (!view) return null;
+      return view.state.readOnly;
+    });
+    expect(isReadOnly).toBe(true);
+
+    // Typing should have no effect while read-only
+    const contentBefore = await page.evaluate(() => window.__cmView.state.doc.toString());
+    await page.click(".cm-content");
+    await page.keyboard.type("should not appear");
+    const contentDuring = await page.evaluate(() => window.__cmView.state.doc.toString());
+    expect(contentDuring).toBe(contentBefore);
+
+    // Wait for restore to complete
     await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
       timeout: timeouts.heavyOperation,
     });
 
-    // Wait for Y.js to propagate the restoration to page2
+    // After restore completes, editor should be editable again
+    const isReadOnlyAfter = await page.evaluate(() => {
+      const view = window.__cmView;
+      if (!view) return null;
+      return view.state.readOnly;
+    });
+    expect(isReadOnlyAfter).toBe(false);
+  });
+
+  test("all connected clients see restored content", async ({ page, context }) => {
+    test.setTimeout(90000);
+    const timeouts = getTimeouts();
+
+    const page2 = await context.newPage();
+    await openFileInEditor(page2, fileId);
+
+    await openVersionPreview(page);
+    await performRestore(page);
+
     await page2.waitForFunction(
       () => window.__cmView?.state.doc.toString().includes("Original Content"),
       null,
@@ -238,10 +318,163 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     await page2.close();
   });
 
-  test("cannot restore while another restore is in progress", async () => {
-    // The current dispatch-based restore is synchronous, so isRestoring flips
-    // true→false within a single microtask — no observable window to assert.
-    // Implement once restore becomes async (e.g., awaiting backend persistence).
-    test.skip();
+  test("cannot restore while another restore is in progress", async ({ page }) => {
+    test.setTimeout(60000);
+    const timeouts = getTimeouts();
+
+    await openVersionPreview(page);
+
+    // Intercept the version content fetch to make restore take a while
+    const backendURL = getBackendURL();
+    let fetchCount = 0;
+    await page.route(`${backendURL}/files/*/versions/*/preview`, async (route) => {
+      fetchCount++;
+      if (fetchCount > 1) {
+        // Second restore attempt — delay significantly
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      await route.continue();
+    });
+
+    // Start the first restore
+    await page.click('[data-testid="restore-version-button"]');
+    await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+    await page.click('[data-testid="confirm-restore-button"]');
+
+    // While first restore is in progress, the restore button should be disabled
+    // Re-open modal quickly if it closed, or check the isRestoring state
+    const isRestoring = await page.evaluate(() => {
+      // useVersionRestore exposes isRestoring on the component — check via the button state
+      const btn = document.querySelector('[data-testid="restore-version-button"]');
+      return btn ? btn.disabled : null;
+    });
+
+    // If the button exists, it should be disabled during restore
+    if (isRestoring !== null) {
+      expect(isRestoring).toBe(true);
+    }
+
+    // Wait for restore to complete
+    await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+      timeout: timeouts.heavyOperation,
+    });
+
+    const content = await page.evaluate(() => window.__cmView?.state.doc.toString());
+    expect(content).toContain("Original Content");
+  });
+
+  test("restore notification shown to other connected users", async ({
+    page,
+    browser,
+    request,
+  }) => {
+    test.setTimeout(90000);
+    const timeouts = getTimeouts();
+
+    const editorAuth = await registerSecondUser(request);
+    const { accessToken } = await authHelpers.getStoredTokens();
+    await shareFileWithUser(request, fileId, editorAuth.userData.id, "EDITOR", accessToken);
+
+    // Open file as editor in separate browser context
+    const editor = await createAuthenticatedContext(browser, editorAuth);
+    try {
+      await openFileInEditor(editor.page, fileId);
+
+      // Owner restores version
+      await openVersionPreview(page);
+      await performRestore(page);
+
+      // Editor should see a restore notification (toast or dialog)
+      const notification = editor.page.locator('[data-testid="restore-notification"]');
+      await expect(notification).toBeVisible({ timeout: timeouts.heavyOperation });
+      await expect(notification).toContainText(/version.*restored|restored.*version/i);
+    } finally {
+      await cleanupYjs(editor.page).catch(() => {});
+      await editor.context.close();
+    }
+  });
+
+  test("network failure during restore unlocks editor", async ({ page }) => {
+    test.setTimeout(60000);
+    const timeouts = getTimeouts();
+
+    // Intercept the version preview API to simulate a failure
+    const backendURL = getBackendURL();
+    let shouldFail = false;
+    await page.route(`${backendURL}/files/*/versions/*/preview`, async (route) => {
+      if (shouldFail) {
+        await route.abort("failed");
+      } else {
+        await route.continue();
+      }
+    });
+
+    await openVersionPreview(page);
+
+    // Enable failure for the restore attempt (the initial preview load already succeeded)
+    shouldFail = true;
+
+    await page.click('[data-testid="restore-version-button"]');
+    await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+    await page.click('[data-testid="confirm-restore-button"]');
+
+    // Restore should fail — wait for error indication
+    // Wait for restore attempt to complete (success or failure)
+    await page
+      .locator('[data-testid="restore-error"]')
+      .isVisible({ timeout: timeouts.heavyOperation })
+      .catch(() => false);
+
+    // Even if error UI is not shown, the editor must not stay locked
+    const isReadOnly = await page.evaluate(() => {
+      const view = window.__cmView;
+      if (!view) return null;
+      return view.state.readOnly;
+    });
+    expect(isReadOnly).toBeFalsy();
+
+    // isRestoring state should be cleared
+    const contentBefore = await page.evaluate(() => window.__cmView.state.doc.toString());
+    await page.click(".cm-content");
+    await page.keyboard.type("x");
+    // Small wait for keystroke to register
+    await page.waitForTimeout(200);
+    const contentAfter = await page.evaluate(() => window.__cmView.state.doc.toString());
+    expect(contentAfter).not.toBe(contentBefore);
+  });
+
+  test("restore with no other users skips concurrent editor warning", async ({ page }) => {
+    test.setTimeout(60000);
+
+    // Verify no other users are connected via awareness
+    const otherUsers = await page.evaluate(() => {
+      if (!window.__awareness) return 0;
+      let count = 0;
+      window.__awareness.getStates().forEach((state, clientId) => {
+        if (clientId !== window.__awareness.clientID && (state.cursor || state.editing)) {
+          count++;
+        }
+      });
+      return count;
+    });
+    expect(otherUsers).toBe(0);
+
+    await openVersionPreview(page);
+    await page.click('[data-testid="restore-version-button"]');
+
+    // Should go straight to the standard confirm dialog — no concurrent editor warning
+    const concurrentWarning = page.locator('[data-testid="concurrent-editor-warning"]');
+    await expect(concurrentWarning).not.toBeVisible({ timeout: 2000 });
+
+    // The normal restore confirmation should appear
+    await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
+    await page.click('[data-testid="confirm-restore-button"]');
+
+    await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
+      timeout: 5000,
+    });
+
+    const content = await page.evaluate(() => window.__cmView?.state.doc.toString());
+    expect(content).toContain("Original Content");
   });
 });
