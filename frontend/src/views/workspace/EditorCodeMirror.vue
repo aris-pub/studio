@@ -57,11 +57,13 @@
   const ytext = shallowRef(null);
   const provider = shallowRef(null);
   const awareness = inject("awareness", shallowRef(null));
+  const parentReadOnlyCompartment = inject("readOnlyCompartment", null);
   const isConnected = ref(false);
   const isSynced = ref(false);
   const isInitialized = ref(false);
   const roomName = ref("");
   const readOnlyCompartment = new Compartment();
+  if (parentReadOnlyCompartment) parentReadOnlyCompartment.value = readOnlyCompartment;
 
   // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");

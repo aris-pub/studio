@@ -1,8 +1,4 @@
-/**
- * @file useCurrentUser composable stub
- * @description Provides access to current user information
- */
-
+import { inject } from 'vue'
 import type { Ref } from 'vue'
 
 interface User {
@@ -16,6 +12,11 @@ interface CurrentUserReturn {
 }
 
 export function useCurrentUser(): CurrentUserReturn {
-  // This is a stub - actual implementation will use inject('user')
-  throw new Error('useCurrentUser must be mocked in tests or implemented properly')
+  const user = inject<Ref<User | null>>('user')
+
+  if (!user) {
+    throw new Error('useCurrentUser: user not provided — must be called inside App.vue hierarchy')
+  }
+
+  return { user }
 }

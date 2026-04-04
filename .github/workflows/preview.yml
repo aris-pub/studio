@@ -292,3 +292,4 @@ jobs:
       run: |
         flyctl apps destroy "$APP_NAME" --yes || true
         flyctl apps destroy "$APP_NAME-db" --yes || true
+

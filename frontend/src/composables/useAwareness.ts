@@ -1,7 +1,5 @@
-/**
- * @file useAwareness composable stub
- * @description Provides access to Y.js awareness for presence/collaboration
- */
+import { inject } from 'vue'
+import type { ShallowRef } from 'vue'
 
 interface AwarenessReturn {
   awareness: any
@@ -9,6 +7,20 @@ interface AwarenessReturn {
 }
 
 export function useAwareness(): AwarenessReturn {
-  // This is a stub - actual implementation will be in EditorCodeMirror
-  throw new Error('useAwareness must be mocked in tests or implemented properly')
+  const awarenessRef = inject<ShallowRef>('awareness')
+  const userRef = inject<any>('user')
+
+  if (!awarenessRef?.value) {
+    throw new Error('useAwareness: awareness not provided — must be called inside Canvas.vue hierarchy')
+  }
+
+  const user = userRef?.value
+  if (!user) {
+    throw new Error('useAwareness: user not provided — must be called inside App.vue hierarchy')
+  }
+
+  return {
+    awareness: awarenessRef.value,
+    currentUser: { id: user.id, name: user.name },
+  }
 }
