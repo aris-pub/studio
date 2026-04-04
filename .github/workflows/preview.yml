@@ -22,10 +22,6 @@ concurrency:
   group: preview-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
-concurrency:
-  group: preview-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
-
 permissions:
   pull-requests: write
 
