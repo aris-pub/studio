@@ -114,7 +114,7 @@
       </template>
       <ContextMenu variant="slot">
         <template #trigger="{ toggle }">
-          <Button icon="Menu3" kind="ghost" data-testid="mobile-menu-button" @click="toggle" />
+          <Button icon="Menu3" kind="tertiary" data-testid="mobile-menu-button" @click="toggle" />
         </template>
         <template v-for="(it, idx) in mobileItems" :key="it.name + idx">
           <ContextMenuItem
