@@ -49,9 +49,8 @@
   );
   provide("manuscriptRef", manuscriptRef);
 
-  // Shared awareness ref — EditorCodeMirror writes to it, ScrollbarMinimap reads it
-  const awareness = shallowRef(null);
-  provide("awareness", awareness);
+  // Shared awareness ref — provided by View.vue, EditorCodeMirror writes to it
+  const awareness = inject("awareness", shallowRef(null));
 
   // Notify current user when another connected user restores a version
   const user = inject("user");
@@ -60,13 +59,11 @@
     computed(() => user.value?.id),
   );
 
-  // Shared CodeMirror view — EditorCodeMirror writes, TopbarSearch reads for Source scope search
-  const cmView = shallowRef(null);
-  provide("cmView", cmView);
+  // Shared CodeMirror view — provided by View.vue, EditorCodeMirror writes
+  const cmView = inject("cmView", shallowRef(null));
 
-  // Shared readOnly compartment — EditorCodeMirror writes, useEditor reads for toggling read-only
-  const readOnlyCompartment = shallowRef(null);
-  provide("readOnlyCompartment", readOnlyCompartment);
+  // Shared readOnly compartment — provided by View.vue, EditorCodeMirror writes
+  const readOnlyCompartment = inject("readOnlyCompartment", shallowRef(null));
 
   // LSP client and document URI — EditorCodeMirror writes, used for source/preview navigation
   const lspClient = shallowRef(null);

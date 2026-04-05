@@ -94,6 +94,15 @@
   const ydoc = shallowRef(null);
   provide("ydoc", ydoc);
 
+  // Shared collab refs — EditorCodeMirror writes, useVersionRestore + useRestoreNotification read.
+  // Hoisted here (not Canvas.vue) so DrawerVersions → VersionPreviewModal can inject them too.
+  const awareness = shallowRef(null);
+  provide("awareness", awareness);
+  const cmView = shallowRef(null);
+  provide("cmView", cmView);
+  const readOnlyCompartment = shallowRef(null);
+  provide("readOnlyCompartment", readOnlyCompartment);
+
   const fileId = computed(() => file.value?.id);
   const {
     annotations,

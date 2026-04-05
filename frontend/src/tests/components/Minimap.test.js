@@ -466,14 +466,13 @@ describe("Layout regressions — editor/manuscript split", () => {
     expect(editorSource).toMatch(/\.cm-gutters[^}]*font-size:\s*11px/s);
   });
 
-  it("Canvas provides awareness as a shallowRef for sibling communication", () => {
-    expect(canvasSource).toContain('provide("awareness"');
-    expect(canvasSource).toContain("shallowRef(null)");
+  it("Canvas injects awareness from View.vue (hoisted for cross-branch access)", () => {
+    expect(canvasSource).toContain('inject("awareness"');
   });
 
   it("EditorCodeMirror injects awareness (not provides)", () => {
     expect(editorSource).toContain('inject("awareness"');
-    // Must NOT create its own provide — it shares via Canvas
+    // Must NOT create its own provide — it shares via View.vue
     expect(editorSource).not.toContain('provide("awareness"');
   });
 });
