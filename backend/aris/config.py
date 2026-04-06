@@ -67,9 +67,15 @@ class Settings(BaseSettings):
 
     TEST_USER_EMAIL: str = Field(..., json_schema_extra={"env": "TEST_USER_EMAIL"})
     """Test user email for visual tests."""
-    
+
     TEST_USER_PASSWORD: str = Field(..., json_schema_extra={"env": "TEST_USER_PASSWORD"})
     """Password for test user."""
+
+    TEST_USER2_EMAIL: str = Field("testuser2@aris.pub", json_schema_extra={"env": "TEST_USER2_EMAIL"})
+    """Second test user email for multi-user tests."""
+
+    TEST_USER2_PASSWORD: str = Field("testpassword123", json_schema_extra={"env": "TEST_USER2_PASSWORD"})
+    """Password for second test user."""
 
     TEST_DB_URL: str = Field("", json_schema_extra={"env": "TEST_DB_URL"})
     """Test database URL override. If empty, will auto-detect based on environment."""

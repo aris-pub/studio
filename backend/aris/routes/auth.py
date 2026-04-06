@@ -156,11 +156,11 @@ async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depen
     """
     origin = request.headers.get("origin", "")
     if _DEPLOY_PREVIEW_RE.match(origin):
-        test_email = settings.TEST_USER_EMAIL
-        if user_data.email != test_email:
+        allowed_emails = {settings.TEST_USER_EMAIL, settings.TEST_USER2_EMAIL}
+        if user_data.email not in allowed_emails:
             raise HTTPException(
                 status_code=403,
-                detail="Deploy preview access is restricted to the test account.",
+                detail="Deploy preview access is restricted to test accounts.",
             )
 
     logger.debug(f"Login attempt for email: {user_data.email}")

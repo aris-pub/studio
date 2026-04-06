@@ -13,6 +13,12 @@ export const TEST_USERS = {
     name: "Test User",
   },
 
+  VALID_USER_2: {
+    email: process.env.TEST_USER2_EMAIL || "testuser2@aris.pub",
+    password: process.env.TEST_USER2_PASSWORD || "testpassword123",
+    name: "Test User 2",
+  },
+
   INVALID_USER: {
     email: "invalid@example.com",
     password: "wrongpassword",

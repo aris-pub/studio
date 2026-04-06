@@ -22,6 +22,11 @@ MOCK_USERS = [
         email="testuser@aris.pub",
         password_hash="$2b$12$TVuqGqn6SWbVFres301hUu6BtCWQHa.xpGPK4EwAKZo8mw50WXKBW",
     ),
+    User(
+        name="Test User 2",
+        email="testuser2@aris.pub",
+        password_hash="$2b$10$JNmaiHhsN2aYrf5JrJm60uPDBT4uwU7AAWHjZXHUb4/tn698QRd/C",
+    ),
 ]
 
 
