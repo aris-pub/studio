@@ -1,0 +1,72 @@
+/*
+ * highlights.css
+ *
+ * Suggested styling for RSM syntax highlighting tokens.
+ * Token classes (tok-*) correspond to LSP semantic token types produced
+ * by the capture-to-token mapping in highlights.scm.
+ *
+ * Colors use BRAIID design token fallbacks. Override the CSS custom
+ * properties to adapt to your theme.
+ */
+
+.tok-keyword {
+  color: var(--primary-700, #0361a1);
+  font-weight: var(--weight-semi, 600);
+}
+
+.tok-function {
+  color: var(--purple-700, #7629c7);
+}
+
+.tok-operator {
+  color: var(--primary-600, #027ac7);
+}
+
+.tok-namespace {
+  /* Headings */
+  color: var(--primary-800, #075487);
+  font-weight: var(--weight-bold, 700);
+}
+
+.tok-macro {
+  /* Math */
+  color: var(--purple-600, #8b3be2);
+}
+
+.tok-string {
+  color: var(--orange-700, #be4a10);
+}
+
+.tok-comment {
+  color: var(--gray-600, #8b9fad);
+  font-style: italic;
+}
+
+.tok-property {
+  color: var(--orange-800, #973a15);
+}
+
+.tok-type {
+  color: var(--primary-600, #027ac7);
+}
+
+.tok-modifier {
+  color: var(--purple-600, #8b3be2);
+}
+
+.tok-enumMember {
+  /* Constants */
+  color: var(--primary-700, #0361a1);
+}
+
+.tok-number {
+  color: var(--primary-600, #027ac7);
+}
+
+.tok-variable {
+  color: var(--text-body, #3c4952);
+}
+
+.tok-parameter {
+  color: var(--text-body, #3c4952);
+}
