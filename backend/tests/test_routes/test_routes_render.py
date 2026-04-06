@@ -28,7 +28,7 @@ OUTPUT = """
 <div class="hr-border-zone">
 
                 <div class="hr-border-dots">
-                  <div class="icon dots"><svg width="16" height="16"><use href="#hr-icon-dots" width="16" height="16"/></svg></div>
+                  <div class="icon dots"><svg overflow="visible"><use href="#hr-icon-dots" width="100%" height="100%"/></svg></div>
                 </div>
                 <div class="hr-border-rect">
                 </div>
