@@ -94,6 +94,14 @@
   const ydoc = shallowRef(null);
   provide("ydoc", ydoc);
 
+  // Shared CodeMirror view — EditorCodeMirror writes, VersionPreviewModal reads for restore
+  const cmView = shallowRef(null);
+  provide("cmView", cmView);
+
+  // Shared Y.js text — EditorCodeMirror writes, Editor reads for compile
+  const ytext = shallowRef(null);
+  provide("ytext", ytext);
+
   const fileId = computed(() => file.value?.id);
   const {
     annotations,

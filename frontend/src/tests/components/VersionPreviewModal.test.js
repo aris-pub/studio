@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { shallowRef } from "vue";
 import { mount } from "@vue/test-utils";
 import VersionPreviewModal from "@/views/workspace/VersionPreviewModal.vue";
 import Button from "@/components/base/Button.vue";
@@ -47,6 +48,8 @@ describe("VersionPreviewModal", () => {
     }
   });
 
+  const cmViewRef = shallowRef(null);
+
   function createWrapper(props = {}) {
     return mount(VersionPreviewModal, {
       props: {
@@ -58,6 +61,7 @@ describe("VersionPreviewModal", () => {
       global: {
         provide: {
           api: mockApi,
+          cmView: cmViewRef,
         },
         components: {
           Button,
@@ -193,7 +197,7 @@ describe("VersionPreviewModal", () => {
 
     beforeEach(async () => {
       mockDispatch = vi.fn();
-      window.__cmView = { dispatch: mockDispatch, state: { doc: { length: 50 } } };
+      cmViewRef.value = { dispatch: mockDispatch, state: { doc: { length: 50 } } };
 
       wrapper = createWrapper({ isOwner: true });
       await wrapper.vm.$nextTick();
@@ -201,7 +205,7 @@ describe("VersionPreviewModal", () => {
     });
 
     afterEach(() => {
-      delete window.__cmView;
+      cmViewRef.value = null;
     });
 
     it("displays restore button for owner", () => {
@@ -227,7 +231,7 @@ describe("VersionPreviewModal", () => {
       expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("dispatches version content to __cmView on confirm", async () => {
+    it("dispatches version content to cmView on confirm", async () => {
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
       await wrapper.find('[data-testid="confirm-restore-button"]').trigger("click");
 
@@ -246,7 +250,7 @@ describe("VersionPreviewModal", () => {
     });
 
     it("shows alert when editor is not available", async () => {
-      delete window.__cmView;
+      cmViewRef.value = null;
       const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
 
       await wrapper.find('[data-testid="restore-version-button"]').trigger("click");

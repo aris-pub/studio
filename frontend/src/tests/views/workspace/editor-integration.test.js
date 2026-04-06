@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { nextTick, ref } from "vue";
+import { nextTick, ref, shallowRef } from "vue";
 import { mount } from "@vue/test-utils";
 import Editor from "@/views/workspace/Editor.vue";
 import DockableEditor from "@/views/workspace/DockableEditor.vue";
@@ -59,11 +59,13 @@ describe("Editor Integration Tests", () => {
     EditorFiles: { template: "<div />", props: ["modelValue"] },
   };
 
+  const ytextRef = shallowRef(null);
+
   const mountEditor = (overrides = {}) =>
     mount(Editor, {
       props: { modelValue: mockFile.value },
       global: {
-        provide: { api: mockApi, user: { id: 1 } },
+        provide: { api: mockApi, user: { id: 1 }, ytext: ytextRef },
         stubs: { ...defaultStubs, ...overrides },
       },
     });
@@ -132,7 +134,7 @@ describe("Editor Integration Tests", () => {
     it("handles compilation via compile button", async () => {
       const compiledHtml = "<h1>Compiled Content</h1>";
       mockApi.post.mockResolvedValue({ data: compiledHtml });
-      window.__ytext = { toString: () => "# Test Content" };
+      ytextRef.value = { toString: () => "# Test Content" };
 
       const wrapper = mountEditor({
         EditorTopbar: {
@@ -151,7 +153,7 @@ describe("Editor Integration Tests", () => {
         file_id: 42,
       });
 
-      delete window.__ytext;
+      ytextRef.value = null;
     });
 
     it("handles file upload successfully", async () => {
@@ -290,7 +292,7 @@ describe("Editor Integration Tests", () => {
 
     it("Cmd+S triggers compile", async () => {
       mockApi.post.mockResolvedValue({ data: "<h1>ok</h1>" });
-      window.__ytext = { toString: () => "source" };
+      ytextRef.value = { toString: () => "source" };
 
       mountEditor();
 
@@ -302,7 +304,7 @@ describe("Editor Integration Tests", () => {
         file_id: 42,
       });
 
-      delete window.__ytext;
+      ytextRef.value = null;
     });
 
     it("provides compile to child components", () => {
@@ -312,7 +314,7 @@ describe("Editor Integration Tests", () => {
 
     it("handles concurrent compile and upload", async () => {
       mockApi.post.mockResolvedValue({ data: { id: 1 } });
-      window.__ytext = { toString: () => "source" };
+      ytextRef.value = { toString: () => "source" };
 
       const mockFileReader = {
         readAsText: vi.fn(),
@@ -346,7 +348,7 @@ describe("Editor Integration Tests", () => {
       expect(mockApi.post).toHaveBeenCalledWith("render/private", expect.any(Object));
       expect(wrapper.exists()).toBe(true);
 
-      delete window.__ytext;
+      ytextRef.value = null;
     });
   });
 });

@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, onMounted } from "vue";
+  import { ref, shallowRef, inject, onMounted } from "vue";
   import { IconX } from "@/components/base/iconRegistry.js";
   import Button from "@/components/base/Button.vue";
 
@@ -12,6 +12,7 @@
   const emit = defineEmits(["close", "restored"]);
 
   const api = inject("api");
+  const cmView = inject("cmView", shallowRef(null));
 
   const versionContent = ref("");
   const isLoadingContent = ref(false);
@@ -40,9 +41,8 @@
     showConfirmation.value = true;
   }
 
-  // Confirm and execute restore via Y.js (window.__cmView is the live CodeMirror/Y.js binding)
   async function confirmRestore() {
-    const view = window.__cmView;
+    const view = cmView.value;
     if (!view) {
       alert("Editor not available. Please open the source editor and try again.");
       return;

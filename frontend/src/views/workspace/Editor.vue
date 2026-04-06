@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, shallowRef, inject, provide, useTemplateRef } from "vue";
+  import { ref, shallowRef, inject, provide } from "vue";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import EditorTopbar from "./EditorTopbar.vue";
   import EditorToolbar from "./EditorToolbar.vue";
@@ -16,6 +16,7 @@
 
   const api = inject("api");
   const mobileMode = inject("mobileMode");
+  const ytext = inject("ytext", shallowRef(null));
 
   // Compile: render the current Y.js source
   const isCompiling = ref(false);
@@ -26,8 +27,8 @@
     isCompiling.value = true;
     try {
       let source = "";
-      if (window.__ytext) {
-        source = window.__ytext.toString();
+      if (ytext.value) {
+        source = ytext.value.toString();
       }
       const response = await api.post("render/private", {
         source,

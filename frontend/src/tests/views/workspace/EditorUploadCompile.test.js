@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { ref } from "vue";
+import { ref, shallowRef } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
 import Editor from "@/views/workspace/Editor.vue";
 
@@ -25,12 +25,14 @@ beforeEach(() => {
   vi.stubGlobal("FileReader", MockFileReader);
 });
 
+const ytextRef = shallowRef(null);
+
 afterEach(() => {
   if (wrapper) {
     wrapper.unmount();
     wrapper = null;
   }
-  delete window.__ytext;
+  ytextRef.value = null;
   vi.unstubAllGlobals();
 });
 
@@ -56,6 +58,7 @@ function createWrapper({ apiMock } = {}) {
       provide: {
         api,
         mobileMode: ref(false),
+        ytext: ytextRef,
       },
       stubs: {
         EditorTopbar: EditorTopbarStub,
@@ -80,7 +83,7 @@ describe("Editor: auto-recompile on asset upload", () => {
     };
     createWrapper({ apiMock: api });
 
-    window.__ytext = { toString: () => "test source" };
+    ytextRef.value = { toString: () => "test source" };
 
     const topbar = wrapper.findComponent(EditorTopbarStub);
     const file = new File(["hello"], "img.png", { type: "image/png" });
@@ -109,7 +112,7 @@ describe("Editor: auto-recompile on asset upload", () => {
     };
     createWrapper({ apiMock: api });
 
-    window.__ytext = { toString: () => "test source" };
+    ytextRef.value = { toString: () => "test source" };
 
     const topbar = wrapper.findComponent(EditorTopbarStub);
     topbar.vm.$emit("upload", new File(["x"], "bad.png", { type: "image/png" }));

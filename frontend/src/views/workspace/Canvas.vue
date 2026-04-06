@@ -52,9 +52,8 @@
   const awareness = shallowRef(null);
   provide("awareness", awareness);
 
-  // Shared CodeMirror view — EditorCodeMirror writes, TopbarSearch reads for Source scope search
-  const cmView = shallowRef(null);
-  provide("cmView", cmView);
+  // Shared CodeMirror view — provided by View.vue, written by EditorCodeMirror
+  const cmView = inject("cmView", shallowRef(null));
 
   // LSP client and document URI — EditorCodeMirror writes, used for source/preview navigation
   const lspClient = shallowRef(null);
