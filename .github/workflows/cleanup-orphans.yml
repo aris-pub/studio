@@ -1,0 +1,78 @@
+name: Cleanup orphan preview apps
+
+# Why this exists:
+# preview.yml destroys per-PR fly apps on `pull_request closed`. That hook can be missed
+# (workflow run cancelled, GitHub webhook hiccup, force-close on a half-deployed PR).
+# Each missed cleanup is a ~$5/mo silent leak. This cron is the safety net: weekly,
+# list all preview-shaped fly apps and destroy any whose PR is no longer open.
+# Cheap, idempotent, self-healing.
+
+on:
+  schedule:
+    # Sunday 04:17 UTC — quiet time, won't collide with active development.
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+    - uses: superfly/flyctl-actions/setup-flyctl@master
+
+    - name: Destroy orphan preview apps
+      run: |
+        set -euo pipefail
+
+        # Get the canonical list of currently-open PR numbers from GitHub.
+        # If this fails (auth, rate limit, repo rename), refuse to act —
+        # an empty list would otherwise look like "all apps are orphans".
+        if ! open=$(gh pr list --repo "${{ github.repository }}" --state open --limit 500 --json number --jq '[.[].number] | join("|")'); then
+          echo "::error title=gh pr list failed::Refusing to destroy anything when the open-PR list is unknown."
+          exit 1
+        fi
+        # Empty open list means no PRs are open right now.
+        # Use NEVER as a sentinel that won't match any PR number.
+        regex="^(${open:-NEVER})$"
+        echo "Open PRs regex: $regex"
+
+        # List all fly apps matching the per-PR naming convention.
+        # Include both the app and its -db sibling.
+        apps=$(flyctl apps list --json | jq -r '.[].Name | select(test("^aris-backend-pr-[0-9]+(-db)?$"))')
+        if [ -z "$apps" ]; then
+          echo "No preview apps on fly. Nothing to do."
+          exit 0
+        fi
+
+        rc=0
+        # Two passes: destroy app first, then -db, so attached postgres
+        # resolves cleanly. Same ordering as preview.yml's destroy job.
+        for suffix in '' '-db'; do
+          for app in $apps; do
+            # Only act on apps matching the suffix in this pass.
+            case "$suffix" in
+              '')    [[ "$app" == *-db ]] && continue ;;
+              '-db') [[ "$app" != *-db ]] && continue ;;
+            esac
+
+            num=$(echo "$app" | sed -E 's/^aris-backend-pr-([0-9]+).*/\1/')
+            if echo "$num" | grep -Eq "$regex"; then
+              echo "Keep $app (PR #$num still open)"
+              continue
+            fi
+
+            echo "Destroy orphan $app (PR #$num is closed/missing)"
+            if ! flyctl apps destroy "$app" --yes; then
+              echo "::warning title=Destroy failed::flyctl apps destroy $app failed; investigate manually."
+              rc=1
+            fi
+          done
+        done
+
+        exit $rc
