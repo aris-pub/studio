@@ -65,42 +65,17 @@ jobs:
         path: studio
         fetch-depth: 0
 
-    - name: Detect changed paths
-      if: steps.pr.outputs.skip != 'true'
-      id: changes
-      working-directory: studio
-      run: |
-        BASE=${{ github.event.pull_request.base.sha || github.event.before }}
-        HEAD=${{ github.sha }}
-        CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- . 2>/dev/null || echo "")
-        if [ -z "$CHANGED" ]; then
-          echo "backend=true" >> "$GITHUB_OUTPUT"
-          echo "frontend=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "backend=$(echo "$CHANGED" | grep -q '^backend/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "frontend=$(echo "$CHANGED" | grep -qE '^(frontend/|pnpm-lock\.yaml|package\.json)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-        fi
-
     - name: Resolve backend environment
       if: steps.pr.outputs.skip != 'true'
       id: backend
       run: |
         PR_NUM="${{ steps.pr.outputs.number }}"
         echo "test_user=preview-pr-${PR_NUM}@aris.pub" >> "$GITHUB_OUTPUT"
-        if [ "${{ steps.changes.outputs.backend }}" = "true" ]; then
-          echo "env=testing" >> "$GITHUB_OUTPUT"
-          echo "url=https://aris-backend-pr-${PR_NUM}.fly.dev" >> "$GITHUB_OUTPUT"
-          echo "app=aris-backend-pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
-        else
-          echo "env=staging" >> "$GITHUB_OUTPUT"
-          echo "url=${{ secrets.STAGING_BACKEND_URL }}" >> "$GITHUB_OUTPUT"
-          echo "app=${{ secrets.STAGING_BACKEND_APP }}" >> "$GITHUB_OUTPUT"
-        fi
-
-    # --- Testing backend: only when backend/ files changed ---
+        echo "url=https://aris-backend-pr-${PR_NUM}.fly.dev" >> "$GITHUB_OUTPUT"
+        echo "app=aris-backend-pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
 
     - name: Clone RSM repository
-      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
+      if: steps.pr.outputs.skip != 'true'
       uses: actions/checkout@v6
       with:
         repository: aris-pub/rsm
@@ -112,7 +87,7 @@ jobs:
       uses: superfly/flyctl-actions/setup-flyctl@master
 
     - name: Create preview app and database
-      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
+      if: steps.pr.outputs.skip != 'true'
       env:
         APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
         DB_APP: aris-backend-pr-${{ steps.pr.outputs.number }}-db
@@ -142,7 +117,7 @@ jobs:
         fi
 
     - name: Deploy backend to Fly
-      if: steps.pr.outputs.skip != 'true' && steps.backend.outputs.env == 'testing'
+      if: steps.pr.outputs.skip != 'true'
       env:
         APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
       run: |
@@ -171,9 +146,15 @@ jobs:
           echo "Waiting for backend... ($i/30)"
           sleep 10
         done
-        flyctl ssh console --app "$APP_NAME" \
-          -C "sh -c 'cd /app && TEST_USER_EMAIL=$TEST_USER TEST_USER_PASSWORD=$TEST_PASSWORD python scripts/reset_test_user.py'" \
-          || echo "Seed failed (non-fatal)"
+        # Migrations run via Dockerfile CMD (alembic upgrade head) before uvicorn,
+        # so /docs returning 200 is sufficient proof migrations completed.
+        # Single retry on transient ssh failures; fail loudly if seed actually broken.
+        seed_cmd="cd /app && TEST_USER_EMAIL=$TEST_USER TEST_USER_PASSWORD=$TEST_PASSWORD python scripts/reset_test_user.py"
+        if ! flyctl ssh console --app "$APP_NAME" -C "sh -c '$seed_cmd'"; then
+          echo "Seed attempt 1 failed; retrying after 10s..."
+          sleep 10
+          flyctl ssh console --app "$APP_NAME" -C "sh -c '$seed_cmd'"
+        fi
 
     # --- Frontend: build locally, upload to Netlify ---
 
@@ -199,7 +180,7 @@ jobs:
       working-directory: studio
       env:
         VITE_API_BASE_URL: ${{ steps.backend.outputs.url }}
-        VITE_MULTIPLAYER_URL: wss://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev:1234
+        VITE_MULTIPLAYER_URL: wss://${{ steps.backend.outputs.app }}.fly.dev:1234
         VITE_ENV: preview
         VITE_PRESS_URL: https://scroll.press
         BACKEND_PORT: "8000"
@@ -231,7 +212,6 @@ jobs:
       if: steps.pr.outputs.skip != 'true'
       uses: actions/github-script@v7
       env:
-        BACKEND_ENV: ${{ steps.backend.outputs.env }}
         BACKEND_URL: ${{ steps.backend.outputs.url }}
         NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
         PR_NUMBER: ${{ steps.pr.outputs.number }}
@@ -240,15 +220,13 @@ jobs:
         script: |
           const prNum = parseInt(process.env.PR_NUMBER);
           const backendUrl = process.env.BACKEND_URL;
-          const backendEnv = process.env.BACKEND_ENV;
           const netlifySite = process.env.NETLIFY_SITE_NAME;
           const frontendUrl = `https://pr-${prNum}--${netlifySite}.netlify.app`;
-          const backendLabel = backendEnv === 'testing' ? 'testing' : 'staging';
           const body = [
             '### Preview Deploy',
             '',
             `**Frontend:** ${frontendUrl}`,
-            `**Backend:** ${backendUrl} (${backendLabel})`,
+            `**Backend:** ${backendUrl}`,
             `**API docs:** ${backendUrl}/docs`,
             '',
             `**Test user:** \`${process.env.TEST_USER}\``,
@@ -282,6 +260,12 @@ jobs:
   destroy:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
+    # Share the deploy job's concurrency group so a force-close mid-deploy
+    # waits for the in-flight deploy to finish before tearing it down.
+    # Without this, destroy can race with create and leave orphan resources.
+    concurrency:
+      group: preview-${{ github.event.pull_request.head.ref }}
+      cancel-in-progress: false
 
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
