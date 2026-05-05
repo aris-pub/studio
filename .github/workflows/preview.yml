@@ -260,11 +260,15 @@ jobs:
   destroy:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
-    # Share the deploy job's concurrency group so a force-close mid-deploy
-    # waits for the in-flight deploy to finish before tearing it down.
-    # Without this, destroy can race with create and leave orphan resources.
+    # Use a destroy-specific concurrency group (NOT the workflow-level
+    # `preview-<head-ref>` group, which the close event already holds at
+    # workflow scope — same-group acquisition at job level self-conflicts
+    # and the destroy job dies during scheduling).
+    # Result: serializes destroy-vs-destroy on the same PR; does not
+    # serialize destroy against an in-flight deploy. The orphan-cleanup
+    # cron is the catch-all if a force-close races with a deploy.
     concurrency:
-      group: preview-${{ github.event.pull_request.head.ref }}
+      group: preview-destroy-${{ github.event.pull_request.head.ref }}
       cancel-in-progress: false
 
     env:
