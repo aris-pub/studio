@@ -13,8 +13,7 @@ true interactivity. Real-time collaboration, universal device support, planned P
 integration for import/export.
 
 **Governance**: Studio is community-maintained—open source, bug reports and maintenance
-contributions accepted. Part of the Aris Program, supported by community donations and
-academic grants.
+contributions accepted. Part of the Aris Program, supported by academic grants.
 
 See more at [aris.pub](https://aris.pub).
 

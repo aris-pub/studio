@@ -7,16 +7,13 @@ wheels/
 *.egg-info
 *.egg
 .mypy_cache
-
 # Virtual environments
 .venv/
 venv/
 env/
 ENV/
-
 # Python package management
 .uv/
-
 # Environment variables
 .env
 .env.local
@@ -25,7 +22,6 @@ backend/.env
 backend/aris/.env
 # Keep .env.example files
 !*.env.example
-
 # Testing and coverage
 .coverage
 .coverage.*
@@ -35,7 +31,6 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
-
 # Frontend testing
 site/coverage/
 site/test-results/
@@ -43,15 +38,12 @@ site/playwright-report/
 frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
-
 # Database
 *.db
 *.sqlite
 *.sqlite3
-
 # Alembic (keep alembic.ini in repo but ignore local overrides)
 alembic_local.ini
-
 # Node.js
 node_modules/
 npm-debug.log*
@@ -59,14 +51,11 @@ yarn-debug.log*
 yarn-error.log*
 .npm
 .yarn-integrity
-
 # Frontend build outputs
 /frontend/dist/
 /frontend/build/
-
 # Site generated assets (copied from brand/)
 /site/public/brand/
-
 # IDE and editor files
 .idea/
 .fleet
@@ -78,36 +67,28 @@ yarn-error.log*
 .vscode/*.json
 !.vscode/settings.json
 !.vscode/extensions.json
-
 # OS generated files
 Thumbs.db
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-
 # Logs
 logs/
 *.log
 *.log.*
-
 # Temporary files
 tmp/
 temp/
 .tmp/
-
 # Styles (served from backend but sourced from styles/)
 backend/static/design/
-
 # Docker
 .dockerignore
 .entrypoint-cache/
-
 # Deployment
 fly.toml.local
-
 # Nuxt dev/build outputs
 .output
 .data
@@ -117,20 +98,27 @@ fly.toml.local
 dist
 test-results/
 playwright-report/
-
-
 # Agent-generated files (bd init, claude code)
 AGENTS.md
 CLAUDE.md
-
 # Beads (stealth mode - not in VC)
 .beads/
-
 # HNS agent harness worktrees
 .hns/
-
 # Dolt database files (added by bd init)
 .dolt/
-
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+*.pyc
+*.pyo
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.beads/dolt-server.*
+.beads/embeddeddolt/
+.beads/.beads-credential-key
+.beads/embeddeddolt/beads_std/.dolt/noms/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+.beads/dolt/beads_std/.dolt/noms/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+backend/.mypy_cache/3.13/cache.db
+cli/.venv/lib/python3.13/site-packages/playwright/driver/node
