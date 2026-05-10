@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
     """Frontend base URL used for building email links."""
 
+    INTERNAL_SHARED_SECRET: str = Field(..., json_schema_extra={"env": "INTERNAL_SHARED_SECRET"})
+    """Shared secret used to authenticate trusted-infrastructure callers (e.g. the
+    multi-player WebSocket server) on /internal/* endpoints. Required."""
+
 
     model_config = SettingsConfigDict(
         extra="ignore",
