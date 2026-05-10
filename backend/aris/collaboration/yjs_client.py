@@ -68,6 +68,13 @@ class YDocClient:
         self._shutdown = False
         self._ws: Optional[ClientConnection] = None  # Active WebSocket, set during connection
 
+        # Readiness signal — set after the client has joined the room and
+        # completed the SyncStep1/SyncStep2 handshake (and the optional DB-seed
+        # broadcast). Cleared on every reconnect so callers see a fresh value.
+        # Callers that need the YDocClient to be in the room (CollaborationManager,
+        # multi-player auto-bootstrap) await this event with a timeout.
+        self._ready: asyncio.Event = asyncio.Event()
+
         # Reconnection state
         self._reconnect_attempt = 0
         self._max_reconnect_delay = 60
@@ -87,26 +94,61 @@ class YDocClient:
                 await self._connect_and_run()
                 if not self._shutdown:
                     logger.warning(f"Connection closed for file {self.file_id}, reconnecting...")
+                    await self._flush_before_reconnect()
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
                 if e.rcvd is not None and e.rcvd.code == 4000:
                     logger.info(f"Server cleanup close for file {self.file_id} (all frontends left)")
                 if not self._shutdown:
                     logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
+                    await self._flush_before_reconnect()
                     await self._wait_before_reconnect()
             except WebSocketException as e:
                 if not self._shutdown:
                     logger.warning(f"WebSocket error for file {self.file_id}: {e}, reconnecting...")
+                    await self._flush_before_reconnect()
                     await self._wait_before_reconnect()
             except Exception as e:
                 logger.error(f"Unexpected error in YDocClient for file {self.file_id}: {e}", exc_info=True)
                 if not self._shutdown:
+                    await self._flush_before_reconnect()
                     await self._wait_before_reconnect()
 
         logger.info(f"YDocClient for file {self.file_id} shut down")
 
+    async def _flush_before_reconnect(self):
+        """Persist any pending edits before entering the reconnect-wait.
+
+        The save_loop may be mid-debounce when the connection closes (e.g. a
+        code-4000 ``all-frontends-left`` kick from the multiplayer server).
+        Cancelling it without flushing first drops the pending ``_save_event``
+        and loses the most recent edit. This helper cancels the loop cleanly
+        and forces a synchronous save.
+
+        Failures in the flush are swallowed: the reconnect loop must always
+        proceed, otherwise the YDocClient gets stuck.
+        """
+        if self._save_task and not self._save_task.done():
+            self._save_task.cancel()
+            try:
+                await self._save_task
+            except asyncio.CancelledError:
+                logger.debug(
+                    f"Cancelled save task during flush-before-reconnect for file {self.file_id}"
+                )
+        try:
+            await asyncio.wait_for(self._save_to_db(force=True), timeout=2.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"Flush before reconnect timed out for file {self.file_id}")
+        except Exception as e:
+            logger.warning(f"Flush before reconnect failed for file {self.file_id}: {e}")
+
     async def _connect_and_run(self):
         """Connect to WebSocket server and run until disconnection."""
+        # Reset readiness so callers see a stale-True from a previous connection
+        # only after this connection has finished its sync handshake.
+        self._ready.clear()
+
         # Cancel any lingering save loop from a previous connection
         if self._save_task and not self._save_task.done():
             self._save_task.cancel()
@@ -169,6 +211,10 @@ class YDocClient:
                     await websocket.send(update_msg)
                     logger.info(f"Broadcast DB content to room for file {self.file_id} "
                                 f"({len(self.text)} chars)")
+
+            # Now in the room with sync complete and DB seed broadcast (if any).
+            # Callers awaiting readiness can proceed.
+            self._ready.set()
 
             # Handle incoming messages
             await self._message_loop(websocket)

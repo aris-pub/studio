@@ -24,6 +24,7 @@ from aris.routes import (
     file_reactions_router,
     file_router,
     file_settings_router,
+    internal_router,
     lsp_router,
     permissions_router,
     render_router,
@@ -326,6 +327,7 @@ app.include_router(signup_router, tags=["signup"])
 app.include_router(lsp_router, tags=["lsp"])
 app.include_router(file_annotations_router, tags=["annotations"])
 app.include_router(file_reactions_router, tags=["reactions"])
+app.include_router(internal_router, tags=["internal"])
 logger.info("All routers registered successfully")
 
 
