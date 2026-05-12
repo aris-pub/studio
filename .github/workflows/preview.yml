@@ -117,6 +117,20 @@ jobs:
             FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
+    - name: Ensure required secrets present on existing preview apps
+      if: steps.pr.outputs.skip != 'true'
+      env:
+        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+      run: |
+        # The create-app block above only sets secrets when the app is first
+        # created. Older preview apps from before INTERNAL_SHARED_SECRET became
+        # required would crash on startup without this step. Setting an
+        # already-present secret is a no-op apart from a brief restart.
+        if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q INTERNAL_SHARED_SECRET; then
+          flyctl secrets set --app "$APP_NAME" \
+            INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars"
+        fi
+
     - name: Deploy backend to Fly
       if: steps.pr.outputs.skip != 'true'
       env:
