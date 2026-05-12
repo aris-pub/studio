@@ -4,7 +4,7 @@
 
 [build]
   publish = "dist"
-  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter frontend run build"
+  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter aris run build"
 
 [build.environment]
   PNPM_VERSION = "9"
