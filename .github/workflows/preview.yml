@@ -206,7 +206,7 @@ jobs:
         DB_NAME: "aris"
         TEST_DB_NAME: "aris_test"
         NUXT_BACKEND_URL: ${{ steps.backend.outputs.url }}
-      run: pnpm --filter aris run build
+      run: pnpm --filter ./frontend run build
 
     - name: Deploy frontend to Netlify
       if: steps.pr.outputs.skip != 'true'

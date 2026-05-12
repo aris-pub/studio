@@ -111,10 +111,10 @@ jobs:
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Run linting
-      run: pnpm --filter frontend run lint
+      run: pnpm --filter ./frontend run lint
 
     - name: Run tests
-      run: pnpm --filter frontend run test:run
+      run: pnpm --filter ./frontend run test:run
 
   unit-site:
     runs-on: ubuntu-latest
@@ -143,10 +143,10 @@ jobs:
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Run linting
-      run: pnpm --filter site run lint
+      run: pnpm --filter ./site run lint
 
     - name: Run unit tests
-      run: pnpm --filter site run test:run
+      run: pnpm --filter ./site run test:run
 
   # Site E2E Tests (All Browsers)
   e2e-site:
