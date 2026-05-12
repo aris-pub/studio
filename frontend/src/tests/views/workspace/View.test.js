@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import * as Y from "yjs";
 import WorkspaceView from "@/views/workspace/View.vue";
 import { File } from "@/models/File.js";
 import * as KSMod from "@/composables/useKeyboardShortcuts.js";
+import { extractSourceAnchor } from "@/utils/sourceAnchor.js";
 
 const pushMock = vi.fn();
 vi.mock("vue-router", () => ({
@@ -16,6 +18,10 @@ vi.mock("@/views/workspace/EditorCodeMirror.vue", () => ({
     name: "EditorCodeMirror",
     template: "<div />",
   },
+}));
+
+vi.mock("@/utils/sourceAnchor.js", () => ({
+  extractSourceAnchor: vi.fn(),
 }));
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -297,6 +303,97 @@ describe("WorkspaceView", () => {
       });
       // Should NOT redirect when files array is empty (likely due to API failure)
       expect(pushMock).not.toHaveBeenCalledWith({ name: "NotFound" });
+    });
+  });
+
+  // Regression test for Bug A (2026-05-12 architecture review):
+  // View.vue:237 previously used getText("content") — a separate Y.Text that
+  // the editor never writes to. Keyboard-shortcut annotations computed their
+  // Y.RelativePosition against an empty Y.Text. The Y.Text passed to
+  // extractSourceAnchor must be the SAME instance the editor uses
+  // (ydoc.getText("text")).
+  describe("keyboard-shortcut annotation Y.Text wiring (Bug A regression)", () => {
+    let ydoc;
+    let editorYtext;
+    let manuscriptEl;
+    let getSelectionSpy;
+
+    beforeEach(() => {
+      ydoc = new Y.Doc();
+      editorYtext = ydoc.getText("text");
+      editorYtext.insert(0, "hello world");
+
+      manuscriptEl = document.createElement("div");
+      manuscriptEl.setAttribute("data-testid", "manuscript-viewer");
+      manuscriptEl.innerHTML =
+        '<p data-nodeid="1" data-source-start="0" data-source-end="11">hello world</p>';
+      document.body.appendChild(manuscriptEl);
+
+      const textNode = manuscriptEl.querySelector("p").firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, 5);
+      const fakeSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => range,
+        removeAllRanges: vi.fn(),
+      };
+      getSelectionSpy = vi.spyOn(window, "getSelection").mockReturnValue(fakeSelection);
+
+      extractSourceAnchor.mockReturnValue({
+        type: "yjs_relative",
+        node_id: "1",
+        element_id: null,
+        start_offset: 0,
+        end_offset: 5,
+        start_relative: new Uint8Array(),
+        end_relative: new Uint8Array(),
+        source_start: 0,
+        source_end: 5,
+        selected_text: "hello",
+      });
+    });
+
+    afterEach(() => {
+      if (manuscriptEl.parentNode) manuscriptEl.parentNode.removeChild(manuscriptEl);
+      ydoc.destroy();
+      extractSourceAnchor.mockReset();
+      getSelectionSpy.mockRestore();
+    });
+
+    it("passes the editor's Y.Text ('text') — not 'content' — to extractSourceAnchor on Cmd+Shift+H", async () => {
+      const wrapper = mount(WorkspaceView, {
+        global: {
+          provide: { fileStore, api, mobileMode: false },
+          stubs: { Sidebar: true, Canvas: true },
+        },
+      });
+
+      // Simulate the editor wiring its Y.Doc into the shared shallowRef.
+      wrapper.vm.ydoc = ydoc;
+      await nextTick();
+
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "h",
+          metaKey: true,
+          shiftKey: true,
+          bubbles: true,
+        })
+      );
+      await flushPromises();
+
+      expect(extractSourceAnchor).toHaveBeenCalled();
+      const ytextArg = extractSourceAnchor.mock.calls[0][2];
+
+      // Must be the same Y.Text instance the editor uses.
+      expect(ytextArg).toBe(editorYtext);
+      expect(ytextArg).toBe(ydoc.getText("text"));
+      // And not the empty "content" Y.Text that the buggy code used.
+      expect(ytextArg).not.toBe(ydoc.getText("content"));
+
+      wrapper.unmount();
     });
   });
 });

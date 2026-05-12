@@ -234,7 +234,7 @@
       document.querySelector('[data-testid="manuscript-viewer"]') ||
       document.querySelector(".rsm-manuscript");
     if (!manuscriptEl || !manuscriptEl.contains(range.commonAncestorContainer)) return null;
-    const ytext = ydoc.value?.getText("content");
+    const ytext = ydoc.value?.getText("text");
     const anchor = ytext
       ? extractSourceAnchor(range, manuscriptEl, ytext)
       : extractAnchor(range, manuscriptEl);
