@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JWT_SECRET_KEY: test_secret_key_for_ci_environment_32_chars_minimum
+      INTERNAL_SHARED_SECRET: test_internal_shared_secret_for_ci_32_chars_minimum
 
     services:
       postgres:
