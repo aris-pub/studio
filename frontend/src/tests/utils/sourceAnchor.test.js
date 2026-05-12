@@ -450,4 +450,51 @@ describe("extractSourceAnchor → resolveSourceAnchor round-trip", () => {
     expect(resolved).not.toBeNull();
     expect(resolved.toString()).toBe("quick");
   });
+
+  // Regression for std-99w6.7: when RSM renders with handrails=True, every
+  // source-mapped block is wrapped in handrail UI siblings (hr-*-zone divs)
+  // whose text content is icon labels and decorative whitespace — NOT source.
+  // Without filtering those out, extractSourceAnchor's source_start lands
+  // far past the source length and resolveSourceAnchor can't find the
+  // originally-selected text, so the highlight `<mark>` is either invisible
+  // or wraps icon content instead of the actual prose.
+  it("round-trips through an RSM handrail block (UI siblings + content zone)", () => {
+    const source = "First paragraph. UNIQUEMARKER end.";
+    ytext.insert(0, source);
+
+    // Mirrors the structure rsm.render emits for `:paragraph:` with handrails:
+    // the data-source-start wrapper contains UI zone siblings and a single
+    // `.hr-content-zone` whose <p> child is the actual prose.
+    manuscriptEl.innerHTML =
+      '<div class="paragraph hr hr-hidden" data-nodeid="1" data-source-start="0" data-source-end="34">' +
+      '<div class="hr-collapse-zone"><div class="hr-spacer"></div></div>' +
+      '<div class="hr-menu-zone"></div>' +
+      '<div class="hr-border-zone"><div class="hr-border-dots">dots</div></div>' +
+      '<div class="hr-spacer-zone"><div class="hr-spacer"></div></div>' +
+      '<div class="hr-content-zone"><p>First paragraph. UNIQUEMARKER end.</p></div>' +
+      '<div class="hr-info-zone"><div class="hr-info"></div></div>' +
+      "</div>";
+
+    const textNode = manuscriptEl.querySelector(".hr-content-zone p").firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 17);
+    range.setEnd(textNode, 29);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    expect(anchor).not.toBeNull();
+    expect(anchor.selected_text).toBe("UNIQUEMARKER");
+    // source_start must point to where UNIQUEMARKER actually lives in the
+    // source — NOT a position inflated by handrail UI siblings.
+    expect(anchor.source_start).toBe(17);
+    expect(anchor.source_end).toBe(29);
+    expect(source.slice(anchor.source_start, anchor.source_end)).toBe("UNIQUEMARKER");
+
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("UNIQUEMARKER");
+    // Resolution must land inside the content zone, not inside any UI sibling.
+    expect(
+      resolved.startContainer.parentElement.closest(".hr-content-zone")
+    ).not.toBeNull();
+  });
 });

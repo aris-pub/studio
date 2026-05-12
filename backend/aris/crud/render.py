@@ -72,11 +72,13 @@ async def render(src: str):
     """Render RSM source to HTML with static file asset resolution."""
     logger.debug(f"Starting RSM render for {len(src)} characters")
     start_time = time.time()
-    
+
     try:
-        # Create static file asset resolver for public endpoint
+        # Create static file asset resolver for public endpoint.
+        # add_source=True emits data-source-start/data-source-end attributes
+        # required by Y.RelativePosition annotation anchors.
         asset_resolver = StaticFileAssetResolver()
-        result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
+        result = rsm.render(src, handrails=True, add_source=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render completed successfully in {render_time:.3f}s")
     except (rsm.RSMApplicationError, RSMNodeError) as e:
@@ -90,12 +92,14 @@ async def render_with_assets(src: str, file_id: int, db: AsyncSession, user_id: 
     """Render RSM source to HTML with database asset resolution."""
     logger.debug(f"Starting RSM render with assets for {len(src)} characters, file_id={file_id}")
     start_time = time.time()
-    
+
     try:
-        # Create asset resolver for this file with pre-loaded assets
+        # Create asset resolver for this file with pre-loaded assets.
+        # add_source=True keeps data-source-start attributes so annotations
+        # survive recompilation triggered by editor edits.
         asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
 
-        result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
+        result = rsm.render(src, handrails=True, add_source=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render with assets completed successfully in {render_time:.3f}s")
     except (rsm.RSMApplicationError, RSMNodeError) as e:

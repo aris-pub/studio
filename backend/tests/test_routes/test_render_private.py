@@ -152,6 +152,35 @@ class TestRenderPrivate:
         assert row is not None
         assert row[0] == "updated source"
 
+    async def test_render_private_emits_data_source_start(
+        self, client: AsyncClient, authenticated_user, db_session
+    ):
+        """Regression: rendered HTML must include data-source-start attributes
+        so the annotation pipeline can compute Y.RelativePosition anchors. The
+        compile() flow on the frontend calls this endpoint whenever ytext
+        changes, and the resulting HTML replaces the manuscript DOM. Missing
+        attributes silently break every annotation created via keyboard
+        shortcut after the first compile."""
+        headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+        file = File(owner_id=authenticated_user['user_id'], source="placeholder")
+        db_session.add(file)
+        await db_session.commit()
+        await db_session.refresh(file)
+
+        response = await client.post(
+            "/render/private",
+            json={
+                "source": "# Test\n\nFirst paragraph. UNIQUEMARKER should stay anchored.",
+                "file_id": file.id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        html = response.json()
+        assert 'data-source-start="' in html
+        assert 'data-source-end="' in html
+
     async def test_render_private_persisted_source_matches_request(
         self, client: AsyncClient, authenticated_user, db_session
     ):

@@ -26,15 +26,7 @@ const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
 
 const MARKER = "UNIQUEMARKER";
 
-// TODO(std-99w6): the underlying View.vue fix is already exercised by the
-// unit test in src/tests/views/workspace/View.test.js (Bug A regression).
-// This end-to-end test exercises the broader annotation creation + highlight
-// render flow against real services. In CI it fails because no
-// <mark data-annotation-id> appears after Cmd+Shift+H is dispatched — the
-// failure is independent of View.vue:237 and lives somewhere in the
-// annotation creation / highlight render pipeline. Skipped for now; should
-// be revived once that pipeline is investigated in a follow-up issue.
-test.describe.skip("Keyboard-shortcut annotation anchoring @auth @annotations @keyboard-shortcut", () => {
+test.describe("Keyboard-shortcut annotation anchoring @auth @annotations @keyboard-shortcut", () => {
   let ownerAuth;
   let fileId;
 
@@ -79,17 +71,30 @@ test.describe.skip("Keyboard-shortcut annotation anchoring @auth @annotations @k
       // Programmatically select the marker text and dispatch Cmd+Shift+H in
       // the same evaluate() call so the selection survives until the keydown
       // listener runs.
+      //
+      // RSM emits both a hidden `.rsm-source` mirror (raw source) and the
+      // rendered handrail blocks. Walking the manuscript top-down finds the
+      // marker first in the hidden mirror, where the range has no
+      // `data-source-start` ancestor and `extractSourceAnchor` returns null.
+      // Scope the walk to `.hr-content-zone` blocks (the rendered prose) so
+      // the selection lands inside a source-mapped paragraph.
       await page.evaluate((marker) => {
         const root =
           document.querySelector('[data-testid="manuscript-viewer"]') ||
           document.querySelector(".rsm-manuscript");
-        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-        let textNode, idx = -1;
-        while ((textNode = walker.nextNode())) {
-          idx = textNode.nodeValue.indexOf(marker);
-          if (idx !== -1) break;
+        const contentZones = root ? root.querySelectorAll(".hr-content-zone") : [];
+        let textNode = null;
+        let idx = -1;
+        for (const zone of contentZones) {
+          const walker = document.createTreeWalker(zone, NodeFilter.SHOW_TEXT);
+          let n;
+          while ((n = walker.nextNode())) {
+            const i = n.nodeValue.indexOf(marker);
+            if (i !== -1) { textNode = n; idx = i; break; }
+          }
+          if (textNode) break;
         }
-        if (idx === -1) throw new Error(`Marker "${marker}" not found in manuscript`);
+        if (!textNode) throw new Error(`Marker "${marker}" not found in any .hr-content-zone`);
 
         const range = document.createRange();
         range.setStart(textNode, idx);

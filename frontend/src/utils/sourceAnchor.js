@@ -147,8 +147,47 @@ function computeSourceOffset(container, offset, manuscriptEl) {
 function computeCharOffsetInElement(element, targetContainer, targetOffset) {
   const blockStart = parseInt(element.getAttribute("data-source-start") || "0", 10);
 
+  // RSM emits handrail UI zones (`.hr-*-zone` siblings of `.hr-content-zone`)
+  // inside every source-mapped block. These zones contain icons, menus, and
+  // decorative spacers whose text content does NOT come from the manuscript
+  // source. The newlines between these sibling divs in the rendered markup
+  // also count as text nodes but are not source content. Counting any of
+  // this inflates the offset and pushes source_start past the source length.
+  //
+  // Strategy: when the source-mapped element wraps a handrail block (i.e.
+  // it has a direct `.hr-content-zone` child), narrow the walk to that
+  // content zone — the only subtree whose text is 1:1 with the source.
+  const HANDRAIL_UI_CLASSES = new Set([
+    "hr-collapse-zone",
+    "hr-menu-zone",
+    "hr-border-zone",
+    "hr-spacer-zone",
+    "hr-info-zone",
+  ]);
+
+  function findContentZone(el) {
+    if (!el || !el.children) return null;
+    for (const child of el.children) {
+      if (child.classList?.contains("hr-content-zone")) return child;
+    }
+    return null;
+  }
+
+  function isHandrailUiZone(node) {
+    if (node.nodeType !== Node.ELEMENT_NODE || !node.classList) return false;
+    for (const cls of HANDRAIL_UI_CLASSES) {
+      if (node.classList.contains(cls)) return true;
+    }
+    return false;
+  }
+
   // Walk direct and nested children, tracking source bytes
   function walk(node) {
+    // Skip RSM handrail UI zones — their text is decorative, not source.
+    if (isHandrailUiZone(node)) {
+      return { found: false, chars: 0 };
+    }
+
     // If this element has its own source data, use source byte length
     if (node !== element && node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("data-source-start")) {
       const srcStart = parseInt(node.getAttribute("data-source-start"), 10);
@@ -193,7 +232,25 @@ function computeCharOffsetInElement(element, targetContainer, targetOffset) {
     return { found: false, chars: total };
   }
 
-  const result = walk(element);
+  // For handrail blocks, narrow the walk root to the element inside the
+  // content zone that wraps the target (usually a <p>, <h1>, etc.). RSM
+  // separates handrail UI siblings from a single `.hr-content-zone` whose
+  // first element child holds the actual source-equivalent prose.
+  // Walking only that element skips both the UI siblings AND the formatting
+  // whitespace text nodes between them.
+  const contentZone = findContentZone(element);
+  let walkRoot = element;
+  if (contentZone && contentZone.contains(targetContainer)) {
+    for (const child of contentZone.children) {
+      if (child.contains(targetContainer)) {
+        walkRoot = child;
+        break;
+      }
+    }
+    // Fallback: target is in contentZone but not inside any element child
+    if (walkRoot === element) walkRoot = contentZone;
+  }
+  const result = walk(walkRoot);
   return result.found ? result.offset : null;
 }
 
@@ -280,8 +337,31 @@ export function resolveSourceAnchor(anchorData, manuscriptEl, ydoc) {
   const charStart = sourceStart - blockSourceStart;
   const charEnd = sourceEnd - blockSourceStart;
 
-  // Walk text nodes within the block to find the DOM Range
-  return createRangeFromCharOffsets(targetBlock, charStart, charEnd);
+  // Resolve against the actual content subtree, not the whole handrail
+  // wrapper. The wrapper also contains UI siblings (`.hr-*-zone`) whose
+  // text content is not part of the source — counting them shifts the
+  // resolved range away from the originally-anchored text.
+  const resolveRoot = findResolutionRoot(targetBlock);
+  return createRangeFromCharOffsets(resolveRoot, charStart, charEnd);
+}
+
+/**
+ * Find the subtree of a source-mapped block whose text content corresponds
+ * 1:1 with the source bytes. For RSM handrail-wrapped elements this is the
+ * first element child of `.hr-content-zone`; for other elements it is the
+ * element itself.
+ */
+function findResolutionRoot(block) {
+  if (!block || !block.children) return block;
+  for (const child of block.children) {
+    if (child.classList?.contains("hr-content-zone")) {
+      for (const inner of child.children) {
+        return inner;
+      }
+      return child;
+    }
+  }
+  return block;
 }
 
 /**
