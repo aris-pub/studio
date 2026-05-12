@@ -36,7 +36,12 @@ class CollaborationManager:
 
     async def start_client(self, file_id: int) -> bool:
         """
-        Start a YDocClient for the given file if not already running.
+        Start a YDocClient for the given file if not already running, and
+        wait for it to actually join the room and finish its first sync.
+
+        The wait matters for callers that immediately write to the room after
+        ``start_client`` returns — without it, the YDocClient hasn't joined yet
+        and updates are broadcast to a room with no persistence peer.
 
         Parameters
         ----------
@@ -46,13 +51,27 @@ class CollaborationManager:
         Returns
         -------
         bool
-            True if client started or already running, False on error.
+            True if the client is in the room and ready to relay updates.
+            False if the client failed to start or did not become ready
+            within ``YJS_READY_TIMEOUT_SECS`` (default 10s).
         """
+        ready_timeout = float(os.getenv("YJS_READY_TIMEOUT_SECS", "10"))
+
         if file_id in self.clients:
             task = self.tasks.get(file_id)
             if task and not task.done():
-                logger.debug(f"YDocClient already running for file {file_id}")
-                return True
+                # Client is running, but it might be mid-reconnect (i.e. _ready
+                # cleared). Await readiness so callers always see a fresh true.
+                client = self.clients[file_id]
+                try:
+                    await asyncio.wait_for(client._ready.wait(), timeout=ready_timeout)
+                    return True
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"Existing YDocClient for file {file_id} not ready within "
+                        f"{ready_timeout}s; treating as failed start"
+                    )
+                    return False
             # Stale entry — task finished (e.g. received close code 4000), clean up and restart
             logger.info(f"Removing stale YDocClient entry for file {file_id}, restarting")
             self.clients.pop(file_id, None)
@@ -78,7 +97,16 @@ class CollaborationManager:
             self.clients[file_id] = client
             self.tasks[file_id] = task
 
-            logger.info(f"YDocClient started for file {file_id}")
+            try:
+                await asyncio.wait_for(client._ready.wait(), timeout=ready_timeout)
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"YDocClient for file {file_id} did not become ready within "
+                    f"{ready_timeout}s"
+                )
+                return False
+
+            logger.info(f"YDocClient ready for file {file_id}")
             return True
 
         except Exception as e:

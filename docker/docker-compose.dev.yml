@@ -33,6 +33,7 @@ services:
       - FRONTEND_PORT=${FRONTEND_PORT}
       - SITE_PORT=${SITE_PORT}
       - STORYBOOK_PORT=${STORYBOOK_PORT}
+      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET:?INTERNAL_SHARED_SECRET is required}
     depends_on:
       postgres:
         condition: service_healthy
