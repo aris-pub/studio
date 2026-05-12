@@ -110,6 +110,7 @@ jobs:
           flyctl secrets set --app "$APP_NAME" \
             ENV="PROD" \
             JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}" \
+            INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars" \
             TEST_USER_EMAIL="${{ steps.backend.outputs.test_user }}" \
             TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
             RESEND_API_KEY="" \
