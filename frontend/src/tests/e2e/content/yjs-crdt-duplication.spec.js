@@ -180,8 +180,11 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
       await waitForCompiledContent(page, "EDIT1");
 
       const afterFirstEdit = await page.evaluate(() => {
-        const viewerText =
-          document.querySelector('[data-testid="manuscript-viewer"]')?.textContent || "";
+        // Exclude the hidden .rsm-source mirror block (raw source emitted by rsm.render
+        // with add_source=True) — only count occurrences in the visible manuscript.
+        const viewer = document.querySelector('[data-testid="manuscript-viewer"]');
+        const manuscript = viewer?.querySelector(".manuscript");
+        const viewerText = manuscript?.textContent || "";
         const ytextContent = window.__ytext?.toString() || "";
         return {
           // Compiled output: heading should appear exactly once
@@ -245,8 +248,9 @@ test.describe("Y.js CRDT Content Duplication @auth @desktop-only", () => {
       await waitForCompiledContent(page, "EDIT2");
 
       const afterSecondEdit = await page.evaluate(() => {
-        const viewerText =
-          document.querySelector('[data-testid="manuscript-viewer"]')?.textContent || "";
+        const viewer = document.querySelector('[data-testid="manuscript-viewer"]');
+        const manuscript = viewer?.querySelector(".manuscript");
+        const viewerText = manuscript?.textContent || "";
         const ytextContent = window.__ytext?.toString() || "";
         return {
           titleCount: (viewerText.match(/Test Document for YJS Bug/g) || []).length,

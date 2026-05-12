@@ -344,17 +344,21 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
       await waitForCompiledContent(page, "EDIT1");
 
       const afterFirstEdit = await page.evaluate(() => {
-        const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
-        if (!manuscript) return { error: "no manuscript viewer" };
+        const viewer = document.querySelector('[data-testid="manuscript-viewer"]');
+        if (!viewer) return { error: "no manuscript viewer" };
+        // Scope text query to .manuscript to exclude the hidden .rsm-source mirror block
+        // (raw RSM source emitted by rsm.render with add_source=True) which legitimately
+        // contains raw $$...$$ and the heading.
+        const manuscript = viewer.querySelector(".manuscript") || viewer;
         const text = manuscript.textContent || "";
         return {
           hasRawInlineLatex: text.includes("\\(") || text.includes("\\)"),
           hasRawBlockLatex: text.includes("$$"),
           titleCount: (text.match(/Test Document for Math Bug/g) || []).length,
           temmlScriptCount: document.querySelectorAll('script[src*="temml"]').length,
-          inlineMathCount: document.querySelectorAll("span.math > math").length,
-          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
-          nestedMathCount: document.querySelectorAll("math math").length,
+          inlineMathCount: manuscript.querySelectorAll("span.math > math").length,
+          blockMathCount: manuscript.querySelectorAll("div.mathblock .hr-content-zone math").length,
+          nestedMathCount: manuscript.querySelectorAll("math math").length,
         };
       });
 
@@ -407,15 +411,17 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
       await waitForCompiledContent(page, "EDIT2");
 
       const afterSecondEdit = await page.evaluate(() => {
-        const manuscript = document.querySelector('[data-testid="manuscript-viewer"]');
+        const viewer = document.querySelector('[data-testid="manuscript-viewer"]');
+        const manuscript = viewer?.querySelector(".manuscript") || viewer;
         const text = manuscript?.textContent || "";
         return {
           hasRawInlineLatex: text.includes("\\(") || text.includes("\\)"),
           hasRawBlockLatex: text.includes("$$"),
           titleCount: (text.match(/Test Document for Math Bug/g) || []).length,
-          inlineMathCount: document.querySelectorAll("span.math > math").length,
-          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
-          nestedMathCount: document.querySelectorAll("math math").length,
+          inlineMathCount: manuscript?.querySelectorAll("span.math > math").length ?? 0,
+          blockMathCount:
+            manuscript?.querySelectorAll("div.mathblock .hr-content-zone math").length ?? 0,
+          nestedMathCount: manuscript?.querySelectorAll("math math").length ?? 0,
         };
       });
 

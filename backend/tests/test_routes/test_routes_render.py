@@ -12,11 +12,13 @@ OUTPUT = """
 
 <main class="manuscriptwrapper">
 
+<div class="rsm-source hide">foo</div>
+
 <div class="manuscript" data-nodeid="0">
 
 <section class="level-1">
 
-<div class="paragraph hr hr-hidden" tabindex=0 data-nodeid="1">
+<div class="paragraph hr hr-hidden" data-source-start="0" data-source-end="3" tabindex=0 data-nodeid="1">
 
 <div class="hr-collapse-zone">
 <div class="hr-spacer"></div>
