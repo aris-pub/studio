@@ -3,13 +3,16 @@ import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import FilesHeaderLabel from "@/views/home/FilesHeaderLabel.vue";
 
-// Mock Tabler icons
-vi.mock("@tabler/icons-vue", () => {
+// Mock Tabler icons.
+// importOriginal preserves the other ~95 icons that iconRegistry.js imports —
+// previous version only listed 3 icons and broke iconRegistry on strict-mock vitest.
+vi.mock("@tabler/icons-vue", async (importOriginal) => {
+  const actual = await importOriginal();
   const mockIconComponent = {
     template: '<svg data-testid="mock-icon"></svg>',
   };
-
   return {
+    ...actual,
     IconArrowsSort: mockIconComponent,
     IconArrowNarrowDown: mockIconComponent,
     IconArrowNarrowUp: mockIconComponent,
