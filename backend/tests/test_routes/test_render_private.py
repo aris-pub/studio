@@ -127,54 +127,68 @@ class TestRenderPrivate:
         private_html = private_response.json()
         assert "Private Asset" in private_html
 
-    async def test_render_private_persists_source_to_db(
+    async def test_render_private_does_not_write_source(
         self, client: AsyncClient, authenticated_user, db_session
     ):
+        """The render endpoint must NOT persist source. Y.js owns writes.
+
+        Regression test for std-83utdw: previously this endpoint UPDATE'd
+        files.source, allowing anyone authenticated to overwrite any file.
+        """
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
         file = File(owner_id=authenticated_user['user_id'], source="original source")
         db_session.add(file)
         await db_session.commit()
         await db_session.refresh(file)
+        file_id = file.id
 
         response = await client.post(
             "/render/private",
-            json={"source": "updated source", "file_id": file.id},
+            json={"source": "attempted overwrite", "file_id": file_id},
             headers=headers,
         )
         assert response.status_code == 200
 
         result = await db_session.execute(
             text("SELECT source FROM files WHERE id = :file_id"),
-            {"file_id": file.id},
+            {"file_id": file_id},
         )
         row = result.fetchone()
         assert row is not None
-        assert row[0] == "updated source"
+        assert row[0] == "original source"
 
-    async def test_render_private_persisted_source_matches_request(
-        self, client: AsyncClient, authenticated_user, db_session
+    async def test_render_private_cannot_overwrite_other_users_source(
+        self,
+        client: AsyncClient,
+        authenticated_user,
+        second_authenticated_user,
+        db_session,
     ):
-        headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+        """A non-owner cannot mutate another user's file via /render/private.
 
-        file = File(owner_id=authenticated_user['user_id'], source="placeholder")
+        Regression test for std-83utdw: the endpoint used to UPDATE
+        files.source for any authenticated caller, regardless of permissions.
+        """
+        file = File(owner_id=authenticated_user['user_id'], source="owner content")
         db_session.add(file)
         await db_session.commit()
         await db_session.refresh(file)
+        file_id = file.id
 
-        source_with_special_chars = ':manuscript:\n\n  A "paragraph" with <html> & symbols\'s.\n\n::'
-
-        response = await client.post(
+        attacker_headers = {
+            "Authorization": f"Bearer {second_authenticated_user['token']}"
+        }
+        await client.post(
             "/render/private",
-            json={"source": source_with_special_chars, "file_id": file.id},
-            headers=headers,
+            json={"source": "MALICIOUS REPLACEMENT", "file_id": file_id},
+            headers=attacker_headers,
         )
-        assert response.status_code == 200
 
         result = await db_session.execute(
             text("SELECT source FROM files WHERE id = :file_id"),
-            {"file_id": file.id},
+            {"file_id": file_id},
         )
         row = result.fetchone()
         assert row is not None
-        assert row[0] == source_with_special_chars
+        assert row[0] == "owner content"
