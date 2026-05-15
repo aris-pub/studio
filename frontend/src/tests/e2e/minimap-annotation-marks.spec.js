@@ -4,7 +4,7 @@
  * Regression test for clipping bug where 32px icon marks overflowed
  * the 20px minimap strip and were clipped by overflow-x:hidden.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 test.describe("Minimap annotation marks", () => {
   test("annotation marks are visible and not clipped at 1400px viewport", async ({ page }) => {
@@ -31,7 +31,9 @@ test.describe("Minimap annotation marks", () => {
     await page.goto("http://localhost:5175/file/327", { waitUntil: "networkidle" });
 
     // Wait for manuscript
-    await expect(page.locator(".hr")).toHaveCount(1, { timeout: 60000 }).catch(() => {});
+    await expect(page.locator(".hr"))
+      .toHaveCount(1, { timeout: 60000 })
+      .catch(() => {});
     await page.waitForSelector(".hr", { timeout: 60000 });
     await page.waitForTimeout(15000);
 
