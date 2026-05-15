@@ -22,6 +22,142 @@ async def test_get_files_with_auth(client: AsyncClient, authenticated_user):
     assert isinstance(response.json(), list)
 
 
+async def test_get_files_only_returns_owned_for_isolated_users(
+    client: AsyncClient, authenticated_user, second_authenticated_user
+):
+    """GET /files must not leak files between users (authz regression).
+
+    Previously the endpoint returned the entire files table to any authenticated
+    user. Each user should only see files they own or have been granted access to.
+    """
+    headers_a = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    headers_b = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    create_a = await client.post(
+        "/files",
+        headers=headers_a,
+        json={
+            "title": "User A File",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "alpha",
+        },
+    )
+    file_a_id = create_a.json()["id"]
+
+    create_b = await client.post(
+        "/files",
+        headers=headers_b,
+        json={
+            "title": "User B File",
+            "abstract": "",
+            "owner_id": second_authenticated_user["user_id"],
+            "source": "bravo",
+        },
+    )
+    file_b_id = create_b.json()["id"]
+
+    resp_a = await client.get("/files", headers=headers_a)
+    assert resp_a.status_code == 200
+    ids_a = {f["id"] for f in resp_a.json()}
+    assert file_a_id in ids_a
+    assert file_b_id not in ids_a, "User A must not see user B's files"
+
+    resp_b = await client.get("/files", headers=headers_b)
+    assert resp_b.status_code == 200
+    ids_b = {f["id"] for f in resp_b.json()}
+    assert file_b_id in ids_b
+    assert file_a_id not in ids_b, "User B must not see user A's files"
+
+
+async def test_get_files_includes_shared_files_with_role(
+    client: AsyncClient, authenticated_user, second_authenticated_user
+):
+    """GET /files includes files shared with the user, with their role."""
+    headers_a = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    headers_b = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    create_a = await client.post(
+        "/files",
+        headers=headers_a,
+        json={
+            "title": "Shared File",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "shared",
+        },
+    )
+    file_a_id = create_a.json()["id"]
+
+    create_b = await client.post(
+        "/files",
+        headers=headers_b,
+        json={
+            "title": "B Own File",
+            "abstract": "",
+            "owner_id": second_authenticated_user["user_id"],
+            "source": "private",
+        },
+    )
+    file_b_id = create_b.json()["id"]
+
+    share = await client.post(
+        f"/files/{file_a_id}/permissions",
+        headers=headers_a,
+        json={"user_id": second_authenticated_user["user_id"], "role": "EDITOR"},
+    )
+    assert share.status_code == 201
+
+    resp_b = await client.get("/files", headers=headers_b)
+    assert resp_b.status_code == 200
+    by_id = {f["id"]: f for f in resp_b.json()}
+    assert file_a_id in by_id, "B must see the file A shared with them"
+    assert file_b_id in by_id
+    assert by_id[file_a_id]["role"] == "EDITOR"
+    assert by_id[file_b_id]["role"] == "OWNER"
+
+
+async def test_get_files_excludes_revoked_shares(
+    client: AsyncClient, authenticated_user, second_authenticated_user
+):
+    """Revoking a share removes the file from the recipient's GET /files."""
+    headers_a = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    headers_b = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    create_a = await client.post(
+        "/files",
+        headers=headers_a,
+        json={
+            "title": "To Revoke",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "x",
+        },
+    )
+    file_a_id = create_a.json()["id"]
+
+    share = await client.post(
+        f"/files/{file_a_id}/permissions",
+        headers=headers_a,
+        json={"user_id": second_authenticated_user["user_id"], "role": "COMMENTER"},
+    )
+    assert share.status_code == 201
+    permission_id = share.json()["id"]
+
+    resp_b_before = await client.get("/files", headers=headers_b)
+    assert file_a_id in {f["id"] for f in resp_b_before.json()}
+
+    revoke = await client.delete(
+        f"/files/{file_a_id}/permissions/{permission_id}",
+        headers=headers_a,
+    )
+    assert revoke.status_code == 204
+
+    resp_b_after = await client.get("/files", headers=headers_b)
+    assert resp_b_after.status_code == 200
+    assert file_a_id not in {f["id"] for f in resp_b_after.json()}
+
+
 async def test_create_file_valid_rsm_source(client: AsyncClient, authenticated_user):
     """Test creating a file with valid RSM source."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
