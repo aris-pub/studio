@@ -82,6 +82,33 @@ async def test_collab_start_forbidden_for_non_editor(
 
 
 @pytest.mark.asyncio
+async def test_collab_start_forbidden_for_user_without_permission_row(
+    client: AsyncClient,
+    authenticated_user: dict,
+    db_session: AsyncSession,
+):
+    """A user with NO FilePermission row at all cannot start collab on another user's file.
+
+    Regression test for std-p1djel: user 2 (no permission row) must not be able to
+    POST /files/{id}/collab/start for a file owned by user 1.
+    """
+    file_id = await _create_file(db_session, authenticated_user["user_id"])
+
+    reg = await client.post(
+        "/register",
+        json={"email": "stranger@example.com", "name": "Stranger", "initials": "ST", "password": "pw123456"},
+    )
+    assert reg.status_code == 200
+    stranger_token = reg.json()["access_token"]
+
+    response = await client.post(
+        _collab_url(file_id, "start"),
+        headers={"Authorization": f"Bearer {stranger_token}"},
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.asyncio
 async def test_collab_start_calls_manager(
     authenticated_client: AsyncClient,
     authenticated_user: dict,
