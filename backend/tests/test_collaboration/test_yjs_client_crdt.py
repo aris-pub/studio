@@ -10,6 +10,7 @@ Fix: sync with room first, then call _load_from_db() only if len(self.text) == 0
 """
 
 import asyncio
+import json
 from unittest.mock import AsyncMock
 
 from pycrdt import Doc, Text, create_sync_message, handle_sync_message
@@ -31,6 +32,12 @@ async def _room_server(websocket):
       1. Receive SyncStep1 from client → reply with SyncStep2
       2. Send our own SyncStep1 → client replies with SyncStep2
     """
+    # New: consume the JWT auth handshake before doing Y.js sync.
+    auth_raw = await websocket.recv()
+    auth_msg = json.loads(auth_raw if isinstance(auth_raw, str) else auth_raw.decode("utf-8"))
+    assert auth_msg.get("type") == "auth"
+    await websocket.send(json.dumps({"type": "auth_ok"}))
+
     room_doc = Doc()
     room_text = room_doc.get("text", type=Text)
     with room_doc.transaction():

@@ -33,6 +33,7 @@
   import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
+  import { AuthedWebSocket } from "@/composables/authedWebSocket";
   import { useLSPClient } from "@/composables/useLSPClient";
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
@@ -134,6 +135,11 @@
     }
 
     if (provider.value) {
+      try {
+        AuthedWebSocket.clearToken(`${serverUrl.value}/${provider.value.roomname}`);
+      } catch (_e) {
+        /* ignore */
+      }
       provider.value.destroy();
       provider.value = null;
     }
@@ -169,7 +175,7 @@
   // Setup Y.js and WebSocket when file changes
   watch(
     [() => file.value?.id, editorContainer],
-    ([fileId, container]) => {
+    async ([fileId, container]) => {
       if (!fileId || !container) return;
 
       // Cleanup previous instance
@@ -183,16 +189,38 @@
       ytext.value = ydoc.value.getText("text");
       if (parentYtext) parentYtext.value = ytext.value;
 
-      // Create WebSocket provider
-      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value);
+      // Tell the backend to start its Y.js client and get a short-lived WS auth
+      // token. The multi-player server requires the token as the first frame on
+      // the WebSocket — without one we'd be rejected with code 4401.
+      activeCollabFileId.value = fileId;
+      let token = null;
+      try {
+        const startResp = await api.post(`/files/${fileId}/collab/start`);
+        token = startResp?.data?.token ?? null;
+        if (!token) {
+          console.error(`[Collab] /collab/start for file ${fileId} returned no token`);
+        }
+      } catch (err) {
+        console.error(
+          `[Collab] Failed to start backend client for file ${fileId}:`,
+          err?.response?.status,
+          err?.response?.data || err.message
+        );
+      }
+
+      // Bail if the file or watcher changed while we awaited the token.
+      if (file.value?.id !== fileId) return;
+
+      const wsUrl = `${serverUrl.value}/${roomName.value}`;
+      if (token) AuthedWebSocket.registerToken(wsUrl, token);
+
+      // Create WebSocket provider with our authed wrapper as the polyfill so
+      // y-websocket sees a normal socket while we handle the auth handshake.
+      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value, {
+        WebSocketPolyfill: AuthedWebSocket,
+      });
       awareness.value = provider.value.awareness;
       awareness.value.setLocalStateField("user", userInfo.value);
-
-      // Tell the backend to start its Y.js client for this file
-      activeCollabFileId.value = fileId;
-      api.post(`/files/${fileId}/collab/start`).catch((err) => {
-        console.error(`[Collab] Failed to start backend client for file ${fileId}:`, err?.response?.status, err?.response?.data || err.message);
-      });
 
       // Log WebSocket errors only
       provider.value.ws?.addEventListener("error", (error) => {
@@ -207,6 +235,24 @@
       // Log connection errors
       provider.value.on("connection-error", (event) => {
         console.error("[Y.js] Connection error:", event);
+      });
+
+      // Refresh the WS auth token before each reconnect; the token is short-lived
+      // (5 min) and y-websocket would otherwise reconnect with a stale one and
+      // be rejected with code 4401.
+      provider.value.on("connection-close", async (closeEvent) => {
+        if (file.value?.id !== fileId) return;
+        try {
+          const refresh = await api.post(`/files/${fileId}/collab/start`);
+          const fresh = refresh?.data?.token;
+          if (fresh) AuthedWebSocket.registerToken(wsUrl, fresh);
+        } catch (err) {
+          console.error(
+            `[Collab] Failed to refresh token for file ${fileId}:`,
+            err?.response?.status,
+            err?.response?.data || err.message
+          );
+        }
       });
 
       provider.value.once("synced", async () => {
@@ -430,7 +476,6 @@
   .cm-container :deep(.cm-cursor) {
     border-left-color: var(--extra-dark);
   }
-
 </style>
 
 <!-- Semantic token highlighting from tree-sitter-rsm (unscoped so tok-* classes reach CodeMirror DOM) -->

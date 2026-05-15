@@ -13,7 +13,7 @@ from ..authorization import (
     require_manage,
     require_view,
 )
-from ..collaboration import get_collaboration_manager
+from ..collaboration import get_collaboration_manager, mint_collab_token
 from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..crud.permissions import create_permission
 from ..deps import UserRead
@@ -340,14 +340,21 @@ async def get_file(
 @router.post("/{file_id}/collab/start")
 async def collab_start(
     file_id: int,
-    user_role: FileRole = Depends(require_edit),
+    user: UserRead = Depends(current_user),
+    user_role: FileRole = Depends(require_view),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Signal that the collaborative editor has opened for this file.
 
-    Called by the frontend when the CodeMirror editor mounts. Starts the backend
-    Y.js client so edits are persisted to the database.
+    Called by the frontend (and CLI/agents) when an editor mounts. Starts the
+    backend Y.js client so edits are persisted to the database, and returns a
+    short-lived WS-auth token the caller must present as the first message on
+    its multi-player WebSocket connection.
+
+    Gate is ``require_view``: viewers/commenters connect read-only; the role
+    claim in the returned token reflects their actual permission so downstream
+    services (the multi-player server, frontend) can enforce read-only mode.
     """
     await file_service.sync_from_database(db)
     doc = await file_service.get_file(file_id)
@@ -356,7 +363,13 @@ async def collab_start(
 
     manager = get_collaboration_manager()
     await manager.start_client(file_id)
-    return {"status": "ok"}
+
+    token = mint_collab_token(
+        user_id=user.id,
+        file_id=file_id,
+        role=user_role.value,
+    )
+    return {"status": "ok", "token": token}
 
 
 @router.post("/{file_id}/collab/stop")

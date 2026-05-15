@@ -17,8 +17,11 @@
  *         when a non-backend client joins a room with no backend present.
  *
  * Connection Roles:
- * - Backend identifies itself via `?role=backend` query parameter.
- * - All other connections are treated as frontends (browser / CLI / agent).
+ * - Every client must present a short-lived JWT as the first WS frame (see
+ *   `awaitAuthFrame`). The token's `role` claim ('backend' | 'OWNER' |
+ *   'EDITOR' | 'COMMENTER') is what drives cleanup behaviour; non-backend
+ *   tokens additionally have their `file_id` claim cross-checked against the
+ *   docName so a token minted for file A can't be used to join room file B.
  *
  * Cleanup Logic:
  * - When the backend disconnects (hot-reload, crash), leave frontends alone.
@@ -30,6 +33,89 @@
 
 import { WebSocketServer } from 'ws';
 import { setupWSConnection, docs } from 'y-websocket/bin/utils';
+import jwt from 'jsonwebtoken';
+
+// ---------------------------------------------------------------------------
+// WebSocket auth
+// ---------------------------------------------------------------------------
+
+const AUTH_TIMEOUT_MS = 5000;
+const AUTH_CLOSE_CODE = 4401;
+
+/**
+ * Read the first WebSocket frame and verify the auth JWT.
+ *
+ * Resolves with the decoded token payload on success. Rejects with an Error
+ * whose `.message` is suitable for a 4401 close reason on any failure.
+ */
+export function awaitAuthFrame(ws, opts) {
+  const timeoutMs = opts.timeoutMs ?? AUTH_TIMEOUT_MS;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('auth-timeout'));
+    }, timeoutMs);
+    if (typeof timer.unref === 'function') timer.unref();
+
+    const onMessage = (data) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      try {
+        const text = typeof data === 'string' ? data : data.toString('utf8');
+        const msg = JSON.parse(text);
+        if (msg.type !== 'auth' || typeof msg.token !== 'string') {
+          reject(new Error('auth-missing'));
+          return;
+        }
+        const payload = jwt.verify(msg.token, opts.secret, { algorithms: ['HS256'] });
+        resolve(payload);
+      } catch (err) {
+        reject(new Error(`auth-invalid:${err && err.message ? err.message : 'unknown'}`));
+      }
+    };
+
+    const onClose = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('closed-before-auth'));
+    };
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      timer = null;
+      ws.removeListener('message', onMessage);
+      ws.removeListener('close', onClose);
+    };
+
+    ws.once('message', onMessage);
+    ws.once('close', onClose);
+  });
+}
+
+/**
+ * Validate a decoded auth payload against the docName.
+ *
+ * - For role='backend', any file_id is acceptable (system trust).
+ * - For all other roles, the token's file_id must match the docName's id.
+ *
+ * Returns null on success or an error string on failure.
+ */
+export function validateAuthForDocName(payload, docName) {
+  if (!payload || typeof payload !== 'object') return 'auth-invalid';
+  const role = payload.role;
+  if (typeof role !== 'string') return 'auth-invalid-role';
+  if (role === 'backend') return null;
+
+  const fileId = parseFileIdFromDocName(docName);
+  if (fileId === null) return 'auth-bad-docname';
+  if (payload.file_id !== fileId) return 'auth-file-mismatch';
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Auto-bootstrap state
@@ -159,8 +245,44 @@ export async function ensureBackendForRoom(docName, opts) {
 export async function handleConnection(ws, req, opts) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const docName = url.pathname.slice(1);
-  const role = url.searchParams.get('role');
-  ws._role = role === 'backend' ? 'backend' : 'frontend';
+
+  // -------------------------------------------------------------------------
+  // Auth: first frame must be {type: 'auth', token: '<jwt>'}.
+  //
+  // The Y.js docName alone names no permission — anyone who can reach the
+  // socket could otherwise enumerate rooms and read/inject updates. Hold off
+  // on setupWSConnection (which joins the room and starts relaying) until the
+  // token verifies.
+  // -------------------------------------------------------------------------
+  let authPayload;
+  try {
+    authPayload = await awaitAuthFrame(ws, {
+      secret: opts.authSecret,
+      timeoutMs: opts.authTimeoutMs,
+    });
+  } catch (err) {
+    console.warn(`[Y.js Server] Auth failed for ${docName}: ${err.message}`);
+    try { ws.close(AUTH_CLOSE_CODE, 'auth-failed'); } catch (_e) { /* already closed */ }
+    return;
+  }
+
+  const validationErr = validateAuthForDocName(authPayload, docName);
+  if (validationErr) {
+    console.warn(`[Y.js Server] Auth rejected for ${docName}: ${validationErr}`);
+    try { ws.close(AUTH_CLOSE_CODE, 'auth-failed'); } catch (_e) { /* already closed */ }
+    return;
+  }
+
+  ws._role = authPayload.role === 'backend' ? 'backend' : 'frontend';
+  ws._authRole = authPayload.role;
+  ws._authUserId = authPayload.sub;
+
+  try {
+    ws.send(JSON.stringify({ type: 'auth_ok' }));
+  } catch (err) {
+    console.warn(`[Y.js Server] Failed to send auth_ok for ${docName}: ${err.message}`);
+    return;
+  }
 
   let needsBootstrap = false;
   if (ws._role !== 'backend') {
@@ -291,6 +413,7 @@ if (!isTestEnv) {
       fetch: (url, init) => fetch(url, init),
       backendUrl: BACKEND_INTERNAL_URL,
       secret: SECRET,
+      authSecret: SECRET,
       docs,
       totalClientCount: () => wss.clients.size,
     }).catch((err) => {

@@ -49,15 +49,20 @@ async def test_collab_start_404_for_unknown_file(authenticated_client: AsyncClie
 
 
 @pytest.mark.asyncio
-async def test_collab_start_forbidden_for_non_editor(
+async def test_collab_start_allows_commenter(
     client: AsyncClient,
     authenticated_user: dict,
     db_session: AsyncSession,
 ):
-    """A user without EDIT permission cannot start a collaboration session."""
+    """A user with VIEW permission (e.g. a commenter) may start a collaboration session.
+
+    The /collab/start gate widened from EDIT to VIEW once the multi-player
+    server gained per-token role checks: read-only roles still need to
+    establish the live read-only WebSocket connection, so they need a token.
+    The returned token's ``role`` claim carries the actual permission.
+    """
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    # Register a second user and give them only VIEW permission
     reg = await client.post(
         "/register",
         json={"email": "viewer@example.com", "name": "Viewer", "initials": "VW", "password": "pw123456"},
@@ -74,9 +79,38 @@ async def test_collab_start_forbidden_for_non_editor(
         db=db_session,
     )
 
+    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+        mock_get.return_value.start_client = AsyncMock(return_value=True)
+        response = await client.post(
+            _collab_url(file_id, "start"),
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body.get("token"), "collab/start must return a WS auth token"
+
+
+@pytest.mark.asyncio
+async def test_collab_start_forbidden_for_user_without_any_role(
+    client: AsyncClient,
+    authenticated_user: dict,
+    db_session: AsyncSession,
+):
+    """A user with no role on the file cannot start a session."""
+    file_id = await _create_file(db_session, authenticated_user["user_id"])
+
+    reg = await client.post(
+        "/register",
+        json={"email": "stranger@example.com", "name": "Stranger", "initials": "ST", "password": "pw123456"},
+    )
+    assert reg.status_code == 200
+    stranger_token = reg.json()["access_token"]
+
     response = await client.post(
         _collab_url(file_id, "start"),
-        headers={"Authorization": f"Bearer {viewer_token}"},
+        headers={"Authorization": f"Bearer {stranger_token}"},
     )
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -124,6 +158,30 @@ async def test_collab_start_calls_manager(
 
     assert response.status_code == status.HTTP_200_OK
     mock_manager.start_client.assert_called_once_with(file_id)
+
+
+@pytest.mark.asyncio
+async def test_collab_start_returns_valid_token(
+    authenticated_client: AsyncClient,
+    authenticated_user: dict,
+    db_session: AsyncSession,
+):
+    """The token returned by /collab/start must verify and carry the right claims."""
+    from aris.collaboration.auth import decode_collab_token
+
+    file_id = await _create_file(db_session, authenticated_user["user_id"])
+
+    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+        mock_get.return_value.start_client = AsyncMock(return_value=True)
+        response = await authenticated_client.post(_collab_url(file_id, "start"))
+
+    assert response.status_code == status.HTTP_200_OK
+    token = response.json()["token"]
+    payload = decode_collab_token(token)
+    assert payload is not None
+    assert payload["file_id"] == file_id
+    assert payload["role"] == "OWNER"  # creator is owner
+    assert payload["sub"] == str(authenticated_user["user_id"])
 
 
 @pytest.mark.asyncio
