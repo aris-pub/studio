@@ -115,4 +115,20 @@ describe("AuthedWebSocket — addEventListener compatibility (regression for std
     expect(lastInner.sent).toEqual([]);
     expect(ws.readyState).toBe(3);
   });
+
+  it("exposes CONNECTING/OPEN/CLOSING/CLOSED constants on both the class and instances", () => {
+    // y-websocket's broadcastMessage does `ws.readyState === ws.OPEN` on the
+    // instance. Standard WebSocket inherits these via the prototype; if we
+    // expose them only as statics, every Y.Doc update is silently dropped.
+    expect(AuthedWebSocket.CONNECTING).toBe(0);
+    expect(AuthedWebSocket.OPEN).toBe(1);
+    expect(AuthedWebSocket.CLOSING).toBe(2);
+    expect(AuthedWebSocket.CLOSED).toBe(3);
+
+    const ws = new AuthedWebSocket("ws://localhost:1234/file-1-test");
+    expect(ws.CONNECTING).toBe(0);
+    expect(ws.OPEN).toBe(1);
+    expect(ws.CLOSING).toBe(2);
+    expect(ws.CLOSED).toBe(3);
+  });
 });

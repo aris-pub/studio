@@ -212,7 +212,17 @@ export class AuthedWebSocket extends EventTarget {
   }
 }
 
+// Match the browser's WebSocket contract: these constants are accessible both
+// statically (Foo.OPEN) and via instance (someFoo.OPEN). y-websocket's
+// broadcastMessage compares ws.readyState === ws.OPEN on the instance, so the
+// prototype assignments are load-bearing — without them ws.OPEN is undefined
+// and every Y.Doc update is silently dropped.
 AuthedWebSocket.CONNECTING = READY_STATES.CONNECTING;
 AuthedWebSocket.OPEN = READY_STATES.OPEN;
 AuthedWebSocket.CLOSING = READY_STATES.CLOSING;
 AuthedWebSocket.CLOSED = READY_STATES.CLOSED;
+
+AuthedWebSocket.prototype.CONNECTING = READY_STATES.CONNECTING;
+AuthedWebSocket.prototype.OPEN = READY_STATES.OPEN;
+AuthedWebSocket.prototype.CLOSING = READY_STATES.CLOSING;
+AuthedWebSocket.prototype.CLOSED = READY_STATES.CLOSED;
