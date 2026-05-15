@@ -33,7 +33,6 @@ public_router = APIRouter(prefix="/files", tags=["files"])
 class FileCreate(BaseModel):
     title: str = ""
     abstract: str = ""
-    owner_id: int
     source: str
 
     @field_validator('source')
@@ -134,6 +133,7 @@ async def get_files(
 @router.post("")
 async def create_file(
     doc: FileCreate,
+    user: UserRead = Depends(current_user),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
@@ -142,7 +142,9 @@ async def create_file(
     Parameters
     ----------
     doc : FileCreate
-        File creation data including source, owner_id, title, and abstract.
+        File creation data including source, title, and abstract.
+    user : UserRead
+        Current authenticated user; owns the new file.
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -161,7 +163,8 @@ async def create_file(
     Notes
     -----
     Requires authentication. Validates RSM source format before creation.
-    Sets file status to DRAFT by default.
+    Owner is always the authenticated caller; any ``owner_id`` in the
+    request body is ignored. Sets file status to DRAFT by default.
     """
     # Validation happens automatically via Pydantic field_validator
 
@@ -170,17 +173,17 @@ async def create_file(
         title=doc.title,
         abstract=doc.abstract,
         source=doc.source,
-        owner_id=doc.owner_id
+        owner_id=user.id,
     )
-    
+
     result = await file_service.create_file(create_data, db=db)
 
     # Create OWNER permission for the file creator
     await create_permission(
         file_id=result.id,
-        user_id=doc.owner_id,
+        user_id=user.id,
         role=FileRole.OWNER,
-        granted_by=doc.owner_id,
+        granted_by=user.id,
         db=db,
     )
 

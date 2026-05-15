@@ -445,11 +445,70 @@ async def test_create_file_missing_required_fields(client: AsyncClient, authenti
         headers=headers,
         json={
             "title": "Test Document"
-            # Missing required fields: owner_id, source
+            # Missing required field: source
         },
     )
 
     assert response.status_code == 422  # Validation error
+
+
+async def test_create_file_owner_id_in_body_is_ignored(
+    client: AsyncClient, authenticated_user, second_authenticated_user
+):
+    """User A cannot create a file owned by user B by passing owner_id in the body.
+
+    Regression test for std-g2he0u: owner_id used to be a required field on
+    FileCreate and was trusted blindly, letting any authenticated user create
+    files attributed to anyone else.
+    """
+    headers_a = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    user_a_id = authenticated_user["user_id"]
+    user_b_id = second_authenticated_user["user_id"]
+    assert user_a_id != user_b_id
+
+    response = await client.post(
+        "/files",
+        headers=headers_a,
+        json={
+            "title": "Spoofed Owner",
+            "abstract": "A attempts to create a file owned by B",
+            "owner_id": user_b_id,
+            "source": "test content",
+        },
+    )
+    assert response.status_code == 200, response.text
+    file_id = response.json()["id"]
+
+    # The file's owner_id is user A (the caller), not user B from the body.
+    get_response = await client.get(f"/files/{file_id}", headers=headers_a)
+    assert get_response.status_code == 200
+    assert get_response.json()["owner_id"] == user_a_id
+
+    # User B, who was named in the spoofed body, has no access to the file.
+    headers_b = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+    b_get_response = await client.get(f"/files/{file_id}", headers=headers_b)
+    assert b_get_response.status_code == 403
+
+
+async def test_create_file_works_without_owner_id(client: AsyncClient, authenticated_user):
+    """Omitting owner_id from the body still creates a file owned by the caller."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "No Owner In Body",
+            "abstract": "Owner derived from auth",
+            "source": "test content",
+        },
+    )
+    assert response.status_code == 200, response.text
+    file_id = response.json()["id"]
+
+    get_response = await client.get(f"/files/{file_id}", headers=headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["owner_id"] == authenticated_user["user_id"]
 
 
 # Download endpoint tests
