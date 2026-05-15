@@ -19,39 +19,36 @@ describe("ManuscriptWrapper.vue", () => {
     onloadStub.mockReset();
   });
 
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The `[data-test="manuscript"]` element no longer mounts via the stub. Likely the
-  // ManuscriptWrapper internals changed (recall it now uses parseHtmlToVNodes via h() instead
-  // of a child <Manuscript> component). Re-enable after triage — the test design likely
-  // needs to be rewritten against the new VNode-based architecture.
-  it.skip("renders Manuscript component with given htmlString and settings", async () => {
+  it("applies settings as inline styles on the mount point", async () => {
+    // The redesign renders htmlString directly into mount-point-ref via DOM
+    // manipulation (onload/onrender hooks), replacing the previous child
+    // <Manuscript> component. Verify the settings reach the mount point as
+    // inline styles, which is the contract this wrapper is responsible for.
     const html = "<div>content</div>";
     const settings = {
-      background: "bg",
-      fontSize: "fs",
-      lineHeight: "lh",
-      fontFamily: "ff",
-      marginWidth: "mw",
+      background: "rgb(255, 0, 0)",
+      fontSize: "18px",
+      lineHeight: "1.6",
+      fontFamily: "Inter",
+      marginWidth: "2rem",
     };
     const api = { defaults: { baseURL: "" } };
-    const stubManuscript = defineComponent({
-      props: { htmlString: { type: String }, settings: { type: Object } },
-      template: '<div data-test="manuscript">{{ htmlString }}</div>',
-    });
     const wrapper = mount(ManuscriptWrapper, {
       props: { htmlString: html, keys: true, settings },
       global: {
         provide: { api },
-        stubs: { Manuscript: stubManuscript, Teleport: true, AnnotationMenu: true },
+        stubs: { Teleport: true, AnnotationMenu: true },
       },
     });
     await flushPromises();
     await nextTick();
-    const ms = wrapper.find('[data-test="manuscript"]');
-    expect(ms.exists()).toBe(true);
-    expect(ms.text()).toBe(html);
-    expect(wrapper.findComponent(stubManuscript).props("htmlString")).toBe(html);
-    expect(wrapper.findComponent(stubManuscript).props("settings")).toStrictEqual(settings);
+    const mountPoint = wrapper.find(".manuscriptwrapper");
+    expect(mountPoint.exists()).toBe(true);
+    const style = mountPoint.attributes("style") || "";
+    expect(style).toContain("background-color: rgb(255, 0, 0)");
+    expect(style).toContain("font-size: 18px");
+    expect(style).toContain("line-height: 1.6");
+    expect(style).toContain("font-family: Inter");
   });
 
   // Removed: "calls onload with element and keys option" test

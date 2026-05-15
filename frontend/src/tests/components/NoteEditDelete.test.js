@@ -12,14 +12,11 @@ import { resolve } from "path";
 
 const noteSource = readFileSync(
   resolve(__dirname, "../../components/annotations/Note.vue"),
-  "utf-8",
+  "utf-8"
 );
-const noteScript =
-  noteSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
-const noteTemplate =
-  noteSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
-const noteStyle =
-  noteSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+const noteScript = noteSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+const noteTemplate = noteSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+const noteStyle = noteSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
 
 describe("Note.vue — per-message edit/delete", () => {
   describe("state management", () => {
@@ -66,7 +63,7 @@ describe("Note.vue — per-message edit/delete", () => {
     it("does NOT show delete button in shared thread messages", () => {
       // Extract the shared thread section: from class="thread" to the reply-area
       const sharedThreadSection = noteTemplate.match(
-        /class="thread"[\s\S]*?class="reply-area"/,
+        /class="thread"[\s\S]*?class="reply-area"/
       )?.[0];
       expect(sharedThreadSection).toBeDefined();
       // Should have inline edit button for messages
@@ -85,9 +82,7 @@ describe("Note.vue — per-message edit/delete", () => {
   describe("private note template", () => {
     it("shows edited indicator for private notes in the header", () => {
       // The edited tag for private notes is in the header, next to the timestamp
-      const headerSection = noteTemplate.match(
-        /class="header"[\s\S]*?class="actions"/,
-      )?.[0];
+      const headerSection = noteTemplate.match(/class="header"[\s\S]*?class="actions"/)?.[0];
       expect(headerSection).toBeDefined();
       expect(headerSection).toMatch(/isMessageEdited\(note\)/);
       expect(headerSection).toMatch(/editedTimeAgo\(note\)/);
@@ -110,10 +105,9 @@ describe("Note.vue — per-message edit/delete", () => {
       expect(noteScript).toMatch(/editMessageText\.value = msg\.content/);
     });
 
-    // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-    // Note.vue no longer contains `function onSaveMessageEdit(msg)`. Re-enable after triage.
-    it.skip("onSaveMessageEdit calls annotationActions.updateNote", () => {
-      expect(noteScript).toMatch(/function onSaveMessageEdit\(msg\)/);
+    it("onSaveMessageEdit calls annotationActions.updateNote", () => {
+      // Signature now takes (msg, submittedValue) to support submit-on-enter
+      expect(noteScript).toMatch(/function onSaveMessageEdit\(msg(?:,\s*\w+)?\)/);
       expect(noteScript).toMatch(/annotationActions\.updateNote\(msg\.id/);
     });
 

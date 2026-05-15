@@ -6,6 +6,7 @@
       :placeholder="placeholder"
       :disabled="disabled"
       :rows="rows"
+      :aria-label="ariaLabel || undefined"
       class="textarea"
       @keydown="handleKeydown"
       @input="handleInput"
@@ -49,6 +50,10 @@
       placeholder: {
         type: String,
         default: "Type something...",
+      },
+      ariaLabel: {
+        type: String,
+        default: "",
       },
       disabled: {
         type: Boolean,

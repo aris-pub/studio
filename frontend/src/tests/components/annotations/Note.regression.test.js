@@ -300,31 +300,28 @@ describe("Note.vue — ESC deselects active card (std-e0vc)", () => {
     expect(activeAnnotationId.value).toBe(999);
   });
 
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The original std-e0vc work was closed; behavior has drifted. Re-enable after triage.
-  it.skip("ESC on textarea cancels edit without deselecting (stopPropagation)", async () => {
+  it("ESC on textarea cancels edit without deselecting (stopPropagation)", async () => {
     const { wrapper, activeAnnotationId } = createWrapper(makeAnnotationWithNote({ id: 3 }), {
       activeId: 3,
     });
-    // Enter edit mode
+    // Enter edit mode — existing private notes use the per-message edit path
+    // (.thread-message-edit-area), not the legacy .edit-area.
     const editBtn = findButtonByIcon(wrapper, "Edit");
     await editBtn.trigger("click");
     await nextTick();
-    expect(wrapper.find(".edit-area").exists()).toBe(true);
+    expect(wrapper.find(".thread-message-edit-area").exists()).toBe(true);
 
-    // ESC on textarea
-    await wrapper.find(".edit-input").trigger("keydown", { key: "Escape" });
+    // ESC on the textarea inside the edit area
+    await wrapper.find(".thread-message-edit-area textarea").trigger("keydown", { key: "Escape" });
     await nextTick();
 
-    expect(wrapper.find(".edit-area").exists()).toBe(false);
+    expect(wrapper.find(".thread-message-edit-area").exists()).toBe(false);
     expect(activeAnnotationId.value).toBe(3);
   });
 });
 
 describe("Note.vue — edit mode suppresses active border (std-5l1z)", () => {
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The original std-5l1z work was closed; behavior has drifted. Re-enable after triage.
-  it.skip("active class is removed during editing", async () => {
+  it("active class is removed during editing", async () => {
     const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 3 }), { activeId: 3 });
     expect(wrapper.find(".note").classes()).toContain("active");
 
@@ -336,8 +333,7 @@ describe("Note.vue — edit mode suppresses active border (std-5l1z)", () => {
     expect(wrapper.find(".note").classes()).toContain("editing");
   });
 
-  // TODO(std-dm4v): same regression as the test above (std-5l1z).
-  it.skip("active class returns after saving edit", async () => {
+  it("active class returns after saving edit", async () => {
     const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 3 }), { activeId: 3 });
     await findButtonByIcon(wrapper, "Edit").trigger("click");
     await nextTick();
