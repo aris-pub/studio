@@ -32,10 +32,12 @@ describe("Editor Integration Tests", () => {
   let useKeyboardShortcutsSpy;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mockApi = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
+      get: vi.fn().mockResolvedValue({ data: {} }),
+      post: vi.fn().mockResolvedValue({ data: "" }),
+      put: vi.fn().mockResolvedValue({ data: {} }),
     };
 
     mockFile = ref({
@@ -45,12 +47,10 @@ describe("Editor Integration Tests", () => {
     });
 
     useKeyboardShortcutsSpy = vi.spyOn(KSMod, "useKeyboardShortcuts");
-
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    useKeyboardShortcutsSpy?.mockRestore();
   });
 
   const defaultStubs = {

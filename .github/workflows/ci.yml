@@ -98,6 +98,12 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+        echo "Cloned RSM repository to ../rsm"
+
     - name: Install pnpm
       uses: pnpm/action-setup@v6
 

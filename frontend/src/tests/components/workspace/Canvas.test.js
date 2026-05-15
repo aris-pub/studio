@@ -95,6 +95,14 @@ vi.mock("@/composables/useClosable.js", () => ({
   })),
 }));
 
+vi.mock("vue-router", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useRoute: () => ({ hash: "", path: "/" }),
+  };
+});
+
 describe("Canvas Layout", () => {
   let wrapper;
   const mockFile = {
