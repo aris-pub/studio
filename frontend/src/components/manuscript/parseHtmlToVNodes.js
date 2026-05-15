@@ -17,7 +17,7 @@ import MathElement from "./MathElement.vue";
  */
 export function parseHtmlToVNodes(htmlString) {
   const tree = buildTree(htmlString);
-  return tree.children.map(toVNode).filter((v) => v != null && v !== "");
+  return tree.children.map(toVNode).filter((v) => v !== null && v !== undefined && v !== "");
 }
 
 // --- Phase 1: Build a lightweight JS object tree via SAX ---
@@ -40,8 +40,7 @@ function buildTree(htmlString) {
         }
 
         const classes = attrs.class ? attrs.class.split(/\s+/).filter(Boolean) : [];
-        const isMathblock =
-          name === "div" && classes.includes("mathblock");
+        const isMathblock = name === "div" && classes.includes("mathblock");
 
         const parent = stack[stack.length - 1];
         const node = {
@@ -70,7 +69,7 @@ function buildTree(htmlString) {
         stack.pop();
       },
     },
-    { decodeEntities: true, lowerCaseTags: true, lowerCaseAttributeNames: false },
+    { decodeEntities: true, lowerCaseTags: true, lowerCaseAttributeNames: false }
   );
 
   parser.write(htmlString);
@@ -96,19 +95,12 @@ function toVNode(node) {
   // Inline math → MathElement component
   if (tag === "span" && classes.includes("math")) {
     const text = extractText(children);
-    const latex =
-      text.startsWith("\\(") && text.endsWith("\\)")
-        ? text.slice(2, -2)
-        : text;
+    const latex = text.startsWith("\\(") && text.endsWith("\\)") ? text.slice(2, -2) : text;
     return h(MathElement, { ...data, latex, display: false });
   }
 
   // Display math: .hr-content-zone inside a .mathblock parent
-  if (
-    tag === "div" &&
-    classes.includes("hr-content-zone") &&
-    node.parentIsMathblock
-  ) {
+  if (tag === "div" && classes.includes("hr-content-zone") && node.parentIsMathblock) {
     const text = extractText(children).trim();
     if (text.startsWith("$$") && text.endsWith("$$")) {
       const latex = text.slice(2, -2).trim();
@@ -116,14 +108,23 @@ function toVNode(node) {
     }
   }
 
-  const vnodeChildren = children.map(toVNode).filter((v) => v != null && v !== "");
+  const vnodeChildren = children
+    .map(toVNode)
+    .filter((v) => v !== null && v !== undefined && v !== "");
 
   return h(tag, data, vnodeChildren.length ? vnodeChildren : undefined);
 }
 
 // --- Attribute processing (ported from Manuscript.vue) ---
 
-const KNOWN_ATTRS = new Set(["id", "href", "data-nodeid", "tabindex", "data-source-start", "data-source-end"]);
+const KNOWN_ATTRS = new Set([
+  "id",
+  "href",
+  "data-nodeid",
+  "tabindex",
+  "data-source-start",
+  "data-source-end",
+]);
 
 function processAttrs(rawAttrs) {
   const data = {};
@@ -165,7 +166,5 @@ function parseStyle(styleStr) {
 }
 
 function extractText(children) {
-  return children
-    .map((c) => (typeof c === "string" ? c : extractText(c.children || [])))
-    .join("");
+  return children.map((c) => (typeof c === "string" ? c : extractText(c.children || []))).join("");
 }
