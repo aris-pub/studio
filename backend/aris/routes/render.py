@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user
@@ -62,14 +61,8 @@ async def render(data: RenderObject):
 async def render_private(data: FileRenderObject, db: AsyncSession = Depends(get_db), user=Depends(current_user)):
     """Private endpoint for rendering RSM with database assets.
 
-    Renders RSM source for a specific file with access to uploaded assets,
-    and persists the source to the database so page-load renders stay current.
+    Renders the request body's RSM source for a specific file with access to
+    uploaded assets. This endpoint is render-only: it does NOT write source to
+    the database. The Y.js collaboration loop is the sole writer of files.source.
     """
-    # Persist source so the next page-load render uses the same content
-    await db.execute(
-        sql_text("UPDATE files SET source = :source WHERE id = :file_id"),
-        {"source": data.source, "file_id": data.file_id},
-    )
-    await db.commit()
-
     return await crud.render_with_assets(data.source, data.file_id, db, user.id)
