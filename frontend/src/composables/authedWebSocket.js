@@ -24,8 +24,40 @@ const READY_STATES = {
 
 const AUTH_FAILED_CODE = 4401;
 
-export class AuthedWebSocket {
+// An Event instance can only be dispatched once. The browser's WebSocket has
+// already fired the original event when it called our inner.on{message,close}
+// handler, so we forge a fresh one when forwarding to addEventListener
+// listeners. Errors fall back to a plain Event (CloseEvent/MessageEvent may be
+// unavailable in some non-browser environments).
+function _cloneMessageEvent(event) {
+  try {
+    return new MessageEvent("message", { data: event.data, origin: event.origin });
+  } catch (_e) {
+    const e = new Event("message");
+    e.data = event.data;
+    return e;
+  }
+}
+
+function _cloneCloseEvent(event) {
+  try {
+    return new CloseEvent("close", {
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean,
+    });
+  } catch (_e) {
+    const e = new Event("close");
+    e.code = event.code;
+    e.reason = event.reason;
+    e.wasClean = event.wasClean;
+    return e;
+  }
+}
+
+export class AuthedWebSocket extends EventTarget {
   constructor(url, protocols) {
+    super();
     this._inner = new WebSocket(url, protocols);
     this._inner.binaryType = "arraybuffer";
     this._authed = false;
@@ -73,13 +105,15 @@ export class AuthedWebSocket {
               /* surfaces via onclose */
             }
           }
+          const openEvent = new Event("open");
           if (this._userOnOpen) {
             try {
-              this._userOnOpen(new Event("open"));
+              this._userOnOpen(openEvent);
             } catch (_e) {
               /* user error */
             }
           }
+          this.dispatchEvent(openEvent);
           return;
         }
         // Any other text frame before auth means the server failed us; let it
@@ -87,14 +121,17 @@ export class AuthedWebSocket {
         return;
       }
       if (this._userOnMessage) this._userOnMessage(event);
+      this.dispatchEvent(_cloneMessageEvent(event));
     };
 
     this._inner.onerror = (event) => {
       if (this._userOnError) this._userOnError(event);
+      this.dispatchEvent(new Event("error"));
     };
 
     this._inner.onclose = (event) => {
       if (this._userOnClose) this._userOnClose(event);
+      this.dispatchEvent(_cloneCloseEvent(event));
     };
   }
 
