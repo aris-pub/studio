@@ -270,14 +270,14 @@ describe("BaseLayout", () => {
   });
 
   describe("Sidebar Actions", () => {
-    // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-    // BaseLayout's newEmptyFile handler signature drifted from what the test asserts.
-    it.skip("handles newEmptyFile action", async () => {
+    it("handles newEmptyFile action", async () => {
       const baseSidebar = wrapper.findComponent({ name: "BaseSidebar" });
       await baseSidebar.vm.$emit("newEmptyFile");
 
+      // Title defaults to "" (set later from the source heading); ownerId comes
+      // from the injected user.
       expect(mockProvideValues.fileStore.value.createFile).toHaveBeenCalledWith({
-        title: "New File",
+        title: "",
         ownerId: "user-123",
         source: expect.stringContaining("# New File"),
       });

@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest";
 import * as Y from "yjs";
-import {
-  extractSourceAnchor,
-  resolveSourceAnchor,
-} from "@/utils/sourceAnchor.js";
+import { extractSourceAnchor, resolveSourceAnchor } from "@/utils/sourceAnchor.js";
 
 beforeAll(() => {
   if (!globalThis.CSS) globalThis.CSS = {};
@@ -214,8 +211,7 @@ describe("resolveSourceAnchor", () => {
   });
 
   it("falls back to legacy resolution for old-format anchors", () => {
-    manuscriptEl.innerHTML =
-      '<p data-nodeid="n1">Hello world</p>';
+    manuscriptEl.innerHTML = '<p data-nodeid="n1">Hello world</p>';
 
     const anchor = {
       node_id: "n1",
@@ -253,7 +249,7 @@ describe("extractSourceAnchor — math selections", () => {
     manuscriptEl.innerHTML =
       '<p data-nodeid="1" data-source-start="0" data-source-end="19">' +
       'Text <span class="math" data-source-start="5" data-source-end="16">' +
-      '<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>' +
+      "<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>" +
       "</span> end</p>";
 
     // User selects "≥" inside the MathML
@@ -276,7 +272,7 @@ describe("extractSourceAnchor — math selections", () => {
     manuscriptEl.innerHTML =
       '<p data-nodeid="1" data-source-start="0" data-source-end="19">' +
       'Text <span class="math" data-source-start="5" data-source-end="16">' +
-      '<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>' +
+      "<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>" +
       "</span> end</p>";
 
     // Create anchor pointing to the math source range
@@ -301,7 +297,7 @@ describe("extractSourceAnchor — math selections", () => {
     manuscriptEl.innerHTML =
       '<p data-nodeid="1" data-source-start="0" data-source-end="19">' +
       'Text <span class="math" data-source-start="5" data-source-end="16">' +
-      '<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>' +
+      "<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>" +
       "</span> end</p>";
 
     const mo = manuscriptEl.querySelector("mo");
@@ -317,7 +313,7 @@ describe("extractSourceAnchor — math selections", () => {
     manuscriptEl.innerHTML =
       '<p data-nodeid="1" data-source-start="0" data-source-end="23">' +
       'NEW Text <span class="math" data-source-start="9" data-source-end="20">' +
-      '<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>' +
+      "<math><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></math>" +
       "</span> end</p>";
 
     const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
@@ -393,9 +389,10 @@ describe("extractSourceAnchor — text next to inline markup", () => {
     expect(sliced).toBe("The value");
   });
 
-  // TODO(std-s41a): multi-line paragraph anchoring requires text-run spans landing
-  // on rendered output. Expected-to-fail until that ships. Skipped to unblock CI;
-  // re-enable once std-s41a lands.
+  // Expected-to-fail: multi-line paragraph anchoring needs per-run source
+  // offsets on the rendered DOM (so collapsed whitespace can still map back to
+  // the original source). The test author flagged it as known-fail in the
+  // inline comment below referencing rendered-offset mismatch.
   it.skip("correctly anchors text in a multi-line paragraph", () => {
     // Source has newline+indent that rendered text collapses
     const source = "First line\n  second line end";

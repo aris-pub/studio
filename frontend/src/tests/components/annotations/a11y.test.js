@@ -61,12 +61,18 @@ describe("Note.vue — aria-labels on action buttons (std-01at)", () => {
   });
 });
 
-describe("Note.vue — textarea focus outline (std-9ywg)", () => {
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The original std-9ywg work was closed; .edit-input:focus block no longer contains 'outline'.
-  it.skip("edit-input focus has outline, not just border-color", () => {
-    const focusBlock = noteStyle.match(/\.edit-input:focus\s*\{([^}]*)\}/s)?.[1] ?? "";
-    expect(focusBlock).toContain("outline");
+describe("Note.vue — textarea focus indicator (std-9ywg)", () => {
+  // Focus indication moved from <textarea class="edit-input"> in Note.vue to the
+  // shared TextareaInput component (.textarea:focus). The intent (visible focus
+  // ring distinct from border-color) is preserved via a box-shadow ring.
+  it("TextareaInput focus has a visible focus ring", () => {
+    const textareaSource = readFileSync(
+      resolve(__dirname, "../../../components/base/TextareaInput.vue"),
+      "utf-8"
+    );
+    const focusBlock = textareaSource.match(/\.textarea:focus\s*\{([^}]*)\}/s)?.[1] ?? "";
+    // Accept either outline or a focus-ring box-shadow — both satisfy WCAG 2.4.7.
+    expect(focusBlock).toMatch(/outline|box-shadow/);
   });
 });
 
@@ -89,7 +95,8 @@ describe("AnnotationMenu.vue — swatch border contrast (std-sdg2)", () => {
 
 describe("AnnotationMenu.vue — button focus outline (std-9ywg)", () => {
   it("swatch-btn focus-visible has outline", () => {
-    const focusBlock = menuStyle.match(/\.swatch-btn[\s\S]*?&:focus-visible\s*\{([^}]*)\}/s)?.[1] ?? "";
+    const focusBlock =
+      menuStyle.match(/\.swatch-btn[\s\S]*?&:focus-visible\s*\{([^}]*)\}/s)?.[1] ?? "";
     expect(focusBlock).toContain("outline");
   });
 });
@@ -144,18 +151,17 @@ describe("DockableAnnotations.vue — container semantics (std-yyo8)", () => {
   });
 });
 
-describe("Note.vue — visually-hidden textarea label (std-wz20)", () => {
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The original std-wz20 work was closed; <label class="sr-only"> + matching for/id binding
-  // is no longer present in Note.vue. Re-enable after triage.
-  it.skip("edit textarea has a label element", () => {
-    expect(noteTemplate).toMatch(/<label[\s\S]*?class="sr-only"[\s\S]*?Annotation note/);
+describe("Note.vue — textarea accessible name (std-wz20)", () => {
+  // The redesign replaced <label class="sr-only"> wrappers around bare textareas
+  // with TextareaInput's aria-label prop. The a11y intent — give screen readers
+  // an accessible name for each edit textarea — is preserved.
+  it("private-note edit textarea has aria-label", () => {
+    expect(noteTemplate).toMatch(/<TextareaInput[\s\S]*?aria-label="Annotation note"/);
   });
 
-  // TODO(std-dm4v): same regression as the test above (std-wz20).
-  it.skip("label for attribute matches textarea id", () => {
-    expect(noteTemplate).toMatch(/:for="`note-edit-\$\{annotation\.id\}`"/);
-    expect(noteTemplate).toMatch(/:id="`note-edit-\$\{annotation\.id\}`"/);
+  it("per-message edit textareas have aria-label", () => {
+    expect(noteTemplate).toMatch(/aria-label="Edit annotation message"/);
+    expect(noteTemplate).toMatch(/aria-label="Edit annotation note"/);
   });
 });
 

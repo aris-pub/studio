@@ -10,14 +10,11 @@ import { resolve } from "path";
 
 const menuSource = readFileSync(
   resolve(__dirname, "../../components/annotations/AnnotationMenu.vue"),
-  "utf-8",
+  "utf-8"
 );
-const menuScript =
-  menuSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
-const menuTemplate =
-  menuSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
-const menuStyle =
-  menuSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
+const menuScript = menuSource.match(/<script[^>]*>([\s\S]*)<\/script>/)?.[1] ?? "";
+const menuTemplate = menuSource.match(/<template>([\s\S]*)<\/template>/)?.[1] ?? "";
+const menuStyle = menuSource.match(/<style[^>]*>([\s\S]*)<\/style>/)?.[1] ?? "";
 
 describe("AnnotationMenu redesign — swatches as color selectors", () => {
   it("has a selectedColor ref defaulting to purple", () => {
@@ -39,9 +36,7 @@ describe("AnnotationMenu redesign — swatches as color selectors", () => {
   });
 
   it("clearSelection resets selectedColor to purple", () => {
-    expect(menuScript).toMatch(
-      /clearSelection[\s\S]*selectedColor\.value\s*=\s*["']purple["']/,
-    );
+    expect(menuScript).toMatch(/clearSelection[\s\S]*selectedColor\.value\s*=\s*["']purple["']/);
   });
 });
 
@@ -63,15 +58,11 @@ describe("AnnotationMenu redesign — three labeled action buttons", () => {
   });
 
   it("Note button creates private annotation", () => {
-    expect(menuTemplate).toMatch(
-      /onCreateAnnotation\(["']private["']\)/,
-    );
+    expect(menuTemplate).toMatch(/onCreateAnnotation\(["']private["']\)/);
   });
 
   it("Comment button creates shared annotation", () => {
-    expect(menuTemplate).toMatch(
-      /onCreateAnnotation\(["']shared["']\)/,
-    );
+    expect(menuTemplate).toMatch(/onCreateAnnotation\(["']shared["']\)/);
   });
 });
 
@@ -81,9 +72,7 @@ describe("AnnotationMenu redesign — actions use selectedColor", () => {
   });
 
   it("onHighlight uses selectedColor.value for color", () => {
-    expect(menuScript).toMatch(
-      /onHighlight[\s\S]*color:\s*selectedColor\.value/,
-    );
+    expect(menuScript).toMatch(/onHighlight[\s\S]*color:\s*selectedColor\.value/);
   });
 });
 
@@ -94,18 +83,12 @@ describe("AnnotationMenu redesign — keyboard navigation", () => {
   });
 
   it("swatches use roving tabindex pattern", () => {
-    expect(menuTemplate).toMatch(
-      /tabindex.*selectedColor\s*===\s*name\s*\?\s*0\s*:\s*-1/,
-    );
+    expect(menuTemplate).toMatch(/tabindex.*selectedColor\s*===\s*name\s*\?\s*0\s*:\s*-1/);
   });
 });
 
 describe("AnnotationMenu redesign — selected swatch visual", () => {
-  // TODO(std-dm4v): regressed silently while unit-frontend CI was no-op'ing (#399 unmasked).
-  // The AnnotationMenu component template no longer matches /boxShadow.*selectedColor/.
-  // Likely the styling moved to CSS variables or a computed style; update the test to
-  // match the actual implementation when triaging.
-  it.skip("selected swatch has a ring via box-shadow", () => {
-    expect(menuTemplate).toMatch(/boxShadow.*selectedColor/);
+  it("selected swatch has a ring via box-shadow", () => {
+    expect(menuTemplate).toMatch(/boxShadow[\s\S]*selectedColor/);
   });
 });

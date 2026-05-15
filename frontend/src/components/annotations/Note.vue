@@ -1,5 +1,14 @@
 <script setup>
-  import { ref, inject, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from "vue";
+  import {
+    ref,
+    inject,
+    computed,
+    watch,
+    nextTick,
+    onMounted,
+    onUnmounted,
+    useTemplateRef,
+  } from "vue";
   import { HIGHLIGHT_COLORS, SWATCH_COLORS } from "@/constants/annotationColors.js";
   import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
@@ -75,6 +84,12 @@
   const annotationOwner = computed(() => props.annotation.owner);
 
   const isActive = computed(() => activeAnnotationId.value === props.annotation.id);
+
+  // Unified edit indicator: true when either the legacy whole-card edit (private
+  // notes with no existing message) or per-message edit (existing private notes
+  // and thread messages) is active. Drives the "suppress active border while
+  // editing" UX and the ESC-cancels-edit-before-deselect behavior.
+  const isEditing = computed(() => editing.value || editingMessageId.value !== null);
 
   const note = computed(() => {
     const msgs = props.annotation.messages?.filter((m) => !m.deleted_at);
@@ -286,7 +301,10 @@
   }
 
   function onEsc(e) {
-    if (editing.value) {
+    if (editingMessageId.value !== null) {
+      onCancelMessageEdit();
+      e.stopPropagation();
+    } else if (editing.value) {
       onCancelEdit();
     } else if (isActive.value) {
       activeAnnotationId.value = null;
@@ -422,8 +440,8 @@
     ref="note-ref"
     class="note"
     :class="{
-      active: isActive && !editing,
-      editing,
+      active: isActive && !isEditing,
+      editing: isEditing,
       collapsed: collapsed && note,
       shared: isShared,
       orphaned: orphaned,
@@ -448,7 +466,8 @@
         v-if="!isShared && note && isMessageEdited(note)"
         class="edited-tag"
         :title="editedTimeAgo(note)"
-      >edited</span>
+        >edited</span
+      >
       <div class="actions">
         <Button
           v-if="isOwnAnnotation && !isShared"
@@ -539,6 +558,7 @@
           ref="editInput"
           :model-value="editText"
           placeholder="Add a note..."
+          aria-label="Annotation note"
           :rows="2"
           :compact="true"
           layout="inline"
@@ -566,11 +586,9 @@
               <Avatar v-if="msg.owner" :user="msg.owner" size="sm" :tooltip="true" />
               <span class="thread-author">{{ msg.owner?.name || "Unknown" }}</span>
               <span class="thread-time">{{ messageTimeAgo(msg) }}</span>
-              <span
-                v-if="isMessageEdited(msg)"
-                class="edited-tag"
-                :title="editedTimeAgo(msg)"
-              >edited</span>
+              <span v-if="isMessageEdited(msg)" class="edited-tag" :title="editedTimeAgo(msg)"
+                >edited</span
+              >
             </div>
             <template v-if="editingMessageId === msg.id">
               <div class="thread-message-edit-area" @click.stop>
@@ -582,13 +600,18 @@
                   layout="inline"
                   :show-buttons="false"
                   :submit-on-enter="true"
+                  aria-label="Edit annotation message"
                   @update:model-value="editMessageText = $event"
                   @submit="(val) => onSaveMessageEdit(msg, val)"
                   @keydown.esc.stop="onCancelMessageEdit"
                 />
                 <div class="edit-actions">
-                  <Button kind="tertiary" size="xs" @click.stop="onCancelMessageEdit">Cancel</Button>
-                  <Button kind="primary" size="xs" @click.stop="onSaveMessageEdit(msg)">Save</Button>
+                  <Button kind="tertiary" size="xs" @click.stop="onCancelMessageEdit"
+                    >Cancel</Button
+                  >
+                  <Button kind="primary" size="xs" @click.stop="onSaveMessageEdit(msg)"
+                    >Save</Button
+                  >
                 </div>
               </div>
             </template>
@@ -639,6 +662,7 @@
               layout="inline"
               :show-buttons="false"
               :submit-on-enter="true"
+              aria-label="Edit annotation note"
               @update:model-value="editMessageText = $event"
               @submit="(val) => onSaveMessageEdit(note, val)"
               @keydown.esc.stop="onCancelMessageEdit"
@@ -665,7 +689,9 @@
               size="xs"
               :icon="confirmingDeleteMessageId === note.id ? '' : 'Trash'"
               :text="confirmingDeleteMessageId === note.id ? 'Delete' : 'Delete'"
-              :aria-label="confirmingDeleteMessageId === note.id ? 'Confirm delete note' : 'Delete note'"
+              :aria-label="
+                confirmingDeleteMessageId === note.id ? 'Confirm delete note' : 'Delete note'
+              "
               @click.stop="onDeleteMessageClick(note)"
             />
           </div>
@@ -744,16 +770,22 @@
     border-radius: var(--radius-lg);
     padding: 12px 14px 14px;
     background-color: var(--surface-page);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.12),
+      0 2px 6px rgba(0, 0, 0, 0.06);
   }
 
   .note.shared.active:not(:focus-within) {
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 10px var(--note-color-100);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.06),
+      0 2px 10px var(--note-color-100);
   }
 
   .note.shared:hover:not(.active) {
     background-color: var(--surface-page);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 10px var(--note-color-100);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.06),
+      0 2px 10px var(--note-color-100);
   }
 
   .note.shared.search-match {
@@ -1033,7 +1065,9 @@
     cursor: pointer;
     border-radius: 4px;
     opacity: 0;
-    transition: opacity 0.15s ease, color 0.15s ease;
+    transition:
+      opacity 0.15s ease,
+      color 0.15s ease;
   }
 
   .thread-message:hover .inline-edit-btn,
@@ -1051,7 +1085,6 @@
     outline-offset: 1px;
   }
 
-
   .thread-message-edit-area {
     margin: 3px 0 0 22px;
     display: flex;
@@ -1063,7 +1096,6 @@
     margin-left: 0;
     margin-top: 6px;
   }
-
 
   /* ---------------------------------------------------------------
      REPLY AREA (shared threads)
@@ -1105,7 +1137,6 @@
     justify-content: flex-end;
     gap: 4px;
   }
-
 
   .color-picker {
     display: flex;
