@@ -20,22 +20,28 @@ vi.mock("vue-router", async (importOriginal) => {
 const toastInfoMock = vi.hoisted(() => vi.fn());
 vi.mock("@/utils/toast", () => ({ toast: { info: toastInfoMock } }));
 
+const createFileStoreMock = vi.hoisted(() => vi.fn(() => ({})));
+vi.mock("@/store/FileStore.js", () => ({ createFileStore: createFileStoreMock }));
+
 describe("RegisterView", () => {
   let wrapper;
   const user = ref(null);
+  const fileStore = ref(null);
   const api = { post: vi.fn(), defaults: { baseURL: "" } };
 
   beforeEach(() => {
     pushMock.mockClear();
     toastInfoMock.mockClear();
+    createFileStoreMock.mockClear();
     api.post.mockReset();
     user.value = null;
+    fileStore.value = null;
     localStorage.clear();
     wrapper = mount(RegisterView, {
       global: {
         components: { AuthLayout, InputText, PasswordInput, Button, Logo },
         stubs: { RouterLink: RouterLinkStub },
-        provide: { api, user },
+        provide: { api, user, fileStore },
       },
     });
   });
@@ -47,7 +53,7 @@ describe("RegisterView", () => {
       global: {
         components: { AuthLayout, InputText, PasswordInput, Button, Logo },
         stubs: { RouterLink: RouterLinkStub },
-        provide: { api, user },
+        provide: { api, user, fileStore },
       },
     });
     await nextTick();
@@ -62,7 +68,7 @@ describe("RegisterView", () => {
       global: {
         components: { AuthLayout, InputText, PasswordInput, Button, Logo },
         stubs: { RouterLink: RouterLinkStub },
-        provide: { api, user },
+        provide: { api, user, fileStore },
       },
     });
     await nextTick();
