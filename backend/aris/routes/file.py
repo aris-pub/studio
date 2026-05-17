@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db, get_file_service
-from ..authorization import require_edit, require_manage, require_view
+from ..authorization import (
+    list_user_accessible_files,
+    require_edit,
+    require_manage,
+    require_view,
+)
 from ..collaboration import get_collaboration_manager
 from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..crud.permissions import create_permission
@@ -78,13 +83,20 @@ class FileUpdate(BaseModel):
 
 @router.get("")
 async def get_files(
+    user: UserRead = Depends(current_user),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieve all files with extracted titles.
+    """Retrieve files the current user can access (owned or shared).
+
+    Returns the union of files where the user is the owner and files where an
+    undeleted FilePermission row grants the user any role. Each entry includes
+    a ``role`` field so the frontend can distinguish owned-vs-shared.
 
     Parameters
     ----------
+    user : UserRead
+        Current authenticated user.
     file_service : InMemoryFileService
         File service dependency.
     db : AsyncSession
@@ -92,22 +104,15 @@ async def get_files(
 
     Returns
     -------
-    list of FileData
-        List of all non-deleted files with title attributes populated.
-
-    Notes
-    -----
-    Requires authentication. Uses file service for in-memory access.
+    list of dict
+        Non-deleted files the user can access, ordered by last edited descending.
     """
-    # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
-    
-    # Get files from memory
-    files = await file_service.get_all_files()
-    
-    # Convert to response format with extracted titles and rendered HTML
+
+    files_with_roles = await list_user_accessible_files(user.id, db)
+
     result = []
-    for f in files:
+    for f, role in files_with_roles:
         title = await file_service.get_file_title(f.id)
         html = await file_service.get_file_html(f.id, db=db)
         result.append({
@@ -120,6 +125,7 @@ async def get_files(
             "status": f.status.value,
             "created_at": f.created_at,
             "html": html or "",
+            "role": role.value,
         })
     return result
 

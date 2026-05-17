@@ -8,7 +8,7 @@ guards for enforcing file access control based on user roles.
 from typing import Optional
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.deps import current_user, get_db
@@ -22,6 +22,55 @@ class PermissionLevel:
     EDIT = [FileRole.OWNER, FileRole.EDITOR]
     COMMENT = [FileRole.OWNER, FileRole.EDITOR, FileRole.COMMENTER]
     MANAGE = [FileRole.OWNER]
+
+
+async def list_user_accessible_files(
+    user_id: int, db: AsyncSession
+) -> list[tuple[File, FileRole]]:
+    """List all non-deleted files a user can access, with their effective role.
+
+    Returns the union of:
+      - files where the user is owner (role is FileRole.OWNER even when no
+        FilePermission row exists, to be safe against legacy data);
+      - files where an undeleted FilePermission row grants the user any role.
+
+    Parameters
+    ----------
+    user_id : int
+        The user whose accessible files to list.
+    db : AsyncSession
+        Database session.
+
+    Returns
+    -------
+    list[tuple[File, FileRole]]
+        Ordered by File.last_edited_at descending. Each file appears once.
+
+    """
+    stmt = (
+        select(File, FilePermission.role)
+        .outerjoin(
+            FilePermission,
+            and_(
+                FilePermission.file_id == File.id,
+                FilePermission.user_id == user_id,
+                FilePermission.deleted_at.is_(None),
+            ),
+        )
+        .where(
+            File.deleted_at.is_(None),
+            or_(File.owner_id == user_id, FilePermission.id.isnot(None)),
+        )
+        .order_by(desc(File.last_edited_at))
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    files_with_roles: list[tuple[File, FileRole]] = []
+    for file, role in rows:
+        effective_role = role if role is not None else FileRole.OWNER
+        files_with_roles.append((file, effective_role))
+    return files_with_roles
 
 
 async def get_user_role_for_file(

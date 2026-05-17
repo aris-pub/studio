@@ -2,6 +2,7 @@
   import { ref, computed, inject, onMounted } from "vue";
   import { useRouter, RouterLink } from "vue-router";
   import { toast } from "@/utils/toast";
+  import { createFileStore } from "@/store/FileStore.js";
   import AuthLayout from "@/components/layout/AuthLayout.vue";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
   import PasswordStrength from "@/components/ui/PasswordStrength.vue";
@@ -15,6 +16,7 @@
 
   const api = inject("api");
   const user = inject("user");
+  const fileStore = inject("fileStore");
 
   const derivedInitials = computed(() => {
     return name.value
@@ -65,6 +67,9 @@
       localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("user", JSON.stringify(registeredUser));
       user.value = registeredUser;
+      // Initialize fileStore so the user can create/list files without a hard
+      // reload (App.vue only runs createFileStore in onMounted).
+      fileStore.value = createFileStore(api, user.value);
       toast.info("Check your inbox", {
         description: `We sent a verification link to ${email.value}. The link expires in 24 hours.`,
         duration: 0,
