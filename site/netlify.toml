@@ -5,6 +5,13 @@
 [build.environment]
   NUXT_TELEMETRY_DISABLED = "1"
 
+# See frontend/netlify.toml for the rationale: Netlify auto deploy-previews
+# don't get the per-PR env, so they point at production. The repo's real
+# per-PR previews are the `pr-N--` aliases from the GitHub Actions workflow.
+# Fail the deploy-preview build so no prod-pointing site is published.
+[context.deploy-preview]
+  command = "echo 'Netlify auto deploy-previews are disabled. Use the pr-N--rsm-studio-site.netlify.app URL from the PR Preview Deploy comment.' && exit 1"
+
 [dev]
   command = "pnpm run dev"
   port = "${SITE_PORT}"

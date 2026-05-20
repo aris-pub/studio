@@ -9,6 +9,15 @@
 [build.environment]
   PNPM_VERSION = "9"
 
+# Netlify auto-builds a `deploy-preview-N--` URL for every PR. That build does
+# NOT receive the per-PR VITE_API_BASE_URL, so it points at the PRODUCTION
+# backend — a reviewer who logs in there operates on prod data. The repo's
+# real per-PR previews are the `pr-N--` aliases published by
+# .github/workflows/preview.yml. Fail the deploy-preview build so Netlify
+# never publishes a prod-pointing app under the deploy-preview-N-- URL.
+[context.deploy-preview]
+  command = "echo 'Netlify auto deploy-previews are disabled: they point at the production backend. Use the pr-N--rsm-studio-frontend.netlify.app URL from the PR Preview Deploy comment.' && exit 1"
+
 [dev]
   command = "pnpm run dev"
   port = "${FRONTEND_PORT}"
