@@ -57,6 +57,13 @@ See more at [aris.pub](https://aris.pub).
    just dev      # Starts all services in Docker containers
    ```
 
+## Environments
+
+Studio runs in four environments — Dev, Test (CI), Staging (preview), and
+Prod. They differ in orchestration and in how the `rsm` dependency is
+sourced. See [docs/environments.md](docs/environments.md) for the full
+breakdown.
+
 ## CLI Tool
 
 The `studio` CLI tool accelerates UI testing and development by managing authentication sessions and generating Playwright scripts.
