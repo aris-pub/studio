@@ -8,9 +8,11 @@
 # See frontend/netlify.toml for the rationale: Netlify auto deploy-previews
 # don't get the per-PR env, so they point at production. The repo's real
 # per-PR previews are the `pr-N--` aliases from the GitHub Actions workflow.
-# Fail the deploy-preview build so no prod-pointing site is published.
+# Publish an inert static notice (a successful build is required to replace
+# the deploy-preview URL's content; a failing build leaves the old one live).
 [context.deploy-preview]
-  command = "echo 'Netlify auto deploy-previews are disabled. Use the pr-N--rsm-studio-site.netlify.app URL from the PR Preview Deploy comment.' && exit 1"
+  command = "true"
+  publish = "deploy-preview-notice"
 
 [dev]
   command = "pnpm run dev"

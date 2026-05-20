@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Not the PR preview</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 38rem;
+           margin: 4rem auto; padding: 0 1.25rem; line-height: 1.6; color: #1a1a1a; }
+    code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+    .warn { color: #b00020; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>This is not the PR preview</h1>
+  <p class="warn">Netlify's automatic <code>deploy-preview-N--</code> URLs are
+  intentionally disabled.</p>
+  <p>That automatic build runs without the per-PR backend URL, so it would
+  point at the <strong>production</strong> backend. Logging in there would
+  operate on production data.</p>
+  <p>Use the per-PR preview instead — the <code>pr-N--rsm-studio-frontend.netlify.app</code>
+  URL from the PR's <strong>Preview Deploy</strong> comment. That one is wired
+  to the PR's own backend.</p>
+</body>
+</html>

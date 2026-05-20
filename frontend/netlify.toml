@@ -13,10 +13,15 @@
 # NOT receive the per-PR VITE_API_BASE_URL, so it points at the PRODUCTION
 # backend — a reviewer who logs in there operates on prod data. The repo's
 # real per-PR previews are the `pr-N--` aliases published by
-# .github/workflows/preview.yml. Fail the deploy-preview build so Netlify
-# never publishes a prod-pointing app under the deploy-preview-N-- URL.
+# .github/workflows/preview.yml.
+#
+# Publish an inert static notice for the deploy-preview context instead of the
+# app. A *successful* build is required to replace the deploy-preview URL's
+# content — a failing build leaves the previous (prod-pointing) app live. The
+# notice has no JS and makes no backend calls, so it cannot reach production.
 [context.deploy-preview]
-  command = "echo 'Netlify auto deploy-previews are disabled: they point at the production backend. Use the pr-N--rsm-studio-frontend.netlify.app URL from the PR Preview Deploy comment.' && exit 1"
+  command = "true"
+  publish = "deploy-preview-notice"
 
 [dev]
   command = "pnpm run dev"
