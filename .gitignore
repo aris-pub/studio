@@ -122,3 +122,6 @@ coverage/
 .beads/dolt/beads_std/.dolt/noms/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 backend/.mypy_cache/3.13/cache.db
 cli/.venv/lib/python3.13/site-packages/playwright/driver/node
+
+# HNS exit marker
+.hns-exit
