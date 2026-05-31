@@ -1,0 +1,7 @@
+# SPA fallback: all routes serve index.html so Vue Router can resolve them.
+# Needed because Netlify alias deploys (the per-PR `pr-N--` aliases published by
+# .github/workflows/preview.yml via actions-netlify) do not apply the
+# netlify.toml [[redirects]] rule. Shipping the rule inside dist/_redirects
+# (via Vite's public/ → dist/ copy) makes Netlify honor it for every deploy
+# variant — production, branch deploys, and alias deploys.
+/*  /index.html  200
