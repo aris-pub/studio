@@ -59,7 +59,6 @@ class YDocClient:
         # Y.js state
         self.doc: Optional[Doc] = None
         self.text: Optional[Text] = None
-        self._has_seeded = False
 
         # Persistence state — single save loop with debounce event instead of
         # cancel+recreate, preventing overlapping DB connections.
@@ -189,16 +188,22 @@ class YDocClient:
             await self._send_sync_step1(websocket)
             await self._receive_sync_step2(websocket)
 
-            # Only seed from DB once, ever. The _has_seeded flag prevents
-            # re-seeding on reconnect (which creates a fresh Doc each time,
-            # so len(self.text)==0 would be true again on a new Doc).
-            if len(self.text) == 0 and not self._has_seeded:
+            # Seed from DB whenever the room is empty after sync. The previous
+            # `_has_seeded` guard was added to prevent CRDT duplication on
+            # reconnect, but it over-corrected: when a reload causes
+            # multi-player to delete the room (last frontend left → backend
+            # killed → room destroyed), the reconnecting backend lands in an
+            # empty room with a fresh Doc and `_has_seeded == True`, leaving
+            # the document permanently empty until the YDocClient instance
+            # itself is recreated. The duplication concern is moot now because
+            # each connect creates a fresh `Doc()` (line ~184), so a DB load
+            # into an empty Doc cannot merge-duplicate with prior items.
+            if len(self.text) == 0:
                 # Set flag to prevent observer from saving during DB load
                 self._in_sync_operation = True
                 state_before_load = self.doc.get_state()
                 try:
                     await self._load_from_db()
-                    self._has_seeded = True
                 finally:
                     self._in_sync_operation = False
 

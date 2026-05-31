@@ -116,3 +116,109 @@ async def test_reconnect_does_not_duplicate_content():
     assert "EDIT1" in result, (
         f"Expected EDITED_CONTENT to be present after sync, got: {result!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression: re-seed from DB on reconnect to an empty room
+# ---------------------------------------------------------------------------
+
+
+DB_CONTENT = "# From DB\n\nLatest saved content."
+
+
+async def _empty_room_server(websocket):
+    """A multi-player room with NO content — simulates the "fresh room after
+    all-frontends-left server cleanup" case.
+
+    Performs the same 4-message sync handshake as `_room_server`, but the room
+    doc is empty so the client's `_receive_sync_step2` leaves `self.text`
+    empty.
+    """
+    room_doc = Doc()
+    # Note: no edits — empty room.
+    room_doc.get("text", type=Text)
+
+    raw = await websocket.recv()
+    assert raw[0] == 0, f"Expected sync message type (0), got {raw[0]}"
+    reply = handle_sync_message(raw[1:], room_doc)
+    if reply:
+        await websocket.send(reply)
+
+    await websocket.send(create_sync_message(room_doc))
+
+    try:
+        raw2 = await asyncio.wait_for(websocket.recv(), timeout=2.0)
+        if raw2 and raw2[0] == 0:
+            reply2 = handle_sync_message(raw2[1:], room_doc)
+            if reply2:
+                await websocket.send(reply2)
+    except asyncio.TimeoutError:
+        pass
+
+    await asyncio.sleep(0.3)
+
+
+async def test_reseed_from_db_on_reconnect_to_empty_room():
+    """
+    YDocClient must re-seed from DB when it reconnects to an empty room.
+
+    Real-world scenario (the user-reported reload data-loss bug, std-kab28c
+    review step 3):
+
+      1. Frontend opens a file. Backend YDocClient connects, loads DB content
+         into the Y.Doc, broadcasts it to the room. Sets `_has_seeded = True`.
+      2. Frontend edits. Backend persists edits to DB on debounce.
+      3. Frontend reloads the page. Multi-player sees the last frontend leave,
+         closes the backend's WS with code 4000, deletes the room.
+      4. Backend YDocClient reconnects. A fresh `Doc()` is created, room is
+         empty so sync handshake leaves `self.text` empty. With the
+         `_has_seeded = True` guard, `_load_from_db` is skipped — backend
+         serves an empty document to the next frontend that joins.
+
+    User-visible symptom: every edit appears to be lost on reload, even
+    though saves to the DB worked correctly.
+
+    The fix is to drop the `_has_seeded` guard. Re-seeding into a freshly
+    created `Doc` after an empty-room sync cannot duplicate content (no
+    existing items to merge with), so the original duplication concern is
+    moot once each connect uses its own `Doc`.
+    """
+    async with serve(_empty_room_server, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+
+        client = YDocClient(
+            file_id=999,
+            websocket_url=f"ws://127.0.0.1:{port}",
+            debounce_ms=99999,
+        )
+        # Simulate "this client already seeded once". This is the state after
+        # a successful first connect + DB seed, which is what triggers the bug
+        # on the *next* reconnect.
+        client._has_seeded = True
+
+        async def fake_load_from_db():
+            with client.doc.transaction():
+                client.text += DB_CONTENT
+
+        client._load_from_db = fake_load_from_db
+        client._save_to_db = AsyncMock()
+
+        try:
+            await asyncio.wait_for(client._connect_and_run(), timeout=5.0)
+        except ConnectionClosed:
+            pass
+
+    result = str(client.text)
+
+    assert DB_CONTENT in result, (
+        "Backend YDocClient reconnected to an empty room and did NOT re-seed "
+        "from the DB. The Y.Doc is empty, so any frontend that joins the room "
+        "next will receive empty content even though the DB has saved edits.\n"
+        f"Expected DB_CONTENT ({DB_CONTENT!r}) in client.text, got: {result!r}"
+    )
+    # No duplication: DB_CONTENT appears exactly once (no overlap with empty
+    # room state means the seed lands cleanly).
+    assert result.count("# From DB") == 1, (
+        f"Re-seeding duplicated content (heading appears "
+        f"{result.count('# From DB')} times): {result!r}"
+    )
