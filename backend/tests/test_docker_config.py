@@ -142,6 +142,43 @@ class TestFlyToml:
         )
 
 
+class TestNetlifyPreviewRedirects:
+    """The per-PR preview (.github/workflows/preview.yml) uploads the prebuilt
+    frontend/dist directly via nwtgck/actions-netlify. That path does NOT read
+    netlify.toml, so the SPA history-mode fallback must ship as a `_redirects`
+    file inside the published bundle. Vite copies public/ verbatim into dist/,
+    so public/_redirects is the file that lands in the upload. Without it,
+    reloading any client-side route on the preview 404s. See PR #405.
+    """
+
+    def test_public_redirects_file_exists(self):
+        path = REPO_ROOT / "frontend" / "public" / "_redirects"
+        assert path.exists(), (
+            "frontend/public/_redirects is missing — the per-PR preview deploy "
+            "(direct dist/ upload) won't get the SPA fallback and every route "
+            "404s on reload."
+        )
+
+    def test_public_redirects_has_spa_fallback(self):
+        body = _read("frontend/public/_redirects")
+        rule = next(
+            (
+                line
+                for line in body.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ),
+            None,
+        )
+        assert rule is not None, "frontend/public/_redirects has no redirect rule"
+        fields = rule.split()
+        assert fields[:2] == ["/*", "/index.html"], (
+            f"SPA fallback must rewrite /* to /index.html, got: {rule!r}"
+        )
+        assert "200" in fields, (
+            f"SPA fallback must be a 200 rewrite (not a 301/302), got: {rule!r}"
+        )
+
+
 class TestHealthCheck:
     script = _read("docker/health-check.sh")
 
