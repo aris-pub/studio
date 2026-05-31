@@ -123,10 +123,12 @@ test.describe("CodeMirror Auto-Compilation @auth", () => {
     });
     await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 5000 });
 
-    // Verify initial content
-    const initialContent = await page.textContent('[data-testid="manuscript-viewer"]');
-    expect(initialContent).toContain("Hello");
-    expect(initialContent).not.toContain("World");
+    // Verify initial content. The container mounts before the viewer's compiled
+    // HTML is painted, so assert against the viewer with auto-retry rather than
+    // reading textContent once (which races the render and intermittently sees empty).
+    const viewer = page.locator('[data-testid="manuscript-viewer"]');
+    await expect(viewer).toContainText("Hello");
+    await expect(viewer).not.toContainText("World");
 
     // Open CodeMirror editor
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
