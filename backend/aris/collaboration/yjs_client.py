@@ -100,7 +100,21 @@ class YDocClient:
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
                 if e.rcvd is not None and e.rcvd.code == 4000:
-                    logger.info(f"Server cleanup close for file {self.file_id} (all frontends left)")
+                    # All frontends left and the multi-player server tore the
+                    # room down. Our next reconnect rejoins an empty, freshly
+                    # recreated room, so the new Doc must be re-seeded from the
+                    # DB — otherwise we'd hold an empty document and serve it to
+                    # the next editor that opens (the "edits lost after reload"
+                    # bug). Clear the one-time seed guard so _connect_and_run
+                    # loads from the DB again. We only do this on a 4000 close
+                    # (no frontends remain); on a plain reconnect with live
+                    # frontends present, keeping the guard avoids re-seeding
+                    # stale DB content over their newer edits.
+                    logger.info(
+                        f"Server cleanup close for file {self.file_id} "
+                        f"(all frontends left); will re-seed from DB on reconnect"
+                    )
+                    self._has_seeded = False
                 if not self._shutdown:
                     logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._flush_before_reconnect()
