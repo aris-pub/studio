@@ -114,7 +114,11 @@ async def get_files(
     result = []
     for f, role in files_with_roles:
         title = await file_service.get_file_title(f.id)
-        html = await file_service.get_file_html(f.id, db=db)
+        # Do NOT compile html here. Rendering a large manuscript can take many
+        # seconds, and the home page would block on every file's compile even
+        # though it only displays metadata (title, role, last edited). The
+        # frontend lazy-loads html when the user actually opens a file (see
+        # Canvas.vue's fetchContent path → /render/private).
         result.append({
             "id": f.id,
             "title": title or f.title,
@@ -124,7 +128,7 @@ async def get_files(
             "owner_id": f.owner_id,
             "status": f.status.value,
             "created_at": f.created_at,
-            "html": html or "",
+            "html": "",
             "role": role.value,
         })
     return result
