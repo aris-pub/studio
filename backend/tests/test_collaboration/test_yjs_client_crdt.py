@@ -141,6 +141,12 @@ async def _empty_room_server(websocket):
     doc is empty so the client's `_receive_sync_step2` leaves `self.text`
     empty.
     """
+    # Consume the JWT auth handshake before doing Y.js sync (see _room_server).
+    auth_raw = await websocket.recv()
+    auth_msg = json.loads(auth_raw if isinstance(auth_raw, str) else auth_raw.decode("utf-8"))
+    assert auth_msg.get("type") == "auth"
+    await websocket.send(json.dumps({"type": "auth_ok"}))
+
     room_doc = Doc()
     # Note: no edits — empty room.
     room_doc.get("text", type=Text)
