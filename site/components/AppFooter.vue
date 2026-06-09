@@ -6,6 +6,7 @@
         <a href="/terms">Terms</a>
         <a href="/privacy">Privacy</a>
         <a href="/legal">Legal (Impressum)</a>
+        <a href="https://aris.pub/arch/1.0/" target="_blank" rel="noopener noreferrer">ARCH 1.0</a>
       </div>
       <div class="footer-copyright">
         © 2026 RSM Studio. Part of
