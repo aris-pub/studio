@@ -356,10 +356,10 @@ async def shutdown_collaboration_manager():
     try:
         manager = get_collaboration_manager()
         logger.info("Shutting down CollaborationManager")
-        await asyncio.wait_for(manager.shutdown_all(), timeout=4.0)
+        await asyncio.wait_for(manager.shutdown_all(), timeout=25.0)
         logger.info("CollaborationManager shutdown complete")
     except asyncio.TimeoutError:
-        collab_logger.warning("CollaborationManager shutdown timed out after 4s, forcing exit")
+        collab_logger.warning("CollaborationManager shutdown timed out after 25s, forcing exit")
     except Exception as e:
         logger.error(f"Error during CollaborationManager shutdown: {e}", exc_info=True)
 

@@ -7,6 +7,13 @@
 app = 'aris-backend'
 primary_region = 'fra'
 
+# Graceful shutdown for Y.js doc flush (std-9u159j).
+# 30s lets backend's shutdown_collaboration_manager (25s timeout) drain doc state
+# to the DB before Fly sends SIGKILL. Default kill_timeout is 5s, which truncates
+# in-flight 500ms-debounced edits and causes paragraph loss on Fly auto-stop events.
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
 [build]
   dockerfile = "Dockerfile"
   build-target = "runtime"
