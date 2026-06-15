@@ -210,7 +210,7 @@ jobs:
 
     - name: Deploy frontend to Netlify
       if: steps.pr.outputs.skip != 'true'
-      uses: nwtgck/actions-netlify@v3
+      uses: nwtgck/actions-netlify@v4
       with:
         publish-dir: studio/frontend/dist
         production-deploy: false
