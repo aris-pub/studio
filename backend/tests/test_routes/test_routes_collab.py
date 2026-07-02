@@ -49,17 +49,18 @@ async def test_collab_start_404_for_unknown_file(authenticated_client: AsyncClie
 
 
 @pytest.mark.asyncio
-async def test_collab_start_allows_commenter(
+async def test_collab_start_forbidden_for_commenter(
     client: AsyncClient,
     authenticated_user: dict,
     db_session: AsyncSession,
 ):
-    """A user with VIEW permission (e.g. a commenter) may start a collaboration session.
+    """A COMMENTER (VIEW permission) cannot mint a WS auth token via /collab/start.
 
-    The /collab/start gate widened from EDIT to VIEW once the multi-player
-    server gained per-token role checks: read-only roles still need to
-    establish the live read-only WebSocket connection, so they need a token.
-    The returned token's ``role`` claim carries the actual permission.
+    The multi-player server does not currently enforce role-based write
+    restrictions on Y.js frames, so any user holding a valid token can inject
+    updates that the backend persists. Until read-only enforcement lands
+    server-side, the /collab/start gate stays at ``require_edit`` to prevent
+    COMMENTER-role privilege escalation into write access.
     """
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
@@ -79,17 +80,12 @@ async def test_collab_start_allows_commenter(
         db=db_session,
     )
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
-        mock_get.return_value.start_client = AsyncMock(return_value=True)
-        response = await client.post(
-            _collab_url(file_id, "start"),
-            headers={"Authorization": f"Bearer {viewer_token}"},
-        )
+    response = await client.post(
+        _collab_url(file_id, "start"),
+        headers={"Authorization": f"Bearer {viewer_token}"},
+    )
 
-    assert response.status_code == status.HTTP_200_OK
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body.get("token"), "collab/start must return a WS auth token"
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.asyncio

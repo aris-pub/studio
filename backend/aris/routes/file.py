@@ -341,7 +341,7 @@ async def get_file(
 async def collab_start(
     file_id: int,
     user: UserRead = Depends(current_user),
-    user_role: FileRole = Depends(require_view),
+    user_role: FileRole = Depends(require_edit),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
@@ -352,9 +352,11 @@ async def collab_start(
     short-lived WS-auth token the caller must present as the first message on
     its multi-player WebSocket connection.
 
-    Gate is ``require_view``: viewers/commenters connect read-only; the role
-    claim in the returned token reflects their actual permission so downstream
-    services (the multi-player server, frontend) can enforce read-only mode.
+    Gate is ``require_edit``: only users with write permission can obtain a
+    token. The multi-player server does not currently enforce role-based
+    write restrictions on incoming Y.js frames, so widening this gate to
+    ``require_view`` would let COMMENTER-role users inject persisted updates.
+    See TODO(collab-readonly) below to enable read-only participation.
     """
     await file_service.sync_from_database(db)
     doc = await file_service.get_file(file_id)
