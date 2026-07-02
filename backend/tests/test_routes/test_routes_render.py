@@ -16,7 +16,7 @@ OUTPUT = """
 
 <section class="level-1">
 
-<div class="paragraph hr hr-hidden" tabindex=0 data-nodeid="1">
+<div id="n1" class="paragraph hr hr-hidden" tabindex=0 data-nodeid="1">
 
 <div class="hr-collapse-zone">
 <div class="hr-spacer"></div>
