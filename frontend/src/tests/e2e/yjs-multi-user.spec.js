@@ -161,7 +161,14 @@ test.describe("Multi-User Collaboration @collab", () => {
     }
   });
 
-  test("should allow COMMENTER to view but not edit", async ({ browser, request }) => {
+  // Skipped: /collab/start is currently gated on require_edit to prevent
+  // privilege escalation. The multi-player server does not enforce role-based
+  // write-frame filtering yet, so any client with a valid token can inject
+  // Y.js updates. Until server-side write-frame filtering lands (follow-up
+  // bead), COMMENTER cannot establish a read-only WebSocket at all.
+  // This test asserts read-only participation, which will be restored once
+  // the server enforces write restrictions per token role.
+  test.skip("should allow COMMENTER to view but not edit", async ({ browser, request }) => {
     test.setTimeout(60000);
 
     const fileId = await createTestFile(request, ownerAuth.token, ownerAuth.userData.id);

@@ -5,6 +5,7 @@ Uses pycrdt's native sync protocol which is compatible with JavaScript y-websock
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +17,8 @@ from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
 from aris.deps import CollabSession
+
+from .auth import mint_collab_token
 
 
 # Collaboration-specific logger
@@ -97,7 +100,21 @@ class YDocClient:
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
                 if e.rcvd is not None and e.rcvd.code == 4000:
-                    logger.info(f"Server cleanup close for file {self.file_id} (all frontends left)")
+                    # All frontends left and the multi-player server tore the
+                    # room down. Our next reconnect rejoins an empty, freshly
+                    # recreated room, so the new Doc must be re-seeded from the
+                    # DB — otherwise we'd hold an empty document and serve it to
+                    # the next editor that opens (the "edits lost after reload"
+                    # bug). Clear the one-time seed guard so _connect_and_run
+                    # loads from the DB again. We only do this on a 4000 close
+                    # (no frontends remain); on a plain reconnect with live
+                    # frontends present, keeping the guard avoids re-seeding
+                    # stale DB content over their newer edits.
+                    logger.info(
+                        f"Server cleanup close for file {self.file_id} "
+                        f"(all frontends left); will re-seed from DB on reconnect"
+                    )
+                    self._has_seeded = False
                 if not self._shutdown:
                     logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._flush_before_reconnect()
@@ -157,12 +174,12 @@ class YDocClient:
                 logger.debug(f"Cancelled lingering save task for file {self.file_id}")
         self._save_event.clear()
 
-        # Identify as the backend client so the server's cleanup logic
-        # knows not to kill frontends when we disconnect (hot-reload, crash).
-        url = self.websocket_url + ("&" if "?" in self.websocket_url else "?") + "role=backend"
-        logger.info(f"Connecting to {url} for file {self.file_id}")
+        # Role is established via the auth JWT sent as the first message;
+        # the server uses it to drive role-aware cleanup so frontend edits
+        # survive a backend hot-reload.
+        logger.info(f"Connecting to {self.websocket_url} for file {self.file_id}")
 
-        async with connect(url, open_timeout=10, close_timeout=5) as websocket:
+        async with connect(self.websocket_url, open_timeout=10, close_timeout=5) as websocket:
             self._ws = websocket
             self._reconnect_attempt = 0
             # Scope the websockets library's internal logger to this file so that
@@ -170,6 +187,8 @@ class YDocClient:
             # can be identified after tests.
             websocket.logger = logging.getLogger(f"websockets.client.file_{self.file_id}")
             logger.info(f"WebSocket connected for file {self.file_id}")
+
+            await self._authenticate(websocket)
 
             # Create Y.Doc
             self.doc = Doc()
@@ -223,6 +242,47 @@ class YDocClient:
 
             # Handle incoming messages
             await self._message_loop(websocket)
+
+    async def _authenticate(self, websocket):
+        """Send the auth message and wait for the server's ack.
+
+        The multi-player server expects ``{type: 'auth', token: '<jwt>'}`` as
+        the first JSON text frame and replies with ``{type: 'auth_ok'}``
+        before any Y.js binary traffic. Failure → server closes with code
+        4401; we let that surface as a ConnectionClosed in the run loop.
+        """
+        token = mint_collab_token(
+            user_id="backend",
+            file_id=self.file_id,
+            role="backend",
+        )
+        await websocket.send(json.dumps({"type": "auth", "token": token}))
+
+        try:
+            raw = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+        except asyncio.TimeoutError as exc:
+            raise WebSocketException(
+                f"No auth response from multi-player for file {self.file_id}"
+            ) from exc
+
+        if isinstance(raw, bytes):
+            raise WebSocketException(
+                f"Expected JSON auth_ok, got binary frame for file {self.file_id}"
+            )
+
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise WebSocketException(
+                f"Multi-player auth response was not JSON for file {self.file_id}"
+            ) from exc
+
+        if payload.get("type") != "auth_ok":
+            raise WebSocketException(
+                f"Multi-player rejected auth for file {self.file_id}: {payload!r}"
+            )
+
+        logger.debug(f"WebSocket authenticated for file {self.file_id}")
 
     async def _receive_sync_step2(self, websocket):
         """Receive messages until the room's SyncStep2 has been processed.

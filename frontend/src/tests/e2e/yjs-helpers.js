@@ -77,6 +77,25 @@ export async function createAuthenticatedContext(browser, { token, refreshToken,
   return { context, page };
 }
 
+// Open an additional page within an existing authenticated context. The shared
+// context means both pages live in the same browser session and share
+// BroadcastChannel + storage — required to reproduce same-browser multi-tab
+// behaviour (which goes through y-websocket's BroadcastChannel in addition to
+// the WebSocket relay).
+export async function openSecondTab(context, { token, refreshToken, userData }) {
+  const page = await context.newPage();
+  await page.goto("/", { waitUntil: "commit" });
+  await page.evaluate(
+    ({ tok, refTok, user }) => {
+      localStorage.setItem("accessToken", tok);
+      localStorage.setItem("refreshToken", refTok);
+      localStorage.setItem("user", JSON.stringify(user));
+    },
+    { tok: token, refTok: refreshToken, user: userData }
+  );
+  return page;
+}
+
 // ─── Editor helpers ───────────────────────────────────────────────────────────
 
 export async function openFileInEditor(page, fileId, { retries = 1 } = {}) {

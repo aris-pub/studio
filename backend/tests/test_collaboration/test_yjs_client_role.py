@@ -1,27 +1,37 @@
 """
-Tests for the backend Y.js client's role identification and reconnection behavior.
+Tests for the backend Y.js client's auth handshake and reconnection behavior.
 
-1. The backend client must connect with ?role=backend so the multiplayer
-   server's cleanup logic can distinguish it from frontend clients.
+1. The backend client must send a JWT auth message as the first WebSocket
+   frame and wait for ``{type: 'auth_ok'}`` before any Y.js sync traffic.
 2. The backend client must always reconnect after a disconnection (including
    close code 4000) unless explicitly shut down by the CollaborationManager.
 """
 
 import asyncio
+import json
 from unittest.mock import AsyncMock
 
 from pycrdt import Doc, Text, create_sync_message, handle_sync_message
 from websockets.asyncio.server import serve
 
+from aris.collaboration.auth import decode_collab_token
 from aris.collaboration.yjs_client import YDocClient
 
 
+async def _do_auth_handshake(websocket):
+    """Receive an auth message, send auth_ok. Returns the decoded payload."""
+    raw = await asyncio.wait_for(websocket.recv(), timeout=5.0)
+    msg = json.loads(raw) if isinstance(raw, str) else json.loads(raw.decode("utf-8"))
+    assert msg.get("type") == "auth", f"expected auth message, got {msg}"
+    payload = decode_collab_token(msg["token"])
+    assert payload is not None, "token failed to verify"
+    await websocket.send(json.dumps({"type": "auth_ok"}))
+    return payload
+
+
 async def _echo_server(websocket):
-    """Minimal server that records the request path and does Y.js sync."""
-    # Store the request path for assertions
-    websocket._test_path = websocket.request.path
-    if hasattr(websocket.request, 'query_string'):
-        websocket._test_query = websocket.request.query_string
+    """Minimal server that performs auth then a Y.js sync handshake."""
+    await _do_auth_handshake(websocket)
 
     room_doc = Doc()
     room_doc.get("text", type=Text)
@@ -48,16 +58,29 @@ async def _echo_server(websocket):
     await asyncio.sleep(0.3)
 
 
-async def test_backend_connects_with_role_param():
-    """The backend client must include ?role=backend in the WebSocket URL."""
-    received_paths = []
+async def test_backend_sends_auth_token_first():
+    """The backend client must present a backend-role JWT as the first frame."""
+    captured: list[dict] = []
 
     async def tracking_server(websocket):
-        # Capture the full request path + query string
-        path = str(websocket.request.path)
-        # websockets parses the URL; query params are in request.path
-        received_paths.append(path)
-        await _echo_server(websocket)
+        payload = await _do_auth_handshake(websocket)
+        captured.append(payload)
+
+        room_doc = Doc()
+        room_doc.get("text", type=Text)
+        raw = await websocket.recv()
+        reply = handle_sync_message(raw[1:], room_doc)
+        if reply:
+            await websocket.send(reply)
+        await websocket.send(create_sync_message(room_doc))
+        try:
+            raw2 = await asyncio.wait_for(websocket.recv(), timeout=1.0)
+            if raw2 and raw2[0] == 0:
+                reply2 = handle_sync_message(raw2[1:], room_doc)
+                if reply2:
+                    await websocket.send(reply2)
+        except asyncio.TimeoutError:
+            pass
 
     async with serve(tracking_server, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
@@ -76,22 +99,21 @@ async def test_backend_connects_with_role_param():
         except (ConnectionClosed, asyncio.TimeoutError):
             pass
 
-    assert len(received_paths) > 0, "Server never received a connection"
-    assert "role=backend" in received_paths[0], (
-        f"Backend client did not include ?role=backend in URL. Got: {received_paths[0]}"
-    )
+    assert captured, "server never received an auth message"
+    payload = captured[0]
+    assert payload.get("role") == "backend"
+    assert payload.get("file_id") == 42
 
 
 async def test_backend_reconnects_after_code_4000():
-    """
-    The backend client must reconnect after receiving close code 4000
-    (server cleanup). It should NOT treat 4000 as a permanent shutdown.
-    """
+    """The backend client must reconnect after receiving close code 4000."""
     connection_count = 0
 
     async def counting_server(websocket):
         nonlocal connection_count
         connection_count += 1
+
+        await _do_auth_handshake(websocket)
 
         room_doc = Doc()
         room_doc.get("text", type=Text)

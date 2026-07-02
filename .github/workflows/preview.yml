@@ -223,6 +223,17 @@ jobs:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
 
+    - name: Smoke-test multi-player WS auth handshake
+      if: steps.pr.outputs.skip != 'true'
+      working-directory: studio
+      # End-to-end check that catches deploy-config drift the unit tests
+      # can't see — TLS handler on port 1234, supervisord env forwarding
+      # of INTERNAL_SHARED_SECRET, and /collab/start returning a verifiable
+      # token. Fails the deploy if the editor would be Offline in a browser.
+      run: |
+        pip install httpx websockets
+        python scripts/smoke-test-preview.py "${{ steps.backend.outputs.url }}"
+
     - name: Comment preview URLs
       if: steps.pr.outputs.skip != 'true'
       uses: actions/github-script@v9

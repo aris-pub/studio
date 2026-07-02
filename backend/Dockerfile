@@ -69,11 +69,22 @@ WORKDIR /app
 COPY studio/backend/ .
 COPY studio/styles/ ./styles
 
-# Remove local sources section from pyproject.toml for production build
-# This allows PROD to use PyPI packages (rsm-lang 1.0.0, tree-sitter-rsm 1.0.0)
-RUN sed -i '/^\[tool\.uv\.sources\]/d; /^rsm-lang = /d' pyproject.toml
+# Copy the rsm source so the editable rsm-lang dependency resolves.
+# This makes staging + prod install rsm-lang (and its tree-sitter-rsm
+# dependency) from the cloned aris-pub/rsm checkout in the build context —
+# identical to how dev and CI source it, instead of pulling a pinned release
+# from PyPI. The cloned rsm is added to the build context by the deploy
+# workflow's "Clone RSM repository" step.
+COPY rsm /rsm
 
-# Install Python dependencies (no --frozen since we removed local source)
+# backend/pyproject.toml points rsm-lang at the relative "../../rsm", which
+# matches the host/CI layout but cannot normalize inside the container —
+# /app/../../rsm escapes the filesystem root and uv rejects it. Rewrite the
+# source to the absolute /rsm where the checkout was copied.
+RUN sed -i 's|path = "../../rsm"|path = "/rsm"|' pyproject.toml
+
+# Install Python dependencies. uv re-locks because the rewritten source path
+# no longer matches uv.lock; the container lock is ephemeral so that is fine.
 RUN uv sync --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
 

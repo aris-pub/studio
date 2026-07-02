@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.0",
     "y-websocket": "^2.0.4"
   },

@@ -15,6 +15,17 @@ from websockets import connect
 from cli.core import StudioAPI, build_room_url, console
 
 
+async def _authenticate_ws(ws: Any, token: str) -> None:
+    """Send the auth message and wait for the server's ack."""
+    await ws.send(json.dumps({"type": "auth", "token": token}))
+    raw = await asyncio.wait_for(ws.recv(), timeout=10.0)
+    if isinstance(raw, bytes):
+        raise RuntimeError("multi-player auth handshake returned binary frame")
+    payload = json.loads(raw)
+    if payload.get("type") != "auth_ok":
+        raise RuntimeError(f"multi-player rejected auth: {payload!r}")
+
+
 def _compute_diff_ops(old: str, new: str) -> list[tuple]:
     """Compute minimal insert/delete/replace operations to transform old into new.
 
@@ -254,23 +265,44 @@ async def _apply_patch(ws: Any, file_id: int, patch_text: str) -> dict[str, Any]
     }
 
 
-def _run_edit(file_id: int, new_source: str) -> dict[str, Any]:
+def _start_collab(api: StudioAPI, file_id: int) -> str:
+    """Tell the backend to start its YDocClient and return the WS auth token."""
+    import requests
+
+    response = requests.post(
+        f"{api.base_url}/files/{file_id}/collab/start",
+        headers=api._get_headers(),
+        timeout=15,
+    )
+    response.raise_for_status()
+    data = response.json()
+    token = data.get("token") if isinstance(data, dict) else None
+    if not isinstance(token, str) or not token:
+        raise RuntimeError("collab/start did not return a token")
+    return token
+
+
+def _run_edit(file_id: int, new_source: str, api: StudioAPI) -> dict[str, Any]:
     """Connect to Y.js WebSocket, apply edit, disconnect."""
     url = build_room_url(file_id)
+    token = _start_collab(api, file_id)
 
     async def _do() -> dict[str, Any]:
         async with connect(url, open_timeout=10, close_timeout=5) as ws:
+            await _authenticate_ws(ws, token)
             return await _apply_edit(ws, file_id, new_source)
 
     return asyncio.run(_do())
 
 
-def _run_patch(file_id: int, patch_text: str) -> dict[str, Any]:
+def _run_patch(file_id: int, patch_text: str, api: StudioAPI) -> dict[str, Any]:
     """Connect to Y.js WebSocket, apply patch, disconnect."""
     url = build_room_url(file_id)
+    token = _start_collab(api, file_id)
 
     async def _do() -> dict[str, Any]:
         async with connect(url, open_timeout=10, close_timeout=5) as ws:
+            await _authenticate_ws(ws, token)
             return await _apply_patch(ws, file_id, patch_text)
 
     return asyncio.run(_do())
@@ -309,17 +341,17 @@ def edit(ctx: click.Context, source: str | None, patch: str | None, from_stdin: 
     try:
         if patch:
             patch_text = open(patch).read()  # noqa: SIM115
-            result = _run_patch(file_id, patch_text)
+            result = _run_patch(file_id, patch_text, api)
         elif source:
             new_source = open(source).read()  # noqa: SIM115
-            result = _run_edit(file_id, new_source)
+            result = _run_edit(file_id, new_source, api)
         elif from_stdin:
             content = click.get_text_stream("stdin").read()
             # Auto-detect: if it looks like a unified diff, treat as patch
             if content.lstrip().startswith("---") or content.lstrip().startswith("@@"):
-                result = _run_patch(file_id, content)
+                result = _run_patch(file_id, content, api)
             else:
-                result = _run_edit(file_id, content)
+                result = _run_edit(file_id, content, api)
     except ValueError as e:
         if as_json:
             click.echo(json.dumps({"status": "error", "error": str(e)}))

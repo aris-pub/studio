@@ -154,6 +154,29 @@ jobs:
     - name: Run unit tests
       run: pnpm --filter ./site run test:run
 
+  unit-multiplayer:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '23'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile --ignore-scripts
+
+    - name: Run unit tests
+      run: pnpm --filter ./multi-player run test
+
   # Site E2E Tests (All Browsers)
   e2e-site:
     strategy:
