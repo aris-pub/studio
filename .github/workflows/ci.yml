@@ -39,7 +39,7 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -94,7 +94,7 @@ jobs:
       VITE_API_BASE_URL: http://localhost:8000
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -169,7 +169,7 @@ jobs:
       COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}-${{ matrix.device }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -192,7 +192,7 @@ jobs:
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -227,7 +227,7 @@ jobs:
       uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-buildx-site-${{ github.sha }}
@@ -354,7 +354,7 @@ jobs:
       COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -377,7 +377,7 @@ jobs:
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -404,7 +404,7 @@ jobs:
       uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-buildx-frontend-${{ github.sha }}
@@ -533,7 +533,7 @@ jobs:
       COMPOSE_PROJECT_NAME: studio-e2e-collab
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -556,7 +556,7 @@ jobs:
       run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -591,7 +591,7 @@ jobs:
       uses: docker/setup-buildx-action@v4
 
     - name: Cache Docker layers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', 'pnpm-lock.yaml') }}
