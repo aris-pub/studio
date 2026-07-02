@@ -65,11 +65,13 @@ class Settings(BaseSettings):
     )
     """Expiration time in minutes for JWT refresh tokens (default: 129600 = 90 days)."""
 
-    TEST_USER_EMAIL: str = Field(..., json_schema_extra={"env": "TEST_USER_EMAIL"})
-    """Test user email for visual tests."""
+    TEST_USER_EMAIL: str = Field("", json_schema_extra={"env": "TEST_USER_EMAIL"})
+    """Test user email for visual/e2e tests. Optional: only read on deploy-preview
+    origins (see routes/auth.py), never on prod, so it must not be a required field
+    that would crash prod boot when unset."""
 
-    TEST_USER_PASSWORD: str = Field(..., json_schema_extra={"env": "TEST_USER_PASSWORD"})
-    """Password for test user."""
+    TEST_USER_PASSWORD: str = Field("", json_schema_extra={"env": "TEST_USER_PASSWORD"})
+    """Password for test user. Optional for the same reason as TEST_USER_EMAIL."""
 
     TEST_USER2_EMAIL: str = Field("testuser2@aris.pub", json_schema_extra={"env": "TEST_USER2_EMAIL"})
     """Second test user email for multi-user tests."""
