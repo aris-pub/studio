@@ -33,10 +33,21 @@ updates:
     commit-message:
       prefix: "frontend"
       include: "scope"
+    # Group only minor and patch bumps. Grouping majors with everything else
+    # produced a weekly ~45-package PR that never merged: dependabot does not
+    # reliably regenerate pnpm-lock.yaml for grouped workspace updates, so CI's
+    # `pnpm install --frozen-lockfile` failed with ERR_PNPM_OUTDATED_LOCKFILE
+    # before a single test ran (see PRs #413 and #419). Majors now arrive as
+    # individual PRs, which keeps each one isolable and reviewable. In
+    # particular y-websocket 2.x -> 3.x must not land before the Y.js
+    # beta-blocker P0s (std-7jxsk5, std-jmnni0).
     groups:
       frontend-deps:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
