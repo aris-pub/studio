@@ -212,7 +212,7 @@ importers:
         version: 0.11.13(@unhead/vue@2.1.12(vue@3.5.30(typescript@5.9.3)))(db0@0.3.4)(ioredis@5.10.0)(magicast@0.5.2)(typescript@5.9.3)(vue@3.5.30(typescript@5.9.3))
       '@nuxt/test-utils':
         specifier: ^3.19.1
-        version: 3.23.0(@playwright/test@1.58.2)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
+        version: 3.23.0(@playwright/test@1.61.1)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
       '@tabler/icons-vue':
         specifier: ^3.34.0
         version: 3.40.0(vue@3.5.30(typescript@5.9.3))
@@ -239,8 +239,8 @@ importers:
         specifier: ^7.27.1
         version: 7.28.6(@babel/core@7.29.0)
       '@playwright/test':
-        specifier: ^1.53.1
-        version: 1.58.2
+        specifier: ^1.61.1
+        version: 1.61.1
       '@vitejs/plugin-vue':
         specifier: ^6.0.0
         version: 6.0.5(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(terser@5.46.1)(yaml@2.8.2))(vue@3.5.30(typescript@5.9.3))
@@ -1519,11 +1519,6 @@ packages:
   '@pkgr/core@0.3.6':
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
-
-  '@playwright/test@1.58.2':
-    resolution: {integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   '@playwright/test@1.61.1':
     resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
@@ -4665,18 +4660,8 @@ packages:
   pkg-types@2.3.0:
     resolution: {integrity: sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig==}
 
-  playwright-core@1.58.2:
-    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   playwright-core@1.61.1:
     resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  playwright@1.58.2:
-    resolution: {integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4861,10 +4846,6 @@ packages:
 
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
-
-  postcss@8.5.14:
-    resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
-    engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.16:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
@@ -7372,7 +7353,7 @@ snapshots:
       rc9: 3.0.0
       std-env: 3.10.0
 
-  '@nuxt/test-utils@3.23.0(@playwright/test@1.58.2)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)':
+  '@nuxt/test-utils@3.23.0(@playwright/test@1.61.1)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)':
     dependencies:
       '@clack/prompts': 1.0.0-alpha.9
       '@nuxt/kit': 3.21.2(magicast@0.5.2)
@@ -7400,10 +7381,10 @@ snapshots:
       tinyexec: 1.0.4
       ufo: 1.6.3
       unplugin: 2.3.11
-      vitest-environment-nuxt: 1.0.1(@playwright/test@1.58.2)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
+      vitest-environment-nuxt: 1.0.1(@playwright/test@1.61.1)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
       vue: 3.5.39(typescript@5.9.3)
     optionalDependencies:
-      '@playwright/test': 1.58.2
+      '@playwright/test': 1.61.1
       '@vitest/ui': 3.2.4(vitest@3.2.4)
       '@vue/test-utils': 2.4.6
       happy-dom: 17.6.3
@@ -7597,10 +7578,6 @@ snapshots:
   '@pkgr/core@0.2.9': {}
 
   '@pkgr/core@0.3.6': {}
-
-  '@playwright/test@1.58.2':
-    dependencies:
-      playwright: 1.58.2
 
   '@playwright/test@1.61.1':
     dependencies:
@@ -11282,15 +11259,7 @@ snapshots:
       exsolve: 1.0.8
       pathe: 2.0.3
 
-  playwright-core@1.58.2: {}
-
   playwright-core@1.61.1: {}
-
-  playwright@1.58.2:
-    dependencies:
-      playwright-core: 1.58.2
-    optionalDependencies:
-      fsevents: 2.3.2
 
   playwright@1.61.1:
     dependencies:
@@ -11459,12 +11428,6 @@ snapshots:
       postcss-selector-parser: 7.1.1
 
   postcss-value-parser@4.2.0: {}
-
-  postcss@8.5.14:
-    dependencies:
-      nanoid: 3.3.11
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
 
   postcss@8.5.16:
     dependencies:
@@ -12614,7 +12577,7 @@ snapshots:
       esbuild: 0.27.4
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
-      postcss: 8.5.14
+      postcss: 8.5.16
       rollup: 4.59.0
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -12624,9 +12587,9 @@ snapshots:
       terser: 5.46.1
       yaml: 2.8.2
 
-  vitest-environment-nuxt@1.0.1(@playwright/test@1.58.2)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4):
+  vitest-environment-nuxt@1.0.1(@playwright/test@1.61.1)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4):
     dependencies:
-      '@nuxt/test-utils': 3.23.0(@playwright/test@1.58.2)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
+      '@nuxt/test-utils': 3.23.0(@playwright/test@1.61.1)(@vitest/ui@3.2.4)(@vue/test-utils@2.4.6)(happy-dom@17.6.3)(jsdom@26.1.0)(magicast@0.5.2)(playwright-core@1.61.1)(typescript@5.9.3)(vitest@3.2.4)
     transitivePeerDependencies:
       - '@cucumber/cucumber'
       - '@jest/globals'
