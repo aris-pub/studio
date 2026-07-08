@@ -23,9 +23,13 @@ RUN cd rsm/tree-sitter-rsm && rm -rf prebuilds build \
     && if [ ! -f binding.gyp ]; then npx -y tree-sitter-cli generate; fi \
     && npx node-gyp rebuild
 
-# Install rsm-lsp production deps (creates symlink for file: dep)
+# Install rsm-lsp deps INCLUDING devDependencies: the build script is `tsc`
+# and typescript is a devDependency, so an --omit=dev install leaves tsc absent
+# and `npm run build` fails with "tsc: not found". Installing in-container
+# (rather than relying on a host node_modules copied in via the source COPY
+# below) keeps native bindings correct for linux.
 COPY rsm/packages/rsm-lsp/package*.json ./rsm/packages/rsm-lsp/
-RUN cd rsm/packages/rsm-lsp && npm ci --omit=dev
+RUN cd rsm/packages/rsm-lsp && npm ci
 
 # Copy source files for multiplayer and rsm-lsp
 COPY studio/multi-player/ ./multi-player/
