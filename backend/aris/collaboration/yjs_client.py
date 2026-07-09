@@ -100,21 +100,16 @@ class YDocClient:
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
                 if e.rcvd is not None and e.rcvd.code == 4000:
-                    # All frontends left and the multi-player server tore the
-                    # room down. Our next reconnect rejoins an empty, freshly
-                    # recreated room, so the new Doc must be re-seeded from the
-                    # DB — otherwise we'd hold an empty document and serve it to
-                    # the next editor that opens (the "edits lost after reload"
-                    # bug). Clear the one-time seed guard so _connect_and_run
-                    # loads from the DB again. We only do this on a 4000 close
-                    # (no frontends remain); on a plain reconnect with live
-                    # frontends present, keeping the guard avoids re-seeding
-                    # stale DB content over their newer edits.
+                    # All frontends left and the multi-player server tore the room
+                    # down. Our next reconnect rejoins an empty, freshly recreated
+                    # room; the seed gate (len(text) == 0 in _connect_and_run) then
+                    # restores from ydoc_state. That restore is idempotent, so it
+                    # is safe even if a frontend races back into the room before
+                    # us — no duplication, and no "edits lost after reload".
                     logger.info(
                         f"Server cleanup close for file {self.file_id} "
-                        f"(all frontends left); will re-seed from DB on reconnect"
+                        f"(all frontends left); will restore from DB on reconnect"
                     )
-                    self._has_seeded = False
                 if not self._shutdown:
                     logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._flush_before_reconnect()
@@ -207,16 +202,11 @@ class YDocClient:
             await self._send_sync_step1(websocket)
             await self._receive_sync_step2(websocket)
 
-            # Seed from DB whenever the room is empty after sync. The previous
-            # `_has_seeded` guard was added to prevent CRDT duplication on
-            # reconnect, but it over-corrected: when a reload causes
-            # multi-player to delete the room (last frontend left → backend
-            # killed → room destroyed), the reconnecting backend lands in an
-            # empty room with a fresh Doc and `_has_seeded == True`, leaving
-            # the document permanently empty until the YDocClient instance
-            # itself is recreated. The duplication concern is moot now because
-            # each connect creates a fresh `Doc()` (line ~184), so a DB load
-            # into an empty Doc cannot merge-duplicate with prior items.
+            # Restore from DB whenever the room is empty after sync. Restores go
+            # through ydoc_state via apply_update (idempotent), so re-restoring on
+            # reconnect — even into a room a surviving peer later repopulates —
+            # cannot duplicate content. A NULL ydoc_state falls back to a one-time
+            # plaintext seed inside _load_from_db.
             if len(self.text) == 0:
                 # Set flag to prevent observer from saving during DB load
                 self._in_sync_operation = True
@@ -372,34 +362,74 @@ class YDocClient:
                 logger.debug(f"Sent sync reply for file {self.file_id}")
 
     async def _load_from_db(self):
-        """Load file content from database and initialize Y.Text."""
+        """Restore the document from the database.
+
+        Prefers the authoritative CRDT state (``ydoc_state``): applying it is
+        idempotent, so reconnecting and re-restoring — even into a room a
+        surviving peer has repopulated — cannot duplicate content. Only when a
+        file has no ``ydoc_state`` yet (legacy row, or one never opened since this
+        column landed) do we fall back to a ONE-TIME seed from the plaintext
+        ``source`` and immediately persist the encoded state, after which the file
+        is CRDT-state authoritative forever.
+        """
         assert self.doc is not None, "doc must be initialized before loading from DB"
         assert self.text is not None, "text must be initialized before loading from DB"
 
-        async with CollabSession() as session:
-            try:
+        try:
+            async with CollabSession() as session:
                 result = await session.execute(
-                    sql_text("SELECT source FROM files WHERE id = :file_id"),
+                    sql_text("SELECT source, ydoc_state FROM files WHERE id = :file_id"),
                     {"file_id": self.file_id},
                 )
                 row = result.fetchone()
+        except Exception as e:
+            logger.error(f"Failed to load content from DB for file {self.file_id}: {e}", exc_info=True)
+            raise
 
-                if row and row[0]:
-                    content = row[0]
-                    logger.info(f"Loaded {len(content)} chars from DB for file {self.file_id}")
+        if not row:
+            logger.warning(f"No file row for {self.file_id}, starting empty")
+            return
 
-                    with self.doc.transaction():
-                        if len(self.text) > 0:
-                            del self.text[0:len(self.text)]
-                        self.text += content
+        source, ydoc_state = row[0], row[1]
 
-                    logger.info(f"Y.Text initialized for file {self.file_id}")
-                else:
-                    logger.warning(f"No content found in DB for file {self.file_id}, starting empty")
+        if ydoc_state:
+            # Idempotent restore: the encoded state carries the original CRDT item
+            # IDs, so applying it (even over a surviving peer's identical items) is
+            # a no-op merge — no duplication regardless of reconnect count.
+            self.doc.apply_update(bytes(ydoc_state))
+            logger.info(
+                f"Restored {len(self.text)} chars from ydoc_state for file {self.file_id}"
+            )
+            return
 
-            except Exception as e:
-                logger.error(f"Failed to load content from DB for file {self.file_id}: {e}", exc_info=True)
-                raise
+        if source:
+            # Legacy / never-collaborated file: no CRDT state yet. Seed once from
+            # plaintext, then persist the encoded state so this branch never runs
+            # again for this file.
+            self._seed_doc_from_plaintext(source)
+            await self._save_to_db(force=True)
+            logger.info(
+                f"Seeded file {self.file_id} from source ({len(source)} chars) "
+                f"and persisted initial ydoc_state"
+            )
+        else:
+            logger.warning(f"No content found in DB for file {self.file_id}, starting empty")
+
+    def _seed_doc_from_plaintext(self, content: str) -> None:
+        """Type stored plaintext into the live Doc. THE ONLY such call site.
+
+        Minting CRDT items from a text value is non-idempotent: the item IDs are
+        fresh, so doing this more than once (or concurrently with another peer)
+        merges duplicate copies — the root cause of the historical content
+        duplication (1x -> 2x -> 4x). It is safe ONLY as a one-time conversion for
+        a file with no authoritative ``ydoc_state``. Never call it from a
+        reconnect/sync path; those restore via apply_update(ydoc_state) instead.
+        """
+        assert self.doc is not None and self.text is not None
+        with self.doc.transaction():
+            if len(self.text) > 0:
+                del self.text[0 : len(self.text)]
+            self.text += content
 
     def _on_doc_change(self, event):
         """Observer callback for document changes (local or remote).
@@ -542,22 +572,40 @@ class YDocClient:
             logger.debug(f"Save loop cancelled for file {self.file_id}")
 
     async def _save_to_db(self, force: bool = False):
-        """Persist current Y.Text content to database."""
-        if not self.text:
+        """Persist the document to the database.
+
+        Writes the authoritative CRDT state (``ydoc_state``) and the derived
+        plaintext projection (``source``) together in one transaction. Restores
+        go through ``ydoc_state`` via apply_update (idempotent); ``source`` exists
+        only for compile / LSP / search / checkpoints and is never re-typed into a
+        live Doc.
+        """
+        if self.doc is None or not self.text:
             return
 
         try:
             content = str(self.text)
+            ydoc_state = self.doc.get_update()
 
             async with CollabSession() as session:
                 await session.execute(
-                    sql_text("UPDATE files SET source = :content WHERE id = :file_id"),
-                    {"content": content, "file_id": self.file_id},
+                    sql_text(
+                        "UPDATE files SET source = :content, ydoc_state = :ydoc_state "
+                        "WHERE id = :file_id"
+                    ),
+                    {
+                        "content": content,
+                        "ydoc_state": ydoc_state,
+                        "file_id": self.file_id,
+                    },
                 )
                 await session.commit()
 
                 action = "Final save" if force else "Saved"
-                logger.debug(f"{action}: {len(content)} chars to DB for file {self.file_id}")
+                logger.debug(
+                    f"{action}: {len(content)} chars / {len(ydoc_state)}B state "
+                    f"to DB for file {self.file_id}"
+                )
 
         except Exception as e:
             logger.error(f"Failed to save content to DB for file {self.file_id}: {e}", exc_info=True)

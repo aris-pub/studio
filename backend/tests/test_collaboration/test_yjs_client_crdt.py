@@ -178,23 +178,24 @@ async def test_reseed_from_db_on_reconnect_to_empty_room():
     Real-world scenario (the user-reported reload data-loss bug, std-kab28c
     review step 3):
 
-      1. Frontend opens a file. Backend YDocClient connects, loads DB content
-         into the Y.Doc, broadcasts it to the room. Sets `_has_seeded = True`.
+      1. Frontend opens a file. Backend YDocClient connects, restores DB content
+         into the Y.Doc, broadcasts it to the room.
       2. Frontend edits. Backend persists edits to DB on debounce.
       3. Frontend reloads the page. Multi-player sees the last frontend leave,
          closes the backend's WS with code 4000, deletes the room.
       4. Backend YDocClient reconnects. A fresh `Doc()` is created, room is
-         empty so sync handshake leaves `self.text` empty. With the
-         `_has_seeded = True` guard, `_load_from_db` is skipped — backend
-         serves an empty document to the next frontend that joins.
+         empty so sync handshake leaves `self.text` empty. If the empty-room
+         restore is skipped, the backend serves an empty document to the next
+         frontend that joins.
 
     User-visible symptom: every edit appears to be lost on reload, even
     though saves to the DB worked correctly.
 
-    The fix is to drop the `_has_seeded` guard. Re-seeding into a freshly
-    created `Doc` after an empty-room sync cannot duplicate content (no
-    existing items to merge with), so the original duplication concern is
-    moot once each connect uses its own `Doc`.
+    The seed decision is the emptiness gate (len(self.text) == 0) in
+    _connect_and_run: an empty room after sync means restore from the DB. The
+    restore itself goes through ydoc_state via apply_update, which is idempotent,
+    so re-restoring on reconnect cannot duplicate content (see
+    test_yjs_persistence_invariant).
     """
     async with serve(_empty_room_server, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
@@ -204,11 +205,6 @@ async def test_reseed_from_db_on_reconnect_to_empty_room():
             websocket_url=f"ws://127.0.0.1:{port}",
             debounce_ms=99999,
         )
-        # Simulate "this client already seeded once". This is the state after
-        # a successful first connect + DB seed, which is what triggers the bug
-        # on the *next* reconnect.
-        client._has_seeded = True
-
         async def fake_load_from_db():
             with client.doc.transaction():
                 client.text += DB_CONTENT
