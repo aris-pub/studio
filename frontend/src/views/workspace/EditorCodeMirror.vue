@@ -366,13 +366,13 @@
 
         if (lsp.client.value && view.value) {
           const uri = `file:///${file.value?.id || "untitled"}.rsm`;
-          const ok = await requestSemanticTokens(lsp.client, uri, view.value);
-          if (!ok) {
-            setTimeout(() => {
-              if (lsp.client.value && view.value) {
-                requestSemanticTokens(lsp.client, uri, view.value);
-              }
-            }, 2000);
+          // Wait for the LSP's index to be ready before requesting semantic tokens,
+          // instead of a fixed 2s retry guess. This is the same cold-index race
+          // that affected source/preview navigation; awaitIndexReady resolves as
+          // soon as the server emits rsm/indexReady (and falls through on timeout).
+          await lsp.awaitIndexReady(uri);
+          if (lsp.client.value && view.value) {
+            await requestSemanticTokens(lsp.client, uri, view.value);
           }
         }
 
