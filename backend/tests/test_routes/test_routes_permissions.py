@@ -383,3 +383,93 @@ async def test_add_collaborator_sends_invitation_email(
 
     assert response.status_code == status.HTTP_201_CREATED
     mock_email_service.send_invitation_email.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_collaborator_cross_file_forbidden(
+    authenticated_client: AsyncClient,
+    authenticated_client2: AsyncClient,
+    authenticated_user: dict,
+    second_authenticated_user: dict,
+    db_session: AsyncSession,
+):
+    """Cross-resource IDOR: owner of file B cannot update a permission on file A.
+
+    user1 owns file A with a collaborator permission row. user2 owns a separate
+    file B (so passes require_manage for B). user2 targets file A's permission
+    id through file B's endpoint and must get a 404, leaving file A untouched.
+    """
+    file_a = await create_file(
+        source="# File A", owner_id=authenticated_user["user_id"], db=db_session
+    )
+    permission_a = await create_permission(
+        file_id=file_a.id,
+        user_id=second_authenticated_user["user_id"],
+        role=FileRole.EDITOR,
+        granted_by=authenticated_user["user_id"],
+        db=db_session,
+    )
+
+    file_b = await create_file(
+        source="# File B", owner_id=second_authenticated_user["user_id"], db=db_session
+    )
+
+    # user2 owns file B, so require_manage(file_b) passes, but permission_a
+    # belongs to file A which user2 does not own.
+    response = await authenticated_client2.put(
+        f"/files/{file_b.id}/permissions/{permission_a.id}",
+        json={"role": "COMMENTER"},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # File A's permission row must be unchanged.
+    await db_session.refresh(permission_a)
+    assert permission_a.role == FileRole.EDITOR
+
+
+@pytest.mark.asyncio
+async def test_revoke_collaborator_cross_file_forbidden(
+    authenticated_client: AsyncClient,
+    authenticated_client2: AsyncClient,
+    authenticated_user: dict,
+    second_authenticated_user: dict,
+    db_session: AsyncSession,
+):
+    """Cross-resource IDOR: owner of file B cannot revoke a permission on file A.
+
+    user1 owns file A with a collaborator permission row. user2 owns a separate
+    file B (so passes require_manage for B). user2 targets file A's permission
+    id through file B's endpoint and must get a 404, leaving file A untouched.
+    """
+    file_a = await create_file(
+        source="# File A", owner_id=authenticated_user["user_id"], db=db_session
+    )
+    permission_a = await create_permission(
+        file_id=file_a.id,
+        user_id=second_authenticated_user["user_id"],
+        role=FileRole.EDITOR,
+        granted_by=authenticated_user["user_id"],
+        db=db_session,
+    )
+
+    file_b = await create_file(
+        source="# File B", owner_id=second_authenticated_user["user_id"], db=db_session
+    )
+
+    response = await authenticated_client2.delete(
+        f"/files/{file_b.id}/permissions/{permission_a.id}"
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # File A's permission row must not be soft-deleted.
+    await db_session.refresh(permission_a)
+    assert permission_a.deleted_at is None
+
+    # And the collaborator is still listed on file A for its owner.
+    list_response = await authenticated_client.get(f"/files/{file_a.id}/permissions")
+    collaborators = list_response.json()
+    assert any(
+        c["permission_id"] == permission_a.id for c in collaborators
+    )

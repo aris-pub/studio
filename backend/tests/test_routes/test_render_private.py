@@ -3,7 +3,9 @@
 from httpx import AsyncClient
 from sqlalchemy import text
 
-from aris.models.models import File, FileAsset
+from aris.crud.file import create_file
+from aris.crud.permissions import create_permission
+from aris.models.models import FileAsset, FileRole
 
 
 class TestRenderPrivate:
@@ -17,13 +19,17 @@ class TestRenderPrivate:
         )
         assert response.status_code == 401
 
-    async def test_render_private_with_auth_no_assets(self, client: AsyncClient, authenticated_user):
+    async def test_render_private_with_auth_no_assets(self, client: AsyncClient, authenticated_user, db_session):
         """Test private render with authenticated user but no assets."""
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
+        file = await create_file(
+            source="test ", owner_id=authenticated_user['user_id'], db=db_session
+        )
+
         response = await client.post(
             "/render/private",
-            json={"source": " test content ", "file_id": 999},
+            json={"source": " test content ", "file_id": file.id},
             headers=headers
         )
 
@@ -34,11 +40,10 @@ class TestRenderPrivate:
         """Test private render with assets available."""
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
-        # Create a file first
-        file = File(owner_id=authenticated_user['user_id'], source="test ")
-        db_session.add(file)
-        await db_session.commit()
-        await db_session.refresh(file)
+        # Create a file first (grants the creator an OWNER permission row)
+        file = await create_file(
+            source="test ", owner_id=authenticated_user['user_id'], db=db_session
+        )
 
         # Create a file asset
         asset = FileAsset(
@@ -84,11 +89,10 @@ class TestRenderPrivate:
         """Test that private endpoint can access assets while public cannot."""
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
-        # Create a file first
-        file = File(owner_id=authenticated_user['user_id'], source="test ")
-        db_session.add(file)
-        await db_session.commit()
-        await db_session.refresh(file)
+        # Create a file first (grants the creator an OWNER permission row)
+        file = await create_file(
+            source="test ", owner_id=authenticated_user['user_id'], db=db_session
+        )
 
         # Create a file asset
         asset = FileAsset(
@@ -137,10 +141,9 @@ class TestRenderPrivate:
         """
         headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
-        file = File(owner_id=authenticated_user['user_id'], source="original source")
-        db_session.add(file)
-        await db_session.commit()
-        await db_session.refresh(file)
+        file = await create_file(
+            source="original source", owner_id=authenticated_user['user_id'], db=db_session
+        )
         file_id = file.id
 
         response = await client.post(
@@ -170,10 +173,9 @@ class TestRenderPrivate:
         Regression test for std-83utdw: the endpoint used to UPDATE
         files.source for any authenticated caller, regardless of permissions.
         """
-        file = File(owner_id=authenticated_user['user_id'], source="owner content")
-        db_session.add(file)
-        await db_session.commit()
-        await db_session.refresh(file)
+        file = await create_file(
+            source="owner content", owner_id=authenticated_user['user_id'], db=db_session
+        )
         file_id = file.id
 
         attacker_headers = {
@@ -192,3 +194,69 @@ class TestRenderPrivate:
         row = result.fetchone()
         assert row is not None
         assert row[0] == "owner content"
+
+    async def test_render_private_forbidden_without_access(
+        self,
+        client: AsyncClient,
+        authenticated_user,
+        second_authenticated_user,
+        db_session,
+    ):
+        """A non-owner without any permission cannot read another user's assets.
+
+        Regression test: /render/private resolved ALL of the target file's
+        private assets into the returned HTML with no permission check, so any
+        authenticated caller could pass another user's file_id and receive their
+        private assets (IDOR / cross-user asset disclosure). A caller WITH view
+        access still gets a 200 with the asset embedded.
+        """
+        file = await create_file(
+            source="owner content", owner_id=authenticated_user['user_id'], db=db_session
+        )
+
+        asset = FileAsset(
+            filename="secret_asset.html",
+            mime_type="text/html",
+            content="<div>Secret Asset</div>",
+            file_id=file.id,
+            owner_id=authenticated_user['user_id'],
+        )
+        db_session.add(asset)
+        await db_session.commit()
+
+        rsm_source = """
+:figure:{
+  :path: secret_asset.html
+}
+::
+"""
+
+        attacker_headers = {
+            "Authorization": f"Bearer {second_authenticated_user['token']}"
+        }
+
+        # No permission -> 403, and no asset content leaks.
+        forbidden = await client.post(
+            "/render/private",
+            json={"source": rsm_source, "file_id": file.id},
+            headers=attacker_headers,
+        )
+        assert forbidden.status_code == 403
+        assert "Secret Asset" not in forbidden.text
+
+        # Grant VIEW (COMMENTER) access -> 200 with the asset embedded.
+        await create_permission(
+            file_id=file.id,
+            user_id=second_authenticated_user['user_id'],
+            role=FileRole.COMMENTER,
+            granted_by=authenticated_user['user_id'],
+            db=db_session,
+        )
+
+        allowed = await client.post(
+            "/render/private",
+            json={"source": rsm_source, "file_id": file.id},
+            headers=attacker_headers,
+        )
+        assert allowed.status_code == 200
+        assert "Secret Asset" in allowed.json()

@@ -4,18 +4,19 @@ import re
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .. import crud, current_user, get_db
+from ..authorization import require_self, require_view
 from ..config import settings
 from ..exceptions import bad_request_exception, not_found_exception
-from ..models import ProfilePicture, User
+from ..models import AvatarColor, FileRole, ProfilePicture, User
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
 
@@ -42,8 +43,31 @@ router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(curren
 #     return await crud.get_users(db)
 
 
-@router.get("/{user_id}")
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
+class UserResponse(BaseModel):
+    """Public-safe representation of a user.
+
+    Restricts the serialized output to non-sensitive fields. Returning the raw
+    ``User`` ORM object would otherwise leak ``password_hash`` and
+    ``email_verification_token`` to the client.
+    """
+
+    id: int
+    name: str
+    email: str
+    initials: Optional[str] = None
+    avatar_color: Optional[AvatarColor] = None
+    email_verified: bool
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
+):
     """Retrieve a specific user by ID.
 
     Parameters
@@ -52,15 +76,19 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
         The unique identifier of the user to retrieve.
     db : AsyncSession
         SQLAlchemy async database session dependency.
+    current_user : User
+        The authenticated caller; ``require_self`` enforces that the path
+        ``user_id`` matches the caller (403 otherwise).
 
     Returns
     -------
-    User
-        The user object if found.
+    UserResponse
+        The user's non-sensitive profile fields.
 
     Raises
     ------
     HTTPException
+        403 error if the caller requests a user other than themselves.
         404 error if user is not found or has been deleted.
 
     Notes
@@ -127,11 +155,12 @@ class PasswordChange(BaseModel):
         return v
 
 
-@router.put("/{user_id}")
+@router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: int,
     update: UserUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
 ):
     """Update user profile information.
 
@@ -169,6 +198,7 @@ async def change_password(
     user_id: int,
     password_data: PasswordChange,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
 ):
     """Change user password.
 
@@ -218,6 +248,7 @@ async def change_password(
 async def send_verification_email(
     user_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
 ):
     """Send email verification link to user.
 
@@ -326,7 +357,11 @@ async def verify_email(
 
 
 @router.delete("/{user_id}")
-async def soft_delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def soft_delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
+):
     """Soft delete a user account.
 
     Parameters
@@ -362,6 +397,7 @@ async def get_user_files(
     user_id: int,
     with_tags: bool = True,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
 ):
     """Retrieve all files owned by a user.
 
@@ -418,6 +454,8 @@ async def get_user_file(
     with_tags: bool = True,
     with_minimap: bool = True,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_self),
+    _: FileRole = Depends(require_view),
 ):
     """Retrieve a specific file owned by a user.
 

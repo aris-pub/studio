@@ -119,7 +119,7 @@ async def test_get_file_collaborators_excludes_deleted(db_session: AsyncSession,
     )
 
     # Revoke permission
-    await revoke_permission(permission.id, db_session)
+    await revoke_permission(permission.id, file.id, db_session)
 
     collaborators = await get_file_collaborators(file.id, db_session)
 
@@ -143,7 +143,7 @@ async def test_update_permission_role_editor_to_commenter(db_session: AsyncSessi
         db=db_session,
     )
 
-    updated = await update_permission_role(permission.id, FileRole.COMMENTER, db_session)
+    updated = await update_permission_role(permission.id, file.id, FileRole.COMMENTER, db_session)
 
     assert updated.id == permission.id
     assert updated.role == FileRole.COMMENTER
@@ -164,7 +164,7 @@ async def test_update_permission_role_commenter_to_editor(db_session: AsyncSessi
         db=db_session,
     )
 
-    updated = await update_permission_role(permission.id, FileRole.EDITOR, db_session)
+    updated = await update_permission_role(permission.id, file.id, FileRole.EDITOR, db_session)
 
     assert updated.role == FileRole.EDITOR
 
@@ -172,7 +172,7 @@ async def test_update_permission_role_commenter_to_editor(db_session: AsyncSessi
 @pytest.mark.asyncio
 async def test_update_permission_role_returns_none_for_nonexistent(db_session: AsyncSession):
     """Test updating nonexistent permission returns None."""
-    updated = await update_permission_role(99999, FileRole.EDITOR, db_session)
+    updated = await update_permission_role(99999, 99999, FileRole.EDITOR, db_session)
     assert updated is None
 
 
@@ -191,7 +191,7 @@ async def test_revoke_permission_soft_deletes(db_session: AsyncSession, test_use
         db=db_session,
     )
 
-    revoked = await revoke_permission(permission.id, db_session)
+    revoked = await revoke_permission(permission.id, file.id, db_session)
 
     assert revoked is not None
     assert revoked.id == permission.id
@@ -201,5 +201,5 @@ async def test_revoke_permission_soft_deletes(db_session: AsyncSession, test_use
 @pytest.mark.asyncio
 async def test_revoke_permission_returns_none_for_nonexistent(db_session: AsyncSession):
     """Test revoking nonexistent permission returns None."""
-    result = await revoke_permission(99999, db_session)
+    result = await revoke_permission(99999, 99999, db_session)
     assert result is None

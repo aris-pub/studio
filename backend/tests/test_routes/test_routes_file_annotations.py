@@ -1,6 +1,8 @@
 """Test annotation routes — CRUD, privacy filters, ownership rules, shared constraints."""
 
+import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 
 
 ANCHOR_DATA = {
@@ -716,3 +718,147 @@ async def test_delete_message_allowed_on_private_annotation(
 
     resp = await client.delete(f"/annotations/messages/{msg_id}", headers=headers)
     assert resp.status_code == 204
+
+
+# ---------------------------------------------------------------------------
+# Message-read privacy (IDOR: another user's PRIVATE annotation notes)
+# ---------------------------------------------------------------------------
+
+
+async def test_list_messages_of_other_users_private_annotation_returns_404(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    """User2 with file VIEW cannot read notes on user1's private annotation."""
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h1, file_id)  # private
+
+    msg_resp = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=h1,
+        json={"content": "Secret note"},
+    )
+    assert msg_resp.status_code == 201
+
+    resp = await client.get(f"/annotations/{ann['id']}/messages", headers=h2)
+    assert resp.status_code == 404
+
+
+async def test_list_messages_of_shared_annotation_readable_by_other_user(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    """User2 with file VIEW can still read notes on user1's shared annotation."""
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h1, file_id, visibility="shared")
+
+    msg_resp = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=h1,
+        json={"content": "Shared note"},
+    )
+    assert msg_resp.status_code == 201
+
+    resp = await client.get(f"/annotations/{ann['id']}/messages", headers=h2)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+async def test_get_single_message_of_other_users_private_annotation_returns_404(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    """User2 with file VIEW cannot read a single note on user1's private annotation."""
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h1, file_id)  # private
+
+    msg_resp = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=h1,
+        json={"content": "Secret note"},
+    )
+    assert msg_resp.status_code == 201
+    msg_id = msg_resp.json()["id"]
+
+    resp = await client.get(f"/annotations/messages/{msg_id}", headers=h2)
+    assert resp.status_code == 404
+
+
+async def test_get_single_message_of_shared_annotation_readable_by_other_user(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    """User2 with file VIEW can still read a single note on user1's shared annotation."""
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h1, file_id, visibility="shared")
+
+    msg_resp = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=h1,
+        json={"content": "Shared note"},
+    )
+    assert msg_resp.status_code == 201
+    msg_id = msg_resp.json()["id"]
+
+    resp = await client.get(f"/annotations/messages/{msg_id}", headers=h2)
+    assert resp.status_code == 200
+    assert resp.json()["content"] == "Shared note"
+
+
+async def test_get_single_message_with_missing_annotation_returns_404(
+    client: AsyncClient,
+    authenticated_user,
+    db_session,
+    is_postgresql,
+):
+    """An orphaned message (parent annotation gone) must not leak to anyone.
+
+    Hard-deletes the parent annotation row to simulate a message whose
+    annotation is missing. PostgreSQL enforces the FK, so this cannot be
+    reproduced there; the endpoint fix is exercised on SQLite (local).
+    """
+    if is_postgresql:
+        pytest.skip(
+            "FK enforcement prevents hard-deleting a referenced annotation on PostgreSQL"
+        )
+
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id)
+
+    msg_resp = await client.post(
+        f"/annotations/{ann['id']}/messages",
+        headers=headers,
+        json={"content": "Note on soon-orphaned annotation"},
+    )
+    assert msg_resp.status_code == 201
+    msg_id = msg_resp.json()["id"]
+
+    # Hard-delete the parent annotation row, orphaning the message.
+    await db_session.execute(
+        text("DELETE FROM annotation WHERE id = :id"), {"id": ann["id"]}
+    )
+    await db_session.commit()
+
+    resp = await client.get(f"/annotations/messages/{msg_id}", headers=headers)
+    assert resp.status_code == 404

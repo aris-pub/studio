@@ -277,3 +277,26 @@ async def require_manage(
     role = await get_user_role_for_file(file_id, user.id, db)  # type: ignore[arg-type]
     assert role is not None, "Role must exist after permission check passes"
     return role
+
+
+async def require_self(
+    user_id: int,
+    user: User = Depends(current_user),
+) -> User:
+    """FastAPI dependency: require the path ``user_id`` to be the caller.
+
+    Endpoints namespaced by ``/users/{user_id}`` get a router-level
+    ``Depends(current_user)`` that only proves the caller is logged in, not that
+    they are acting on their own account. Without this guard any authenticated
+    user can substitute another user's ``user_id`` and read or mutate that
+    account (IDOR). Returns the authenticated user so handlers can use it.
+
+    Raises
+    ------
+    HTTPException
+        403 if the authenticated user's id differs from the path ``user_id``.
+
+    """
+    if user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user

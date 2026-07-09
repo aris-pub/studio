@@ -64,10 +64,14 @@ class TestUserEndpoints:
         assert data["initials"] == TestConstants.DEFAULT_USER_INITIALS
 
     async def test_get_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test getting non-existent user."""
+        """Requesting any other/nonexistent user id is forbidden (IDOR guard).
+
+        With ``require_self`` the endpoint no longer discloses whether a foreign
+        user id exists: any id other than the caller's returns 403 before the
+        not-found path is reached.
+        """
         response = await client.get(f"/users/{TestConstants.NONEXISTENT_ID}", headers=auth_headers)
-        assert response.status_code == 404
-        assert response.json()["detail"] == f"User with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.status_code == 403
 
     async def test_update_user_success(self, client: AsyncClient, authenticated_user, auth_headers):
         """Test updating user details."""
@@ -155,17 +159,17 @@ class TestPasswordChange:
         assert response.status_code == 422
 
     async def test_change_password_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test password change for non-existent user."""
+        """Changing another/nonexistent user's password is forbidden (IDOR guard)."""
         password_data = {
             "current_password": TestConstants.TEST_PASSWORD,
             "new_password": "newpassword456"
         }
         response = await client.post(
-            f"/users/{TestConstants.NONEXISTENT_ID}/change-password", 
-            headers=auth_headers, 
+            f"/users/{TestConstants.NONEXISTENT_ID}/change-password",
+            headers=auth_headers,
             json=password_data
         )
-        assert response.status_code == 404
+        assert response.status_code == 403
 
     async def test_change_password_unauthorized(self, client: AsyncClient, authenticated_user):
         """Test password change without authentication."""
@@ -193,12 +197,12 @@ class TestEmailVerification:
         assert "verification email sent" in response.json()["message"].lower()
 
     async def test_send_verification_email_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test sending verification email for non-existent user."""
+        """Sending verification email for another/nonexistent user is forbidden (IDOR guard)."""
         response = await client.post(
             f"/users/{TestConstants.NONEXISTENT_ID}/send-verification",
             headers=auth_headers
         )
-        assert response.status_code == 404
+        assert response.status_code == 403
 
     async def test_send_verification_email_already_verified(self, client: AsyncClient, authenticated_user, auth_headers, db_session):
         """Test sending verification email when already verified."""
@@ -281,7 +285,11 @@ class TestUserEndpoints2:
     """Additional test class for user endpoints."""
 
     async def test_update_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test updating non-existent user."""
+        """Updating another/nonexistent user is forbidden (IDOR guard).
+
+        ``require_self`` short-circuits with 403 before the not-found path,
+        preventing account-takeover via a substituted user id.
+        """
         update_data = {
             "name": TestConstants.UPDATED_NAME,
             "initials": TestConstants.UPDATED_INITIALS,
@@ -290,8 +298,7 @@ class TestUserEndpoints2:
         response = await client.put(
             f"/users/{TestConstants.NONEXISTENT_ID}", headers=auth_headers, json=update_data
         )
-        assert response.status_code == 404
-        assert response.json()["detail"] == f"User with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.status_code == 403
 
     async def test_update_user_without_auth(self, client: AsyncClient):
         """Test updating user without authentication."""
@@ -312,12 +319,11 @@ class TestUserEndpoints2:
         assert response.json()["message"] == f"User {authenticated_user['user_id']} soft deleted"
 
     async def test_soft_delete_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test soft deleting non-existent user."""
+        """Deleting another/nonexistent user is forbidden (IDOR guard)."""
         response = await client.delete(
             f"/users/{TestConstants.NONEXISTENT_ID}", headers=auth_headers
         )
-        assert response.status_code == 404
-        assert response.json()["detail"] == f"User with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.status_code == 403
 
     async def test_soft_delete_user_without_auth(self, client: AsyncClient):
         """Test soft deleting user without authentication."""
@@ -354,12 +360,11 @@ class TestUserFiles:
         assert response.status_code == 401
 
     async def test_get_user_files_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test getting files for non-existent user."""
+        """Listing another/nonexistent user's files is forbidden (IDOR guard)."""
         response = await client.get(
             f"/users/{TestConstants.NONEXISTENT_ID}/files", headers=auth_headers
         )
-        assert response.status_code == 404
-        assert response.json()["detail"] == f"User with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.status_code == 403
 
     async def test_get_user_file_success(
         self, client: AsyncClient, authenticated_user, auth_headers
@@ -392,23 +397,27 @@ class TestUserFiles:
         assert response.status_code == 401
 
     async def test_get_user_file_user_not_found(self, client: AsyncClient, auth_headers):
-        """Test getting file for non-existent user."""
+        """Getting a file scoped to another/nonexistent user id is forbidden (IDOR guard)."""
         response = await client.get(
             f"/users/{TestConstants.NONEXISTENT_ID}/files/1", headers=auth_headers
         )
-        assert response.status_code == 404
-        assert response.json()["detail"] == f"User with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.status_code == 403
 
     async def test_get_user_file_file_not_found(
         self, client: AsyncClient, authenticated_user, auth_headers
     ):
-        """Test getting non-existent file."""
+        """Getting a non-existent file (as self) returns 404 from the file-access guard.
+
+        ``require_view`` verifies the file exists and the caller can view it, so a
+        missing file id now yields its generic 404 ("File not found") rather than
+        the handler's per-id message.
+        """
         response = await client.get(
             f"/users/{authenticated_user['user_id']}/files/{TestConstants.NONEXISTENT_ID}",
             headers=auth_headers,
         )
         assert response.status_code == 404
-        assert response.json()["detail"] == f"File with id {TestConstants.NONEXISTENT_ID} not found"
+        assert response.json()["detail"] == "File not found"
 
 
 class TestProfilePicture:
@@ -765,3 +774,148 @@ class TestUserLookup:
             json={"email": "someone@example.com"},
         )
         assert response.status_code == 401
+
+
+class TestCrossUserAuthorization:
+    """IDOR guard tests for user-scoped endpoints.
+
+    Router-level ``Depends(current_user)`` only proves the caller is logged in.
+    These tests confirm that ``require_self`` (and, for file access,
+    ``require_view``) additionally enforce the caller may only act on their own
+    account. Each endpoint is exercised with user 1 (``auth_headers``) targeting a
+    distinct second user, expecting 403, with a matching positive self case.
+    """
+
+    async def test_get_user_cross_user_forbidden(
+        self, client: AsyncClient, auth_headers, second_authenticated_user
+    ):
+        """User 1 cannot read another user's profile."""
+        response = await client.get(
+            f"/users/{second_authenticated_user['user_id']}", headers=auth_headers
+        )
+        assert response.status_code == 403
+
+    async def test_get_user_self_succeeds_without_leaking_secrets(
+        self, client: AsyncClient, authenticated_user, auth_headers
+    ):
+        """Reading one's own profile succeeds and omits sensitive fields."""
+        response = await client.get(
+            f"/users/{authenticated_user['user_id']}", headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == authenticated_user["user_id"]
+        # Sensitive columns must never be serialized in the response.
+        assert "password_hash" not in data
+        assert "email_verification_token" not in data
+
+    async def test_update_user_cross_user_forbidden(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        second_authenticated_user,
+        db_session,
+    ):
+        """User 1 cannot change another user's profile/email (account takeover)."""
+        target_id = second_authenticated_user["user_id"]
+        response = await client.put(
+            f"/users/{target_id}",
+            headers=auth_headers,
+            json={
+                "name": TestConstants.UPDATED_NAME,
+                "initials": TestConstants.UPDATED_INITIALS,
+                "email": TestConstants.UPDATED_EMAIL,
+            },
+        )
+        assert response.status_code == 403
+        # The target account must be untouched.
+        target = await db_session.get(User, target_id)
+        assert target.email == TestConstants.SECOND_USER_EMAIL
+
+    async def test_change_password_cross_user_forbidden(
+        self, client: AsyncClient, auth_headers, second_authenticated_user
+    ):
+        """User 1 cannot change another user's password."""
+        response = await client.post(
+            f"/users/{second_authenticated_user['user_id']}/change-password",
+            headers=auth_headers,
+            json={
+                "current_password": TestConstants.TEST_PASSWORD,
+                "new_password": "newpassword456",
+            },
+        )
+        assert response.status_code == 403
+
+    async def test_send_verification_cross_user_forbidden(
+        self, client: AsyncClient, auth_headers, second_authenticated_user
+    ):
+        """User 1 cannot trigger a verification email for another user."""
+        response = await client.post(
+            f"/users/{second_authenticated_user['user_id']}/send-verification",
+            headers=auth_headers,
+        )
+        assert response.status_code == 403
+
+    async def test_soft_delete_cross_user_forbidden(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        second_authenticated_user,
+        db_session,
+    ):
+        """User 1 cannot soft-delete another user, and the target survives."""
+        target_id = second_authenticated_user["user_id"]
+        response = await client.delete(f"/users/{target_id}", headers=auth_headers)
+        assert response.status_code == 403
+        # The target user must still exist and not be soft-deleted.
+        target = await db_session.get(User, target_id)
+        assert target is not None
+        assert target.deleted_at is None
+
+    async def test_get_user_files_cross_user_forbidden(
+        self, client: AsyncClient, auth_headers, second_authenticated_user
+    ):
+        """User 1 cannot list another user's files."""
+        response = await client.get(
+            f"/users/{second_authenticated_user['user_id']}/files", headers=auth_headers
+        )
+        assert response.status_code == 403
+
+    async def test_get_user_file_cross_user_forbidden(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        second_authenticated_user,
+        second_auth_headers,
+    ):
+        """User 1 cannot read a file scoped to another user's id."""
+        file_id = await create_test_file(
+            client, second_auth_headers, second_authenticated_user["user_id"]
+        )
+        response = await client.get(
+            f"/users/{second_authenticated_user['user_id']}/files/{file_id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 403
+
+    async def test_get_user_file_self_without_access_forbidden(
+        self,
+        client: AsyncClient,
+        authenticated_user,
+        auth_headers,
+        second_authenticated_user,
+        second_auth_headers,
+    ):
+        """Even scoped to their OWN id, a caller cannot read a file they lack access to.
+
+        ``require_view`` closes the IDOR where any authenticated user could read an
+        arbitrary ``file_id`` by pairing it with their own ``user_id``.
+        """
+        file_id = await create_test_file(
+            client, second_auth_headers, second_authenticated_user["user_id"]
+        )
+        response = await client.get(
+            f"/users/{authenticated_user['user_id']}/files/{file_id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 403

@@ -50,7 +50,7 @@ async def create_permission(
 
 
 async def update_permission_role(
-    permission_id: int, new_role: FileRole, db: AsyncSession
+    permission_id: int, file_id: int, new_role: FileRole, db: AsyncSession
 ) -> Optional[FilePermission]:
     """Update the role of an existing permission.
 
@@ -58,6 +58,10 @@ async def update_permission_role(
     ----------
     permission_id : int
         Permission ID to update.
+    file_id : int
+        File ID the permission must belong to. Scoping the lookup to the file
+        prevents cross-resource modification (an owner of one file must not be
+        able to update a permission that belongs to a different file).
     new_role : FileRole
         New role to assign.
     db : AsyncSession
@@ -66,12 +70,13 @@ async def update_permission_role(
     Returns
     -------
     Optional[FilePermission]
-        Updated permission record, or None if not found.
+        Updated permission record, or None if not found for this file.
 
     """
     stmt = select(FilePermission).where(
         and_(
             FilePermission.id == permission_id,
+            FilePermission.file_id == file_id,
             FilePermission.deleted_at.is_(None),
         )
     )
@@ -87,7 +92,7 @@ async def update_permission_role(
 
 
 async def revoke_permission(
-    permission_id: int, db: AsyncSession
+    permission_id: int, file_id: int, db: AsyncSession
 ) -> Optional[FilePermission]:
     """Revoke a permission (soft delete).
 
@@ -95,18 +100,23 @@ async def revoke_permission(
     ----------
     permission_id : int
         Permission ID to revoke.
+    file_id : int
+        File ID the permission must belong to. Scoping the lookup to the file
+        prevents cross-resource revocation (an owner of one file must not be
+        able to revoke a permission that belongs to a different file).
     db : AsyncSession
         Database session.
 
     Returns
     -------
     Optional[FilePermission]
-        Revoked permission record, or None if not found.
+        Revoked permission record, or None if not found for this file.
 
     """
     stmt = select(FilePermission).where(
         and_(
             FilePermission.id == permission_id,
+            FilePermission.file_id == file_id,
             FilePermission.deleted_at.is_(None),
         )
     )

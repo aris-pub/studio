@@ -76,7 +76,11 @@ async def test_create_tag_with_auth(client: AsyncClient, authenticated_user):
 
 
 async def test_create_tag_nonexistent_user(client: AsyncClient, authenticated_user):
-    """Test creating a tag for a nonexistent user."""
+    """Creating a tag under another user's id is forbidden before any user lookup.
+
+    The require_self guard rejects the mismatched path user_id (IDOR), so a caller
+    can no longer probe whether an arbitrary user exists via this endpoint.
+    """
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
     response = await client.post(
         "/users/99999/tags",
@@ -86,8 +90,8 @@ async def test_create_tag_nonexistent_user(client: AsyncClient, authenticated_us
             "color": "#FF0000",
         },
     )
-    assert response.status_code == 404
-    assert "User with id 99999 not found" == response.json()["detail"]
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden"
 
 
 async def test_create_tag_invalid_data(client: AsyncClient, authenticated_user):
@@ -332,8 +336,8 @@ async def test_create_tag_invalid_names(authenticated_user, client: AsyncClient)
 
 async def test_update_tag_not_owned(sample_tag, client: AsyncClient):
     """
-    Test updating a tag with a user_id different from the authenticated user's.
-    Expect 404 Not Found because tag doesn't belong to the user.
+    Test updating a tag with a body user_id different from the authenticated user's.
+    Expect 403 Forbidden: the body-based ownership check rejects the mismatch (IDOR).
     """
     headers = {"Authorization": f"Bearer {sample_tag['token']}"}
     tag = sample_tag["tag"]
@@ -346,9 +350,8 @@ async def test_update_tag_not_owned(sample_tag, client: AsyncClient):
         headers=headers,
         json=fake_tag,
     )
-    assert response.status_code == 404
-    # The exact tag ID will vary based on the test data, so check for the pattern
-    assert "Tag with id" in response.json()["detail"] and "not found" in response.json()["detail"]
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not authorized"
 
 
 
@@ -514,3 +517,79 @@ async def test_delete_tag_crud_error(
     )
     assert response.status_code == 400
     assert response.json()["detail"] == f"Error deleting tag: {tag_data['id']}"
+
+
+# Cross-user authorization tests (IDOR / broken object-level authorization)
+#
+# The router only enforces "logged in", not "acting on your own account". These
+# tests assert that user2 cannot read or mutate user1's (test_user) tag resources.
+# The require_self guard (and, for update, the body-based ownership check) rejects
+# the request with 403 before any object lookup, so the target tag/file id need not
+# exist: the 403 can only originate from the authorization guard, which is exactly
+# what these tests verify.
+
+
+async def test_create_tag_cross_user_forbidden(authenticated_client2, test_user):
+    """user2 cannot create a tag under another user's id."""
+    response = await authenticated_client2.post(
+        f"/users/{test_user.id}/tags",
+        json={"name": "Evil Tag", "color": "#000000"},
+    )
+    assert response.status_code == 403
+
+
+async def test_get_user_tags_cross_user_forbidden(authenticated_client2, test_user):
+    """user2 cannot list another user's tags."""
+    response = await authenticated_client2.get(f"/users/{test_user.id}/tags")
+    assert response.status_code == 403
+
+
+async def test_update_tag_cross_user_forbidden(authenticated_client2, test_user):
+    """user2 cannot update a tag by scoping the request body to another user's id."""
+    response = await authenticated_client2.put(
+        f"/users/{test_user.id}/tags/1",
+        json={
+            "id": 1,
+            "user_id": test_user.id,
+            "name": "Hijacked",
+            "color": "#000000",
+        },
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not authorized"
+
+
+async def test_delete_tag_cross_user_forbidden(authenticated_client2, test_user):
+    """user2 cannot delete a tag under another user's id."""
+    response = await authenticated_client2.delete(f"/users/{test_user.id}/tags/1")
+    assert response.status_code == 403
+
+
+async def test_get_user_file_tags_cross_user_forbidden(
+    authenticated_client2, test_user, test_file
+):
+    """user2 cannot read tags on another user's file."""
+    response = await authenticated_client2.get(
+        f"/users/{test_user.id}/files/{test_file.id}/tags"
+    )
+    assert response.status_code == 403
+
+
+async def test_add_tag_to_file_cross_user_forbidden(
+    authenticated_client2, test_user, test_file
+):
+    """user2 cannot assign a tag on another user's file."""
+    response = await authenticated_client2.post(
+        f"/users/{test_user.id}/files/{test_file.id}/tags/1"
+    )
+    assert response.status_code == 403
+
+
+async def test_remove_tag_from_file_cross_user_forbidden(
+    authenticated_client2, test_user, test_file
+):
+    """user2 cannot remove a tag from another user's file."""
+    response = await authenticated_client2.delete(
+        f"/users/{test_user.id}/files/{test_file.id}/tags/1"
+    )
+    assert response.status_code == 403

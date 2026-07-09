@@ -375,16 +375,19 @@ async def collab_start(
 
 
 @router.post("/{file_id}/collab/stop")
-async def collab_stop(file_id: int):
+async def collab_stop(
+    file_id: int,
+    user_role: FileRole = Depends(require_edit),
+):
     """Signal that the collaborative editor has closed for this file.
 
     Called by the frontend when the CodeMirror editor unmounts. Stops the backend
     Y.js client cleanly after persisting any remaining changes.
 
-    No file existence check: the file may have already been deleted (e.g. test
-    teardown deletes the file before the browser context finishes closing), and we
-    still need to stop the Y.js client. Authentication is enforced by the router-level
-    dependency.
+    Gate is ``require_edit`` (mirrors ``collab_start``): stopping a file's live
+    collaboration client is a privileged operation, so only users with write
+    access may do it. Requiring the file to exist means a stop for an
+    already-deleted file now returns 404 instead of silently succeeding.
     """
     manager = get_collaboration_manager()
     await manager.stop_client(file_id)
@@ -392,11 +395,17 @@ async def collab_stop(file_id: int):
 
 
 @router.post("/{file_id}/collab/flush")
-async def collab_flush(file_id: int):
+async def collab_flush(
+    file_id: int,
+    user_role: FileRole = Depends(require_edit),
+):
     """Flush the Y.js client's content to the database immediately.
 
     Called before export to ensure the DB has the latest content without
     competing with the Y.js save loop.
+
+    Gate is ``require_edit`` (mirrors ``collab_start``): only users with write
+    access may force a flush of a file's live collaboration client.
     """
     manager = get_collaboration_manager()
     client = manager.clients.get(file_id)
