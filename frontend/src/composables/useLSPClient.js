@@ -23,7 +23,7 @@ function createWebSocketTransport(uri) {
       resolve({
         send(message) {
           if (socket.readyState === WebSocket.OPEN) {
-                  socket.send(message);
+            socket.send(message);
           }
         },
         subscribe(handler) {
@@ -50,8 +50,7 @@ function createWebSocketTransport(uri) {
       reject(error);
     };
 
-    socket.onclose = () => {
-    };
+    socket.onclose = () => {};
 
     // Store socket for cleanup
     resolve.socket = socket;
@@ -66,7 +65,73 @@ function createWebSocketTransport(uri) {
  * @param {import('vue').Ref<string>|string} options.documentUri - Document URI (e.g., "file:///document.rsm")
  * @returns {Object} LSP client state and methods
  */
+/**
+ * Track `rsm/indexReady` notifications from the LSP server so callers can await
+ * the point at which a document's nodeid<->source index exists, instead of
+ * blind-polling. Extracted (and exported) so the await/timeout/resolve contract
+ * is unit-testable without a WebSocket.
+ *
+ * The server emits `rsm/indexReady { uri, version }` after it (re)builds the AST
+ * index for a document (see aris-pub/rsm). `awaitReady(uri)` resolves immediately
+ * if a signal was already seen for that uri, else waits for the next one, and
+ * falls through after `timeout` so a caller proceeds to its own fallback (the
+ * bounded retry) rather than hang.
+ */
+export function createIndexReadyTracker() {
+  const versions = new Map(); // uri -> latest ready version
+  const waiters = new Map(); // uri -> Set<resolve>
+
+  function handleMessage(raw) {
+    let msg;
+    try {
+      msg = typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch {
+      return;
+    }
+    if (msg?.method !== "rsm/indexReady") return;
+    const uri = msg.params?.uri;
+    if (!uri) return;
+    versions.set(uri, msg.params.version);
+    const set = waiters.get(uri);
+    if (set) {
+      for (const resolve of set) resolve(msg.params.version);
+      set.clear();
+    }
+  }
+
+  function awaitReady(uri, { timeout = 5000 } = {}) {
+    if (!uri) return Promise.resolve(null);
+    if (versions.has(uri)) return Promise.resolve(versions.get(uri));
+    return new Promise((resolve) => {
+      let set = waiters.get(uri);
+      if (!set) {
+        set = new Set();
+        waiters.set(uri, set);
+      }
+      let settled = false;
+      const done = (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        set.delete(done);
+        resolve(v ?? null);
+      };
+      set.add(done);
+      const timer = setTimeout(() => done(null), timeout);
+    });
+  }
+
+  function reset() {
+    versions.clear();
+    for (const set of waiters.values()) set.clear();
+    waiters.clear();
+  }
+
+  return { handleMessage, awaitReady, reset };
+}
+
 export function useLSPClient({ serverUrl, documentUri }) {
+  const indexReady = createIndexReadyTracker();
   const client = ref(null);
   const plugin = ref(null);
   const transport = ref(null);
@@ -88,9 +153,13 @@ export function useLSPClient({ serverUrl, documentUri }) {
    */
   async function connect() {
     try {
-
       // Create WebSocket transport (async)
       transport.value = await createWebSocketTransport(serverUrl);
+
+      // Observe rsm/indexReady notifications alongside the LSP client's own
+      // handling (the transport fans every message out to all subscribers), so
+      // source<->preview navigation can await index readiness deterministically.
+      transport.value.subscribe(indexReady.handleMessage);
 
       // Create LSP client with CodeMirror extensions (sync after transport ready)
       const extensions = languageServerExtensions();
@@ -133,7 +202,7 @@ export function useLSPClient({ serverUrl, documentUri }) {
     client.value = null;
     plugin.value = null;
     isConnected.value = false;
-
+    indexReady.reset();
   }
 
   // Auto-cleanup on unmount
@@ -148,5 +217,7 @@ export function useLSPClient({ serverUrl, documentUri }) {
     error,
     connect,
     disconnect,
+    // Resolve once the LSP's nodeid<->source index is ready for a document uri.
+    awaitIndexReady: indexReady.awaitReady,
   };
 }

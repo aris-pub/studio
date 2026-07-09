@@ -58,8 +58,12 @@
   // LSP client and document URI — EditorCodeMirror writes, used for source/preview navigation
   const lspClient = shallowRef(null);
   const documentUri = ref("");
+  // awaitIndexReady(uri) — EditorCodeMirror writes it from useLSPClient; lets nav
+  // wait for the LSP index to be ready before requesting positions.
+  const awaitIndexReady = shallowRef(null);
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
+  provide("awaitIndexReady", awaitIndexReady);
 
   // Search-matched annotation IDs and query — TopbarSearch writes, DockableAnnotations reads
   const searchMatchedAnnotationIds = shallowRef(new Set());
@@ -164,14 +168,12 @@
       await nextTick();
       await nextTick();
       const id = hash.slice(1);
-      const target =
-        document.getElementById(id) ||
-        document.querySelector(`[data-nodeid="${id}"]`);
+      const target = document.getElementById(id) || document.querySelector(`[data-nodeid="${id}"]`);
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
         history.replaceState(null, "", route.path);
       }
-    },
+    }
   );
 
   // Progressive topbar reveal: height driven by scroll position, not a binary toggle.
@@ -341,15 +343,14 @@
 
         // Don't hijack typing in text inputs
         const tag = document.activeElement?.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable)
+          return;
 
-        const focusable = Array.from(innerRef.value.querySelectorAll(
-          "[tabindex='0'].hr"
-        ));
+        const focusable = Array.from(innerRef.value.querySelectorAll("[tabindex='0'].hr"));
         if (!focusable.length) return;
 
         const current = document.activeElement;
-        let idx = focusable.indexOf(current);
+        const idx = focusable.indexOf(current);
 
         if (["j", "k"].includes(e.key)) {
           e.preventDefault();
@@ -357,9 +358,10 @@
           if (idx === -1) {
             focusable[0].focus();
           } else {
-            const next = e.key === "j"
-              ? (idx + 1) % focusable.length
-              : (idx - 1 + focusable.length) % focusable.length;
+            const next =
+              e.key === "j"
+                ? (idx + 1) % focusable.length
+                : (idx - 1 + focusable.length) % focusable.length;
             focusable[next].focus();
             focusable[next].scrollIntoView({ behavior: "smooth", block: "nearest" });
           }
@@ -374,6 +376,7 @@
     documentUri,
     cmView,
     manuscriptRef,
+    awaitIndexReady,
   });
   provide("navigateToPreview", navigateToPreview);
 

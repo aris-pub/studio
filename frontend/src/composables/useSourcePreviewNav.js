@@ -53,7 +53,13 @@ export async function lspRequestWithRetry(
  * @param {import('vue').Ref} options.cmView - CodeMirror EditorView ref
  * @param {import('vue').Ref} options.manuscriptRef - ManuscriptWrapper template ref
  */
-export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscriptRef }) {
+export function useSourcePreviewNav({
+  lspClient,
+  documentUri,
+  cmView,
+  manuscriptRef,
+  awaitIndexReady,
+}) {
   // Monotonic token so that when several nav requests are in flight during a cold
   // index window, only the most recent one applies its scroll/highlight (the last
   // to *resolve* is otherwise not the last one *clicked*).
@@ -86,6 +92,11 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     if (!uri) return;
 
     const token = ++navToken;
+    // Wait for the LSP's nodeid<->source index to be ready for this document (the
+    // server emits rsm/indexReady): deterministic readiness instead of relying on
+    // the retry's polling. Falls through on timeout, so it only ever helps.
+    await awaitIndexReady?.value?.(uri);
+    if (token !== navToken) return;
     const pos = await requestWithRetry("rsm/nodePosition", {
       textDocument: { uri },
       nodeid,
@@ -153,6 +164,7 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     const cursor = view.state.selection.main.head;
     const line = view.state.doc.lineAt(cursor);
 
+    await awaitIndexReady?.value?.(uri);
     const result = await requestWithRetry("rsm/nodeAtPosition", {
       textDocument: { uri },
       line: line.number - 1,
