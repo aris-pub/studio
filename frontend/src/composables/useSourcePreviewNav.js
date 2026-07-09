@@ -10,7 +10,41 @@
 
 import { toRaw } from "vue";
 
+import { toast } from "@/utils/toast.js";
+
 const HIGHLIGHT_DURATION = 2000;
+const RETRY_MAX_ATTEMPTS = 14; // ~2s total with RETRY_DELAY_MS
+const RETRY_DELAY_MS = 150;
+
+/**
+ * Call `requestFn` and, if it resolves falsy, retry with a fixed delay up to
+ * `maxAttempts` times, returning the first truthy result (or null if exhausted).
+ *
+ * rsm/nodePosition and rsm/nodeAtPosition both resolve against the LSP server's
+ * nodeid<->source index, which is (re)built asynchronously on document open and
+ * after each recompile. During that window the request returns null even though
+ * the client is connected — first call null, a later call resolves. With no
+ * per-document "index ready" signal from the server, this bounded retry keeps
+ * source<->preview navigation from silently no-op'ing on a cold or racy server.
+ * This is the fallback layer; the deterministic fix is an rsm/indexReady
+ * notification the client can await (tracked in std-* follow-up). A resolving
+ * request returns on the first attempt (no delay); only unresolved ones retry.
+ *
+ * Exported (not a closure) so the retry contract is unit-testable with fake timers.
+ */
+export async function lspRequestWithRetry(
+  requestFn,
+  { maxAttempts = RETRY_MAX_ATTEMPTS, delayMs = RETRY_DELAY_MS } = {}
+) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    const result = await requestFn();
+    if (result) return result;
+  }
+  return null;
+}
 
 /**
  * @param {Object} options
@@ -20,6 +54,10 @@ const HIGHLIGHT_DURATION = 2000;
  * @param {import('vue').Ref} options.manuscriptRef - ManuscriptWrapper template ref
  */
 export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscriptRef }) {
+  // Monotonic token so that when several nav requests are in flight during a cold
+  // index window, only the most recent one applies its scroll/highlight (the last
+  // to *resolve* is otherwise not the last one *clicked*).
+  let navToken = 0;
 
   async function lspRequest(method, params) {
     const client = toRaw(lspClient?.value);
@@ -31,6 +69,14 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     }
   }
 
+  // Wrap lspRequest with the bounded retry, but fast-path out when there is no LSP
+  // client at all: retrying can't summon one, so an LSP-less environment must not
+  // pay the full ~2s budget on every interaction.
+  async function requestWithRetry(method, params) {
+    if (!toRaw(lspClient?.value)) return null;
+    return lspRequestWithRetry(() => lspRequest(method, params));
+  }
+
   /**
    * Click-to-source: given a nodeid from the preview, scroll the editor
    * to the corresponding source line.
@@ -39,11 +85,23 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     const uri = documentUri?.value;
     if (!uri) return;
 
-    const pos = await lspRequest("rsm/nodePosition", {
+    const token = ++navToken;
+    const pos = await requestWithRetry("rsm/nodePosition", {
       textDocument: { uri },
       nodeid,
     });
-    if (!pos) return;
+    // A newer click superseded this one while we were retrying — drop it so the
+    // last-clicked element wins the scroll.
+    if (token !== navToken) return;
+    if (!pos) {
+      // The element had a nodeid but the LSP never resolved it within the retry
+      // budget. Break the silence (silent no-op was the original bug) — but only
+      // when an LSP client exists; with no LSP, staying quiet is correct.
+      if (toRaw(lspClient?.value)) {
+        toast.info("Couldn't jump to the source for this element.");
+      }
+      return;
+    }
 
     const view = toRaw(cmView?.value);
     if (!view) return;
@@ -95,7 +153,7 @@ export function useSourcePreviewNav({ lspClient, documentUri, cmView, manuscript
     const cursor = view.state.selection.main.head;
     const line = view.state.doc.lineAt(cursor);
 
-    const result = await lspRequest("rsm/nodeAtPosition", {
+    const result = await requestWithRetry("rsm/nodeAtPosition", {
       textDocument: { uri },
       line: line.number - 1,
       character: cursor - line.from,
