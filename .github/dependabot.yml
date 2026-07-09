@@ -19,7 +19,7 @@ updates:
 
   # Enable version updates for npm (frontend)
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -29,20 +29,26 @@ updates:
       - "leotrs"
     labels:
       - "dependencies"
-      - "frontend"
+      - "javascript"
     commit-message:
-      prefix: "frontend"
+      prefix: "deps"
       include: "scope"
-    # Group only minor and patch bumps. Grouping majors with everything else
-    # produced a weekly ~45-package PR that never merged: dependabot does not
-    # reliably regenerate pnpm-lock.yaml for grouped workspace updates, so CI's
+    # This is a pnpm workspace: the single source of truth is the root
+    # pnpm-lock.yaml (+ pnpm-workspace.yaml covering frontend, multi-player,
+    # site). Dependabot must anchor at "/" so it resolves in pnpm-workspace mode
+    # and regenerates the ROOT lock. Pointing it at "/frontend" put it in
+    # per-directory npm mode (keyed off a leftover frontend/package-lock.json):
+    # it bumped frontend/package.json but never the root lock, so CI's
     # `pnpm install --frozen-lockfile` failed with ERR_PNPM_OUTDATED_LOCKFILE
-    # before a single test ran (see PRs #413 and #419). Majors now arrive as
-    # individual PRs, which keeps each one isolable and reviewable. In
-    # particular y-websocket 2.x -> 3.x must not land before the Y.js
-    # beta-blocker P0s (std-7jxsk5, std-jmnni0).
+    # before a single test ran (see PRs #413, #419, #423-#431).
+    # Group only minor and patch bumps; majors arrive as individual, reviewable
+    # PRs. y-websocket 2.x -> 3.x (in multi-player) must not land before the
+    # Y.js beta-blocker P0s (std-7jxsk5, std-jmnni0). multi-player is also
+    # installed via `npm ci` from multi-player/package-lock.json in the backend
+    # image; until std-94x9 unifies it on pnpm, hand-regenerate that lock on any
+    # multi-player bump.
     groups:
-      frontend-deps:
+      npm-deps:
         patterns:
           - "*"
         update-types:
