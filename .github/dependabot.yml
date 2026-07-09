@@ -43,11 +43,17 @@ updates:
     # before a single test ran (see PRs #413, #419, #423-#431).
     # Group only minor and patch bumps; majors arrive as individual, reviewable
     # PRs (y-websocket 2.x -> 3.x in particular needs deliberate review). This
-    # entry covers multi-player as a workspace member (its CI unit tests), but
-    # NOT the multi-player/package-lock.json the backend image installs from via
-    # `npm ci` — that lockfile is maintained by the /multi-player entry below, so
-    # a multi-player dep bump may produce two PRs (pnpm workspace lock + npm image
-    # lock); merge whichever fits and close the other.
+    # entry covers multi-player as a pnpm workspace member: a multi-player dep
+    # bump lands here (updates multi-player/package.json + the root pnpm-lock.yaml).
+    #
+    # NOTE: multi-player is ALSO installed standalone in the backend image via
+    # `npm ci` from multi-player/package-lock.json. Dependabot cannot maintain that
+    # npm lockfile with a separate /multi-player entry: bumping multi-player's
+    # package.json there desyncs the root pnpm-lock.yaml and fails CI's frozen
+    # install (ERR_PNPM_OUTDATED_LOCKFILE — tried in #447, reverted). So when a
+    # multi-player dep bump lands via this entry, hand-regenerate
+    # multi-player/package-lock.json (cd multi-player && npm install). The real fix
+    # is to make multi-player single-toolchain (std-94x9 — reopened).
     groups:
       npm-deps:
         patterns:
@@ -55,28 +61,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-
-  # Enable version updates for the multi-player node service. The backend image
-  # bundles it and installs its deps standalone via `npm ci` from
-  # multi-player/package-lock.json. The pnpm-root entry above never touches that
-  # npm lockfile, so without this entry ws / jsonwebtoken / y-websocket would stop
-  # getting security updates in the shipped image. (multi-player/package-lock.json
-  # is a real, consumed lockfile — unlike the stray frontend one removed in #432.)
-  - package-ecosystem: "npm"
-    directory: "/multi-player"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "leotrs"
-    labels:
-      - "dependencies"
-      - "multi-player"
-    commit-message:
-      prefix: "multiplayer"
-      include: "scope"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
