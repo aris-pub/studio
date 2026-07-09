@@ -328,7 +328,15 @@ async def get_annotation_messages(
     if not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query = select(AnnotationMessage).where(AnnotationMessage.annotation_id == annotation_id)
+    # Privacy: can only see own private annotations or shared ones
+    if annotation.owner_id != user.id and annotation.visibility != AnnotationVisibility.SHARED:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+    query = (
+        select(AnnotationMessage)
+        .options(selectinload(AnnotationMessage.owner))
+        .where(AnnotationMessage.annotation_id == annotation_id)
+    )
 
     if not include_deleted:
         query = query.where(AnnotationMessage.deleted_at.is_(None))
@@ -344,8 +352,10 @@ async def get_annotation_message(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(AnnotationMessage).where(
-        and_(AnnotationMessage.id == message_id, AnnotationMessage.deleted_at.is_(None))
+    query = (
+        select(AnnotationMessage)
+        .options(selectinload(AnnotationMessage.owner))
+        .where(and_(AnnotationMessage.id == message_id, AnnotationMessage.deleted_at.is_(None)))
     )
     result = await db.execute(query)
     message = result.scalar_one_or_none()
@@ -357,8 +367,15 @@ async def get_annotation_message(
     result = await db.execute(query_annotation)
     annotation = cast(Optional[Annotation], result.scalar_one_or_none())
 
-    if annotation and not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
+    if not annotation:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+    if not await has_permission(annotation.file_id, user.id, PermissionLevel.VIEW, db):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Privacy: can only see own private annotations or shared ones
+    if annotation.owner_id != user.id and annotation.visibility != AnnotationVisibility.SHARED:
+        raise HTTPException(status_code=404, detail="Annotation not found")
 
     return message
 

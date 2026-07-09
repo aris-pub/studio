@@ -191,7 +191,7 @@ async def update_collaborator(
         404 if permission not found.
 
     """
-    permission = await update_permission_role(permission_id, request.role, db)
+    permission = await update_permission_role(permission_id, file_id, request.role, db)
     if not permission:
         raise HTTPException(status_code=404, detail="Permission not found")
 
@@ -237,6 +237,6 @@ async def remove_collaborator(
         404 if permission not found.
 
     """
-    permission = await revoke_permission(permission_id, db)
+    permission = await revoke_permission(permission_id, file_id, db)
     if not permission:
         raise HTTPException(status_code=404, detail="Permission not found")

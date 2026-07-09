@@ -167,11 +167,13 @@ class TestSendVerificationEndpoint:
     async def test_send_verification_user_not_found(
         self, client: AsyncClient, authenticated_user, auth_headers
     ):
+        # ``require_self`` forbids targeting any id other than the caller's
+        # (IDOR guard), so a foreign/nonexistent id yields 403 before not-found.
         response = await client.post(
             f"/users/{TestConstants.NONEXISTENT_ID}/send-verification",
             headers=auth_headers,
         )
-        assert response.status_code == 404
+        assert response.status_code == 403
 
     async def test_send_verification_no_email_when_service_disabled(
         self, client: AsyncClient, db_session

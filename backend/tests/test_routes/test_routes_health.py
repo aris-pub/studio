@@ -11,7 +11,7 @@ async def test_health_check_healthy(client):
     data = response.json()
     # In CI, may be degraded due to short JWT_SECRET_KEY, but should not be unhealthy
     assert data["status"] in ["healthy", "degraded"]
-    assert data["message"] in ["RSM Studio API is healthy", "RSM Studio API is degraded but functional"]
+    assert data["message"] in ["RSM Studio API is healthy", "RSM Studio API is degraded"]
     assert "checks" in data
     assert "timestamp" in data
     

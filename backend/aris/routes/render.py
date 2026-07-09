@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user
+from ..authorization import PermissionLevel, has_permission
 from ..deps import get_db
+from ..exceptions import forbidden_exception
 from ..logging_config import get_logger
 
 
@@ -64,5 +66,12 @@ async def render_private(data: FileRenderObject, db: AsyncSession = Depends(get_
     Renders the request body's RSM source for a specific file with access to
     uploaded assets. This endpoint is render-only: it does NOT write source to
     the database. The Y.js collaboration loop is the sole writer of files.source.
+
+    ``file_id`` arrives in the body, so the ``require_view`` path dependency
+    cannot be used; the VIEW check is enforced inline. Without it, any
+    authenticated caller could pass another user's ``file_id`` and receive that
+    file's private assets embedded in the rendered HTML.
     """
+    if not await has_permission(data.file_id, user.id, PermissionLevel.VIEW, db):
+        raise forbidden_exception("You do not have access to this file")
     return await crud.render_with_assets(data.source, data.file_id, db, user.id)
