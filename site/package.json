@@ -38,7 +38,7 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.27.5",
     "@babel/plugin-syntax-import-assertions": "^7.29.7",
-    "@babel/plugin-syntax-jsx": "^7.27.1",
+    "@babel/plugin-syntax-jsx": "^8.0.1",
     "@playwright/test": "^1.61.1",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vitest/coverage-v8": "^3.2.4",
