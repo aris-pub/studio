@@ -138,8 +138,18 @@ test.describe("LSP Content Duplication Bug @auth", () => {
         { timeout: 15000 }
       );
 
-      // Wait for Y.js sync to complete (content arrives via backend seeding)
-      await page.waitForFunction(() => window.__provider?.synced === true, {}, { timeout: 15000 });
+      // Content is restored by the backend's authoritative broadcast, which
+      // lands shortly AFTER the sync handshake. `provider.synced` can be true for
+      // a beat while the doc is still empty (the frontend no longer seeds
+      // plaintext locally — that local seed was the duplication source). Wait for
+      // the restored content to load, not just for `synced`. The exact-content
+      // and single-occurrence assertions below still catch duplication, since a
+      // duplicated restore loads as 2x/3x immediately.
+      await page.waitForFunction(
+        () => (window.__cmView?.state.doc.toString() || "").length > 0,
+        {},
+        { timeout: 15000 }
+      );
 
       const contentAfterReload = await page.evaluate(() => {
         return window.__cmView.state.doc.toString();
