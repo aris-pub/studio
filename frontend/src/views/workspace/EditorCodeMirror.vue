@@ -399,6 +399,10 @@
   const parentCollabSynced = inject("collabIsSynced", null);
   const parentLspClient = inject("lspClient", null);
   const parentDocumentUri = inject("documentUri", null);
+  // awaitIndexReady is a stable function from useLSPClient; publish it once for
+  // Canvas's source<->preview navigation.
+  const parentAwaitIndexReady = inject("awaitIndexReady", null);
+  if (parentAwaitIndexReady) parentAwaitIndexReady.value = lsp.awaitIndexReady;
 
   watch(
     isConnected,
