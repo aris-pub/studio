@@ -19,6 +19,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Table,
     Text,
@@ -339,6 +340,12 @@ class File(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     source = Column(Text, nullable=True)
+    # Authoritative Y.Doc CRDT state (pycrdt doc.get_update()). `source` above is
+    # a derived plaintext projection for compile/LSP/search/checkpoints; content
+    # is restored into a live Doc via apply_update(ydoc_state), never by re-typing
+    # `source` (which mints fresh CRDT identity and duplicates on merge). NULL for
+    # files predating this column: seeded once from `source`, then authoritative.
+    ydoc_state = Column(LargeBinary, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     

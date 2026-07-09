@@ -255,15 +255,14 @@
         }
       });
 
-      provider.value.once("synced", async () => {
-        // Seed from already-fetched file source if backend hasn't delivered
-        // content yet. No 10s wait — seed immediately after sync handshake.
-        if (ytext.value.toString().length === 0 && file.value?.source) {
-          ydoc.value.transact(() => {
-            ytext.value.insert(0, file.value.source);
-          });
-        }
-      });
+      // NB: the frontend must NEVER seed file.source into the shared Y.Text.
+      // The backend is the single authoritative seeder: /collab/start awaits the
+      // backend YDocClient's readiness (DB restore + broadcast) before this
+      // provider is created, and its content arrives via normal sync — even if we
+      // connect first, the backend's broadcast reaches us through the relay.
+      // Typing plaintext in here mints fresh CRDT items that merge into duplicate
+      // copies (the historical 1x->2x->4x content-duplication bug). Restores are
+      // idempotent only because they go through the backend's encoded ydoc_state.
 
       // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
       if (compile) {
