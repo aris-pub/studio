@@ -12,12 +12,16 @@ import { LSPClient, languageServerExtensions } from "@codemirror/lsp-client";
  * Create WebSocket transport for LSP communication.
  *
  * @param {string} uri - WebSocket URI (e.g., "ws://localhost:8080/ws/lsp")
+ * @param {string} [token] - Access JWT, sent as the ["lsp", token] subprotocol.
+ *   A browser cannot set an Authorization header on a WebSocket, so the backend
+ *   reads the token from Sec-WebSocket-Protocol and verifies it during the
+ *   handshake (before accepting the socket or spawning the LSP process).
  * @returns {Promise<Object>} Transport object with send/subscribe/unsubscribe methods
  */
-function createWebSocketTransport(uri) {
+function createWebSocketTransport(uri, token) {
   return new Promise((resolve, reject) => {
     const handlers = [];
-    const socket = new WebSocket(uri);
+    const socket = new WebSocket(uri, token ? ["lsp", token] : ["lsp"]);
 
     socket.onopen = () => {
       resolve({
@@ -130,8 +134,17 @@ export function createIndexReadyTracker() {
   return { handleMessage, awaitReady, reset };
 }
 
-export function useLSPClient({ serverUrl, documentUri }) {
+export function useLSPClient({ serverUrl, documentUri, token }) {
   const indexReady = createIndexReadyTracker();
+
+  // Resolve the auth token fresh at connect time (it may be a getter/ref so a
+  // refreshed access token is picked up on reconnect). Accepts a string, a Vue
+  // ref, or a function.
+  function resolveToken() {
+    if (typeof token === "function") return token();
+    if (token && typeof token === "object" && "value" in token) return token.value;
+    return token;
+  }
   const client = ref(null);
   const plugin = ref(null);
   const transport = ref(null);
@@ -154,7 +167,7 @@ export function useLSPClient({ serverUrl, documentUri }) {
   async function connect() {
     try {
       // Create WebSocket transport (async)
-      transport.value = await createWebSocketTransport(serverUrl);
+      transport.value = await createWebSocketTransport(serverUrl, resolveToken());
 
       // Observe rsm/indexReady notifications alongside the LSP client's own
       // handling (the transport fans every message out to all subscribers), so

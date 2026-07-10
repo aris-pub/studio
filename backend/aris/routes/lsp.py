@@ -9,11 +9,75 @@ from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from aris.config import settings
+from aris.jwt import decode_token
 from aris.logging_config import get_logger
 
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+# The browser passes the access JWT as a WebSocket subprotocol, ["lsp", <token>],
+# because an <img>/WebSocket cannot send an Authorization header. Verifying it
+# during the handshake lets us reject before accept(), so an unauthenticated
+# client never gets an accepted socket, let alone a subprocess.
+LSP_SUBPROTOCOL = "lsp"
+
+# Reject any inbound frame larger than this before forwarding it to the language
+# server, so one huge frame cannot amplify into a parser memory/CPU spike.
+MAX_LSP_FRAME_BYTES = 512 * 1024
+
+# In-memory concurrency registry. The asyncio loop is single-threaded, so as long
+# as no await sits between the check and the increment in _try_acquire_lsp_slot,
+# a plain int + dict need no lock.
+_active_global = 0
+_active_per_user: dict[int, int] = {}
+
+
+def _extract_lsp_user_id(websocket: WebSocket) -> Optional[int]:
+    """Return the authenticated user id from the ["lsp", <token>] subprotocol.
+
+    Returns None (caller rejects the handshake) for a missing/malformed
+    subprotocol, an invalid or expired access token, a refresh token, or a token
+    with no numeric subject. Pure and sync so the auth contract is unit-testable
+    without standing up a socket.
+    """
+    protocols = websocket.scope.get("subprotocols") or []
+    if len(protocols) < 2 or protocols[0] != LSP_SUBPROTOCOL:
+        return None
+    payload = decode_token(protocols[1])
+    if not payload or payload.get("type") == "refresh":
+        return None
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (TypeError, ValueError):
+        return None
+
+
+def _try_acquire_lsp_slot(user_id: int) -> bool:
+    """Reserve a session slot if under both the global and per-user caps."""
+    global _active_global
+    if _active_global >= settings.LSP_MAX_CONCURRENT_SESSIONS:
+        return False
+    if _active_per_user.get(user_id, 0) >= settings.LSP_MAX_SESSIONS_PER_USER:
+        return False
+    _active_global += 1
+    _active_per_user[user_id] = _active_per_user.get(user_id, 0) + 1
+    return True
+
+
+def _release_lsp_slot(user_id: int) -> None:
+    """Release a previously acquired slot. Floored so a double-release is safe."""
+    global _active_global
+    _active_global = max(0, _active_global - 1)
+    remaining = _active_per_user.get(user_id, 0) - 1
+    if remaining <= 0:
+        _active_per_user.pop(user_id, None)
+    else:
+        _active_per_user[user_id] = remaining
 
 
 class LSPProxy:
@@ -70,6 +134,12 @@ class LSPProxy:
             while self.running:
                 # Receive JSON-RPC message from WebSocket
                 data = await self.websocket.receive_text()
+
+                # Guard against an oversized frame amplifying into the parser.
+                if len(data.encode("utf-8")) > MAX_LSP_FRAME_BYTES:
+                    logger.warning("Rejecting oversized LSP frame")
+                    self.running = False
+                    break
 
                 if not self.process or not self.process.stdin:
                     break
@@ -185,16 +255,31 @@ class LSPProxy:
 async def lsp_websocket(websocket: WebSocket):
     """WebSocket endpoint for LSP communication.
 
-    Accepts WebSocket connections from the browser and proxies LSP
-    JSON-RPC messages to/from the stdio-based RSM LSP server.
+    Proxies LSP JSON-RPC between the browser and the stdio RSM LSP server. Because
+    each connection spawns a node subprocess, nothing is spent until the caller is
+    authenticated (via the ["lsp", <access-jwt>] subprotocol, checked before the
+    handshake is accepted) and a concurrency slot is free.
     """
-    await websocket.accept()
-    logger.info("LSP WebSocket connection accepted")
+    user_id = _extract_lsp_user_id(websocket)
+    if user_id is None:
+        # Reject during the handshake: no accepted socket, no subprocess.
+        await websocket.close(code=1008)
+        logger.info("LSP WebSocket rejected: unauthenticated")
+        return
+
+    if not _try_acquire_lsp_slot(user_id):
+        await websocket.accept(subprotocol=LSP_SUBPROTOCOL)
+        await websocket.close(code=1013)  # try again later
+        logger.warning(f"LSP WebSocket rejected: session cap reached (user {user_id})")
+        return
+
+    await websocket.accept(subprotocol=LSP_SUBPROTOCOL)
+    logger.info(f"LSP WebSocket connection accepted (user {user_id})")
 
     proxy = LSPProxy(websocket)
-
     try:
         await proxy.start()
     finally:
         await proxy.cleanup()
-        logger.info("LSP WebSocket connection closed")
+        _release_lsp_slot(user_id)
+        logger.info(f"LSP WebSocket connection closed (user {user_id})")

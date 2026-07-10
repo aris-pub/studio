@@ -65,6 +65,18 @@ class Settings(BaseSettings):
     )
     """Expiration time in minutes for JWT refresh tokens (default: 129600 = 90 days)."""
 
+    LSP_MAX_CONCURRENT_SESSIONS: int = Field(
+        20, json_schema_extra={"env": "LSP_MAX_CONCURRENT_SESSIONS"}
+    )
+    """Global cap on concurrent LSP WebSocket sessions. Each spawns a ~100MB node
+    subprocess, so this bounds total memory. Tune to the backend instance size."""
+
+    LSP_MAX_SESSIONS_PER_USER: int = Field(
+        3, json_schema_extra={"env": "LSP_MAX_SESSIONS_PER_USER"}
+    )
+    """Per-user cap on concurrent LSP sessions (one per open editor, plus a spare
+    tab), so a single account cannot exhaust the global pool."""
+
     TEST_USER_EMAIL: str = Field("", json_schema_extra={"env": "TEST_USER_EMAIL"})
     """Test user email for visual/e2e tests. Optional: only read on deploy-preview
     origins (see routes/auth.py), never on prod, so it must not be a required field
