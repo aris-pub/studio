@@ -12,6 +12,8 @@ from typing import Optional
 from rsm.asset_resolver import AssetResolver
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..asset_signing import sign_asset_path
+from ..config import settings
 from ..models.models import FileAsset
 
 
@@ -51,7 +53,13 @@ class FileAssetResolver(AssetResolver):
         # be inlined since there's no browser-native way to embed HTML by URL.
         is_image = any(path.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
         if not self._standalone and is_image:
-            return f"/files/{self._file_id}/assets/raw/{path}"
+            # Absolute (frontend and backend are different origins in prod, so a
+            # root-relative path would resolve against the frontend and 404) and
+            # signed (a plain <img> cannot send a bearer token, so the short-lived
+            # HMAC is what authorizes the fetch). Signed here, downstream of the
+            # VIEW check the caller already passed to reach rendering.
+            query = sign_asset_path(self._file_id, path)
+            return f"{settings.BACKEND_URL}/files/{self._file_id}/assets/raw/{path}?{query}"
 
         content, encoding = asset_info
         if encoding == "base64":

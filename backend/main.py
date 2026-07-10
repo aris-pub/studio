@@ -114,7 +114,7 @@ app = FastAPI(
         # {"name": "render", "description": "Convert RSM markup to rendered HTML output"},  # DISABLED FOR NOW
         {"name": "signup", "description": "Early access signup and waitlist management"},
         {"name": "lsp", "description": "Language Server Protocol integration for RSM editing"},
-        {"name": "public", "description": "Public preprint access without authentication"},
+        {"name": "public", "description": "Endpoints reachable without a session: signed asset URLs and email verification"},
         {"name": "health", "description": "System health and status monitoring"},
     ],
 )
@@ -419,6 +419,10 @@ async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
     if request.url.path.startswith("/static") or request.url.path.startswith("/styles") or request.url.path.startswith("/brand"):
         response.headers["Cache-Control"] = "no-store"
+    # Signed asset URLs carry their token in the query string. Keep the full URL
+    # out of the Referer header so a signed URL cannot leak to any third-party
+    # resource a rendered document happens to load.
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
     return response
 
 

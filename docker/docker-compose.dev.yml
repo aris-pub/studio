@@ -28,6 +28,8 @@ services:
       - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
       - DB_URL_LOCAL=postgresql+asyncpg://postgres:postgres@postgres:5432/${DB_NAME}
       - ENV=${ENV:-LOCAL}
+      # Browser-facing backend origin for signed image-asset URLs in rendered docs.
+      - BACKEND_URL=http://localhost:${BACKEND_PORT}
       - MULTIPLAYER_HOST=localhost
       - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
       - FRONTEND_PORT=${FRONTEND_PORT}

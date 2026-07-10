@@ -798,11 +798,25 @@ async def create_asset_for_file(
 async def get_asset_raw(
     file_id: int,
     filename: str,
+    exp: int = 0,
+    sig: str = "",
     db: AsyncSession = Depends(get_db),
 ):
-    """Serve raw asset binary for browser rendering (img src, etc.)."""
+    """Serve raw asset bytes for browser <img> rendering.
+
+    This stays on the public router because an <img> tag cannot send a bearer
+    token. Access is proved instead by the short-lived HMAC signature the renderer
+    minted for a caller it had already authorized (see aris.asset_signing). The
+    signature is checked before any DB lookup, so a caller without a valid one
+    cannot use the 200-vs-404 response to discover which filenames exist.
+    """
     import base64 as b64
     import mimetypes
+
+    from aris.asset_signing import verify_asset_signature
+
+    if not verify_asset_signature(file_id, filename, exp, sig):
+        raise HTTPException(status_code=403, detail="Invalid or expired asset signature")
 
     from sqlalchemy import select
     result = await db.execute(
