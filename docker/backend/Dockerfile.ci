@@ -1,0 +1,74 @@
+# Baked backend image for CI (and, later, prod).
+#
+# Unlike Dockerfile.dev, this installs ALL dependencies at BUILD time: Python deps
+# (rsm + backend), the tree-sitter-rsm Linux native binding, and the rsm-lsp server.
+# The dev image defers those to the entrypoint because it bind-mounts a live rsm
+# checkout; CI does not need live rsm, so baking removes the ~82s per-container
+# startup install that was the source of the "services failed to start" flake.
+#
+# Build context is the studio root. rsm source is supplied as a pristine tree at
+# ./_rsm_ci (produced with `git -C ../rsm archive HEAD`), so no host macOS build
+# artifacts leak in and the same build runs identically locally and in CI.
+FROM python:3.13-slim AS base
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        postgresql-client \
+        git \
+        build-essential \
+        pandoc \
+        curl \
+        supervisor \
+        ca-certificates \
+        gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+ARG TYPST_VERSION=0.14.2
+RUN curl -fL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" \
+    | tar -xJ --strip-components=1 -C /usr/local/bin "typst-x86_64-unknown-linux-musl/typst"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# --- rsm source (pinned, pristine) ---
+# uv.lock pins rsm-lang as an editable install resolving to /workspace/rsm, so the
+# source must live there and must not be mounted over at runtime.
+COPY _rsm_ci /workspace/rsm
+
+WORKDIR /workspace/studio/backend
+
+# --- dependency manifests first (cacheable layers) ---
+COPY backend/pyproject.toml backend/uv.lock ./
+COPY multi-player/package.json multi-player/package-lock.json /workspace/studio/multi-player/
+RUN cd /workspace/studio/multi-player && npm ci --quiet
+
+# Python deps: rsm first (editable target), then backend (pulls in rsm-lang).
+RUN cd /workspace/rsm && uv sync --quiet \
+    && cd /workspace/studio/backend && uv sync --all-groups --quiet
+
+# tree-sitter-rsm Linux native binding + rsm-lsp server, baked.
+RUN cd /workspace/rsm/tree-sitter-rsm && npm install --quiet && npm rebuild --quiet && npm run prebuildify --quiet
+RUN cd /workspace/rsm/packages/rsm-lsp && npm install --quiet && npm run build --quiet
+
+# --- app source + runtime config last (cheap layer, changes every PR) ---
+COPY backend /workspace/studio/backend
+# Multi-player source (server.js etc.); its node_modules were baked above and are
+# preserved because .dockerignore keeps node_modules out of this COPY.
+COPY multi-player /workspace/studio/multi-player
+COPY docker/env-check.js /workspace/docker/env-check.js
+COPY docker/supervisord.dev.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/health-check.sh /usr/local/bin/health-check.sh
+COPY docker/backend/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/health-check.sh /usr/local/bin/docker-entrypoint.sh
+
+ENV PATH="/workspace/studio/backend/.venv/bin:$PATH"
+ENV PYTHONPATH="/workspace/studio/backend"
+# Tell the entrypoint everything is already installed: boot is just migrations + uvicorn.
+ENV SKIP_DEP_INSTALL=1
+
+EXPOSE 8000 1234
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

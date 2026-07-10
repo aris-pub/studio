@@ -1,0 +1,17 @@
+# Keep host build artifacts out of the Docker build context. Critical for the
+# baked CI image (Dockerfile.ci): a host macOS .venv or node_modules copied over
+# the image's freshly built Linux ones would break the container.
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.entrypoint-cache
+**/prebuilds
+**/.nuxt
+**/dist
+.git
+frontend/test-results
+frontend/playwright-report

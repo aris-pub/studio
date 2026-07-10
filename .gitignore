@@ -125,3 +125,4 @@ cli/.venv/lib/python3.13/site-packages/playwright/driver/node
 
 # HNS exit marker
 .hns-exit
+_rsm_ci/

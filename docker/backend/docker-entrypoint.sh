@@ -13,6 +13,16 @@ else
   echo "Using SQLite - skipping PostgreSQL wait"
 fi
 
+# Dependency install (uv sync + tree-sitter-rsm Linux build + rsm-lsp build).
+#
+# In the dev image these run here at startup because /workspace/rsm is bind-mounted
+# from the host and can change between runs. In the CI/prod image everything below
+# is already baked into image layers at build time, so SKIP_DEP_INSTALL=1 is set and
+# this whole block is skipped (startup is then just migrations + uvicorn).
+if [ "$SKIP_DEP_INSTALL" = "1" ]; then
+  echo "Dependencies baked into image - skipping startup install"
+else
+
 # Build RSM from local source for Linux (dev server only, not tests)
 #
 # IMPORTANT: The /workspace/rsm mount includes tree-sitter-rsm compiled binaries
@@ -102,6 +112,8 @@ if [ -d "/workspace/rsm/packages/rsm-lsp" ]; then
 
     cd /workspace/studio/backend
 fi
+
+fi  # end SKIP_DEP_INSTALL guard
 
 # Run migrations
 echo "Running database migrations..."
