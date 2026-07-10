@@ -1,0 +1,103 @@
+# CI compose. The backend runs from a fully baked image (deps + tree-sitter +
+# rsm-lsp are in the image, so the entrypoint only migrates and starts uvicorn):
+# this removes the ~82s per-container startup install that caused the
+# "services failed to start" flake. Frontend and site still build per shard (they
+# already bake deps at build time and were never the slow/flaky part).
+#
+# Standalone rather than an override of docker-compose.dev.yml, because a compose
+# override can only APPEND volumes, not remove the dev source mounts that would
+# shadow the baked backend image.
+#
+# BACKEND_IMAGE is set by the CI workflow to the GHCR tag the build job pushed.
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    ports:
+      - "${BACKEND_PORT:?BACKEND_PORT is required}:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}"
+      - "${MULTIPLAYER_PORT:?MULTIPLAYER_PORT is required}:1234"
+    # No source mounts: the image is self-contained. A ../.. or rsm mount here
+    # would shadow the baked venv and native bindings.
+    #
+    # The dev image bakes .env into the image and mounts the source (so backend/.env
+    # is present); the CI image does neither. Inject both env files CI creates:
+    # root .env (JWT_SECRET_KEY etc.) and backend/.env (ALEMBIC_DB_URL_PROD, which
+    # alembic/env.py needs for ENV=CI via its own DB-URL resolution). The explicit
+    # environment block below still overrides the DB/port-specific values.
+    env_file:
+      - ../.env
+      - ../backend/.env
+    working_dir: /workspace/studio/backend
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - TEST_DB_NAME=${TEST_DB_NAME}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
+      - TEST_DB_URL=postgresql://postgres:postgres@postgres:5432/${TEST_DB_NAME}
+      - ALEMBIC_DB_URL_LOCAL=postgresql://postgres:postgres@postgres:5432/${DB_NAME}
+      - DB_URL_LOCAL=postgresql+asyncpg://postgres:postgres@postgres:5432/${DB_NAME}
+      - ENV=${ENV:-CI}
+      - BACKEND_URL=http://localhost:${BACKEND_PORT}
+      - MULTIPLAYER_HOST=localhost
+      - MULTIPLAYER_PORT=${MULTIPLAYER_PORT}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - SITE_PORT=${SITE_PORT}
+      - STORYBOOK_PORT=${STORYBOOK_PORT}
+      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET:?INTERNAL_SHARED_SECRET is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile.dev
+      target: dev
+    ports:
+      - "${FRONTEND_PORT:?FRONTEND_PORT is required}:${FRONTEND_CONTAINER_PORT:?FRONTEND_CONTAINER_PORT is required}"
+    volumes:
+      - ../frontend:/workspace/frontend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT}
+      - PROXY_API_TARGET=http://backend:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}
+      - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
+      - VITE_ENV=${ENV:-ci}
+    command: pnpm run dev --host 0.0.0.0
+
+  site:
+    build:
+      context: ..
+      dockerfile: docker/site/Dockerfile.dev
+      target: dev
+    ports:
+      - "${SITE_PORT:?SITE_PORT is required}:${SITE_CONTAINER_PORT:?SITE_CONTAINER_PORT is required}"
+    volumes:
+      - ../site:/workspace/site
+      - /workspace/site/node_modules
+      - /workspace/site/.nuxt
+      - ../brand:/workspace/brand
+    environment:
+      - FRONTEND_URL=http://localhost:${FRONTEND_PORT}
+      - NUXT_BACKEND_URL=http://localhost:${BACKEND_PORT}
+      - SITE_CONTAINER_PORT=${SITE_CONTAINER_PORT}
+
+  postgres:
+    image: postgres:16
+    ports:
+      - "${DB_PORT:?DB_PORT is required}:${DB_CONTAINER_PORT:?DB_CONTAINER_PORT is required}"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/create_postgres_user.sql:/docker-entrypoint-initdb.d/01_create_postgres_user.sql
+      - ./backend/init_test_db.sql:/docker-entrypoint-initdb.d/02_init_test_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

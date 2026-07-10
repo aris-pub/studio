@@ -15,6 +15,53 @@ env:
   ENV: CI
 
 jobs:
+  # Build the backend image ONCE (deps + tree-sitter Linux binary + rsm-lsp baked
+  # in) and push to GHCR, so the e2e shards pull it instead of each rebuilding the
+  # stack and reinstalling deps at boot. This is what removes the ~82s per-shard
+  # cold startup that caused the "services failed to start" flake.
+  build-backend-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+
+    - name: Clone RSM repository
+      run: |
+        cd ..
+        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
+
+    - name: Prepare pristine rsm source for the build context
+      run: |
+        rsync -a --delete \
+          --exclude='.git' --exclude='.venv' --exclude='node_modules' \
+          --exclude='prebuilds' --exclude='build' --exclude='*.dylib' --exclude='*.so' \
+          --exclude='__pycache__' --exclude='.entrypoint-cache' \
+          ../rsm/ ./_rsm_ci/
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push baked backend image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/backend/Dockerfile.ci
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
+        cache-from: type=gha,scope=backend-ci
+        cache-to: type=gha,mode=max,scope=backend-ci
+
   # Unit Tests and Linting (Parallel)
   unit-backend:
     runs-on: ubuntu-latest
@@ -179,6 +226,11 @@ jobs:
 
   # Site E2E Tests (All Browsers)
   e2e-site:
+    needs: build-backend-image
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -188,7 +240,8 @@ jobs:
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_FILE: docker/docker-compose.ci.yml
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
       COMPOSE_PROJECT_NAME: studio-e2e-site-${{ matrix.browser }}-${{ matrix.device }}
 
     steps:
@@ -246,31 +299,22 @@ jobs:
         docker volume ls --filter name=$COMPOSE_PROJECT_NAME
         echo "✅ Docker cleanup complete"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
-
-    - name: Cache Docker layers
-      uses: actions/cache@v6
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-site-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-site-
-
-    - name: Start Docker Compose services
+    - name: Start services (baked backend image + built frontend/site)
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
+        echo "🐳 Logging in to GHCR, pulling baked backend, building frontend/site..."
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker compose --env-file .env pull backend
+        docker compose --env-file .env up -d --build
 
         # Source .env to get port variables
         export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 
-        echo "⏳ Polling for services to be ready (max 600s)..."
+        echo "⏳ Polling for services to be ready (max 300s)..."
         READY=false
         BACKEND_OK=false
         FRONTEND_OK=false
         SITE_OK=false
-        for i in $(seq 1 600); do
+        for i in $(seq 1 300); do
           if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
             echo "  backend ready at ${i}s"
             BACKEND_OK=true
@@ -299,8 +343,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 600s"
-          docker compose --env-file .env logs --tail=100
+          echo "❌ Services failed to start within 300s"
+          docker compose --env-file .env logs --tail=120
           exit 1
         fi
 
@@ -364,6 +408,11 @@ jobs:
 
   # Frontend E2E Tests (All test suites)
   e2e-frontend:
+    needs: build-backend-image
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -373,7 +422,10 @@ jobs:
     env:
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
+      # CI compose: backend runs from the prebuilt GHCR image (no per-shard build
+      # or 82s startup install); frontend still builds per shard.
+      COMPOSE_FILE: docker/docker-compose.ci.yml
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
       COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
 
     steps:
@@ -381,11 +433,14 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-        echo "Cloned RSM repository to ../rsm"
+    # No RSM clone: the backend image already bakes rsm; the frontend does not need it.
+
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install pnpm
       uses: pnpm/action-setup@v6
@@ -423,27 +478,17 @@ jobs:
         docker volume ls -q --filter name=$COMPOSE_PROJECT_NAME | xargs -r docker volume rm -f || true
         echo "✅ Docker cleanup complete"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
-
-    - name: Cache Docker layers
-      uses: actions/cache@v6
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-frontend-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-frontend-
-
-    - name: Start Docker Compose services
+    - name: Start services (baked backend image + built frontend)
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
+        echo "🐳 Pulling baked backend, building frontend..."
+        docker compose --env-file .env pull backend
+        docker compose --env-file .env up -d --build
 
-        echo "⏳ Polling for services to be ready (max 420s)..."
+        echo "⏳ Polling for services to be ready (max 240s)..."
         READY=false
         BACKEND_OK=false
         FRONTEND_OK=false
-        for i in $(seq 1 420); do
+        for i in $(seq 1 240); do
           if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
             echo "  backend ready at ${i}s"
             BACKEND_OK=true
@@ -468,8 +513,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 420s"
-          docker compose --env-file .env logs --tail=100
+          echo "❌ Services failed to start within 240s"
+          docker compose --env-file .env logs --tail=120
           exit 1
         fi
 
@@ -543,6 +588,11 @@ jobs:
         echo "✅ Cleanup complete"
 
   e2e-collab:
+    needs: build-backend-image
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -552,7 +602,8 @@ jobs:
       # CI-specific overrides (everything else comes from .env.example)
       ENV: CI
       VITE_LOG_LEVEL: WARN
-      COMPOSE_FILE: docker/docker-compose.dev.yml
+      COMPOSE_FILE: docker/docker-compose.ci.yml
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
       COMPOSE_PROJECT_NAME: studio-e2e-collab
 
     steps:
@@ -610,27 +661,18 @@ jobs:
         docker volume ls --filter name=$COMPOSE_PROJECT_NAME
         echo "✅ Docker cleanup complete"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
-
-    - name: Cache Docker layers
-      uses: actions/cache@v6
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml', 'pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Start Docker Compose services
+    - name: Start services (baked backend image + built frontend)
       run: |
-        echo "🐳 Starting services using start-dev.sh (same as local dev)..."
-        ./scripts/start-dev.sh
+        echo "🐳 Logging in to GHCR, pulling baked backend, building frontend..."
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker compose --env-file .env pull backend
+        docker compose --env-file .env up -d --build
 
-        echo "⏳ Polling for services to be ready (max 420s)..."
+        echo "⏳ Polling for services to be ready (max 240s)..."
         READY=false
         BACKEND_OK=false
         FRONTEND_OK=false
-        for i in $(seq 1 420); do
+        for i in $(seq 1 240); do
           if [ "$BACKEND_OK" != "true" ] && curl -sf http://localhost:8000/health >/dev/null 2>&1; then
             echo "  backend ready at ${i}s"
             BACKEND_OK=true
@@ -655,8 +697,8 @@ jobs:
         docker compose --env-file .env ps
 
         if [ "$READY" != "true" ]; then
-          echo "❌ Services failed to start within 420s"
-          docker compose --env-file .env logs --tail=100
+          echo "❌ Services failed to start within 240s"
+          docker compose --env-file .env logs --tail=120
           exit 1
         fi
 
