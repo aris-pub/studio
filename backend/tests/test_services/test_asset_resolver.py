@@ -19,7 +19,12 @@ class TestFileAssetResolver:
         assert result is None
 
     def test_resolver_with_assets_url_mode(self):
-        """Test resolver returns URL paths for images, content for HTML."""
+        """Test resolver returns absolute signed URLs for images, content for HTML."""
+        from urllib.parse import parse_qs, urlparse
+
+        from aris.asset_signing import verify_asset_signature
+        from aris.config import settings
+
         assets = {
             "test.html": ("<div>Test HTML</div>", "plain"),
             "chart.png": ("base64data", "plain"),
@@ -31,8 +36,12 @@ class TestFileAssetResolver:
         assert resolver.resolve_asset("test.html") == "<div>Test HTML</div>"
         # Non-image non-HTML returns content
         assert resolver.resolve_asset("style.css") == "body { color: red; }"
-        # Image assets return URL paths
-        assert resolver.resolve_asset("chart.png") == "/files/42/assets/raw/chart.png"
+        # Image assets return an absolute backend URL carrying a valid signature so
+        # a plain <img> (which cannot send a bearer token) can still be authorized.
+        url = resolver.resolve_asset("chart.png")
+        assert url.startswith(f"{settings.BACKEND_URL}/files/42/assets/raw/chart.png?")
+        q = parse_qs(urlparse(url).query)
+        assert verify_asset_signature(42, "chart.png", int(q["exp"][0]), q["sig"][0]) is True
         assert resolver.resolve_asset("missing.js") is None
 
     def test_resolver_with_assets_standalone_mode(self):

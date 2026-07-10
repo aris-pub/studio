@@ -296,7 +296,8 @@ class File(Base):
     keywords : str
         Optional comma-separated keywords.
     status : FileStatus
-        Draft, Under Review, or Published.
+        Currently only DRAFT exists. Published/public states are not modeled yet
+        (anonymous public reading lives in Press, not Studio).
     last_edited_at : datetime
         Auto-updated on edit.
     created_at : datetime

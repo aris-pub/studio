@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
     """Frontend base URL used for building email links."""
 
+    BACKEND_URL: str = Field("http://localhost:8000", json_schema_extra={"env": "BACKEND_URL"})
+    """Public base URL of this backend, the origin a browser reaches. Used to build
+    absolute, signed URLs for rendered-manuscript image assets, which load in plain
+    <img> tags and cannot carry a bearer token. Must be the externally reachable
+    origin (e.g. https://aris-backend.fly.dev in prod), not an internal Docker host."""
+
     INTERNAL_SHARED_SECRET: str = Field(..., json_schema_extra={"env": "INTERNAL_SHARED_SECRET"})
     """Shared secret used to authenticate trusted-infrastructure callers (e.g. the
     multi-player WebSocket server) on /internal/* endpoints. Required."""
