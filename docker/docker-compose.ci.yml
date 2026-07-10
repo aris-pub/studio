@@ -19,11 +19,14 @@ services:
     # No source mounts: the image is self-contained. A ../.. or rsm mount here
     # would shadow the baked venv and native bindings.
     #
-    # The dev image bakes .env into the image; the CI image does not (secrets are
-    # not baked), so inject the CI .env here to supply JWT_SECRET_KEY etc. The
-    # explicit environment block below overrides the DB/port-specific values.
+    # The dev image bakes .env into the image and mounts the source (so backend/.env
+    # is present); the CI image does neither. Inject both env files CI creates:
+    # root .env (JWT_SECRET_KEY etc.) and backend/.env (ALEMBIC_DB_URL_PROD, which
+    # alembic/env.py needs for ENV=CI via its own DB-URL resolution). The explicit
+    # environment block below still overrides the DB/port-specific values.
     env_file:
       - ../.env
+      - ../backend/.env
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
