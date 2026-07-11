@@ -31,9 +31,22 @@
  * - When the last client of any kind disconnects, delete the room.
  */
 
+import * as Sentry from '@sentry/node';
 import { WebSocketServer } from 'ws';
 import { setupWSConnection, docs } from 'y-websocket/bin/utils';
 import jwt from 'jsonwebtoken';
+
+// Error tracking (std-rg1qqt). No-op unless SENTRY_DSN_MULTIPLAYER is set, so local
+// and CI runs are unaffected until a DSN is configured for a deployed environment.
+if (process.env.SENTRY_DSN_MULTIPLAYER) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN_MULTIPLAYER,
+    environment: process.env.ENV || 'local',
+    release: process.env.GIT_COMMIT || 'dev',
+    tracesSampleRate: 0.05,
+    sendDefaultPii: false, // GDPR: no user emails/IPs
+  });
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket auth

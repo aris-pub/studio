@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     """Shared secret used to authenticate trusted-infrastructure callers (e.g. the
     multi-player WebSocket server) on /internal/* endpoints. Required."""
 
+    SENTRY_DSN: str = Field("", json_schema_extra={"env": "SENTRY_DSN"})
+    """Sentry ingest DSN for backend error tracking. Optional: when empty, Sentry is
+    not initialized (local/CI/test), so it is a no-op until a DSN is set in prod."""
+
 
     model_config = SettingsConfigDict(
         extra="ignore",

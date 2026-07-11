@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@sentry/node": "^10.65.0",
     "jsonwebtoken": "^9.0.2",
     "ws": "^8.21.0",
     "y-websocket": "^2.0.4"
