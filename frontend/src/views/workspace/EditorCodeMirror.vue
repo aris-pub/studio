@@ -74,6 +74,9 @@
   const lsp = useLSPClient({
     serverUrl: lspServerUrl,
     documentUri: computed(() => `file:///${file.value?.id || "untitled"}.rsm`),
+    // Read fresh at connect time so a refreshed access token is used on reconnect.
+    // The backend authenticates the LSP socket via the ["lsp", token] subprotocol.
+    token: () => localStorage.getItem("accessToken"),
   });
 
   // User info for awareness
