@@ -117,12 +117,22 @@ class LSPProxy:
             logger.info(f"Spawned LSP server process (PID: {self.process.pid})")
             self.running = True
 
-            # Start bidirectional proxy
-            await asyncio.gather(
-                self._proxy_websocket_to_stdin(),
-                self._proxy_stdout_to_websocket(),
-                self._log_stderr(),
-            )
+            # Run the bidirectional proxy, but return as soon as ANY side finishes
+            # (normally the client disconnecting, which ends _proxy_websocket_to_stdin).
+            # gather() would instead wait for all three, and _proxy_stdout_to_websocket
+            # can block indefinitely on `process.stdout.read()` after the client is gone,
+            # so start() would never return and the session slot (released by the caller's
+            # finally) would leak until the per-user cap is hit.
+            tasks = [
+                asyncio.create_task(self._proxy_websocket_to_stdin()),
+                asyncio.create_task(self._proxy_stdout_to_websocket()),
+                asyncio.create_task(self._log_stderr()),
+            ]
+            _done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            self.running = False
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
 
         except Exception as e:
             logger.error(f"LSP proxy error: {e}", exc_info=True)

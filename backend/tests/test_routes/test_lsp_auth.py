@@ -6,8 +6,10 @@ passed as a WebSocket subprotocol ["lsp", <token>] so it never lands in a URL or
 access log, and it is checked during the handshake before the socket is accepted.
 """
 
+import asyncio
 import time
 
+from fastapi import WebSocketDisconnect
 from jose import jwt as jose_jwt
 
 from aris import jwt as jwt_helpers
@@ -167,3 +169,63 @@ class TestLspEndpointWiring:
         # slot released after the session ends
         assert lsp_module._active_global == 0
         assert 42 not in lsp_module._active_per_user
+
+
+class TestLspProxyReleasesOnDisconnect:
+    """start() must return when the client disconnects even if the LSP process
+    stdout blocks, so the caller's finally releases the session slot. Without the
+    fix (plain asyncio.gather) start() hangs on the blocking stdout read and the
+    slot leaks until the per-user cap is hit (std-5smn)."""
+
+    async def test_start_returns_on_disconnect_despite_blocking_stdout(self, monkeypatch):
+        class _WS:
+            scope = {"subprotocols": ["lsp"]}
+
+            async def receive_text(self):
+                raise WebSocketDisconnect()
+
+            async def send_text(self, _msg):
+                pass
+
+            async def close(self, code=1000):
+                pass
+
+        class _Blocking:
+            async def read(self, _n):
+                await asyncio.sleep(3600)
+
+            async def readline(self):
+                await asyncio.sleep(3600)
+
+        class _Stdin:
+            def write(self, _b):
+                pass
+
+            async def drain(self):
+                pass
+
+        class _Proc:
+            pid = 4242
+            returncode = None
+            stdin = _Stdin()
+            stdout = _Blocking()
+            stderr = _Blocking()
+
+            def terminate(self):
+                pass
+
+            def kill(self):
+                pass
+
+            async def wait(self):
+                return 0
+
+        async def _fake_exec(*_args, **_kwargs):
+            return _Proc()
+
+        monkeypatch.setattr(lsp_module.os.path, "exists", lambda _p: True)
+        monkeypatch.setattr(lsp_module.asyncio, "create_subprocess_exec", _fake_exec)
+
+        proxy = LSPProxy(_WS())
+        # Would hang here (and TimeoutError) without the FIRST_COMPLETED fix.
+        await asyncio.wait_for(proxy.start(), timeout=5)
