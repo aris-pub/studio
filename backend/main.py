@@ -42,6 +42,34 @@ setup_logging()
 logger = get_logger(__name__)
 collab_logger = get_logger("aris.collaboration")
 
+# Initialize Sentry before the app is created, but only when a DSN is configured
+# (so local/CI/test are a no-op). Release is tagged with the git SHA the deploy
+# passes as GIT_COMMIT so prod errors map to a specific build.
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.asyncio import AsyncioIntegration
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    from aris.sentry_config import before_send
+
+    _env = os.getenv("ENV", "LOCAL")
+    _is_prod = _env in ("PROD", "STAGING")
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration(), AsyncioIntegration()],
+        traces_sample_rate=0.05 if _is_prod else 1.0,
+        profiles_sample_rate=0.05 if _is_prod else 1.0,
+        environment=_env,
+        release=os.getenv("GIT_COMMIT", "dev"),
+        attach_stacktrace=True,
+        send_default_pii=False,  # GDPR: no user emails/IPs in errors
+        max_breadcrumbs=50,
+        before_send=before_send,
+    )
+    logger.info(f"Sentry initialized (environment={_env})")
+
 
 # API metadata for documentation
 logger.info("Starting RSM Studio backend application")

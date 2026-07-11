@@ -30,6 +30,7 @@
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.6",
     "@floating-ui/vue": "^1.1.6",
+    "@sentry/vue": "^10.65.0",
     "@tabler/icons-vue": "^3.44.0",
     "@vueuse/core": "^13.4.0",
     "@yaireo/relative-time": "^1.1.0",

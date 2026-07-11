@@ -27,6 +27,7 @@ dependencies = [
     "resend>=2.10.0",
     "shortuuid>=1.0.13",
     "rsm-lang>=1.2.0",
+    "sentry-sdk[fastapi]>=2.0.0",
 ]
 
 [dependency-groups]
