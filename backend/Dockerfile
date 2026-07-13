@@ -29,9 +29,8 @@ COPY multi-player/ ./multi-player/
 ARG RSM_VERSION
 RUN git clone --depth 1 --branch "v${RSM_VERSION}" --recurse-submodules --shallow-submodules \
         https://github.com/aris-pub/rsm.git /rsm-src \
-    && GOT="$(node -p "require('/rsm-src/tree-sitter-rsm/package.json').version")" \
-    && [ "$GOT" = "${RSM_VERSION}" ] \
-       || { echo "rsm grammar version mismatch: got $GOT, expected ${RSM_VERSION}"; exit 1; }
+    && grep -q "^version = \"${RSM_VERSION}\"" /rsm-src/pyproject.toml \
+       || { echo "rsm version mismatch: /rsm-src/pyproject.toml is not ${RSM_VERSION}"; exit 1; }
 
 # Compile the tree-sitter-rsm native addon for linux (prebuilds may target a
 # different arch; binding.gyp may be absent, regenerate it).
