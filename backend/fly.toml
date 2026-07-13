@@ -28,7 +28,7 @@ kill_timeout = "30s"
   # vX.Y.Z (for rsm-lsp + the grammar) and pins rsm-lang==X.Y.Z from PyPI. Bump
   # this one value to move every built environment to a new rsm release together.
   [build.args]
-    RSM_VERSION = "1.5.0"
+    RSM_VERSION = "1.5.1"
 
 [http_service]
   internal_port = 8080
