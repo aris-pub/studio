@@ -2,7 +2,7 @@
 
 ## Project Overview
 RSM Studio is a web-native scientific publishing platform. FastAPI backend + Vue.js frontend
-for RSM (Readable Research Markup) manuscripts.
+for RSM (Readable Science Markup) manuscripts.
 
 ## Structure
 ```

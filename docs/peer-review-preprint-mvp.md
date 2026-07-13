@@ -56,7 +56,7 @@ This document outlines the Minimum Viable Product (MVP) features for RSM Studio'
 ## Technical Architecture
 
 ### Document AST Integration
-The peer review system builds on RSM Studio's existing RSM (Readable Research Markup) rendering engine:
+The peer review system builds on RSM Studio's existing RSM (Readable Science Markup) rendering engine:
 
 - **AST Foundation**: Each document is parsed into an Abstract Syntax Tree that represents the semantic structure
 - **Node-based anchoring**: Comments are anchored to specific AST nodes rather than character positions
