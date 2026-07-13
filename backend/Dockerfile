@@ -75,6 +75,11 @@ WORKDIR /app
 
 # Backend + styles (studio repo is the build context)
 COPY backend/ .
+# Never ship a .env in the image (std-mzhg). backend/.env may be present in the
+# build context (other studio images COPY it), so strip it here rather than via
+# the shared .dockerignore. Prod config comes only from Fly secrets + fly.toml
+# [env] at runtime.
+RUN rm -f .env .env.*
 COPY styles/ ./styles
 
 # Install Python dependencies from PyPI, pinned to the rsm release. The dev
