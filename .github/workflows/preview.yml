@@ -74,14 +74,6 @@ jobs:
         echo "url=https://aris-backend-pr-${PR_NUM}.fly.dev" >> "$GITHUB_OUTPUT"
         echo "app=aris-backend-pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
 
-    - name: Clone RSM repository
-      if: steps.pr.outputs.skip != 'true'
-      uses: actions/checkout@v7
-      with:
-        repository: aris-pub/rsm
-        submodules: recursive
-        path: rsm
-
     - name: Setup Fly CLI
       if: steps.pr.outputs.skip != 'true'
       uses: superfly/flyctl-actions/setup-flyctl@master
@@ -133,15 +125,18 @@ jobs:
 
     - name: Deploy backend to Fly
       if: steps.pr.outputs.skip != 'true'
+      working-directory: studio
       env:
         APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
       run: |
-        sed -i 's/npm ci --ignore-scripts/npm install --ignore-scripts/' studio/backend/Dockerfile
-        sed -i 's/npm ci --omit=dev/npm install/' studio/backend/Dockerfile
+        # Build context is the studio repo: the Dockerfile git-clones rsm at the
+        # pinned RSM_VERSION, so no rsm sibling checkout is needed. Relax npm ci
+        # to npm install for the --local-only preview build.
+        sed -i 's/npm ci/npm install/g' backend/Dockerfile
 
         flyctl deploy --app "$APP_NAME" \
-          --config studio/backend/fly.toml \
-          --dockerfile studio/backend/Dockerfile \
+          --config backend/fly.toml \
+          --dockerfile backend/Dockerfile \
           --ha=false \
           --yes \
           --local-only

@@ -115,10 +115,12 @@ deploy:
     @echo ""
     @echo "✅ Deployment complete!"
 
-# Deploy only backend to Fly.io
+# Deploy only backend to Fly.io. Build context is the studio repo (this dir):
+# the Dockerfile fetches rsm from PyPI + a pinned git clone, so nothing outside
+# studio/ is needed and the deploy no longer runs from the ~/aris parent.
 deploy-backend:
     @echo "🚀 Deploying backend to Fly.io..."
-    cd .. && fly deploy --config studio/backend/fly.toml --dockerfile studio/backend/Dockerfile
+    fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile
     @echo "✅ Backend deployed: https://aris-backend.fly.dev"
 
 # Push to GitHub to trigger Netlify deployments

@@ -1,52 +1,56 @@
-# Multi-stage build for production deployment with supervisord
+# Multi-stage build for production deployment with supervisord.
+#
+# The build context is the studio repo. rsm is fetched at a pinned version via
+# git (see the RSM_VERSION build arg), not COPYed from a local sibling checkout,
+# so nothing outside studio/ is needed and the build never runs from ~/aris.
+# Set the version in fly.toml [build.args] (and pass --build-arg for local builds).
+
 # Stage 1: Build Node.js services (multiplayer + rsm-lsp)
 FROM node:20-slim AS node-builder
 
-# Build tools for compiling tree-sitter-rsm native Node addon
+# build-essential + python3 compile the tree-sitter-rsm native Node addon; git
+# + ca-certificates fetch rsm at the pinned tag over HTTPS (node:slim ships no
+# CA bundle, so git clone fails cert verification without ca-certificates).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential python3 && rm -rf /var/lib/apt/lists/*
+    build-essential python3 git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
-# Build multiplayer server
-COPY studio/multi-player/package*.json ./multi-player/
+# Multiplayer server (lives in the studio repo)
+COPY multi-player/package*.json ./multi-player/
 RUN cd multi-player && npm ci --omit=dev
+COPY multi-player/ ./multi-player/
 
-# Mirror source tree layout so rsm-lsp's file:../../tree-sitter-rsm resolves correctly
-COPY rsm/tree-sitter-rsm ./rsm/tree-sitter-rsm/
+# Fetch rsm at the pinned version instead of COPYing a local sibling. aris-pub/rsm
+# and its tree-sitter-rsm submodule are public, so no credentials are needed.
+# rsm-lsp depends on tree-sitter-rsm via file:../../tree-sitter-rsm, so it is
+# built from inside the cloned monorepo layout. The version check turns a
+# mismatched grammar into a build failure instead of silent version skew.
+ARG RSM_VERSION
+RUN git clone --depth 1 --branch "v${RSM_VERSION}" --recurse-submodules --shallow-submodules \
+        https://github.com/aris-pub/rsm.git /rsm-src \
+    && GOT="$(node -p "require('/rsm-src/tree-sitter-rsm/package.json').version")" \
+    && [ "$GOT" = "${RSM_VERSION}" ] \
+       || { echo "rsm grammar version mismatch: got $GOT, expected ${RSM_VERSION}"; exit 1; }
 
-# Compile native bindings from source for the current platform
-# (prebuilds from host may target a different architecture)
-# binding.gyp may be absent from Depot's cached COPY layer; regenerate if missing
-RUN cd rsm/tree-sitter-rsm && rm -rf prebuilds build \
+# Compile the tree-sitter-rsm native addon for linux (prebuilds may target a
+# different arch; binding.gyp may be absent, regenerate it).
+RUN cd /rsm-src/tree-sitter-rsm && rm -rf prebuilds build \
     && npm install --ignore-scripts \
     && if [ ! -f binding.gyp ]; then npx -y tree-sitter-cli generate; fi \
     && npx node-gyp rebuild
 
-# Install rsm-lsp deps INCLUDING devDependencies: the build script is `tsc`
-# and typescript is a devDependency, so an --omit=dev install leaves tsc absent
-# and `npm run build` fails with "tsc: not found". Installing in-container
-# (rather than relying on a host node_modules copied in via the source COPY
-# below) keeps native bindings correct for linux.
-COPY rsm/packages/rsm-lsp/package*.json ./rsm/packages/rsm-lsp/
-RUN cd rsm/packages/rsm-lsp && npm ci
-
-# Copy source files for multiplayer and rsm-lsp
-COPY studio/multi-player/ ./multi-player/
-COPY rsm/packages/rsm-lsp/ ./rsm/packages/rsm-lsp/
-
-# Restore tree-sitter-rsm in node_modules — the COPY above may have overwritten
-# it with host files (wrong platform) or a broken symlink
-RUN rm -rf rsm/packages/rsm-lsp/node_modules/tree-sitter-rsm \
-    && cp -r rsm/tree-sitter-rsm rsm/packages/rsm-lsp/node_modules/tree-sitter-rsm
-
-# Build rsm-lsp TypeScript
-RUN cd rsm/packages/rsm-lsp && npm run build
+# Build rsm-lsp inside the monorepo so its file:../../tree-sitter-rsm resolves,
+# then replace the installed addon with the freshly compiled one.
+RUN cd /rsm-src/packages/rsm-lsp && npm ci \
+    && rm -rf node_modules/tree-sitter-rsm \
+    && cp -r /rsm-src/tree-sitter-rsm node_modules/tree-sitter-rsm \
+    && npm run build
 
 # Stage 2: Python runtime + Node.js + supervisord
 FROM python:3.13-slim AS runtime
 
-# Install system dependencies including Node.js and supervisord
+# System dependencies including Node.js and supervisord
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         postgresql-client \
@@ -59,46 +63,43 @@ RUN apt-get update && \
         && rm -rf /var/lib/apt/lists/* \
         && apt-get clean
 
-# Install Node.js 20.x
+# Node.js 20.x
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Copy backend dependencies
-COPY studio/backend/ .
-COPY studio/styles/ ./styles
+# Backend + styles (studio repo is the build context)
+COPY backend/ .
+# Never ship a .env in the image (std-mzhg). backend/.env may be present in the
+# build context (other studio images COPY it), so strip it here rather than via
+# the shared .dockerignore. Prod config comes only from Fly secrets + fly.toml
+# [env] at runtime.
+RUN rm -f .env .env.*
+COPY styles/ ./styles
 
-# Copy the rsm source so the editable rsm-lang dependency resolves.
-# This makes staging + prod install rsm-lang (and its tree-sitter-rsm
-# dependency) from the cloned aris-pub/rsm checkout in the build context —
-# identical to how dev and CI source it, instead of pulling a pinned release
-# from PyPI. The cloned rsm is added to the build context by the deploy
-# workflow's "Clone RSM repository" step.
-COPY rsm /rsm
-
-# backend/pyproject.toml points rsm-lang at the relative "../../rsm", which
-# matches the host/CI layout but cannot normalize inside the container —
-# /app/../../rsm escapes the filesystem root and uv rejects it. Rewrite the
-# source to the absolute /rsm where the checkout was copied.
-RUN sed -i 's|path = "../../rsm"|path = "/rsm"|' pyproject.toml
-
-# Install Python dependencies. uv re-locks because the rewritten source path
-# no longer matches uv.lock; the container lock is ephemeral so that is fine.
-RUN uv sync --no-cache
+# Install Python dependencies from PyPI, pinned to the rsm release. The dev
+# pyproject points rsm-lang at an editable ../../rsm checkout; strip that source
+# override and pin the exact version so prod resolves rsm-lang (and its
+# tree-sitter-rsm dependency) from PyPI, with no rsm checkout in the context.
+ARG RSM_VERSION
+RUN sed -i '/rsm-lang = { path =/d' pyproject.toml \
+    && sed -i "s|rsm-lang>=[0-9.]*|rsm-lang==${RSM_VERSION}|" pyproject.toml \
+    && rm -f uv.lock \
+    && uv sync --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Copy Node.js services from builder stage (tree-sitter-rsm is embedded in rsm-lsp/node_modules)
+# Node.js services from the builder stage (rsm-lsp bundles the compiled addon)
 COPY --from=node-builder /build/multi-player /app/multi-player
-COPY --from=node-builder /build/rsm/packages/rsm-lsp /app/rsm-lsp
+COPY --from=node-builder /rsm-src/packages/rsm-lsp /app/rsm-lsp
 
-# Copy supervisord configuration
-COPY studio/docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY studio/docker/health-check.sh /usr/local/bin/health-check.sh
+# supervisord configuration (studio repo)
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/health-check.sh /usr/local/bin/health-check.sh
 RUN chmod +x /usr/local/bin/health-check.sh
 
 # Expose ports: 8080 (HTTP), 1234 (WebSocket)

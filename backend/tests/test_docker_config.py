@@ -29,10 +29,22 @@ class TestDockerfile:
 
     def test_symlink_replaced_with_copy(self):
         assert "cp -r" in self.dockerfile
-        assert "rm -rf rsm/packages/rsm-lsp/node_modules/tree-sitter-rsm" in self.dockerfile
+        # rsm-lsp is built inside the cloned monorepo (/rsm-src), so the restore
+        # of the freshly compiled addon is relative to that package dir.
+        assert "rm -rf node_modules/tree-sitter-rsm" in self.dockerfile
 
     def test_rsm_lsp_copied_to_runtime(self):
-        assert "COPY --from=node-builder /build/rsm/packages/rsm-lsp /app/rsm-lsp" in self.dockerfile
+        assert "COPY --from=node-builder /rsm-src/packages/rsm-lsp /app/rsm-lsp" in self.dockerfile
+
+    def test_rsm_fetched_from_pinned_release_not_sibling(self):
+        """rsm is sourced as published artifacts, not COPYed from a local sibling,
+        so the build context stays inside the studio repo (no ~/aris)."""
+        # Node side: a pinned git clone, not a COPY of rsm/...
+        assert "git clone" in self.dockerfile
+        assert "COPY rsm /rsm" not in self.dockerfile
+        # Python side: rsm-lang pinned from PyPI, editable source override stripped
+        assert "rsm-lang==" in self.dockerfile
+        assert 'path = "../../rsm"' not in self.dockerfile
 
     def test_no_separate_tree_sitter_copy_to_runtime(self):
         """tree-sitter-rsm should be embedded in rsm-lsp/node_modules, not copied separately."""

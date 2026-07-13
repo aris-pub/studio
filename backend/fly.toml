@@ -24,6 +24,12 @@ kill_timeout = "30s"
   dockerfile = "Dockerfile"
   build-target = "runtime"
 
+  # rsm is fetched at this version: the Dockerfile git-clones aris-pub/rsm at
+  # vX.Y.Z (for rsm-lsp + the grammar) and pins rsm-lang==X.Y.Z from PyPI. Bump
+  # this one value to move every built environment to a new rsm release together.
+  [build.args]
+    RSM_VERSION = "1.5.0"
+
 [http_service]
   internal_port = 8080
   force_https = true
