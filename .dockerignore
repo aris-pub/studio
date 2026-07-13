@@ -15,3 +15,8 @@
 .git
 frontend/test-results
 frontend/playwright-report
+
+# Secrets: never bake a .env into the image (std-mzhg). Prod config comes from
+# Fly secrets and fly.toml [env] at runtime, so no .env is needed in the build.
+**/.env
+**/.env.*
