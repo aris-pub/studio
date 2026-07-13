@@ -46,14 +46,14 @@ jobs:
       uses: docker/setup-buildx-action@v4
 
     - name: Log in to GHCR
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push baked backend image
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: .
         file: docker/backend/Dockerfile.ci
@@ -436,7 +436,7 @@ jobs:
     # No RSM clone: the backend image already bakes rsm; the frontend does not need it.
 
     - name: Log in to GHCR
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
