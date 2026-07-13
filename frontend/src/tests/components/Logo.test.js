@@ -2,22 +2,19 @@ import { mount } from "@vue/test-utils";
 import { describe, it, expect } from "vitest";
 import Logo from "@/components/base/Logo.vue";
 
-const mockApi = {
-  defaults: {
-    baseURL: import.meta.env.VITE_API_BASE_URL,
-  },
+// Logo builds its src from BRAND_BASE_URL (VITE_BRAND_BASE_URL or a commit-pinned
+// jsDelivr default). Assert the composed path, not the exact pinned base, so a
+// deliberate pin bump does not break the test.
+const LOGO_SUFFIX = "/logos/studio/studio-logo-64.svg";
+const expectLogoSrc = (img) => {
+  const src = img.attributes("src");
+  expect(src).toMatch(/^https:\/\//);
+  expect(src.endsWith(LOGO_SUFFIX)).toBe(true);
 };
 
 describe("Logo.vue", () => {
   const createWrapper = (props = {}) => {
-    return mount(Logo, {
-      props,
-      global: {
-        provide: {
-          api: mockApi,
-        },
-      },
-    });
+    return mount(Logo, { props });
   };
 
   it("renders small logo by default", () => {
@@ -30,9 +27,7 @@ describe("Logo.vue", () => {
     expect(logoDiv.classes()).toContain("logo--small");
 
     expect(img.exists()).toBe(true);
-    expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
-    );
+    expectLogoSrc(img);
     expect(img.attributes("alt")).toBe("RSM Studio logo");
     expect(img.classes()).toContain("logo__mark");
   });
@@ -44,9 +39,7 @@ describe("Logo.vue", () => {
     const text = wrapper.find(".logo__text");
 
     expect(logoDiv.classes()).toContain("logo--full");
-    expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
-    );
+    expectLogoSrc(img);
     expect(text.exists()).toBe(true);
     expect(text.text()).toBe("S");
   });
@@ -57,9 +50,7 @@ describe("Logo.vue", () => {
     const img = wrapper.find("img");
 
     expect(logoDiv.classes()).toContain("logo--gray");
-    expect(img.attributes("src")).toBe(
-      `${mockApi.defaults.baseURL}/brand/logos/studio/studio-logo-64.svg`
-    );
+    expectLogoSrc(img);
   });
 
   it("accepts custom alt text", () => {
