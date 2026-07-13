@@ -63,7 +63,7 @@ We developed a proof-of-concept platform using\\:
 
   :-: **Backend**\\: FastAPI with PostgreSQL database
 
-  :-: **Document Format**\\: RSM (Readable Research Markup)
+  :-: **Document Format**\\: RSM (Readable Science Markup)
 
   :-: **Deployment**\\: Docker containers on cloud infrastructure
 
