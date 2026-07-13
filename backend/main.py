@@ -445,7 +445,7 @@ async def _run_checkpoint_gc():
 @app.middleware("http")
 async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static") or request.url.path.startswith("/styles") or request.url.path.startswith("/brand"):
+    if request.url.path.startswith("/static") or request.url.path.startswith("/styles"):
         response.headers["Cache-Control"] = "no-store"
     # Signed asset URLs carry their token in the query string. Keep the full URL
     # out of the Referer header so a signed URL cannot leak to any third-party
@@ -514,26 +514,3 @@ if styles_dir:
     logger.info(f"Styles mounted successfully at /styles from {styles_dir}")
 else:
     logger.info(f"Styles directory not found. Tried paths: {styles_paths}")
-
-# Mount brand assets (only if directory exists)
-brand_paths = [
-    "../brand",  # When running from backend/ directory
-    "brand",     # When running from project root
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "brand")  # Absolute path fallback
-]
-
-brand_dir = None
-for path in brand_paths:
-    if os.path.exists(path):
-        brand_dir = path
-        break
-
-if brand_dir:
-    app.mount(
-        "/brand",
-        StaticFiles(directory=brand_dir),
-        name="brand"
-    )
-    logger.info(f"Brand assets mounted successfully at /brand from {brand_dir}")
-else:
-    logger.info(f"Brand directory not found. Tried paths: {brand_paths}")
