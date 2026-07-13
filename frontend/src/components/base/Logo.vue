@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-  import { computed, inject } from "vue";
+  import { computed } from "vue";
 
   const props = defineProps({
     type: {
@@ -24,13 +24,16 @@
     },
   });
 
-  const api = inject("api");
-
-  const logomarkUrl = computed(() => {
-    const base = api.defaults.baseURL;
-    // Always use the logomark, never the combined logotype
-    return `${base}/brand/logos/studio/studio-logo-64.svg`;
-  });
+  // Brand assets load from one canonical BRAND_BASE_URL, not from the backend
+  // origin: the API scales to zero, so the logo must not depend on it being awake.
+  // Default to a commit-pinned public jsDelivr URL over the aris-pub/brand repo so
+  // a logo change is a deliberate pin bump, never an unreviewed auto-swap. Override
+  // with VITE_BRAND_BASE_URL (e.g. a brand.aris.pub host) at build time.
+  const BRAND_BASE_URL =
+    import.meta.env.VITE_BRAND_BASE_URL ||
+    "https://cdn.jsdelivr.net/gh/aris-pub/brand@d64fba720fa2eaef0b8a07d648d7e1c926e818e3/logos";
+  // Always use the logomark, never the combined logotype
+  const logomarkUrl = `${BRAND_BASE_URL}/studio/studio-logo-64.svg`;
 
   const logoClass = computed(() => {
     return `logo logo--${props.type} ${props.class}`.trim();
