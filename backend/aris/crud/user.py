@@ -2,12 +2,23 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import case, desc, select
+from sqlalchemy import case, delete, desc, or_, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import File, FileSettings, User
-from ..models.models import FilePermission, FileRole
+from ..models.models import (
+    Annotation,
+    AnnotationMessage,
+    FileAsset,
+    FilePermission,
+    FileRole,
+    FileVersion,
+    ProfilePicture,
+    Signup,
+    Tag,
+    UserSettings,
+)
 from .file import get_file, get_file_section
 from .tag import get_user_file_tags
 from .utils import extract_title
@@ -29,23 +40,30 @@ async def get_user(user_id: int, db: AsyncSession):
         The user object if found and not deleted, None otherwise.
     """
     import logging
+
     logger = logging.getLogger("aris.crud.user")
     logger.info(f"[get_user] Querying for user_id={user_id}")
     logger.info(f"[get_user] DB session: {db}, in_transaction: {db.in_transaction()}")
 
-    result: Result[Any] = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    result: Result[Any] = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
     user = result.scalars().first()
 
     logger.info(f"[get_user] Result: {user}")
     if user:
-        logger.info(f"[get_user] Found user: id={user.id}, email={user.email}, deleted_at={user.deleted_at}")
+        logger.info(
+            f"[get_user] Found user: id={user.id}, email={user.email}, deleted_at={user.deleted_at}"
+        )
     else:
         logger.warning(f"[get_user] User {user_id} not found in database")
         # Query without deleted_at check to see if user exists but is deleted
         check_result = await db.execute(select(User).where(User.id == user_id))
         check_user = check_result.scalars().first()
         if check_user:
-            logger.warning(f"[get_user] User {user_id} exists but is DELETED: deleted_at={check_user.deleted_at}")
+            logger.warning(
+                f"[get_user] User {user_id} exists but is DELETED: deleted_at={check_user.deleted_at}"
+            )
         else:
             logger.warning(f"[get_user] User {user_id} does not exist at all in database")
 
@@ -160,13 +178,69 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
 
     Notes
     -----
-    Sets the deleted_at field to current UTC timestamp instead of actually
-    deleting the record. This preserves data integrity and allows for recovery.
+    GDPR right-to-erasure. Marking only the user row would leave the account's
+    files, assets, annotations, settings, tags and permissions in the database,
+    so this cascades the deleted_at timestamp across every table that holds the
+    user's data. The account's data is thereby removed from the application
+    immediately (queries filter on deleted_at); a separate scheduled job then
+    hard-deletes rows once deleted_at has aged past the retention window.
+
+    Auth is stateless JWT with no server-side token store, so no explicit
+    logout is needed: once the user row is soft-deleted, get_user returns None
+    and the account's next authenticated request is rejected.
+
+    feedback and reaction rows have no deleted_at column; their user_id/owner_id
+    foreign keys are ON DELETE CASCADE, so they are removed by the hard-delete
+    job when the user row is finally purged, not here.
+
+    The waitlist signup (keyed by email, not FK-linked to the user and with no
+    deleted_at column) is hard-deleted here: the hard-delete job would never
+    reach it, and erasing it immediately is the correct behaviour for it.
     """
     user = await get_user(user_id, db)
     if not user:
         return None
-    user.deleted_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+
+    # Evaluated per-statement below; the File rows are soft-deleted last, so
+    # these still resolve the account's files (this filters by owner, not by
+    # deleted_at) while cascading to their file-scoped children.
+    owned_files = select(File.id).where(File.owner_id == user_id).scalar_subquery()
+
+    cascades = [
+        update(UserSettings).where(UserSettings.user_id == user_id),
+        update(Tag).where(Tag.user_id == user_id),
+        # Assets and versions are file-scoped, so they cascade with the
+        # account's own files. Assets the user uploaded onto other people's
+        # files are meant to survive (owner_id is ON DELETE SET NULL,
+        # attribution only), so they are deliberately not matched by uploader.
+        update(FileAsset).where(FileAsset.file_id.in_(owned_files)),
+        update(FileVersion).where(FileVersion.file_id.in_(owned_files)),
+        update(FileSettings).where(
+            or_(FileSettings.user_id == user_id, FileSettings.file_id.in_(owned_files))
+        ),
+        update(Annotation).where(
+            or_(Annotation.owner_id == user_id, Annotation.file_id.in_(owned_files))
+        ),
+        update(AnnotationMessage).where(AnnotationMessage.owner_id == user_id),
+        update(FilePermission).where(
+            or_(FilePermission.user_id == user_id, FilePermission.file_id.in_(owned_files))
+        ),
+        update(File).where(File.owner_id == user_id),
+    ]
+    for stmt in cascades:
+        await db.execute(stmt.values(deleted_at=now))
+
+    if user.profile_picture_id:
+        await db.execute(
+            update(ProfilePicture)
+            .where(ProfilePicture.id == user.profile_picture_id)
+            .values(deleted_at=now)
+        )
+
+    await db.execute(delete(Signup).where(Signup.email == user.email))
+
+    user.deleted_at = now
     await db.commit()
     return user
 
@@ -202,6 +276,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
     Includes all files where user has any permission level.
     """
     import logging
+
     logger = logging.getLogger("aris.crud.user")
     logger.info(f"[get_user_files] Called for user_id={user_id}, with_tags={with_tags}")
     logger.info(f"[get_user_files] DB session: {db}, in_transaction: {db.in_transaction()}")
@@ -217,7 +292,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
         (FilePermission.role == FileRole.OWNER, 1),
         (FilePermission.role == FileRole.EDITOR, 2),
         (FilePermission.role == FileRole.COMMENTER, 3),
-        else_=4
+        else_=4,
     )
 
     result: Result[Any] = await db.execute(
@@ -269,28 +344,32 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
         )
         collab_result = await db.execute(collab_stmt)
         for row in collab_result.all():
-            collaborators_by_file[row[0]].append({
-                "id": row[1],
-                "name": row[2],
-                "email": row[3],
-                "avatar_color": row[4].value if hasattr(row[4], "value") else row[4],
-                "role": row[5].value,
-            })
+            collaborators_by_file[row[0]].append(
+                {
+                    "id": row[1],
+                    "name": row[2],
+                    "email": row[3],
+                    "avatar_color": row[4].value if hasattr(row[4], "value") else row[4],
+                    "role": row[5].value,
+                }
+            )
 
     # Batch-load reactions for all files
     reactions_by_file: dict[int, list[dict]] = {doc.id: [] for doc in docs}
     if docs:
         from ..models.models import Reaction
-        rxn_stmt = (
-            select(Reaction.file_id, Reaction.node_id, Reaction.reaction_type)
-            .where(Reaction.file_id.in_(file_ids))
+
+        rxn_stmt = select(Reaction.file_id, Reaction.node_id, Reaction.reaction_type).where(
+            Reaction.file_id.in_(file_ids)
         )
         rxn_result = await db.execute(rxn_stmt)
         for row in rxn_result.all():
-            reactions_by_file[row[0]].append({
-                "node_id": row[1],
-                "reaction_type": row[2],
-            })
+            reactions_by_file[row[0]].append(
+                {
+                    "node_id": row[1],
+                    "reaction_type": row[2],
+                }
+            )
 
     return [
         {
