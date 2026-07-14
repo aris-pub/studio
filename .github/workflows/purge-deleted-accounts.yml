@@ -1,0 +1,82 @@
+name: Purge Deleted Accounts
+
+# Daily hard-delete of accounts soft-deleted more than 30 days ago: the second
+# stage of the GDPR deletion path. Soft delete (backend) removes an account's
+# data from the app immediately; this job erases it for good once the grace
+# period has passed.
+#
+# The heavy lifting is done by database ON DELETE cascades added in the
+# user_deletion_cascades migration, so the job is just two DELETEs. It mirrors
+# backend aris.crud.user.hard_delete_expired_users (keep the 30-day window in
+# sync). Uses the same Supabase session-pooler connection + secrets as the
+# database-backup workflow.
+
+on:
+  schedule:
+    # 03:00 UTC, after the 02:00 backup so an account still appears in that
+    # day's backup before it is purged.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only report how many accounts would be purged'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          # PostgreSQL 17 client to match the Supabase server version
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Purge accounts past the retention window
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DB_HOST: ${{ secrets.DATABASE_HOST }}
+          DB_PORT: ${{ secrets.DATABASE_PORT }}
+          DB_NAME: ${{ secrets.DATABASE_NAME }}
+          DB_USER: ${{ secrets.DATABASE_USER }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          PSQL="psql --host=$DB_HOST --port=$DB_PORT --username=$DB_USER --dbname=$DB_NAME --no-password -v ON_ERROR_STOP=1"
+
+          # Retention window MUST match backend hard_delete_expired_users (30 days).
+          WINDOW="deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'"
+
+          COUNT=$($PSQL -tA -c "SELECT count(*) FROM users WHERE $WINDOW;")
+          echo "Accounts past the 30-day retention window: $COUNT"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run requested: no rows deleted."
+            exit 0
+          fi
+
+          if [ "$COUNT" = "0" ]; then
+            echo "Nothing to purge."
+            exit 0
+          fi
+
+          # Single transaction. Deleting the users rows cascades each account's
+          # owned content (files -> versions/assets/settings/permissions/
+          # annotations/messages) via the migration's ON DELETE CASCADE, while
+          # attribution-only references on other users' files are set NULL.
+          # Profile pictures are referenced BY the users row, so they are removed
+          # in the second statement once the referencing users are gone.
+          $PSQL -c "BEGIN;
+            DELETE FROM users WHERE $WINDOW;
+            DELETE FROM profile_pictures WHERE $WINDOW;
+            COMMIT;"
+
+          echo "Purge complete."

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import case, delete, desc, or_, select, update
@@ -243,6 +243,43 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
     user.deleted_at = now
     await db.commit()
     return user
+
+
+async def hard_delete_expired_users(
+    db: AsyncSession, retention_days: int = 30
+) -> dict[str, int]:
+    """Permanently delete accounts soft-deleted more than retention_days ago.
+
+    This is the second half of the GDPR deletion path: soft delete removes an
+    account's data from the application immediately, and this retention job then
+    erases it for good once the grace period has passed.
+
+    It relies on database-level ON DELETE cascades (see the
+    user_deletion_cascades migration): deleting a users row transitively removes
+    the account's files and everything hanging off them, while attribution-only
+    references on other users' files (file_versions.created_by,
+    file_permissions.granted_by, file_assets.owner_id) are set to NULL so those
+    contributions survive. Profile pictures are referenced *by* the users row, so
+    they are cleaned up in a second statement once the referencing users are gone.
+
+    Runs on PostgreSQL in production; the cascade is a no-op on SQLite (which does
+    not enforce foreign keys). Returns the row count deleted per table.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+
+    users_deleted = await db.execute(
+        delete(User).where(User.deleted_at.isnot(None), User.deleted_at < cutoff)
+    )
+    pictures_deleted = await db.execute(
+        delete(ProfilePicture).where(
+            ProfilePicture.deleted_at.isnot(None), ProfilePicture.deleted_at < cutoff
+        )
+    )
+    await db.commit()
+    return {
+        "users": users_deleted.rowcount,
+        "profile_pictures": pictures_deleted.rowcount,
+    }
 
 
 async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):

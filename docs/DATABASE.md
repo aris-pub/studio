@@ -22,6 +22,26 @@ Only the `public` schema is dumped: that is where all studio application data
 lives. Supabase-managed schemas (`auth`, `storage`, extensions) are Supabase's
 responsibility and the app role cannot fully dump them.
 
+## Account deletion (GDPR erasure)
+
+Two stages:
+
+1. **Soft delete (immediate).** `DELETE /users/{id}` (`aris.crud.user.soft_delete_user`)
+   cascades a `deleted_at` timestamp across every table holding the account's
+   data, so "delete my account" removes it from the application at once.
+   Contributions to other users' files (uploaded assets, named versions) are
+   kept as attribution-only and survive.
+2. **Hard delete (after 30 days).** The **`.github/workflows/purge-deleted-accounts.yml`**
+   cron (daily at 3 AM UTC, after the backup; `dry_run` input for a count-only
+   run) permanently deletes accounts whose `deleted_at` is older than 30 days.
+   It is two `DELETE`s; the database does the rest through the `ON DELETE`
+   cascades added in the `user_deletion_cascades` migration
+   (`CASCADE` for owned content, `SET NULL` for attribution). This mirrors
+   `aris.crud.user.hard_delete_expired_users` — keep the 30-day window in sync.
+
+A deleted account's data can therefore persist for up to ~60 days total: the
+30-day soft-delete grace window plus the 30-day backup-artifact retention.
+
 ### Restore (manual)
 
 ```bash
