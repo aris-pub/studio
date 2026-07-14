@@ -29,18 +29,9 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Clone RSM repository
-      run: |
-        cd ..
-        git clone --recurse-submodules https://github.com/aris-pub/rsm.git
-
-    - name: Prepare pristine rsm source for the build context
-      run: |
-        rsync -a --delete \
-          --exclude='.git' --exclude='.venv' --exclude='node_modules' \
-          --exclude='prebuilds' --exclude='build' --exclude='*.dylib' --exclude='*.so' \
-          --exclude='__pycache__' --exclude='.entrypoint-cache' \
-          ../rsm/ ./_rsm_ci/
+    - name: Read pinned RSM_VERSION
+      id: rsmver
+      run: echo "version=$(grep -oP 'RSM_VERSION = "\K[^"]+' backend/fly.toml)" >> "$GITHUB_OUTPUT"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
@@ -57,6 +48,8 @@ jobs:
       with:
         context: .
         file: docker/backend/Dockerfile.ci
+        build-args: |
+          RSM_VERSION=${{ steps.rsmver.outputs.version }}
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
         cache-from: type=gha,scope=backend-ci

@@ -32,10 +32,14 @@ RUN curl -fL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# --- rsm source (pinned, pristine) ---
-# uv.lock pins rsm-lang as an editable install resolving to /workspace/rsm, so the
-# source must live there and must not be mounted over at runtime.
-COPY _rsm_ci /workspace/rsm
+# --- rsm source (pinned) ---
+# Clone rsm at the pinned version instead of COPYing a host-prepared tree, so CI
+# builds the SAME rsm the pinned prod image ships (not rsm HEAD) and no rsm
+# sibling is needed in the build context. uv.lock resolves rsm-lang editable to
+# /workspace/rsm, and tree-sitter-rsm / rsm-lsp are built from it below.
+ARG RSM_VERSION
+RUN git clone --depth 1 --branch "v${RSM_VERSION}" --recurse-submodules --shallow-submodules \
+    https://github.com/aris-pub/rsm.git /workspace/rsm
 
 WORKDIR /workspace/studio/backend
 
