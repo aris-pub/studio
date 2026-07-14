@@ -1,0 +1,67 @@
+name: Backup Health Check
+
+# Twice-daily check that a recent database backup artifact exists. Emails an
+# alert (Resend) and fails the run if the latest backup is missing or stale.
+# Modeled on the Press repo's backup-health-check.yml.
+
+on:
+  schedule:
+    # 9 AM and 9 PM UTC
+    - cron: '0 9,21 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+
+jobs:
+  check-backup-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check last backup timestamp
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST=$(gh api "repos/${{ github.repository }}/actions/artifacts" --paginate \
+            --jq '.artifacts[] | select(.name | startswith("studio_backup_")) | {name: .name, created_at: .created_at}' \
+            | jq -s 'sort_by(.created_at) | reverse | .[0]')
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "No backup artifacts found"
+            echo "alert=true" >> "$GITHUB_OUTPUT"
+            echo "reason=No studio_backup_* artifacts exist" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          NAME=$(echo "$LATEST" | jq -r '.name')
+          CREATED=$(echo "$LATEST" | jq -r '.created_at')
+          CREATED_TS=$(date -d "$CREATED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED" +%s)
+          AGE_HOURS=$(( ( $(date +%s) - CREATED_TS ) / 3600 ))
+          echo "Latest backup: $NAME (${AGE_HOURS}h old)"
+
+          if [ "$AGE_HOURS" -gt 48 ]; then
+            echo "alert=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Last backup is ${AGE_HOURS}h old (created $CREATED)" >> "$GITHUB_OUTPUT"
+          else
+            echo "alert=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send alert email
+        if: steps.check.outputs.alert == 'true'
+        run: |
+          curl -sS -X POST 'https://api.resend.com/emails' \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "from": "${{ secrets.FROM_EMAIL }}",
+              "to": ["leo@leotrs.com"],
+              "subject": "⚠️ RSM Studio database backup alert",
+              "html": "<h2>Database backup alert</h2><p><strong>${{ steps.check.outputs.reason }}</strong></p><p><a href=\"https://github.com/${{ github.repository }}/actions/workflows/database-backup.yml\">Backup workflow</a> · <a href=\"https://github.com/${{ github.repository }}/actions\">Recent runs</a></p><p>Trigger a backup manually: <code>gh workflow run database-backup.yml</code></p>"
+            }'
+          echo "Alert email sent"
+          exit 1   # fail the run so the alert is visible in GitHub too
+
+      - name: Health check passed
+        if: steps.check.outputs.alert != 'true'
+        run: echo "Backup is fresh — no action needed"

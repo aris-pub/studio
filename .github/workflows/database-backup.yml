@@ -1,0 +1,129 @@
+name: Database Backup
+
+# Daily pg_dump of the prod (Supabase) database, stored as a private GitHub
+# Actions artifact. Modeled on the Press repo's database-backup.yml. Bootstrap
+# phase: free, 30-day retention, last 7 kept. Graduate to Supabase Pro / external
+# storage as the user base grows.
+
+on:
+  schedule:
+    # Daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      backup_name:
+        description: 'Custom backup name (optional)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: write   # cleanup job deletes old backup artifacts
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          # PostgreSQL 17 client to match the Supabase server version
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Create database backup
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DB_HOST: ${{ secrets.DATABASE_HOST }}
+          DB_PORT: ${{ secrets.DATABASE_PORT }}
+          DB_NAME: ${{ secrets.DATABASE_NAME }}
+          DB_USER: ${{ secrets.DATABASE_USER }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          if [ -n "${{ github.event.inputs.backup_name }}" ]; then
+            BACKUP_NAME="${{ github.event.inputs.backup_name }}_${TIMESTAMP}"
+          else
+            BACKUP_NAME="studio_backup_${TIMESTAMP}"
+          fi
+          BACKUP_FILE="${BACKUP_NAME}.sql"
+
+          echo "Creating backup: $BACKUP_FILE"
+
+          # --schema=public: studio's application data lives in the public schema;
+          # skip Supabase-managed schemas (auth/storage/extensions) that the app
+          # user can't fully dump and that aren't studio's data.
+          pg_dump \
+            --host="$DB_HOST" \
+            --port="$DB_PORT" \
+            --username="$DB_USER" \
+            --dbname="$DB_NAME" \
+            --schema=public \
+            --no-password \
+            --no-owner \
+            --no-privileges \
+            --format=plain \
+            --file="$BACKUP_FILE"
+
+          if [ ! -s "$BACKUP_FILE" ]; then
+            echo "::error::Backup file is empty or missing"
+            exit 1
+          fi
+
+          echo "Backup created: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+
+          gzip "$BACKUP_FILE"
+          echo "Compressed: ${BACKUP_FILE}.gz ($(du -h "${BACKUP_FILE}.gz" | cut -f1))"
+
+          echo "BACKUP_FILE=${BACKUP_FILE}.gz" >> "$GITHUB_ENV"
+          echo "BACKUP_NAME=$BACKUP_NAME" >> "$GITHUB_ENV"
+
+      - name: Verify backup integrity + schema
+        run: |
+          gunzip -t "${{ env.BACKUP_FILE }}"
+          echo "gzip integrity OK"
+          # The dump must contain the core studio tables, else it is not a usable backup.
+          for table in users files; do
+            if ! gunzip -c "${{ env.BACKUP_FILE }}" | grep -qE "CREATE TABLE (public\.)?${table} "; then
+              echo "::error::Backup missing expected table: ${table}"
+              exit 1
+            fi
+          done
+          echo "Backup contains the expected studio schema (users, files)"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_NAME }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+          compression-level: 0   # already gzipped
+
+  cleanup-old-backups:
+    runs-on: ubuntu-latest
+    needs: backup
+    if: success()
+    steps:
+      - name: Keep only the 7 most recent backup artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACTS=$(gh api "repos/${{ github.repository }}/actions/artifacts" --paginate \
+            --jq '.artifacts[] | select(.name | startswith("studio_backup_")) | {id: .id, name: .name, created_at: .created_at}')
+          SORTED=$(echo "$ARTIFACTS" | jq -s 'sort_by(.created_at) | reverse')
+          TOTAL=$(echo "$SORTED" | jq 'length')
+          echo "Found $TOTAL backup artifacts"
+          if [ "$TOTAL" -le 7 ]; then
+            echo "Nothing to clean up"
+            exit 0
+          fi
+          echo "$SORTED" | jq -r '.[7:][].id' | while read -r id; do
+            name=$(echo "$SORTED" | jq -r ".[] | select(.id == $id) | .name")
+            echo "Deleting old backup: $name ($id)"
+            gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || echo "  (delete failed for $id)"
+          done
+          echo "Kept the 7 most recent backups"
