@@ -348,11 +348,18 @@ class File(Base):
     # files predating this column: seeded once from `source`, then authoritative.
     ydoc_state = Column(LargeBinary, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+    # ON DELETE CASCADE: deleting an account permanently removes its files (and,
+    # via the files' own cascades, their versions/assets/settings/permissions/
+    # annotations). Used by the hard-delete retention job.
+    owner_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
     # Versioning fields
     version = Column(Integer, nullable=False, default=0)
-    prev_version_id = Column(Integer, ForeignKey("files.id"), nullable=True)
+    prev_version_id = Column(
+        Integer, ForeignKey("files.id", ondelete="SET NULL"), nullable=True
+    )
 
     owner = relationship("User", back_populates="files")
     tags = relationship("Tag", secondary=file_tags, back_populates="files")
@@ -432,7 +439,12 @@ class FileVersion(Base):
     rsm_content = Column(Text, nullable=False)
     title = Column(String, nullable=True)
     abstract = Column(Text, nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # Attribution only (like file_assets.owner_id): a version created by an
+    # editor on someone else's file must survive that editor's account deletion,
+    # so ON DELETE SET NULL rather than CASCADE.
+    created_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     checkpoint_type = Column(String(10), nullable=False, default='manual')
@@ -713,8 +725,14 @@ class Annotation(Base):
     __tablename__ = "annotation"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    file_id = Column(Integer, ForeignKey("files.id"), nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # CASCADE on both: an annotation is personal content, removed when either its
+    # file or its author's account is deleted.
+    file_id = Column(
+        Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False
+    )
+    owner_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     color = Column(String, nullable=False, default="purple")
     visibility: Column[AnnotationVisibility] = Column(
         Enum(AnnotationVisibility), nullable=False, default=AnnotationVisibility.PRIVATE
@@ -735,8 +753,12 @@ class AnnotationMessage(Base):
     __tablename__ = "annotation_message"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    annotation_id = Column(Integer, ForeignKey("annotation.id"), nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    annotation_id = Column(
+        Integer, ForeignKey("annotation.id", ondelete="CASCADE"), nullable=False
+    )
+    owner_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=True)
@@ -870,7 +892,11 @@ class FilePermission(Base):
         Enum(FileRole, name="filerole"), nullable=False
     )
     granted_at = Column(DateTime(timezone=True), server_default=func.now())
-    granted_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # Attribution only: SET NULL so deleting the granting account does not block
+    # the hard-delete job (the grant row itself is removed via file_id CASCADE).
+    granted_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     file = relationship("File", back_populates="permissions")
