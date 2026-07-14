@@ -1,6 +1,8 @@
 #!/bin/bash
 # Health check script for multi-service container
-# Verifies that all services (backend, multiplayer, lsp) are running
+# Verifies that all supervised services (backend, multiplayer) are running.
+# The language server is spawned per WebSocket session by the backend, not
+# supervised, so there is nothing to check for it here.
 
 set -e
 
@@ -29,7 +31,6 @@ check_service() {
 FAILED=0
 check_service "backend" || FAILED=1
 check_service "multiplayer" || FAILED=1
-check_service "lsp" || FAILED=1
 
 if [ $FAILED -eq 0 ]; then
     echo "All services are healthy"

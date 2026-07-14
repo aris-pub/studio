@@ -234,7 +234,7 @@ async def check_supervisord_services() -> Dict[str, Any]:
             return {
                 "status": "healthy",
                 "response_time_ms": response_time,
-                "message": "All services running (backend, multiplayer, lsp)",
+                "message": "All services running (backend, multiplayer)",
             }
         else:
             error_msg = stderr.decode().strip() if stderr else stdout.decode().strip()
