@@ -63,11 +63,16 @@ class TestSupervisordConf:
             assert f"[{section}]" in self.conf
 
     def test_manages_all_services(self):
-        for service in ["backend", "multiplayer", "lsp"]:
+        for service in ["backend", "multiplayer"]:
             assert f"[program:{service}]" in self.conf
 
-    def test_lsp_points_to_correct_path(self):
-        assert "/app/rsm-lsp/dist/server.js" in self.conf
+    def test_lsp_not_supervised(self):
+        # The LSP is spawned per WebSocket session by the backend
+        # (aris/routes/lsp.py), not run as a supervised singleton, so there must
+        # be no [program:lsp] section (a comment mentioning it is fine).
+        assert not any(
+            line.strip() == "[program:lsp]" for line in self.conf.splitlines()
+        )
 
     def _multiplayer_env_line(self) -> str:
         """Return the `environment=...` line of the multiplayer program."""
@@ -196,7 +201,7 @@ class TestHealthCheck:
 
     def test_checks_all_services(self):
         checks = re.findall(r'check_service\s+"(\w+)"', self.script)
-        assert set(checks) == {"backend", "multiplayer", "lsp"}
+        assert set(checks) == {"backend", "multiplayer"}
 
     def test_no_lsp_exclusion_comment(self):
         assert "LSP excluded" not in self.script
