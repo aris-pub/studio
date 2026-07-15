@@ -35,6 +35,7 @@ import * as Sentry from '@sentry/node';
 import { WebSocketServer } from 'ws';
 import { setupWSConnection, docs } from 'y-websocket/bin/utils';
 import jwt from 'jsonwebtoken';
+import * as decoding from 'lib0/decoding';
 
 // Error tracking (std-rg1qqt). No-op unless SENTRY_DSN_MULTIPLAYER is set, so local
 // and CI runs are unaffected until a DSN is configured for a deployed environment.
@@ -46,6 +47,89 @@ if (process.env.SENTRY_DSN_MULTIPLAYER) {
     tracesSampleRate: 0.05,
     sendDefaultPii: false, // GDPR: no user emails/IPs
   });
+}
+
+// ---------------------------------------------------------------------------
+// Role-based write-frame filtering (std-ecup)
+// ---------------------------------------------------------------------------
+//
+// WS auth (PR #405) authenticates the connection and records the file role in
+// ws._authRole, but y-websocket's setupWSConnection relays every frame it
+// receives regardless of role. Without enforcement a read-only (COMMENTER)
+// client could inject sync updates the backend persists, so /collab/start had
+// to be gated at require_edit and read-only users could not join live at all.
+//
+// These helpers drop document-mutating frames from read-only sockets, so a
+// read-only user can observe a live document without being able to change it.
+
+// y-protocols framing: the first varUint is the message type; for a sync
+// message the second varUint is the sync step.
+const MESSAGE_SYNC = 0;
+const MESSAGE_AWARENESS = 1;
+const SYNC_STEP_1 = 0;
+
+// Roles allowed to mutate the shared document. Any other role (COMMENTER, or an
+// unknown role) is treated as read-only.
+const WRITE_ROLES = new Set(['backend', 'OWNER', 'EDITOR']);
+
+export function isReadOnlySocket(ws) {
+  return !WRITE_ROLES.has(ws._authRole);
+}
+
+/**
+ * True if a raw WS frame would mutate the shared Y.Doc: a sync Update or
+ * SyncStep2, or any awareness update. A sync SyncStep1 (a read request) and
+ * non-sync control frames are reads. Anything that fails to decode is treated
+ * as a write and dropped, so a read-only socket can't smuggle a mutation past a
+ * malformed frame.
+ *
+ * Stricter than "drop only Update frames": SyncStep2 also applies an update to
+ * the shared doc, so permitting it would reopen the write hole for a crafted
+ * client. A read-only client still syncs fully — it receives the doc via the
+ * server's SyncStep2; only its own outbound writes are dropped.
+ */
+export function isWriteFrame(data) {
+  let bytes;
+  if (data instanceof Uint8Array) bytes = data; // a Node Buffer is a Uint8Array
+  else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
+  else return true;
+  try {
+    const decoder = decoding.createDecoder(bytes);
+    const messageType = decoding.readVarUint(decoder);
+    if (messageType === MESSAGE_AWARENESS) return true;
+    if (messageType === MESSAGE_SYNC) {
+      return decoding.readVarUint(decoder) !== SYNC_STEP_1;
+    }
+    return false;
+  } catch (_err) {
+    return true;
+  }
+}
+
+/**
+ * Wrap the ws 'message' listener that setupWSConnection is about to attach so
+ * write frames from a read-only socket are dropped before y-websocket decodes
+ * them. Patching ws.on (not ws.emit) means replayed buffered frames
+ * (ws.emit('message', ...)) are filtered too.
+ */
+export function installWriteFrameFilter(ws) {
+  const originalOn = ws.on.bind(ws);
+  ws.on = (event, listener) => {
+    if (event !== 'message') return originalOn(event, listener);
+    return originalOn(event, function filteredMessage(data, ...rest) {
+      if (isWriteFrame(data)) return; // drop: a read-only socket may not mutate
+      return listener.call(this, data, ...rest);
+    });
+  };
+}
+
+/**
+ * Join the room via y-websocket, first installing the read-only write filter
+ * when the socket's role is not permitted to write.
+ */
+function joinRoom(ws, req) {
+  if (isReadOnlySocket(ws)) installWriteFrameFilter(ws);
+  setupWSConnection(ws, req);
 }
 
 // ---------------------------------------------------------------------------
@@ -338,14 +422,14 @@ export async function handleConnection(ws, req, opts) {
       return;
     }
 
-    setupWSConnection(ws, req);
+    joinRoom(ws, req);
 
     // Replay buffered messages now that y-websocket is attached.
     for (const msg of buffered) {
       ws.emit('message', msg);
     }
   } else {
-    setupWSConnection(ws, req);
+    joinRoom(ws, req);
   }
 
   console.log(`[Y.js Server] ${ws._role} joined room ${docName}`);

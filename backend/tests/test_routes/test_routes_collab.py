@@ -49,19 +49,19 @@ async def test_collab_start_404_for_unknown_file(authenticated_client: AsyncClie
 
 
 @pytest.mark.asyncio
-async def test_collab_start_forbidden_for_commenter(
+async def test_collab_start_allows_commenter_read_only(
     client: AsyncClient,
     authenticated_user: dict,
     db_session: AsyncSession,
 ):
-    """A COMMENTER (VIEW permission) cannot mint a WS auth token via /collab/start.
+    """A COMMENTER can mint a WS token via /collab/start (gate is require_view).
 
-    The multi-player server does not currently enforce role-based write
-    restrictions on Y.js frames, so any user holding a valid token can inject
-    updates that the backend persists. Until read-only enforcement lands
-    server-side, the /collab/start gate stays at ``require_edit`` to prevent
-    COMMENTER-role privilege escalation into write access.
+    The multi-player server drops document-mutating Y.js frames from read-only
+    sockets (std-ecup), so a COMMENTER joins read-only. The token must carry
+    their real role so the server can enforce that.
     """
+    from aris.collaboration.auth import decode_collab_token
+
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
     reg = await client.post(
@@ -80,12 +80,18 @@ async def test_collab_start_forbidden_for_commenter(
         db=db_session,
     )
 
-    response = await client.post(
-        _collab_url(file_id, "start"),
-        headers={"Authorization": f"Bearer {viewer_token}"},
-    )
+    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+        mock_get.return_value.start_client = AsyncMock(return_value=True)
+        response = await client.post(
+            _collab_url(file_id, "start"),
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_200_OK
+    payload = decode_collab_token(response.json()["token"])
+    assert payload["role"] == "COMMENTER"
+    assert payload["file_id"] == file_id
+    assert payload["sub"] == str(viewer_id)
 
 
 @pytest.mark.asyncio
