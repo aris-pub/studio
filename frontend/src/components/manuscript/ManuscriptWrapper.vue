@@ -13,6 +13,7 @@
     nextTick,
   } from "vue";
   import { useHighlightRenderer } from "@/composables/useHighlightRenderer.js";
+  import { annotationsEnabled } from "@/config/features.js";
   import "tooltipster/dist/css/tooltipster.bundle.min.css";
   import tooltipsterUrl from "tooltipster/dist/js/tooltipster.bundle.min.js?url";
 
@@ -93,19 +94,18 @@
         await onrender.value(mountPoint);
       }
 
-      mountPoint.querySelectorAll('mjx-container[tabindex]').forEach(el => {
-        el.removeAttribute('tabindex');
+      mountPoint.querySelectorAll("mjx-container[tabindex]").forEach((el) => {
+        el.removeAttribute("tabindex");
       });
-      mountPoint.querySelectorAll('.hr a[href]').forEach(el => {
-        el.setAttribute('tabindex', '-1');
+      mountPoint.querySelectorAll(".hr a[href]").forEach((el) => {
+        el.setAttribute("tabindex", "-1");
       });
-
     } catch (err) {
       console.error("Render error:", err);
     } finally {
       executeRenderInProgress = false;
       await nextTick();
-      applyHighlights();
+      if (annotationsEnabled) applyHighlights();
     }
   };
 
@@ -128,7 +128,7 @@
 
   let cleanupClickHandler = null;
   onMounted(() => {
-    cleanupClickHandler = setupClickHandler();
+    if (annotationsEnabled) cleanupClickHandler = setupClickHandler();
   });
   onUnmounted(() => {
     cleanupClickHandler?.();
@@ -157,7 +157,7 @@
       <div class="footer-logo"><Logo type="small" /></div>
     </div>
 
-    <AnnotationMenu />
+    <AnnotationMenu v-if="annotationsEnabled" />
   </div>
 </template>
 
@@ -213,8 +213,12 @@
   }
 
   @keyframes synctarget-fade-bg {
-    0% { background-color: color-mix(in srgb, var(--orange-200) 40%, transparent); }
-    100% { background-color: transparent; }
+    0% {
+      background-color: color-mix(in srgb, var(--orange-200) 40%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 
   .cm-synctarget-gutter {

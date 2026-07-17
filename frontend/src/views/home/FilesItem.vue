@@ -15,6 +15,7 @@
   import { useRouter } from "vue-router";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { File } from "@/models/File.js";
+  import { annotationsEnabled } from "@/config/features.js";
   import { downloadBlob } from "@/utils/download.js";
   import Date from "./FilesItemDate.vue";
   import FilesItemCollaborators from "./FilesItemCollaborators.vue";
@@ -36,9 +37,11 @@
 
   // Minimap: provide annotations/reactions so ScrollbarMinimap can render marks.
   // Data comes from file store (no per-item API calls).
+  // Annotation/reaction ticks on home cards are hidden for the closed beta;
+  // provide empty lists so no annotation/reaction data reaches the minimap.
   const manuscriptRef = useTemplateRef("manuscript-ref");
-  const fileAnnotations = computed(() => file.value?.annotations || []);
-  const fileReactions = computed(() => file.value?.reactions || []);
+  const fileAnnotations = computed(() => (annotationsEnabled ? file.value?.annotations || [] : []));
+  const fileReactions = computed(() => (annotationsEnabled ? file.value?.reactions || [] : []));
   provide("manuscriptRef", manuscriptRef);
   provide("annotations", fileAnnotations);
   provide("reactions", fileReactions);
@@ -86,7 +89,7 @@
       const response = await api.post(
         `/files/${file.value.id}/download`,
         {},
-        { responseType: "blob" },
+        { responseType: "blob" }
       );
 
       const blob = new Blob([response.data], { type: "text/html" });
@@ -106,7 +109,7 @@
       const response = await api.post(
         `/files/${file.value.id}/download/pdf`,
         {},
-        { responseType: "blob", timeout: 120000 },
+        { responseType: "blob", timeout: 120000 }
       );
 
       const blob = new Blob([response.data], { type: "application/pdf" });
@@ -208,7 +211,12 @@
 
       <template v-if="!xsMode">
         <div class="minimap-cell">
-          <ScrollbarMinimap :file="file" mode="compact" orientation="horizontal" @mark-click="onMarkClick" />
+          <ScrollbarMinimap
+            :file="file"
+            mode="compact"
+            orientation="horizontal"
+            @mark-click="onMarkClick"
+          />
         </div>
         <TagRow :file="file" />
         <div class="spacer"></div>

@@ -62,6 +62,8 @@ services:
       - PROXY_API_TARGET=http://backend:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
       - VITE_ENV=${ENV:-ci}
+      # Keep annotations ON in CI so the annotation e2e suites keep exercising it.
+      - VITE_FEATURE_ANNOTATIONS=true
     command: pnpm run dev --host 0.0.0.0
 
   site:
