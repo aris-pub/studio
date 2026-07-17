@@ -58,6 +58,9 @@ services:
       - PROXY_API_TARGET=http://backend:${BACKEND_CONTAINER_PORT:?BACKEND_CONTAINER_PORT is required}
       - VITE_MULTIPLAYER_URL=${VITE_MULTIPLAYER_URL}
       - VITE_ENV=${ENV:-local}
+      # Annotations/collaboration UI. Defaults ON for local dev; set to false to
+      # preview the closed-beta experience (feature hidden). See std-cid4.
+      - VITE_FEATURE_ANNOTATIONS=${VITE_FEATURE_ANNOTATIONS:-true}
     command: pnpm run dev --host 0.0.0.0
 
   # frontend-test is removed — tests run from OUTSIDE containers (see CLAUDE.md).

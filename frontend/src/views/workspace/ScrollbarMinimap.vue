@@ -1,6 +1,7 @@
 <script setup>
   import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from "vue";
   import { useMinimapMarks, FEEDBACK_COLORS } from "@/composables/useMinimapMarks.js";
+  import { annotationsEnabled } from "@/config/features.js";
   import Tooltip from "@/components/base/Tooltip.vue";
 
   const hoveredMark = ref(null);
@@ -37,7 +38,13 @@
     file: computed(() => props.file),
   });
 
-  const allMarks = computed(() => marks.value);
+  // Annotation and reaction (feedback) ticks are hidden for the closed beta.
+  // Filtering here also keeps them out of hover/click navigation below.
+  const allMarks = computed(() =>
+    annotationsEnabled
+      ? marks.value
+      : marks.value.filter((m) => m.type !== "annotation" && m.type !== "feedback")
+  );
   const sectionMarks = computed(() => allMarks.value.filter((m) => m.type === "section"));
   const annotationMarks = computed(() => allMarks.value.filter((m) => m.type === "annotation"));
   const searchMarks = computed(() => allMarks.value.filter((m) => m.type === "search"));
@@ -109,8 +116,14 @@
         const noop = () => {};
         hoveredEl.value = {
           getBoundingClientRect: () => ({
-            top: markY - 4, bottom: markY + 4, left: rect.left, right: rect.right,
-            width: rect.width, height: 8, x: rect.left, y: markY - 4,
+            top: markY - 4,
+            bottom: markY + 4,
+            left: rect.left,
+            right: rect.right,
+            width: rect.width,
+            height: 8,
+            x: rect.left,
+            y: markY - 4,
           }),
           addEventListener: noop,
           removeEventListener: noop,
@@ -216,7 +229,11 @@
   <div
     ref="stripRef"
     class="scrollbar-minimap"
-    :class="[mode, orientation, { compact: isCompact, dragging: isDragging, 'has-hovered': hoveredMark }]"
+    :class="[
+      mode,
+      orientation,
+      { compact: isCompact, dragging: isDragging, 'has-hovered': hoveredMark },
+    ]"
     @pointerdown="onStripPointerDown"
     @pointermove="onStripPointerMove"
     @pointerup="onStripPointerUp"
@@ -237,7 +254,11 @@
       v-for="mark in sectionMarks"
       :key="mark.id"
       class="mm-section"
-      :class="{ 'level-1': mark.level === 1, hovered: isHovered(mark), 'near-hovered': isNearHovered(mark) }"
+      :class="{
+        'level-1': mark.level === 1,
+        hovered: isHovered(mark),
+        'near-hovered': isNearHovered(mark),
+      }"
       :style="posStyle(mark.top)"
     />
 
@@ -326,27 +347,45 @@
     transform: scaleX(0.75);
     transform-origin: center;
     opacity: 0.3;
-    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease, margin-inline 0.15s ease, background-color 0.15s ease, height 0.15s ease;
+    transition:
+      transform 0.25s ease,
+      opacity 0.25s ease,
+      width 0.15s ease,
+      box-shadow 0.15s ease,
+      margin-inline 0.15s ease,
+      background-color 0.15s ease,
+      height 0.15s ease;
   }
 
   .scrollbar-minimap .mm-annotation::after {
     transform: scaleX(0.75);
     transform-origin: left;
     opacity: 0.3;
-    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.25s ease,
+      opacity 0.25s ease,
+      width 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .scrollbar-minimap .mm-feedback::after {
     transform: scaleX(0.75);
     transform-origin: right;
     opacity: 0.3;
-    transition: transform 0.25s ease, opacity 0.25s ease, width 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.25s ease,
+      opacity 0.25s ease,
+      width 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .scrollbar-minimap .mm-presence {
     transform: translate(-50%, -50%) scale(0.75);
     opacity: 0.3;
-    transition: transform 0.25s ease, opacity 0.25s ease, top 300ms ease-out;
+    transition:
+      transform 0.25s ease,
+      opacity 0.25s ease,
+      top 300ms ease-out;
   }
 
   .scrollbar-minimap:hover .mm-section::after,
@@ -621,7 +660,9 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 1;
-    transition: top 300ms ease-out, transform 0.15s ease;
+    transition:
+      top 300ms ease-out,
+      transform 0.15s ease;
     box-shadow: 0 0 0 2px var(--surface-page, #fff);
   }
 

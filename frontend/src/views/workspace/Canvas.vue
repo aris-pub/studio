@@ -20,6 +20,7 @@
   import { registerAsFallback } from "@/composables/useKeyboardShortcuts.js";
   import { useHeadInjection } from "@/composables/useHeadInjection.js";
   import { useSourcePreviewNav } from "@/composables/useSourcePreviewNav.js";
+  import { annotationsEnabled } from "@/config/features.js";
   import { IconMessageFilled } from "@/components/base/iconRegistry.js";
   import useClosable from "@/composables/useClosable.js";
   import ReaderTopbar from "./ReaderTopbar.vue";
@@ -400,6 +401,7 @@
   const annotations = inject("annotations", ref([]));
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
   const hasAnnotations = computed(() => {
+    if (!annotationsEnabled) return false;
     const list = isRef(annotations) ? annotations.value : annotations;
     return list && list.length > 0;
   });
@@ -534,7 +536,9 @@
 
           <Transition name="overlay-slide">
             <div
-              v-if="annotationOverlayOpen && (!showAnnotationCards || focusMode)"
+              v-if="
+                annotationsEnabled && annotationOverlayOpen && (!showAnnotationCards || focusMode)
+              "
               ref="overlay-panel-ref"
               class="annotation-overlay"
               role="complementary"

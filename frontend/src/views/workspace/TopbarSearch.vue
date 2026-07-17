@@ -3,6 +3,7 @@
   import { IconSearch, IconAdjustmentsHorizontal } from "@/components/base/iconRegistry.js";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useSearch } from "@/composables/useSearch.js";
+  import { annotationsEnabled } from "@/config/features.js";
 
   const manuscriptRef = inject("manuscriptRef");
   const file = inject("file");
@@ -48,7 +49,8 @@
   const scopes = [
     { id: "output", label: "Output" },
     { id: "source", label: "Source" },
-    { id: "marginalia", label: "Marginalia" },
+    // Marginalia search targets annotations, hidden for the closed beta.
+    ...(annotationsEnabled ? [{ id: "marginalia", label: "Marginalia" }] : []),
   ];
 
   const onEnter = (ev) => {

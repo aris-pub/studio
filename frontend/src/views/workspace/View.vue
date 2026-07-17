@@ -1,5 +1,15 @@
 <script setup>
-  import { ref, shallowRef, computed, inject, provide, onMounted, onBeforeUnmount, watch, watchEffect } from "vue";
+  import {
+    ref,
+    shallowRef,
+    computed,
+    inject,
+    provide,
+    onMounted,
+    onBeforeUnmount,
+    watch,
+    watchEffect,
+  } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
@@ -8,6 +18,7 @@
   import { extractAnchor } from "@/utils/anchorExtraction.js";
   import { toast } from "@/utils/toast.js";
   import { useReactions } from "@/composables/useReactions.js";
+  import { annotationsEnabled } from "@/config/features.js";
   import { File } from "@/models/File.js";
   import Sidebar from "./Sidebar.vue";
   import Canvas from "./Canvas.vue";
@@ -84,11 +95,17 @@
   });
   provide("file", file);
 
-  watch(() => file.value?.title, (title) => {
-    document.title = title ? `${title} — RSM Studio` : "RSM Studio";
-  }, { immediate: true });
+  watch(
+    () => file.value?.title,
+    (title) => {
+      document.title = title ? `${title} — RSM Studio` : "RSM Studio";
+    },
+    { immediate: true }
+  );
 
-  onBeforeUnmount(() => { document.title = "RSM Studio"; });
+  onBeforeUnmount(() => {
+    document.title = "RSM Studio";
+  });
 
   // Shared Y.Doc ref — EditorCodeMirror writes to it, useAnnotations observes it
   const ydoc = shallowRef(null);
@@ -143,7 +160,9 @@
   watch(
     fileId,
     (id) => {
-      if (id) {
+      // Annotations/reactions are hidden for the closed beta; skip the fetches
+      // entirely so no annotation/reaction data flows when the flag is off.
+      if (id && annotationsEnabled) {
         fetchAnnotations();
         fetchReactions();
       }
@@ -326,7 +345,7 @@
   }
 
   onMounted(() => {
-    document.addEventListener("keydown", handleAnnotationShortcut);
+    if (annotationsEnabled) document.addEventListener("keydown", handleAnnotationShortcut);
   });
   onBeforeUnmount(() => {
     document.removeEventListener("keydown", handleAnnotationShortcut);
