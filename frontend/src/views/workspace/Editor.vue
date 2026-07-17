@@ -68,10 +68,14 @@
   // Collab/LSP state from EditorCodeMirror (shared with status bar)
   const collabIsConnected = ref(false);
   const collabIsSynced = ref(false);
+  // True persistence state (std-wmjv): "saved" | "saving" | "not-saving".
+  // Reflects whether the backend actually committed to the DB, not just the relay.
+  const saveState = ref("saved");
   const lspClient = inject("lspClient", shallowRef(null));
   const documentUri = inject("documentUri", ref(""));
   provide("collabIsConnected", collabIsConnected);
   provide("collabIsSynced", collabIsSynced);
+  provide("saveState", saveState);
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
 

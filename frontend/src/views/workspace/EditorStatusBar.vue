@@ -1,6 +1,12 @@
 <script setup>
-  import { computed, inject, toRaw, useTemplateRef } from "vue";
-  import { IconClock, IconWifiOff, IconMapPin } from "@/components/base/iconRegistry.js";
+  import { computed, inject, ref, toRaw, useTemplateRef } from "vue";
+  import {
+    IconClock,
+    IconWifiOff,
+    IconMapPin,
+    IconCheck,
+    IconAlertTriangleFilled,
+  } from "@/components/base/iconRegistry.js";
   import { useScrollShadows } from "@/composables/useScrollShadows.js";
   import { useDocumentBreadcrumbs } from "@/composables/useDocumentBreadcrumbs.js";
 
@@ -13,6 +19,8 @@
   const documentUri = inject("documentUri", null);
   const collabIsConnected = inject("collabIsConnected", null);
   const collabIsSynced = inject("collabIsSynced", null);
+  // True persistence state (std-wmjv): "saved" | "saving" | "not-saving".
+  const saveState = inject("saveState", ref("saved"));
 
   const { breadcrumbs } = useDocumentBreadcrumbs({
     lspClient,
@@ -52,25 +60,44 @@
     raw.focus();
   }
 
+  // The save state is the primary signal: it reflects whether the backend
+  // actually persisted the user's work, not merely whether the relay is linked
+  // (std-wmjv). A stalled save or offline relay with unsaved work outranks the
+  // plain connection/sync info, because that is the real data-loss risk.
   const statusIndicator = computed(() => {
     const connected = collabIsConnected?.value ?? true;
     const synced = collabIsSynced?.value ?? true;
+    const save = saveState?.value ?? "saved";
 
+    if (save === "not-saving") {
+      return {
+        label: "Not saving. Check your connection",
+        icon: "alert",
+        cls: "status-error status-critical",
+      };
+    }
+    if (save === "saving") {
+      return { label: "Saving\u2026", icon: "clock", cls: "status-warning" };
+    }
+    // save === "saved": work is persisted; still surface relay context if degraded.
     if (!connected) return { label: "Offline", icon: "wifi-off", cls: "status-error" };
     if (!synced) return { label: "Syncing\u2026", icon: "clock", cls: "status-warning" };
-    return null;
+    return { label: "Saved", icon: "check", cls: "status-saved" };
   });
 
   // Tooltip anchor
   const statusRef = useTemplateRef("status-indicator");
 
   const statusTooltip = computed(() => {
-    const s = statusIndicator.value;
-    if (!s) return "";
+    const save = saveState?.value ?? "saved";
+    if (save === "not-saving") {
+      return "Your recent changes have not been saved. Check your connection.";
+    }
+    if (save === "saving") return "Saving your changes\u2026";
     const connected = collabIsConnected?.value ?? true;
     if (!connected) return "Connection lost. Changes will sync when reconnected.";
     if (!(collabIsSynced?.value ?? true)) return "Syncing changes with collaborators\u2026";
-    return "";
+    return "All changes saved.";
   });
 
   const { scrollElementRef, showLeftShadow, showRightShadow } = useScrollShadows();
@@ -92,6 +119,8 @@
     </div>
     <div v-if="statusIndicator" ref="status-indicator" class="right" :class="statusIndicator.cls">
       <IconWifiOff v-if="statusIndicator.icon === 'wifi-off'" />
+      <IconAlertTriangleFilled v-else-if="statusIndicator.icon === 'alert'" />
+      <IconCheck v-else-if="statusIndicator.icon === 'check'" />
       <IconClock v-else-if="statusIndicator.icon === 'clock'" />
       <span class="status-label">{{ statusIndicator.label }}</span>
     </div>
@@ -188,11 +217,28 @@
     font-weight: var(--weight-medium, 500);
   }
 
+  .status-saved {
+    color: var(--gray-600, var(--gray-800));
+  }
+
+  .status-saved > :deep(svg) {
+    color: var(--success-600, var(--gray-600));
+  }
+
   .status-warning {
     color: var(--warning-600);
   }
 
   .status-error {
     color: var(--error-600);
+  }
+
+  .status-error > :deep(svg) {
+    color: var(--error-600);
+  }
+
+  /* The data-loss warning must stand out from the calm "Saved"/"Saving" states. */
+  .status-critical {
+    font-weight: var(--weight-semibold, 600);
   }
 </style>

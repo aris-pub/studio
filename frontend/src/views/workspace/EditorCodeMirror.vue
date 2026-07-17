@@ -38,6 +38,7 @@
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
   import { useFileEvents } from "@/composables/useFileEvents.js";
+  import { useSaveStatus } from "@/composables/useSaveStatus.js";
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -67,6 +68,11 @@
   const isInitialized = ref(false);
   const roomName = ref("");
   const readOnlyCompartment = new Compartment();
+
+  // True save state (std-wmjv): tracks whether the user's edits have actually
+  // been persisted to the DB, from local edits + backend "persisted" acks + the
+  // relay link, not just whether the relay is connected.
+  const saveStatus = useSaveStatus({ isConnected });
 
   // WebSocket server URL
   const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");
@@ -171,6 +177,8 @@
     isConnected.value = false;
     isSynced.value = false;
     isInitialized.value = false;
+    // Don't carry a stale save indicator into the next file.
+    saveStatus.reset();
 
     // Clean up window globals for testing
     if (import.meta.env.DEV) {
@@ -205,6 +213,9 @@
       // manual save. Reuses the general per-file event channel (std-iu0n).
       fileEvents = useFileEvents(fileId, {
         "asset-changed": () => compile && compile(true),
+        // The backend published this only after a committed DB write, so it is a
+        // true persistence ack: settle the save indicator to "saved" (std-wmjv).
+        persisted: () => saveStatus.notePersisted(),
       });
 
       // Tell the backend to start its Y.js client and get a short-lived WS auth
@@ -282,18 +293,20 @@
       // copies (the historical 1x->2x->4x content-duplication bug). Restores are
       // idempotent only because they go through the backend's encoded ydoc_state.
 
-      // Setup auto-compilation on Y.Doc changes (local edits + remote agent edits)
-      if (compile) {
-        const handleYtextChange = () => {
-          compile();
-        };
+      // Observe Y.Text changes for two things: auto-compilation (local + remote
+      // agent edits) and the save indicator. Only the user's OWN edits move the
+      // indicator to "saving"; remote edits (transaction.local === false) arrive
+      // already persisted by whoever made them, so they must not.
+      const handleYtextChange = (_event, transaction) => {
+        if (transaction?.local) saveStatus.noteLocalEdit();
+        if (compile) compile();
+      };
 
-        ytext.value.observe(handleYtextChange);
+      ytext.value.observe(handleYtextChange);
 
-        ytextObserverCleanup = () => {
-          ytext.value.unobserve(handleYtextChange);
-        };
-      }
+      ytextObserverCleanup = () => {
+        ytext.value.unobserve(handleYtextChange);
+      };
 
       // Create editor immediately — don't wait for WebSocket sync
       const MAX_UNDO_STACK = 200;
@@ -415,6 +428,7 @@
   // Shared refs from parent Editor.vue (for status bar sibling)
   const parentCollabConnected = inject("collabIsConnected", null);
   const parentCollabSynced = inject("collabIsSynced", null);
+  const parentSaveState = inject("saveState", null);
   const parentLspClient = inject("lspClient", null);
   const parentDocumentUri = inject("documentUri", null);
   // awaitIndexReady is a stable function from useLSPClient; publish it once for
@@ -426,6 +440,13 @@
     isConnected,
     (v) => {
       if (parentCollabConnected) parentCollabConnected.value = v;
+    },
+    { immediate: true }
+  );
+  watch(
+    saveStatus.saveState,
+    (v) => {
+      if (parentSaveState) parentSaveState.value = v;
     },
     { immediate: true }
   );

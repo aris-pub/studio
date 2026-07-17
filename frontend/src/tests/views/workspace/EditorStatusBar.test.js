@@ -46,12 +46,42 @@ describe("EditorStatusBar", () => {
     wrapper.unmount();
   });
 
-  it("shows nothing in the right section when connected and synced", () => {
+  it("shows 'Saved' when connected, synced and persisted", () => {
     const wrapper = createWrapper({
       collabIsConnected: ref(true),
       collabIsSynced: ref(true),
+      saveState: ref("saved"),
     });
-    expect(wrapper.find(".right").exists()).toBe(false);
+    expect(wrapper.find(".status-saved").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Saved");
+    wrapper.unmount();
+  });
+
+  it("shows 'Saving…' while the user's edits are being persisted", () => {
+    const wrapper = createWrapper({ saveState: ref("saving") });
+    expect(wrapper.find(".status-warning").exists()).toBe(true);
+    expect(wrapper.find(".status-label").text()).toBe("Saving…");
+    wrapper.unmount();
+  });
+
+  it("shows a distinct warning when work is not being saved", () => {
+    const wrapper = createWrapper({ saveState: ref("not-saving") });
+    const right = wrapper.find(".right");
+    expect(right.classes()).toContain("status-error");
+    expect(right.classes()).toContain("status-critical");
+    expect(wrapper.find(".status-label").text()).toBe("Not saving. Check your connection");
+    wrapper.unmount();
+  });
+
+  it("the not-saving warning outranks the plain connection indicator", () => {
+    // Relay looks fine but the backend never acked persistence: the data-loss
+    // warning must win over any calm connection state.
+    const wrapper = createWrapper({
+      collabIsConnected: ref(true),
+      collabIsSynced: ref(true),
+      saveState: ref("not-saving"),
+    });
+    expect(wrapper.find(".status-label").text()).toBe("Not saving. Check your connection");
     wrapper.unmount();
   });
 
