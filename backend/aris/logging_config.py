@@ -10,22 +10,32 @@ import sys
 from typing import Optional
 
 
+def _resolve_log_level() -> str:
+    """Resolve the default log level from the environment.
+
+    PROD and STAGING must never run at DEBUG: DEBUG lets verbose diagnostics
+    (including any accidental PII) reach prod logs and Sentry breadcrumbs. Only
+    local development defaults to DEBUG.
+    """
+    env = os.getenv("ENV", "LOCAL")
+    ci_mode = bool(os.getenv("CI")) or env == "CI"
+
+    if env in ("PROD", "STAGING"):
+        return "INFO"
+    if ci_mode:
+        return "INFO"
+    return "DEBUG"
+
+
 def setup_logging(log_level: Optional[str] = None) -> None:
     """Configure application logging.
-    
+
     Args:
         log_level: Override log level. If None, uses environment-based defaults.
     """
-    # Determine log level based on environment
     if log_level is None:
-        env = os.getenv("ENV", "LOCAL")
-        ci_mode = os.getenv("CI") or env == "CI"
-        
-        if ci_mode:
-            log_level = "INFO"
-        else:
-            log_level = "DEBUG"
-    
+        log_level = _resolve_log_level()
+
     # Configure root logger
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),

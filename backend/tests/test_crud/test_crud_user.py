@@ -1,5 +1,6 @@
 """Tests for user CRUD operations."""
 
+import logging
 from datetime import datetime
 from unittest.mock import patch
 
@@ -22,6 +23,28 @@ async def test_get_user_returns_correct_user(db_session, test_user):
     fetched = await get_user(test_user.id, db_session)
     assert fetched.id == test_user.id
     assert fetched.email == test_user.email
+
+
+async def test_get_user_does_not_log_user_email(db_session, test_user, caplog):
+    """get_user must not leak the user's email (PII) to logs.
+
+    current_user calls get_user on every authenticated request, so any email
+    emitted here reaches prod logs and Sentry breadcrumbs on every hit.
+    """
+    with caplog.at_level(logging.DEBUG, logger="aris.crud.user"):
+        await get_user(test_user.id, db_session)
+
+    assert test_user.email not in caplog.text
+    assert test_user.name not in caplog.text
+
+
+async def test_get_user_files_does_not_log_user_email(db_session, test_user, caplog):
+    """get_user_files must not leak the user's email (PII) to logs."""
+    with caplog.at_level(logging.DEBUG, logger="aris.crud.user"):
+        await get_user_files(test_user.id, with_tags=False, db=db_session)
+
+    assert test_user.email not in caplog.text
+    assert test_user.name not in caplog.text
 
 
 async def test_create_user_sets_defaults(db_session):
