@@ -424,14 +424,8 @@ async def get_user_files(
     -----
     Requires authentication. Returns files ordered by last edited date.
     """
-    import logging
-    logger = logging.getLogger("aris.routes.user")
-    logger.info(f"[get_user_files route] Called for user_id={user_id}, with_tags={with_tags}")
-    logger.info(f"[get_user_files route] DB session: {db}, in_transaction: {db.in_transaction()}")
-
     try:
         result = await crud.get_user_files(user_id, with_tags, db)
-        logger.info(f"[get_user_files route] Success: returning {len(result)} files")
 
         # Add rendered HTML for home page minimap
         from ..deps import get_file_service
@@ -442,8 +436,7 @@ async def get_user_files(
             f["html"] = html or ""
 
         return result
-    except ValueError as e:
-        logger.error(f"[get_user_files route] ValueError: {e}")
+    except ValueError:
         raise not_found_exception("User", user_id)
 
 
