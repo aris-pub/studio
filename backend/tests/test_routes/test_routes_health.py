@@ -99,25 +99,54 @@ async def test_health_check_response_structure(client):
     """Test health endpoint returns properly structured response."""
     response = await client.get("/health")
     data = response.json()
-    
+
     # Required top-level fields
     required_fields = ["status", "message", "checks", "timestamp"]
     for field in required_fields:
         assert field in data, f"Missing required field: {field}"
-    
+
     # Check structure of all health checks
     expected_checks = ["api", "database", "email_service", "rsm_rendering", "environment_config"]
     for check_name in expected_checks:
         assert check_name in data["checks"]
-        
+
         check = data["checks"][check_name]
         assert "status" in check
         assert "message" in check
         assert "response_time_ms" in check
-        
+
         # Validate response times are numbers
         assert isinstance(check["response_time_ms"], (int, float))
         assert check["response_time_ms"] >= 0
-        
+
         # Validate status values
         assert check["status"] in ["healthy", "degraded", "unhealthy", "disabled"]
+
+
+# --- /debug/user-state gating (std-9xtntz) ---
+
+
+async def test_debug_user_state_requires_auth(client):
+    """Unauthenticated access to /debug/user-state is rejected outside of PROD."""
+    response = await client.get("/debug/user-state")
+    assert response.status_code in (401, 403)
+
+
+async def test_debug_user_state_allows_authenticated_non_prod(authenticated_client):
+    """An authenticated user can reach /debug/user-state in a non-PROD environment."""
+    response = await authenticated_client.get("/debug/user-state")
+    assert response.status_code == 200
+
+
+async def test_debug_user_state_hidden_in_prod(client, monkeypatch):
+    """/debug/user-state returns 404 in PROD, before auth, to hide its existence."""
+    monkeypatch.setenv("ENV", "PROD")
+    response = await client.get("/debug/user-state")
+    assert response.status_code == 404
+
+
+async def test_debug_user_state_hidden_in_staging(client, monkeypatch):
+    """/debug/user-state is also hidden in STAGING."""
+    monkeypatch.setenv("ENV", "STAGING")
+    response = await client.get("/debug/user-state")
+    assert response.status_code == 404

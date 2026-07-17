@@ -13,7 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.collaboration import get_collaboration_manager
-from aris.deps import get_db
+from aris.deps import current_user, get_db
 from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
 from aris.routes import (
@@ -171,7 +171,23 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     return health_result
 
 
-@app.get("/debug/user-state", tags=["health"], summary="Debug User State")
+def _forbid_debug_in_prod() -> None:
+    """Hide debug endpoints in production-like environments.
+
+    Raises 404 (rather than 403) in PROD/STAGING so the endpoint's existence is not
+    revealed. As a decorator-level dependency it is evaluated before the auth
+    dependency, so PROD requests never reach the auth check. Mirrors /debug/reload.
+    """
+    if os.getenv("ENV") in ("PROD", "STAGING"):
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.get(
+    "/debug/user-state",
+    tags=["health"],
+    summary="Debug User State",
+    dependencies=[Depends(_forbid_debug_in_prod), Depends(current_user)],
+)
 async def debug_user_state(db: AsyncSession = Depends(get_db)):
     """Debug endpoint to check test user state for auth-enabled E2E diagnostic.
 

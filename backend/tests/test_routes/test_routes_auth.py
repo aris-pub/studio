@@ -429,6 +429,44 @@ async def test_refresh_rejects_expired_token(client: AsyncClient):
     assert response.status_code == 401
 
 
+async def test_failed_login_does_not_log_existing_users_pii(
+    client: AsyncClient, db_session, caplog
+):
+    """A failed login for an unknown email must not leak other users' PII to logs.
+
+    Regression test for std-fkdh: the handler used to log the id, email, and name
+    of the first 5 existing users on a failed login.
+    """
+    import logging
+
+    from aris.models import User
+    from aris.security import hash_password
+
+    victim = User(
+        name="Victim Fullname",
+        email="victim-pii@example.com",
+        password_hash=hash_password("victimpass123"),
+    )
+    db_session.add(victim)
+    await db_session.commit()
+
+    with caplog.at_level(logging.DEBUG, logger="aris.routes.auth"):
+        response = await client.post(
+            "/login",
+            json={"email": "unknown-attacker@example.com", "password": "wrongpass"},
+        )
+
+    assert response.status_code == 400
+    # Inspect only what the login handler logs, not DB-driver query echo noise.
+    auth_logs = "\n".join(
+        record.getMessage() for record in caplog.records if record.name == "aris.routes.auth"
+    )
+    assert "victim-pii@example.com" not in auth_logs
+    assert "Victim Fullname" not in auth_logs
+    # Sentinel for the removed diagnostic block that dumped existing users.
+    assert "Existing users" not in auth_logs
+
+
 async def test_refresh_rejects_deleted_user(client: AsyncClient, db_session):
     """POST /refresh rejects token for a deleted user."""
     from datetime import UTC, datetime
