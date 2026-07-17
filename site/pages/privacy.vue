@@ -102,6 +102,55 @@
       Your documents are private by default and only accessible to you and collaborators you invite.
     </p>
 
+    <h4 class="subsection-header">6.1 Sub-processors</h4>
+    <p>
+      We use the following third-party service providers to operate RSM Studio. Each processes data
+      on our behalf under a data processing agreement. We update this list if we add or change
+      sub-processors.
+    </p>
+    <table class="subprocessor-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Purpose</th>
+          <th>Data processed</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Supabase</td>
+          <td>Database and data storage</td>
+          <td>Account data, document content, metadata</td>
+          <td>EU (Frankfurt)</td>
+        </tr>
+        <tr>
+          <td>Fly.io</td>
+          <td>Application hosting</td>
+          <td>All data transmitted through the platform</td>
+          <td>EU (Amsterdam)</td>
+        </tr>
+        <tr>
+          <td>Netlify</td>
+          <td>Front-end hosting and content delivery</td>
+          <td>Requests, IP addresses</td>
+          <td>US</td>
+        </tr>
+        <tr>
+          <td>Resend</td>
+          <td>Transactional email delivery</td>
+          <td>Email addresses, email content</td>
+          <td>US</td>
+        </tr>
+        <tr>
+          <td>Sentry</td>
+          <td>Error tracking and monitoring</td>
+          <td>Technical data, IP addresses, error context</td>
+          <td>US</td>
+        </tr>
+      </tbody>
+    </table>
+
     <h3 class="section-subheader">7. Data Retention</h3>
     <ul>
       <li><strong>Account data</strong>: Retained while your account is active</li>
@@ -157,8 +206,11 @@
 
     <h3 class="section-subheader">11. International Transfers</h3>
     <p>
-      Currently, all data is processed and stored within the European Union. If this changes, we
-      will update this policy and ensure appropriate safeguards.
+      Your primary data (account information and document content) is stored within the European
+      Union. Some sub-processors (Netlify, Resend, Sentry, listed in Section 6.1) are based in the
+      United States and may process limited data, such as request metadata, email addresses, or
+      error context, outside the EU. These transfers are protected by the EU-US Data Privacy
+      Framework and standard contractual clauses.
     </p>
 
     <h3 class="section-subheader">12. Children's Privacy</h3>
@@ -195,3 +247,23 @@
 <script setup>
   // Privacy Policy page
 </script>
+
+<style scoped>
+  .subprocessor-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  .subprocessor-table th,
+  .subprocessor-table td {
+    border: 1px solid var(--border-color, #ddd);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .subprocessor-table th {
+    font-weight: 600;
+  }
+</style>
