@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, shallowRef, inject, onMounted } from "vue";
+  import { ref, shallowRef, computed, inject, watch, onMounted, onBeforeUnmount } from "vue";
   import { IconX } from "@/components/base/iconRegistry.js";
   import Button from "@/components/base/Button.vue";
 
@@ -13,12 +13,54 @@
 
   const api = inject("api");
   const cmView = inject("cmView", shallowRef(null));
+  // Y.js awareness for the collaborative session (provided by View.vue). Restoring a
+  // version blindly replaces the whole document, which garbles concurrent edits, so we
+  // only offer restore when the current user is the sole participant.
+  const awareness = inject("awareness", shallowRef(null));
 
   const versionContent = ref("");
   const isLoadingContent = ref(false);
   const contentError = ref(null);
   const isRestoring = ref(false);
   const showConfirmation = ref(false);
+
+  // Live count of clients connected to this document's awareness session, including self.
+  // Kept reactive via the awareness "change" event so it updates as peers join or leave
+  // while the modal is open.
+  const participantCount = ref(1);
+
+  function recomputeParticipantCount() {
+    const a = awareness.value;
+    // No collab session (awareness unavailable): treat as a sole user so restore still
+    // works in non-collaborative contexts rather than being hard-blocked.
+    participantCount.value = a ? a.getStates().size : 1;
+  }
+
+  let awarenessCleanup = null;
+  watch(
+    awareness,
+    (a) => {
+      if (awarenessCleanup) {
+        awarenessCleanup();
+        awarenessCleanup = null;
+      }
+      recomputeParticipantCount();
+      if (!a) return;
+      const handler = () => recomputeParticipantCount();
+      a.on("change", handler);
+      awarenessCleanup = () => a.off("change", handler);
+    },
+    { immediate: true }
+  );
+
+  const isSoleParticipant = computed(() => participantCount.value <= 1);
+  const canRestore = computed(() => props.isOwner && isSoleParticipant.value);
+
+  // If a peer joins while the confirmation dialog is open, collapse it back so restore
+  // can no longer be triggered concurrently.
+  watch(canRestore, (ok) => {
+    if (!ok) showConfirmation.value = false;
+  });
 
   // Fetch version content for preview
   async function fetchVersionContent() {
@@ -42,6 +84,13 @@
   }
 
   async function confirmRestore() {
+    // Defensive re-check: a peer may have joined between opening the confirmation and
+    // clicking Restore.
+    if (!canRestore.value) {
+      showConfirmation.value = false;
+      return;
+    }
+
     const view = cmView.value;
     if (!view) {
       alert("Editor not available. Please open the source editor and try again.");
@@ -103,9 +152,9 @@
   });
 
   // Cleanup
-  import { onBeforeUnmount } from "vue";
   onBeforeUnmount(() => {
     window.removeEventListener("keydown", handleKeydown, { capture: true });
+    if (awarenessCleanup) awarenessCleanup();
   });
 </script>
 
@@ -197,7 +246,7 @@
         <div v-else class="actions">
           <Button kind="secondary" size="md" text="Close" :disabled="isRestoring" @click="close" />
           <Button
-            v-if="isOwner"
+            v-if="canRestore"
             kind="primary"
             size="md"
             :text="`Restore v${version.version_number}`"
@@ -206,6 +255,13 @@
             title="Restore this version (Owner only)"
             @click="handleRestoreClick"
           />
+          <div
+            v-else-if="isOwner"
+            class="restore-blocked-note"
+            data-testid="restore-solo-only-note"
+          >
+            Restore is only available when you're the only one editing this document.
+          </div>
           <div v-else class="owner-only-note">Only the file owner can restore versions</div>
         </div>
       </div>
@@ -407,10 +463,13 @@
     gap: 12px;
   }
 
-  .owner-only-note {
+  .owner-only-note,
+  .restore-blocked-note {
     font-size: 13px;
     color: var(--text-disabled);
     font-style: italic;
+    text-align: right;
+    max-width: 60%;
   }
 
   .btn-primary,
