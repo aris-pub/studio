@@ -46,6 +46,16 @@ class TestDockerfile:
         assert "rsm-lang==" in self.dockerfile
         assert 'path = "../../rsm"' not in self.dockerfile
 
+    def test_git_commit_baked_as_env(self):
+        """GIT_COMMIT is the Sentry `release` tag for both backend and
+        multiplayer. Baking it as a runtime ENV (defaulting to "dev") means the
+        %(ENV_GIT_COMMIT)s forward in supervisord.conf always resolves and the
+        backend, which inherits the container env, tags releases too. Passed at
+        deploy via `--build-arg GIT_COMMIT=$(git rev-parse --short HEAD)`.
+        """
+        assert "ARG GIT_COMMIT" in self.dockerfile
+        assert "ENV GIT_COMMIT=$GIT_COMMIT" in self.dockerfile
+
     def test_no_separate_tree_sitter_copy_to_runtime(self):
         """tree-sitter-rsm should be embedded in rsm-lsp/node_modules, not copied separately."""
         runtime_copies = [
@@ -119,6 +129,26 @@ class TestSupervisordConf:
         assert "localhost:8080" in env_line, (
             "BACKEND_INTERNAL_URL must point at the prod backend port (8080)."
         )
+
+    def test_multiplayer_env_forwards_sentry_config(self):
+        """The multiplayer Sentry (server.js) inits only when
+        SENTRY_DSN_MULTIPLAYER is present and reads ENV/GIT_COMMIT for its
+        environment/release tags. supervisord's `environment=` replaces the
+        inherited env wholesale, so these MUST be forwarded explicitly via
+        %(ENV_*)s interpolation, or the multiplayer Sentry can never init in
+        prod even though the Fly secret is set (std-2k9s).
+        """
+        env_line = self._multiplayer_env_line()
+        for var in ("SENTRY_DSN_MULTIPLAYER", "ENV", "GIT_COMMIT"):
+            assert f"{var}=" in env_line, (
+                f"supervisord.conf [program:multiplayer] must forward {var} — "
+                "without it the multiplayer Sentry stays dark in prod "
+                "(std-2k9s)."
+            )
+            assert f"%(ENV_{var})s" in env_line, (
+                f"{var} must reference the parent-env value via supervisord's "
+                "%(ENV_*)s interpolation, not be hardcoded."
+            )
 
 
 class TestFlyToml:

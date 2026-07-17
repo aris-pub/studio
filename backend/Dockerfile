@@ -101,6 +101,15 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/health-check.sh /usr/local/bin/health-check.sh
 RUN chmod +x /usr/local/bin/health-check.sh
 
+# Commit the image was built from, surfaced as the Sentry `release` tag by both
+# the backend (inherits this env) and multiplayer (supervisord forwards it). Set
+# via `--build-arg GIT_COMMIT=$(git rev-parse --short HEAD)` at deploy; defaults
+# to "dev" so an un-plumbed build still resolves rather than reporting no release.
+# Declared late so a changed commit only busts these cheap trailing layers, not
+# the expensive uv sync / node build above.
+ARG GIT_COMMIT=dev
+ENV GIT_COMMIT=$GIT_COMMIT
+
 # Expose ports: 8080 (HTTP), 1234 (WebSocket)
 EXPOSE 8080 1234
 
