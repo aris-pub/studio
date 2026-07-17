@@ -120,7 +120,7 @@ deploy:
 # studio/ is needed and the deploy no longer runs from the ~/aris parent.
 deploy-backend:
     @echo "🚀 Deploying backend to Fly.io..."
-    fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile
+    fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile --build-arg GIT_COMMIT=$(git rev-parse --short HEAD)
     @echo "✅ Backend deployed: https://aris-backend.fly.dev"
 
 # Push to GitHub to trigger Netlify deployments
