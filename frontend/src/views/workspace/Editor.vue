@@ -71,11 +71,17 @@
   // True persistence state (std-wmjv): "saved" | "saving" | "not-saving".
   // Reflects whether the backend actually committed to the DB, not just the relay.
   const saveState = ref("saved");
+  // collabConnectError: session could not be started (needs an explicit retry).
+  // collabRetry: EditorCodeMirror publishes its retry handler here for the bar.
+  const collabConnectError = ref(false);
+  const collabRetry = shallowRef(null);
   const lspClient = inject("lspClient", shallowRef(null));
   const documentUri = inject("documentUri", ref(""));
   provide("collabIsConnected", collabIsConnected);
   provide("collabIsSynced", collabIsSynced);
   provide("saveState", saveState);
+  provide("collabConnectError", collabConnectError);
+  provide("collabRetry", collabRetry);
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
 
@@ -169,7 +175,12 @@
 
 <template>
   <div class="editor">
-    <EditorTopbar v-model="tabIndex" @compile="onCompile" @upload="onUpload" @sync-to-preview="onSyncToPreview" />
+    <EditorTopbar
+      v-model="tabIndex"
+      @compile="onCompile"
+      @upload="onUpload"
+      @sync-to-preview="onSyncToPreview"
+    />
     <div class="content">
       <EditorToolbar v-if="tabIndex === 0 && !mobileMode" />
       <div v-if="mobileMode && tabIndex === 0" class="mobile-readonly-banner">
