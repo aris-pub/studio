@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user, get_db, jwt
@@ -169,15 +169,7 @@ async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depen
         select(User).where(User.email == user_data.email, User.deleted_at.is_(None))
     )
     user = result.scalars().first()
-    
-    # DEBUG: Log what user exists if login fails
-    if not user:
-        all_users_debug = await db.execute(text("SELECT id, email, name FROM users LIMIT 5"))
-        all_user_rows = all_users_debug.fetchall()
-        logger.warning(f"No user found with email {user_data.email}. Existing users:")
-        for row in all_user_rows:
-            logger.warning(f"  ID {row.id}: email='{row.email}', name='{row.name}'")
-    
+
     if not user or not verify_password(user_data.password, user.password_hash):
         logger.warning(f"Failed login attempt for email: {user_data.email}")
         raise HTTPException(status_code=400, detail="Invalid credentials")

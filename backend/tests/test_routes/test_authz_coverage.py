@@ -142,6 +142,7 @@ SELF_SCOPED: dict[tuple[str, str], str] = {
     ("POST", "/files"): "new file is owned by the caller; body owner_id ignored (test_create_file_owner_id_in_body_is_ignored)",
     ("POST", "/files/import"): "imported file is owned by the caller",
     ("POST", "/users/lookup"): "intentional email->public-profile directory lookup, rate-limited; not an ownership boundary",
+    ("GET", "/debug/user-state"): "non-PROD diagnostic; no external resource id, returns fixed TEST_USER_EMAIL state (std-9xtntz)",
 }
 
 
