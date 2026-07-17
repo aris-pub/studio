@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from ..deps import UserRead
 from ..logging_config import get_logger
 from ..models import FileAsset
 from ..models.models import FileRole
+from ..services.file_events import FileEventBroker, get_event_broker, sse_event_stream
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
 
 
@@ -792,6 +793,7 @@ async def create_asset_for_file(
         db,
     )
     await file_service.clear_file_cache(file_id)
+    get_event_broker().publish(file_id, {"type": "asset-changed"})
     return asset
 
 
@@ -877,6 +879,7 @@ async def update_asset_for_file(
         raise HTTPException(status_code=404, detail="Asset not found")
     result = await FileAssetDB.update_asset(asset, payload, db)
     await file_service.clear_file_cache(file_id)
+    get_event_broker().publish(file_id, {"type": "asset-changed"})
     return result
 
 
@@ -894,7 +897,39 @@ async def delete_asset_for_file(
         raise HTTPException(status_code=404, detail="Asset not found")
     await FileAssetDB.soft_delete_asset(asset, db)
     await file_service.clear_file_cache(file_id)
+    get_event_broker().publish(file_id, {"type": "asset-changed"})
     return {"message": f"Asset {asset_id} deleted"}
+
+
+@router.get("/{file_id}/events")
+async def file_events(
+    file_id: int,
+    user: UserRead = Depends(current_user),
+    user_role: FileRole = Depends(require_view),
+    broker: FileEventBroker = Depends(get_event_broker),
+):
+    """Stream this file's events to the caller's browser as Server-Sent Events.
+
+    A general per-file channel (see aris.services.file_events): any backend code
+    can publish a typed event to a file and every open tab viewing it receives
+    it. The first consumer is the asset-change notification (std-iu0n) that tells
+    the tab to recompile when an asset changes out of band. Gate is require_view.
+
+    Consumed from the browser with fetch() rather than EventSource, which cannot
+    send the bearer token. Auth resolves before streaming, so an unauthorized
+    caller is rejected up front instead of opening a stream.
+    """
+
+    return StreamingResponse(
+        sse_event_stream(broker, file_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # Stop nginx/Fly from buffering so events flush to the client at once.
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/{file_id}/download/pdf")

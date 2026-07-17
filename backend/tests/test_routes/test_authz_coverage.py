@@ -92,6 +92,7 @@ CROSS_USER_TESTED: dict[tuple[str, str], str] = {
     ("POST", "/files/{file_id}/download"): "test_routes_file.py::test_download_file_permission_denied",
     ("POST", "/files/{file_id}/download/pdf"): "test_routes_file.py::test_download_pdf_permission_denied",
     ("POST", "/files/{file_id}/assets"): "test_routes_file_assets.py::test_upload_asset_viewer_forbidden",
+    ("GET", "/files/{file_id}/events"): "test_routes_file_events.py::test_file_events_forbidden_without_view_permission",
     ("POST", "/files/{file_id}/collab/start"): "test_routes_collab.py::test_collab_start_forbidden_for_user_without_permission_row",
     ("POST", "/files/{file_id}/collab/stop"): "test_routes_collab.py::test_collab_stop_forbidden_for_user_without_permission",
     ("POST", "/files/{file_id}/collab/flush"): "test_routes_collab.py::test_collab_flush_forbidden_for_user_without_permission",

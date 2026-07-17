@@ -37,6 +37,7 @@
   import { useLSPClient } from "@/composables/useLSPClient";
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
+  import { useFileEvents } from "@/composables/useFileEvents.js";
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
@@ -51,6 +52,8 @@
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
   const activeCollabFileId = ref(null);
+  // Subscription to this file's server-sent event stream (asset changes, etc.).
+  let fileEvents = null;
   // Y.js objects must use shallowRef — Vue's reactive Proxy breaks Y.js
   // internal identity checks (UndoManager scope, findRootTypeKey, etc.)
   const view = shallowRef(null);
@@ -157,6 +160,11 @@
       activeCollabFileId.value = null;
     }
 
+    if (fileEvents) {
+      fileEvents.close();
+      fileEvents = null;
+    }
+
     ytext.value = null;
     if (parentYtext) parentYtext.value = null;
     awareness.value = null;
@@ -191,6 +199,13 @@
       ydoc.value = new Y.Doc();
       ytext.value = ydoc.value.getText("text");
       if (parentYtext) parentYtext.value = ytext.value;
+
+      // Recompile when an asset for this file changes out of band (an agent,
+      // another tab, or another user), so the rendered image refreshes without a
+      // manual save. Reuses the general per-file event channel (std-iu0n).
+      fileEvents = useFileEvents(fileId, {
+        "asset-changed": () => compile && compile(true),
+      });
 
       // Tell the backend to start its Y.js client and get a short-lived WS auth
       // token. The multi-player server requires the token as the first frame on
