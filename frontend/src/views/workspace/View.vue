@@ -115,6 +115,12 @@
   const cmView = shallowRef(null);
   provide("cmView", cmView);
 
+  // Shared Y.js awareness — EditorCodeMirror writes, Canvas re-provides it for the minimap,
+  // and VersionPreviewModal (a Sidebar sibling of Canvas) reads it to gate version restore
+  // to the sole-participant case.
+  const awareness = shallowRef(null);
+  provide("awareness", awareness);
+
   // Shared Y.js text — EditorCodeMirror writes, Editor reads for compile
   const ytext = shallowRef(null);
   provide("ytext", ytext);

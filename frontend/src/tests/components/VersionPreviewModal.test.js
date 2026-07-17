@@ -50,7 +50,7 @@ describe("VersionPreviewModal", () => {
 
   const cmViewRef = shallowRef(null);
 
-  function createWrapper(props = {}) {
+  function createWrapper(props = {}, provides = {}) {
     return mount(VersionPreviewModal, {
       props: {
         version: mockVersion,
@@ -62,6 +62,7 @@ describe("VersionPreviewModal", () => {
         provide: {
           api: mockApi,
           cmView: cmViewRef,
+          ...provides,
         },
         components: {
           Button,
@@ -71,6 +72,23 @@ describe("VersionPreviewModal", () => {
         },
       },
     });
+  }
+
+  // Minimal Y.js awareness stub: getStates() returns a Map keyed by clientID, and
+  // on/off register "change" listeners that _emit() can fire to simulate join/leave.
+  function createMockAwareness(clientIds = [1]) {
+    const listeners = new Set();
+    const states = new Map(clientIds.map((id) => [id, { user: { id, name: `User ${id}` } }]));
+    return {
+      getStates: () => states,
+      on: (_event, cb) => listeners.add(cb),
+      off: (_event, cb) => listeners.delete(cb),
+      _setClients(ids) {
+        states.clear();
+        for (const id of ids) states.set(id, { user: { id, name: `User ${id}` } });
+        listeners.forEach((cb) => cb({ added: [], updated: [], removed: [] }));
+      },
+    };
   }
 
   describe("mounting and content fetching", () => {
@@ -339,6 +357,82 @@ describe("VersionPreviewModal", () => {
       expect(dateText).toContain("Oct");
       expect(dateText).toContain("15");
       expect(dateText).toContain("2025");
+    });
+  });
+
+  describe("restore gating by participant count (std-2spq)", () => {
+    it("hides restore and shows a note when another participant is present", async () => {
+      const awareness = shallowRef(createMockAwareness([1, 2]));
+      wrapper = createWrapper({ isOwner: true }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find('[data-testid="restore-version-button"]').exists()).toBe(false);
+      const note = wrapper.find('[data-testid="restore-solo-only-note"]');
+      expect(note.exists()).toBe(true);
+      expect(note.text()).toContain("only one editing");
+    });
+
+    it("shows restore when the owner is the sole participant", async () => {
+      const awareness = shallowRef(createMockAwareness([1]));
+      wrapper = createWrapper({ isOwner: true }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find('[data-testid="restore-version-button"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="restore-solo-only-note"]').exists()).toBe(false);
+    });
+
+    it("shows restore when there is no collab session (awareness unavailable)", async () => {
+      const awareness = shallowRef(null);
+      wrapper = createWrapper({ isOwner: true }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find('[data-testid="restore-version-button"]').exists()).toBe(true);
+    });
+
+    it("reactively disables restore when a second participant joins", async () => {
+      const mock = createMockAwareness([1]);
+      const awareness = shallowRef(mock);
+      wrapper = createWrapper({ isOwner: true }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find('[data-testid="restore-version-button"]').exists()).toBe(true);
+
+      mock._setClients([1, 2]);
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find('[data-testid="restore-version-button"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="restore-solo-only-note"]').exists()).toBe(true);
+    });
+
+    it("reactively collapses an open confirmation when a peer joins", async () => {
+      const mock = createMockAwareness([1]);
+      const awareness = shallowRef(mock);
+      wrapper = createWrapper({ isOwner: true }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      await wrapper.find('[data-testid="restore-version-button"]').trigger("click");
+      expect(wrapper.find(".confirmation").exists()).toBe(true);
+
+      mock._setClients([1, 2]);
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find(".confirmation").exists()).toBe(false);
+      expect(wrapper.find('[data-testid="restore-solo-only-note"]').exists()).toBe(true);
+    });
+
+    it("shows the owner-only note (not the solo note) for a non-owner with peers", async () => {
+      const awareness = shallowRef(createMockAwareness([1, 2]));
+      wrapper = createWrapper({ isOwner: false }, { awareness });
+      await wrapper.vm.$nextTick();
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.find(".owner-only-note").exists()).toBe(true);
+      expect(wrapper.find('[data-testid="restore-solo-only-note"]').exists()).toBe(false);
     });
   });
 });

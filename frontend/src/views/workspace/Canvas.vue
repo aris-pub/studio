@@ -49,8 +49,9 @@
   );
   provide("manuscriptRef", manuscriptRef);
 
-  // Shared awareness ref — EditorCodeMirror writes to it, ScrollbarMinimap reads it
-  const awareness = shallowRef(null);
+  // Shared awareness ref — provided by View.vue so Sidebar siblings (DrawerVersions) can
+  // read presence too; EditorCodeMirror writes to it, ScrollbarMinimap reads it.
+  const awareness = inject("awareness", shallowRef(null));
   provide("awareness", awareness);
 
   // Shared CodeMirror view — provided by View.vue, written by EditorCodeMirror

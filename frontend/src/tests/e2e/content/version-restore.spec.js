@@ -2,9 +2,10 @@
  * @file E2E tests for version restore functionality
  * @tags @auth @version-restore
  *
- * Tests the core restore flow: owner restores a named version via the
- * preview modal, content is replaced via Y.js (window.__cmView.dispatch),
- * and all connected clients receive the update.
+ * Tests the core restore flow: a sole-participant owner restores a named
+ * version via the preview modal and the content is replaced via Y.js
+ * (window.__cmView.dispatch). Restore is gated to the sole-participant case,
+ * so it is unavailable while another client is connected (std-2spq).
  *
  * Tests for concurrent-editor detection, read-only lock, and in-progress
  * guard are skipped pending implementation of the useAwareness /
@@ -199,16 +200,22 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
     test.skip();
   });
 
-  test("all connected clients see restored content", async ({ page, context }) => {
-    test.setTimeout(90000); // Y.js propagation across two tabs in CI
+  test("restore is unavailable while another client is connected", async ({ page, context }) => {
+    test.setTimeout(90000); // Y.js awareness propagation across two tabs in CI
     const timeouts = getTimeouts();
 
-    // Open a second tab with the editor fully ready (waits for manuscript,
-    // .cm-editor, __cmView, and provider sync — with retry on failure)
+    // Open a second tab connected to the same document. A whole-document restore
+    // garbles concurrent edits, so restore is only offered to a sole participant
+    // (std-2spq): with a peer present, the button is hidden and a note is shown.
     const page2 = await context.newPage();
     await openFileInEditor(page2, fileId);
 
-    // page1: restore the version
+    // Wait until page1's awareness reflects the second client (self + peer = 2).
+    await page.waitForFunction(() => (window.__awareness?.getStates().size ?? 0) >= 2, null, {
+      timeout: timeouts.heavyOperation,
+    });
+
+    // Open the version preview modal on page1
     await page.locator('[data-testid="version-item"]').first().locator(".version-info").click();
     await page.waitForSelector('[data-testid="version-preview-modal"]', {
       timeout: timeouts.heavyOperation,
@@ -217,23 +224,13 @@ test.describe("Version Restore Tests @auth @version-restore", () => {
       state: "hidden",
       timeout: timeouts.heavyOperation,
     });
-    await page.click('[data-testid="restore-version-button"]');
-    await page.waitForSelector('[data-testid="restore-confirm-dialog"]');
-    await page.click('[data-testid="confirm-restore-button"]');
-    await expect(page.locator('[data-testid="version-preview-modal"]')).not.toBeVisible({
-      timeout: timeouts.heavyOperation,
-    });
 
-    // Wait for Y.js to propagate the restoration to page2
-    await page2.waitForFunction(
-      () => window.__cmView?.state.doc.toString().includes("Original Content"),
-      null,
-      { timeout: timeouts.heavyOperation }
+    // Restore is gated: the button is hidden and the sole-participant note is shown.
+    await expect(page.locator('[data-testid="restore-version-button"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="restore-solo-only-note"]')).toBeVisible();
+    await expect(page.locator('[data-testid="restore-solo-only-note"]')).toContainText(
+      "only one editing"
     );
-
-    const content2 = await page2.evaluate(() => window.__cmView.state.doc.toString());
-    expect(content2).toContain("Original Content");
-    expect(content2).not.toContain("Modified Content");
 
     await page2.close();
   });
