@@ -7,6 +7,7 @@ Uses pycrdt's native sync protocol which is compatible with JavaScript y-websock
 import asyncio
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -17,6 +18,7 @@ from websockets import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
 from aris.deps import CollabSession
+from aris.services.file_events import get_event_broker
 
 from .auth import mint_collab_token
 
@@ -609,6 +611,30 @@ class YDocClient:
 
         except Exception as e:
             logger.error(f"Failed to save content to DB for file {self.file_id}: {e}", exc_info=True)
+            return
+
+        # Only reached when the write committed. Ack real persistence to open tabs
+        # (std-wmjv) so the editor can show a true "saved" state instead of merely a
+        # relay-connected one, closing the silent data-loss window.
+        self._publish_persisted()
+
+    def _publish_persisted(self) -> None:
+        """Notify this file's open tabs that a DB write just committed.
+
+        Best-effort and fully isolated from the save path: a broker/publish error
+        must never turn a successful save into a failure, so it is caught here and
+        only logged. Runs in-process (the broker is a singleton and this client
+        shares the process), so ``publish`` is a cheap non-blocking fan-out.
+        """
+        try:
+            get_event_broker().publish(
+                self.file_id,
+                {"type": "persisted", "at": int(time.time() * 1000)},
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to publish persisted event for file {self.file_id}: {e}"
+            )
 
     async def _wait_before_reconnect(self):
         """Wait before reconnecting with exponential backoff."""
