@@ -21,6 +21,8 @@
   const collabIsSynced = inject("collabIsSynced", null);
   // True persistence state (std-wmjv): "saved" | "saving" | "not-saving".
   const saveState = inject("saveState", ref("saved"));
+  const collabConnectError = inject("collabConnectError", null);
+  const collabRetry = inject("collabRetry", null);
 
   const { breadcrumbs } = useDocumentBreadcrumbs({
     lspClient,
@@ -69,6 +71,10 @@
     const synced = collabIsSynced?.value ?? true;
     const save = saveState?.value ?? "saved";
 
+    // A failed session start won't self-heal on its own timeline, so it outranks
+    // the save/relay states: label it and offer a retry.
+    if (collabConnectError?.value)
+      return { label: "Can't connect", icon: "wifi-off", cls: "status-error", retry: true };
     if (save === "not-saving") {
       return {
         label: "Not saving. Check your connection",
@@ -89,6 +95,10 @@
   const statusRef = useTemplateRef("status-indicator");
 
   const statusTooltip = computed(() => {
+    const s = statusIndicator.value;
+    if (!s) return "";
+    if (collabConnectError?.value)
+      return "Couldn't connect to the collaboration server. Click Retry to reconnect.";
     const save = saveState?.value ?? "saved";
     if (save === "not-saving") {
       return "Your recent changes have not been saved. Check your connection.";
@@ -99,6 +109,10 @@
     if (!(collabIsSynced?.value ?? true)) return "Syncing changes with collaborators\u2026";
     return "All changes saved.";
   });
+
+  function onRetry() {
+    collabRetry?.value?.();
+  }
 
   const { scrollElementRef, showLeftShadow, showRightShadow } = useScrollShadows();
 </script>
@@ -123,6 +137,9 @@
       <IconCheck v-else-if="statusIndicator.icon === 'check'" />
       <IconClock v-else-if="statusIndicator.icon === 'clock'" />
       <span class="status-label">{{ statusIndicator.label }}</span>
+      <button v-if="statusIndicator.retry" type="button" class="retry-btn" @click="onRetry">
+        Retry
+      </button>
     </div>
     <Tooltip
       v-if="statusIndicator"
@@ -240,5 +257,21 @@
   /* The data-loss warning must stand out from the calm "Saved"/"Saving" states. */
   .status-critical {
     font-weight: var(--weight-semibold, 600);
+  }
+
+  .retry-btn {
+    margin-left: 6px;
+    padding: 0 6px;
+    height: 16px;
+    border: var(--border-extrathin) solid currentColor;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    font-weight: var(--weight-medium, 500);
+    cursor: pointer;
+  }
+
+  .retry-btn:hover {
+    background-color: var(--surface-hint);
   }
 </style>

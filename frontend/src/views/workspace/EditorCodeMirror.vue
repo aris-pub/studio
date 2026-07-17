@@ -66,6 +66,10 @@
   const isConnected = ref(false);
   const isSynced = ref(false);
   const isInitialized = ref(false);
+  // True when the collaborative session could not be started (/collab/start
+  // failed or returned no token). Distinct from a transient !isConnected drop:
+  // it means no session was ever established, so an explicit retry is offered.
+  const collabStartFailed = ref(false);
   const roomName = ref("");
   const readOnlyCompartment = new Compartment();
 
@@ -179,6 +183,7 @@
     isInitialized.value = false;
     // Don't carry a stale save indicator into the next file.
     saveStatus.reset();
+    collabStartFailed.value = false;
 
     // Clean up window globals for testing
     if (import.meta.env.DEV) {
@@ -227,9 +232,11 @@
         const startResp = await api.post(`/files/${fileId}/collab/start`);
         token = startResp?.data?.token ?? null;
         if (!token) {
+          collabStartFailed.value = true;
           console.error(`[Collab] /collab/start for file ${fileId} returned no token`);
         }
       } catch (err) {
+        collabStartFailed.value = true;
         console.error(
           `[Collab] Failed to start backend client for file ${fileId}:`,
           err?.response?.status,
@@ -429,8 +436,38 @@
   const parentCollabConnected = inject("collabIsConnected", null);
   const parentCollabSynced = inject("collabIsSynced", null);
   const parentSaveState = inject("saveState", null);
+  const parentCollabConnectError = inject("collabConnectError", null);
+  const parentCollabRetry = inject("collabRetry", null);
   const parentLspClient = inject("lspClient", null);
   const parentDocumentUri = inject("documentUri", null);
+
+  // Re-attempt a failed collaborative session without a full page reload:
+  // fetch a fresh token and force the existing provider to reconnect now
+  // instead of waiting for y-websocket's backoff. Wired to the status bar's
+  // Retry affordance via the injected collabRetry ref.
+  async function retryCollabConnection() {
+    const fileId = file.value?.id;
+    if (!fileId) return;
+    try {
+      const startResp = await api.post(`/files/${fileId}/collab/start`);
+      const token = startResp?.data?.token ?? null;
+      if (!token) throw new Error("/collab/start returned no token");
+      AuthedWebSocket.registerToken(`${serverUrl.value}/${roomName.value}`, token);
+      collabStartFailed.value = false;
+      if (provider.value) {
+        provider.value.disconnect();
+        provider.value.connect();
+      }
+    } catch (err) {
+      collabStartFailed.value = true;
+      console.error(
+        `[Collab] Retry to start backend client for file ${fileId} failed:`,
+        err?.response?.status,
+        err?.response?.data || err.message
+      );
+    }
+  }
+  if (parentCollabRetry) parentCollabRetry.value = retryCollabConnection;
   // awaitIndexReady is a stable function from useLSPClient; publish it once for
   // Canvas's source<->preview navigation.
   const parentAwaitIndexReady = inject("awaitIndexReady", null);
@@ -440,6 +477,16 @@
     isConnected,
     (v) => {
       if (parentCollabConnected) parentCollabConnected.value = v;
+      // A successful (re)connect clears any prior start failure, covering both
+      // manual retry and y-websocket's own eventual reconnect.
+      if (v) collabStartFailed.value = false;
+    },
+    { immediate: true }
+  );
+  watch(
+    collabStartFailed,
+    (v) => {
+      if (parentCollabConnectError) parentCollabConnectError.value = v;
     },
     { immediate: true }
   );
