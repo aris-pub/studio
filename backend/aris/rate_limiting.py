@@ -15,8 +15,10 @@ every caller, so keying on it would put all users in one bucket. The limiter
 keys on the real client IP instead (see ``get_real_client_ip``).
 """
 
+import os
+
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 
@@ -27,6 +29,21 @@ REGISTER_RATE_LIMIT = "5/minute"
 PUBLIC_RENDER_RATE_LIMIT = "30/minute"
 
 RATE_LIMIT_MESSAGE = "Too many requests. Please slow down and try again shortly."
+
+
+def _rate_limiting_enabled() -> bool:
+    """On by default; opt-out only where per-IP keying is meaningless.
+
+    In the Docker compose stack (local dev and CI e2e) every browser reaches the
+    backend from a single source IP, so a per-IP limiter would throttle the whole
+    run and the compose env sets RATE_LIMITING_ENABLED=false. Production behind
+    Fly does not set it, so limiting stays on there.
+    """
+    return os.getenv("RATE_LIMITING_ENABLED", "true").strip().lower() not in (
+        "false",
+        "0",
+        "no",
+    )
 
 
 def get_real_client_ip(request: Request) -> str:
@@ -48,16 +65,19 @@ def get_real_client_ip(request: Request) -> str:
     return "unknown"
 
 
-limiter = Limiter(key_func=get_real_client_ip)
+limiter = Limiter(key_func=get_real_client_ip, enabled=_rate_limiting_enabled())
 
 
-def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
     """Return a clean 429 JSON body, keeping slowapi's rate-limit headers.
 
     CORS headers are added by CORSMiddleware, which wraps the whole app, so this
     response still carries them on the way back out to the browser.
     """
     response = JSONResponse(status_code=429, content={"detail": RATE_LIMIT_MESSAGE})
-    return request.app.state.limiter._inject_headers(
+    # app.state.limiter is dynamically typed, so annotate the injected result to
+    # keep mypy's no-any-return happy.
+    injected: Response = request.app.state.limiter._inject_headers(
         response, request.state.view_rate_limit
     )
+    return injected
