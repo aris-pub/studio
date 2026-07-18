@@ -36,6 +36,10 @@ services:
       - SITE_PORT=${SITE_PORT}
       - STORYBOOK_PORT=${STORYBOOK_PORT}
       - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET:?INTERNAL_SHARED_SECRET is required}
+      # Browsers (dev and local e2e) all reach the backend from one source IP, so
+      # the per-IP limiter would throttle the whole run. Prod (behind Fly) keeps
+      # it on because it does not set this flag.
+      - RATE_LIMITING_ENABLED=false
     depends_on:
       postgres:
         condition: service_healthy

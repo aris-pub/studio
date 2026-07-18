@@ -1,6 +1,6 @@
 """Routes for rendering RSM into HTML."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from ..authorization import PermissionLevel, has_permission
 from ..deps import get_db
 from ..exceptions import forbidden_exception
 from ..logging_config import get_logger
+from ..rate_limiting import PUBLIC_RENDER_RATE_LIMIT, limiter
 
 
 logger = get_logger(__name__)
@@ -29,7 +30,8 @@ class FileRenderObject(BaseModel):
 
 
 @router.post("")
-async def render(data: RenderObject):
+@limiter.limit(PUBLIC_RENDER_RATE_LIMIT)
+async def render(request: Request, data: RenderObject):
     """Public endpoint for rendering RSM source to HTML or structured format.
     
     This endpoint accepts any RSM source and renders it to HTML or structured format.

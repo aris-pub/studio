@@ -28,6 +28,7 @@ dependencies = [
     "shortuuid>=1.0.13",
     "rsm-lang>=1.2.0",
     "sentry-sdk[fastapi]>=2.0.0",
+    "slowapi>=0.1.10",
 ]
 
 [dependency-groups]

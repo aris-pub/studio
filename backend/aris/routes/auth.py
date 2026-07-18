@@ -10,6 +10,7 @@ from .. import crud, current_user, get_db, jwt
 from ..config import settings
 from ..logging_config import get_logger
 from ..models import User
+from ..rate_limiting import LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, limiter
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
 
@@ -125,6 +126,7 @@ async def me(user: User = Depends(current_user)):
     description="Authenticate a user with email and password to receive access tokens.",
     response_description="JWT access and refresh tokens",
 )
+@limiter.limit(LOGIN_RATE_LIMIT)
 async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     """Authenticate user and return access tokens.
 
@@ -217,6 +219,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     description="Create a new user account and receive authentication tokens.",
     response_description="User account details with authentication tokens",
 )
+@limiter.limit(REGISTER_RATE_LIMIT)
 async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user account.
 
