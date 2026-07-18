@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from aris.collaboration import get_collaboration_manager
 from aris.deps import current_user, get_db
 from aris.health import HealthResponse, perform_health_check
 from aris.logging_config import get_logger, setup_logging
+from aris.rate_limiting import limiter, rate_limit_exceeded_handler
 from aris.routes import (
     auth_router,
     feedback_router,
@@ -352,6 +354,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting is enforced per-route via @limiter.limit decorators. The limiter
+# only needs to be reachable on app.state and the 429 exception mapped to a clean
+# JSON body. CORSMiddleware wraps the whole app, so 429 responses still carry CORS
+# headers regardless of where this is registered.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Include routers with proper tags
 logger.info("Registering API routers")

@@ -394,6 +394,22 @@ async def second_authenticated_user(client: AsyncClient):
 
 
 @pytest_asyncio.fixture(autouse=True)
+async def reset_rate_limiter():
+    """Clear the in-memory rate-limit store around every test.
+
+    The limiter is app-global and in-memory, so per-IP counts would otherwise
+    accumulate across the run: the suite registers and logs in many times from a
+    single client IP and would trip the per-IP limits partway through. Resetting
+    before and after each test gives every test a clean bucket.
+    """
+    from aris.rate_limiting import limiter
+
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup_collaboration_manager():
     """Shut down any YDocClient instances after each test.
 
