@@ -14,6 +14,8 @@ from httpx import AsyncClient
 from starlette.requests import Request
 
 from aris.rate_limiting import (
+    ASSET_UPLOAD_RATE_LIMIT,
+    FILE_CREATE_RATE_LIMIT,
     LOGIN_RATE_LIMIT,
     PUBLIC_RENDER_RATE_LIMIT,
     RATE_LIMIT_MESSAGE,
@@ -30,6 +32,8 @@ def _limit_count(limit_str: str) -> int:
 LOGIN_LIMIT = _limit_count(LOGIN_RATE_LIMIT)
 REGISTER_LIMIT = _limit_count(REGISTER_RATE_LIMIT)
 RENDER_LIMIT = _limit_count(PUBLIC_RENDER_RATE_LIMIT)
+FILE_CREATE_LIMIT = _limit_count(FILE_CREATE_RATE_LIMIT)
+ASSET_UPLOAD_LIMIT = _limit_count(ASSET_UPLOAD_RATE_LIMIT)
 
 BAD_LOGIN = {"email": "nobody@example.com", "password": "wrong-password"}
 
@@ -167,3 +171,58 @@ async def test_render_buckets_are_per_ip(client: AsyncClient, monkeypatch):
 
     other = await client.post("/render", json=payload, headers=_ip("203.0.113.8"))
     assert other.status_code == 200, other.text
+
+
+# --------------------------------------------------------------------------- #
+# Authenticated write surface: POST /files and the asset upload. These require a
+# valid session (trusted users), so the limit is a safety cap on runaway writes,
+# not an anti-abuse gate. Auth is supplied per request so the Fly-Client-IP
+# header still selects the bucket.
+# --------------------------------------------------------------------------- #
+
+
+def _auth_ip(auth_headers: dict, addr: str) -> dict:
+    return {**auth_headers, "Fly-Client-IP": addr}
+
+
+async def test_file_create_blocks_over_limit_with_clean_message(client: AsyncClient, auth_headers):
+    headers = _auth_ip(auth_headers, "203.0.113.20")
+    payload = TestDataFactory.file_creation_data()
+    for _ in range(FILE_CREATE_LIMIT):
+        resp = await client.post("/files", json=payload, headers=headers)
+        assert resp.status_code != 429, resp.text
+
+    blocked = await client.post("/files", json=payload, headers=headers)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"detail": RATE_LIMIT_MESSAGE}
+
+
+async def test_file_create_buckets_are_per_ip(client: AsyncClient, auth_headers):
+    payload = TestDataFactory.file_creation_data()
+    exhausted = _auth_ip(auth_headers, "203.0.113.21")
+    for _ in range(FILE_CREATE_LIMIT):
+        await client.post("/files", json=payload, headers=exhausted)
+    blocked = await client.post("/files", json=payload, headers=exhausted)
+    assert blocked.status_code == 429
+
+    other = await client.post("/files", json=payload, headers=_auth_ip(auth_headers, "203.0.113.22"))
+    assert other.status_code != 429, other.text
+
+
+async def test_asset_upload_blocks_over_limit_with_clean_message(client: AsyncClient, auth_headers):
+    headers = _auth_ip(auth_headers, "203.0.113.23")
+    # The file this user owns is created through the API so the caller has edit
+    # rights; that single create sits well under the (separate) file-create limit.
+    created = await client.post("/files", json=TestDataFactory.file_creation_data(), headers=headers)
+    file_id = created.json()["id"]
+
+    def asset(i: int) -> dict:
+        return {"filename": f"a{i}.txt", "mime_type": "text/plain", "content": "v1"}
+
+    for i in range(ASSET_UPLOAD_LIMIT):
+        resp = await client.post(f"/files/{file_id}/assets", json=asset(i), headers=headers)
+        assert resp.status_code != 429, resp.text
+
+    blocked = await client.post(f"/files/{file_id}/assets", json=asset(9999), headers=headers)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"detail": RATE_LIMIT_MESSAGE}
