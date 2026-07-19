@@ -5,6 +5,8 @@ import base64
 import pytest
 from httpx import AsyncClient
 
+from aris.config import settings
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -282,3 +284,137 @@ async def test_list_excludes_deleted_assets(
     remaining = (await client.get(f"/files/{test_file['id']}/assets", headers=headers)).json()
     assert len(remaining) == 1
     assert remaining[0]["filename"] == "keep.png"
+
+
+# ---------------------------------------------------------------------------
+# Asset size limit (std-n1m251): enforced on DECODED bytes, rejected with 413
+# ---------------------------------------------------------------------------
+
+
+def _base64_decoding_to(n_bytes: int) -> str:
+    """A base64 string that decodes to exactly ``n_bytes`` bytes."""
+    return base64.b64encode(b"\0" * n_bytes).decode()
+
+
+async def test_upload_asset_over_size_limit_returns_413(
+    client: AsyncClient, authenticated_user, test_file, monkeypatch
+):
+    """Base64 content whose decoded size is over the limit is refused with 413."""
+    monkeypatch.setattr(settings, "MAX_ASSET_BYTES", 1024 * 1024)
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "big.png",
+            "mime_type": "image/png",
+            "content": _base64_decoding_to(1024 * 1024 + 1),
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 413
+    assert "1 MB" in response.json()["detail"]
+    assert "limit" in response.json()["detail"].lower()
+
+
+async def test_upload_asset_at_size_limit_succeeds(
+    client: AsyncClient, authenticated_user, test_file, monkeypatch
+):
+    """Content decoding to exactly the limit is accepted.
+
+    The base64 string here is ~1.33x the byte limit, so its raw length is over the
+    limit while its decoded length is not. Accepting it proves the check is on the
+    DECODED size, not the raw wire length.
+    """
+    monkeypatch.setattr(settings, "MAX_ASSET_BYTES", 1024 * 1024)
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "atlimit.png",
+            "mime_type": "image/png",
+            "content": _base64_decoding_to(1024 * 1024),
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["filename"] == "atlimit.png"
+
+
+async def test_upload_asset_just_over_bound_rejected(
+    client: AsyncClient, authenticated_user, test_file, monkeypatch
+):
+    """A base64 string just one decoded byte over the bound is rejected."""
+    monkeypatch.setattr(settings, "MAX_ASSET_BYTES", 1024 * 1024)
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+
+    under = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "under.bin",
+            "mime_type": "application/octet-stream",
+            "content": _base64_decoding_to(1024 * 1024 - 3),
+            "content_encoding": "base64",
+        },
+    )
+    assert under.status_code == 200, under.text
+
+    over = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "over.bin",
+            "mime_type": "application/octet-stream",
+            "content": _base64_decoding_to(1024 * 1024 + 1),
+            "content_encoding": "base64",
+        },
+    )
+    assert over.status_code == 413
+
+
+async def test_update_asset_over_size_limit_returns_413(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image, monkeypatch
+):
+    """Updating an asset with over-limit base64 content is refused with 413."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    create_resp = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "u.png",
+            "mime_type": "image/png",
+            "content": valid_base64_image,
+            "content_encoding": "base64",
+        },
+    )
+    asset_id = create_resp.json()["id"]
+
+    monkeypatch.setattr(settings, "MAX_ASSET_BYTES", 1024 * 1024)
+    response = await client.put(
+        f"/files/{test_file['id']}/assets/{asset_id}",
+        headers=headers,
+        json={"content": _base64_decoding_to(1024 * 1024 + 1)},
+    )
+    assert response.status_code == 413
+    assert "limit" in response.json()["detail"].lower()
+
+
+async def test_upload_asset_over_default_limit_returns_413(
+    client: AsyncClient, authenticated_user, test_file
+):
+    """With the shipped 25 MB default, an over-limit upload returns the 413 message."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "huge.png",
+            "mime_type": "image/png",
+            "content": _base64_decoding_to(25 * 1024 * 1024 + 1),
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Asset exceeds 25 MB limit"

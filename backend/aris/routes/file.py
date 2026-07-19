@@ -1,3 +1,5 @@
+import base64
+import binascii
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -14,6 +16,7 @@ from ..authorization import (
     require_view,
 )
 from ..collaboration import get_collaboration_manager, mint_collab_token
+from ..config import settings
 from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..crud.permissions import create_permission
 from ..deps import UserRead
@@ -745,14 +748,56 @@ class _AssetBody(BaseModel):
 
     @model_validator(mode="after")
     def _validate_base64_content(self) -> "_AssetBody":
-        import base64 as _b64
-        import binascii
         if self.content_encoding == "base64":
             try:
-                _b64.b64decode(self.content)
+                base64.b64decode(self.content)
             except (TypeError, binascii.Error):
                 raise ValueError("Invalid base64-encoded string")
         return self
+
+
+def _enforce_asset_size_limit(content: str, content_encoding: str) -> None:
+    """Reject asset content whose decoded size exceeds ``settings.MAX_ASSET_BYTES``.
+
+    Raises HTTP 413 when the limit is exceeded. The limit is on the DECODED byte
+    length, so it is stable regardless of encoding (base64 inflates the wire size
+    by ~33%). For base64 we first reject on the raw string length when it is large
+    enough that no valid base64 could possibly fit under the limit: that avoids
+    allocating a huge buffer just to measure an abusive payload, which is the whole
+    point on the single small prod machine.
+    """
+    max_bytes = settings.MAX_ASSET_BYTES
+
+    if content_encoding == "base64":
+        # 4 base64 chars encode 3 bytes, so any string longer than this cannot
+        # decode to <= max_bytes. Reject before decoding to avoid the allocation.
+        max_b64_chars = ((max_bytes + 2) // 3) * 4
+        if len(content) > max_b64_chars:
+            _raise_asset_too_large(max_bytes)
+        try:
+            decoded_len = len(base64.b64decode(content))
+        except (TypeError, binascii.Error):
+            # Invalid base64 is a 422 handled by the request model, not our concern.
+            return
+    else:
+        # A UTF-8 string is at least one byte per character, so a character count
+        # over the limit is already over the byte limit; skip encoding it.
+        if len(content) > max_bytes:
+            _raise_asset_too_large(max_bytes)
+        decoded_len = len(content.encode("utf-8"))
+
+    if decoded_len > max_bytes:
+        _raise_asset_too_large(max_bytes)
+
+
+def _raise_asset_too_large(max_bytes: int) -> None:
+    if max_bytes >= 1024 * 1024:
+        limit = f"{max_bytes // (1024 * 1024)} MB"
+    elif max_bytes >= 1024:
+        limit = f"{max_bytes // 1024} KB"
+    else:
+        limit = f"{max_bytes} bytes"
+    raise HTTPException(status_code=413, detail=f"Asset exceeds {limit} limit")
 
 
 @router.get("/{file_id}/assets", response_model=list[FileAssetOut])
@@ -781,6 +826,7 @@ async def create_asset_for_file(
     file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Upload a new asset to a file. Requires edit permission."""
+    _enforce_asset_size_limit(payload.content, payload.content_encoding)
     asset = await FileAssetDB.create_asset(
         FileAssetCreate(
             filename=payload.filename,
@@ -877,6 +923,10 @@ async def update_asset_for_file(
     asset = await db.get(FileAsset, asset_id)
     if not asset or asset.file_id != file_id or asset.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Asset not found")
+    if payload.content is not None:
+        # An update carries no encoding of its own; reuse the stored asset's so the
+        # decoded-size check matches how the content will actually be persisted.
+        _enforce_asset_size_limit(payload.content, getattr(asset, "content_encoding", "base64"))
     result = await FileAssetDB.update_asset(asset, payload, db)
     await file_service.clear_file_cache(file_id)
     get_event_broker().publish(file_id, {"type": "asset-changed"})
