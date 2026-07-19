@@ -120,6 +120,15 @@ class Settings(BaseSettings):
     """Sentry ingest DSN for backend error tracking. Optional: when empty, Sentry is
     not initialized (local/CI/test), so it is a no-op until a DSN is set in prod."""
 
+    MAX_ASSET_BYTES: int = Field(
+        25 * 1024 * 1024, json_schema_extra={"env": "MAX_ASSET_BYTES"}
+    )
+    """Maximum DECODED size (bytes) of a single uploaded file asset. Sized for the
+    single small prod machine: a large base64 upload decodes into memory, so an
+    unbounded payload is a memory/abuse vector. Enforced on the decoded byte length
+    in routes/file.py (base64 inflates ~33%). Default 25 MB; lower via env to fit a
+    smaller instance."""
+
 
     model_config = SettingsConfigDict(
         extra="ignore",
