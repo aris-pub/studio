@@ -1,8 +1,10 @@
 <script setup>
   import { ref, inject, computed } from "vue";
   import { useRouter } from "vue-router";
+  import { captureException } from "@sentry/vue";
   import { File } from "@/models/File.js";
   import { downloadBlob } from "@/utils/download.js";
+  import { toast } from "@/utils/toast.js";
   import ConfirmationModal from "@/components/ConfirmationModal.vue";
 
   const api = inject("api");
@@ -15,6 +17,24 @@
   function getCurrentSource() {
     if (cmView.value) return cmView.value.state.doc.toString();
     return file.value?.source || "";
+  }
+
+  // Push the live Y.js content to the DB so a subsequent export reflects the
+  // user's latest edits. Returns true if the export may proceed, false if the
+  // flush failed (in which case the caller must abort rather than export stale
+  // content). std-eisqeg: never swallow this failure silently.
+  async function flushBeforeExport() {
+    try {
+      await api.post(`/files/${fileId.value}/collab/flush`);
+      return true;
+    } catch (error) {
+      captureException(error);
+      toast.error(
+        "Couldn't sync your latest changes, so the export was cancelled to avoid " +
+          "downloading an out-of-date file. Please try again."
+      );
+      return false;
+    }
   }
 
   const isDownloading = ref(false);
@@ -34,19 +54,24 @@
     if (isDownloading.value || !fileId.value) return;
     isDownloading.value = true;
     try {
-      // Flush Y.js content to DB before export (non-competing path)
-      await api.post(`/files/${fileId.value}/collab/flush`).catch(() => {});
+      // Flush Y.js content to the DB so the export reflects the user's latest
+      // edits. If the flush fails the DB may still hold stale content, so we
+      // must NOT silently export it (std-eisqeg): cancel the export and warn
+      // the user rather than handing them an out-of-date file.
+      if (!(await flushBeforeExport())) return;
 
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".html";
       const response = await api.post(
         `/files/${fileId.value}/download`,
         {},
-        { responseType: "blob" },
+        { responseType: "blob" }
       );
       const blob = new Blob([response.data], { type: "text/html" });
       downloadBlob(blob, filename);
     } catch (error) {
+      captureException(error);
+      toast.error("Download failed. Please try again.");
       console.error("Download failed:", error);
     } finally {
       isDownloading.value = false;
@@ -57,19 +82,22 @@
     if (isDownloadingPdf.value || !fileId.value) return;
     isDownloadingPdf.value = true;
     try {
-      // Flush Y.js content to DB before export (non-competing path)
-      await api.post(`/files/${fileId.value}/collab/flush`).catch(() => {});
+      // See onDownload: a failed pre-export flush must not silently yield a
+      // stale PDF (std-eisqeg).
+      if (!(await flushBeforeExport())) return;
 
       const title = fileTitle.value || "manuscript";
       const filename = title.replace(/[<>:"/\\|?*]/g, "_") + ".pdf";
       const response = await api.post(
         `/files/${fileId.value}/download/pdf`,
         {},
-        { responseType: "blob", timeout: 120000 },
+        { responseType: "blob", timeout: 120000 }
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       downloadBlob(blob, filename);
     } catch (error) {
+      captureException(error);
+      toast.error("PDF download failed. Please try again.");
       console.error("PDF download failed:", error);
     } finally {
       isDownloadingPdf.value = false;
@@ -133,8 +161,13 @@
           <Icon name="ChevronRight" class="action-chevron" />
         </button>
         <button class="action-row" :disabled="isDownloadingPdf" @click="onDownloadPdf">
-          <Icon :name="isDownloadingPdf ? 'Loader2' : 'FileTypePdf'" :class="{ spinning: isDownloadingPdf }" />
-          <span class="action-label">{{ isDownloadingPdf ? "Generating PDF…" : "Download PDF" }}</span>
+          <Icon
+            :name="isDownloadingPdf ? 'Loader2' : 'FileTypePdf'"
+            :class="{ spinning: isDownloadingPdf }"
+          />
+          <span class="action-label">{{
+            isDownloadingPdf ? "Generating PDF…" : "Download PDF"
+          }}</span>
           <Icon v-if="!isDownloadingPdf" name="ChevronRight" class="action-chevron" />
         </button>
       </template>
@@ -225,8 +258,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .action-row--danger {

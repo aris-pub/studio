@@ -33,7 +33,9 @@
   import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
+  import { captureException } from "@sentry/vue";
   import { AuthedWebSocket } from "@/composables/authedWebSocket";
+  import { toast } from "@/utils/toast.js";
   import { useLSPClient } from "@/composables/useLSPClient";
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
@@ -166,7 +168,15 @@
     }
 
     if (activeCollabFileId.value) {
-      api.post(`/files/${activeCollabFileId.value}/collab/stop`).catch(() => {});
+      // Best-effort: cleanup must not block on the network, but a failed stop
+      // leaves a backend Y.js client lingering, so report it (std-eisqeg)
+      // instead of swallowing. The notice stays non-blocking since the user has
+      // already navigated away from this file.
+      const stoppingFileId = activeCollabFileId.value;
+      api.post(`/files/${stoppingFileId}/collab/stop`).catch((err) => {
+        captureException(err);
+        toast.warning("Couldn't cleanly close the previous collaboration session.");
+      });
       activeCollabFileId.value = null;
     }
 
