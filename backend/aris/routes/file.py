@@ -2,7 +2,7 @@ import base64
 import binascii
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
@@ -23,6 +23,7 @@ from ..deps import UserRead
 from ..logging_config import get_logger
 from ..models import FileAsset
 from ..models.models import FileRole
+from ..rate_limiting import ASSET_UPLOAD_RATE_LIMIT, FILE_CREATE_RATE_LIMIT, limiter
 from ..services.file_events import FileEventBroker, get_event_broker, sse_event_stream
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
 
@@ -139,7 +140,9 @@ async def get_files(
 
 
 @router.post("")
+@limiter.limit(FILE_CREATE_RATE_LIMIT)
 async def create_file(
+    request: Request,
     doc: FileCreate,
     user: UserRead = Depends(current_user),
     file_service: InMemoryFileService = Depends(get_file_service),
@@ -817,7 +820,9 @@ async def get_assets_for_file(
 
 
 @router.post("/{file_id}/assets", response_model=FileAssetOut)
+@limiter.limit(ASSET_UPLOAD_RATE_LIMIT)
 async def create_asset_for_file(
+    request: Request,
     file_id: int,
     payload: _AssetBody,
     user_role: FileRole = Depends(require_edit),

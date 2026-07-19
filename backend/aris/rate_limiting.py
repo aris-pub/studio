@@ -28,6 +28,12 @@ LOGIN_RATE_LIMIT = "10/minute"
 REGISTER_RATE_LIMIT = "5/minute"
 PUBLIC_RENDER_RATE_LIMIT = "30/minute"
 
+# Authenticated write endpoints. These need a session, so the risk is a runaway
+# client (or a compromised session) flooding writes rather than open abuse; the
+# caps are generous headroom over real editing, keyed on the same client IP.
+FILE_CREATE_RATE_LIMIT = "30/minute"
+ASSET_UPLOAD_RATE_LIMIT = "60/minute"
+
 RATE_LIMIT_MESSAGE = "Too many requests. Please slow down and try again shortly."
 
 
