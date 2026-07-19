@@ -151,7 +151,15 @@ vi.mock("@/composables/useFileEvents.js", () => ({
   useFileEvents: () => ({ close: vi.fn() }),
 }));
 
+vi.mock("@/utils/toast.js", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("@sentry/vue", () => ({ captureException: vi.fn() }));
+
 import EditorCodeMirror from "@/views/workspace/EditorCodeMirror.vue";
+import { toast } from "@/utils/toast.js";
+import { captureException } from "@sentry/vue";
 
 describe("EditorCodeMirror — collab-start failure surfacing and retry", () => {
   let mockApi;
@@ -265,5 +273,67 @@ describe("EditorCodeMirror — collab-start failure surfacing and retry", () => 
     expect(collabConnectError.value).toBe(false);
 
     wrapper.unmount();
+  });
+});
+
+describe("EditorCodeMirror — collab/stop error surfacing (std-eisqeg)", () => {
+  let mockApi;
+  let consoleErrorSpy;
+
+  beforeEach(() => {
+    providerInstances.length = 0;
+    AuthedWebSocket._tokens.clear();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    toast.warning.mockClear();
+    captureException.mockClear();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  const mountEditor = () =>
+    mount(EditorCodeMirror, {
+      props: { modelValue: { id: 77, source: "", role: "AUTHOR" } },
+      global: {
+        provide: {
+          api: mockApi,
+          user: ref({ id: 1, name: "Tester", email: "t@e.com", avatar_color: "#0E9AE9" }),
+          mobileMode: ref(false),
+          compile: vi.fn(),
+          cmView: shallowRef(null),
+          cursorPos: ref(0),
+          ydoc: shallowRef(null),
+          ytext: shallowRef(null),
+          awareness: shallowRef(null),
+          collabIsConnected: ref(false),
+          collabIsSynced: ref(false),
+          collabConnectError: ref(false),
+          collabRetry: shallowRef(null),
+        },
+      },
+    });
+
+  it("reports a failed collab/stop on cleanup instead of swallowing it", async () => {
+    const stopError = new Error("stop failed");
+    mockApi = {
+      get: vi.fn().mockResolvedValue({ data: {} }),
+      post: vi.fn().mockImplementation((url) => {
+        if (url.includes("/collab/stop")) return Promise.reject(stopError);
+        return Promise.resolve({ data: { token: "tok" } });
+      }),
+    };
+
+    const wrapper = mountEditor();
+    await flushPromises();
+
+    // Unmount runs cleanup(), which posts /collab/stop for the active file.
+    wrapper.unmount();
+    await flushPromises();
+
+    expect(mockApi.post).toHaveBeenCalledWith("/files/77/collab/stop");
+    expect(captureException).toHaveBeenCalledWith(stopError);
+    expect(toast.warning).toHaveBeenCalled();
   });
 });

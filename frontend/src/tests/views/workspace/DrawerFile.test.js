@@ -5,9 +5,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import DrawerFile from "@/views/workspace/DrawerFile.vue";
+import { downloadBlob } from "@/utils/download.js";
+import { toast } from "@/utils/toast.js";
+import { captureException } from "@sentry/vue";
 
 vi.mock("@/utils/download.js", () => ({
   downloadBlob: vi.fn(),
+}));
+
+vi.mock("@/utils/toast.js", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("@sentry/vue", () => ({
+  captureException: vi.fn(),
 }));
 
 // Mock vue-router
@@ -164,7 +175,7 @@ describe("DrawerFile", () => {
       expect(mockApi.post).toHaveBeenCalledWith(
         "/files/123/download",
         {},
-        { responseType: "blob" },
+        { responseType: "blob" }
       );
     });
 
@@ -182,7 +193,7 @@ describe("DrawerFile", () => {
       expect(mockApi.post).toHaveBeenCalledWith(
         "/files/123/download",
         {},
-        { responseType: "blob" },
+        { responseType: "blob" }
       );
     });
 
@@ -230,8 +241,107 @@ describe("DrawerFile", () => {
       expect(mockApi.post).toHaveBeenCalledWith(
         "/files/123/download/pdf",
         {},
-        { responseType: "blob", timeout: 120000 },
+        { responseType: "blob", timeout: 120000 }
       );
+    });
+  });
+
+  describe("flush before export (std-eisqeg)", () => {
+    let consoleErrorSpy;
+
+    beforeEach(() => {
+      consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("cancels HTML export and surfaces an error when the pre-export flush fails", async () => {
+      const flushError = new Error("flush failed");
+      mockApi.post.mockImplementation((url) => {
+        if (url.includes("/collab/flush")) return Promise.reject(flushError);
+        return Promise.resolve({ data: new Blob() });
+      });
+
+      wrapper = createWrapper();
+      const rows = wrapper.findAll(".action-row");
+      await rows[0].trigger("click");
+      await flushPromises();
+
+      // The flush was attempted, but a stale export must NOT proceed.
+      expect(mockApi.post).toHaveBeenCalledWith("/files/123/collab/flush");
+      expect(mockApi.post).not.toHaveBeenCalledWith(
+        "/files/123/download",
+        {},
+        { responseType: "blob" }
+      );
+      expect(downloadBlob).not.toHaveBeenCalled();
+
+      // The failure is reported rather than swallowed.
+      expect(captureException).toHaveBeenCalledWith(flushError);
+      expect(toast.error).toHaveBeenCalled();
+
+      // Button is re-enabled so the user can retry.
+      expect(rows[0].attributes("disabled")).toBeUndefined();
+    });
+
+    it("cancels PDF export and surfaces an error when the pre-export flush fails", async () => {
+      const flushError = new Error("flush failed");
+      mockApi.post.mockImplementation((url) => {
+        if (url.includes("/collab/flush")) return Promise.reject(flushError);
+        return Promise.resolve({ data: new Blob() });
+      });
+
+      wrapper = createWrapper();
+      const rows = wrapper.findAll(".action-row");
+      await rows[1].trigger("click");
+      await flushPromises();
+
+      expect(mockApi.post).toHaveBeenCalledWith("/files/123/collab/flush");
+      expect(mockApi.post).not.toHaveBeenCalledWith(
+        "/files/123/download/pdf",
+        {},
+        { responseType: "blob", timeout: 120000 }
+      );
+      expect(downloadBlob).not.toHaveBeenCalled();
+      expect(captureException).toHaveBeenCalledWith(flushError);
+      expect(toast.error).toHaveBeenCalled();
+    });
+
+    it("proceeds with the export after a successful flush", async () => {
+      mockApi.post.mockResolvedValue({ data: new Blob() });
+
+      wrapper = createWrapper();
+      const rows = wrapper.findAll(".action-row");
+      await rows[0].trigger("click");
+      await flushPromises();
+
+      expect(mockApi.post).toHaveBeenCalledWith("/files/123/collab/flush");
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/files/123/download",
+        {},
+        { responseType: "blob" }
+      );
+      expect(downloadBlob).toHaveBeenCalled();
+      expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    it("reports an error when the download itself fails after a successful flush", async () => {
+      const downloadError = new Error("download boom");
+      mockApi.post.mockImplementation((url) => {
+        if (url.includes("/collab/flush")) return Promise.resolve({ data: {} });
+        return Promise.reject(downloadError);
+      });
+
+      wrapper = createWrapper();
+      const rows = wrapper.findAll(".action-row");
+      await rows[0].trigger("click");
+      await flushPromises();
+
+      expect(captureException).toHaveBeenCalledWith(downloadError);
+      expect(toast.error).toHaveBeenCalled();
+      expect(downloadBlob).not.toHaveBeenCalled();
     });
   });
 
