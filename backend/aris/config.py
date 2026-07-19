@@ -66,10 +66,15 @@ class Settings(BaseSettings):
     """Expiration time in minutes for JWT refresh tokens (default: 129600 = 90 days)."""
 
     LSP_MAX_CONCURRENT_SESSIONS: int = Field(
-        20, json_schema_extra={"env": "LSP_MAX_CONCURRENT_SESSIONS"}
+        8, json_schema_extra={"env": "LSP_MAX_CONCURRENT_SESSIONS"}
     )
-    """Global cap on concurrent LSP WebSocket sessions. Each spawns a ~100MB node
-    subprocess, so this bounds total memory. Tune to the backend instance size."""
+    """Global cap on concurrent LSP WebSocket sessions. Each spawns a ~75-100MB node
+    subprocess, so this bounds total RAM and keeps the box off the OOM killer: OOM is
+    SIGKILL, which skips the graceful 25s Y.js flush and loses in-flight edits with
+    the whole stack (std-9457). Sized to a 2GB machine: backend + multiplayer relay
+    baseline ~600-700MB plus per-file YDocClients leaves ~1.2GB; 8 * ~100MB = ~800MB
+    stays under that with headroom. The old default of 20 (~2GB of node alone) could
+    OOM even a 2GB box. Tune to the backend instance size."""
 
     LSP_MAX_SESSIONS_PER_USER: int = Field(
         3, json_schema_extra={"env": "LSP_MAX_SESSIONS_PER_USER"}

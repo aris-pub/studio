@@ -48,6 +48,11 @@ ENGINE = create_async_engine(
     pool_size=10,
     max_overflow=5,
     pool_timeout=10,
+    # Validate a pooled connection before handing it out. After Fly auto-stop / idle,
+    # the pool holds sockets the DB has already dropped, so the first request after a
+    # cold start would otherwise fail once (the HTTP 000 seen 2026-07-18). Mirrors
+    # COLLAB_ENGINE below (std-9457).
+    pool_pre_ping=True,
 )
 
 # Separate pool for Y.js collaboration clients so they cannot starve HTTP handlers.
