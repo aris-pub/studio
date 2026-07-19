@@ -33,6 +33,22 @@ def test_settings_defaults_and_env_override(monkeypatch):
     assert s.JWT_REFRESH_TOKEN_EXPIRE_MINUTES == 129600
 
 
+def test_lsp_global_cap_sized_to_ram(monkeypatch):
+    # The global LSP cap bounds how many ~75-100MB node subprocesses can run at once.
+    # It must stay small enough that they cannot OOM the 2GB prod box (OOM is SIGKILL,
+    # which skips the graceful Y.js flush and loses in-flight edits, std-9457). Pin the
+    # sized default and a sane upper bound so a future edit cannot silently restore a
+    # value (the old 20) that blows past available RAM.
+    for key in ("LSP_MAX_CONCURRENT_SESSIONS", "LSP_MAX_SESSIONS_PER_USER"):
+        monkeypatch.delenv(key, raising=False)
+
+    s = Settings(_env_file=None)
+    assert s.LSP_MAX_CONCURRENT_SESSIONS == 8
+    assert 1 <= s.LSP_MAX_CONCURRENT_SESSIONS <= 10
+    # Per-user cap must stay sane: at least 1, and never above the global ceiling.
+    assert 1 <= s.LSP_MAX_SESSIONS_PER_USER <= s.LSP_MAX_CONCURRENT_SESSIONS
+
+
 def test_missing_required_env_vars(monkeypatch):
     # Remove all required env vars to trigger validation error
     for key in (

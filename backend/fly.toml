@@ -59,7 +59,11 @@ kill_timeout = "30s"
     port = 1234
     handlers = ["tls", "http"]
 
+# 2GB (up from 1GB) so backend + multiplayer relay + per-file YDocClients + capped
+# Node LSP subprocesses (see LSP_MAX_CONCURRENT_SESSIONS) fit with headroom and the
+# box stays off the OOM killer, whose SIGKILL skips the graceful Y.js flush above and
+# loses in-flight edits (std-9457). Still auto-stops; this only adds RAM while running.
 [[vm]]
-  memory = '1gb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
