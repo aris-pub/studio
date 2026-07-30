@@ -4,6 +4,7 @@ import logging
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from aris.services.email import EmailConfig, EmailService, get_email_service
 
@@ -20,10 +21,11 @@ class TestEmailConfig:
         assert config.resend_api_key == "test_key"
         assert config.from_email == "test@example.com"
 
-    def test_email_config_default_from_email(self):
-        """Test EmailConfig uses default from_email."""
-        config = EmailConfig(resend_api_key="test_key")
-        assert config.from_email == "noreply@aris.pub"
+    def test_email_config_requires_from_email(self):
+        """from_email has no default: omitting it must raise, so a broken or unset
+        sender can never silently fall back to an unverified domain."""
+        with pytest.raises(ValidationError):
+            EmailConfig(resend_api_key="test_key")
 
 
 class TestEmailService:
