@@ -102,8 +102,11 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = Field("", json_schema_extra={"env": "RESEND_API_KEY"})
     """Resend API key for sending emails."""
 
-    FROM_EMAIL: str = Field("noreply@aris.pub", json_schema_extra={"env": "FROM_EMAIL"})
-    """Default from email address."""
+    FROM_EMAIL: str = Field("", json_schema_extra={"env": "FROM_EMAIL"})
+    """Sender address for outgoing email. No hardcoded default on purpose: a silent
+    fallback to an unverified domain let a broken sender hide for a year. Empty here,
+    required in PROD and STAGING (see require_prod_email_config), optional in
+    LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain."""
 
     ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
     """Admin email for notifications (signups, etc.)."""
@@ -164,6 +167,20 @@ class Settings(BaseSettings):
                 self.DB_URL_LOCAL = f"postgresql+asyncpg://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
             if not self.ALEMBIC_DB_URL_LOCAL:
                 self.ALEMBIC_DB_URL_LOCAL = f"postgresql+psycopg2://postgres:postgres@localhost:{self.DB_PORT}/{self.DB_NAME}"
+        return self
+
+    @model_validator(mode="after")
+    def require_prod_email_config(self):
+        """Fail fast at boot in PROD/STAGING if the email sender is not configured.
+        A missing critical var must crash, not degrade to a silent bad default. A
+        silent noreply@aris.pub fallback let a broken, unverified sender hide for a
+        year, this refuses to boot instead."""
+        if self.ENV in ("PROD", "STAGING") and not self.FROM_EMAIL:
+            raise ValueError(
+                "FROM_EMAIL is not set. It is required in PROD and STAGING and must be "
+                "an address on a verified Resend domain (e.g. noreply@updates.aris.pub). "
+                "Refusing to boot rather than silently fall back to an unverified domain."
+            )
         return self
 
     def get_test_database_url(self) -> str:

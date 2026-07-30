@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 class EmailConfig(BaseModel):
     resend_api_key: str
-    from_email: str = "noreply@aris.pub"
+    from_email: str
     admin_email: Optional[str] = None
 
 
