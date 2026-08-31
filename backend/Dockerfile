@@ -110,6 +110,13 @@ RUN chmod +x /usr/local/bin/health-check.sh
 ARG GIT_COMMIT=dev
 ENV GIT_COMMIT=$GIT_COMMIT
 
+# Empty default so supervisord's %(ENV_SENTRY_DSN_MULTIPLAYER)s always resolves.
+# supervisord aborts the whole config on one failed expansion, which also stops
+# [program:backend], so a deploy target without this secret (preview apps) never
+# binds a port. Fly secrets override this in prod, and multi-player/server.js
+# skips Sentry init on an empty DSN.
+ENV SENTRY_DSN_MULTIPLAYER=""
+
 # Expose ports: 8080 (HTTP), 1234 (WebSocket)
 EXPOSE 8080 1234
 
