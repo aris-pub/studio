@@ -106,6 +106,7 @@ jobs:
             TEST_USER_EMAIL="${{ steps.backend.outputs.test_user }}" \
             TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
             RESEND_API_KEY="" \
+            FROM_EMAIL="noreply@updates.aris.pub" \
             FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
         fi
 
@@ -121,6 +122,14 @@ jobs:
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q INTERNAL_SHARED_SECRET; then
           flyctl secrets set --app "$APP_NAME" \
             INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars"
+        fi
+        # FROM_EMAIL is required when ENV=PROD (which previews use). Preview apps
+        # created before it became required crash on boot without it. Previews
+        # never send mail (RESEND_API_KEY is empty), so any non-empty verified
+        # sender is fine.
+        if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q FROM_EMAIL; then
+          flyctl secrets set --app "$APP_NAME" \
+            FROM_EMAIL="noreply@updates.aris.pub"
         fi
 
     - name: Deploy backend to Fly
