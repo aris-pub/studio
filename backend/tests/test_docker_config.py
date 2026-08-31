@@ -151,6 +151,66 @@ class TestSupervisordConf:
             )
 
 
+class TestSupervisordEnvResolves:
+    """supervisord aborts the ENTIRE config when a single %(ENV_*)s cannot be
+    expanded, so one unset variable in [program:multiplayer] also stops
+    [program:backend]. Nothing binds 8080, Fly's proxy holds requests open, and
+    the deploy fails with a read timeout far from the real cause. Every
+    referenced variable must therefore be guaranteed present in the container:
+    either baked into the image (Dockerfile ARG/ENV default) or set on every
+    preview app by .github/workflows/preview.yml.
+    """
+
+    conf = _read("docker/supervisord.conf")
+    dockerfile = _read("backend/Dockerfile")
+    preview_workflow = _read(".github/workflows/preview.yml")
+
+    def _referenced_vars(self) -> set[str]:
+        return set(re.findall(r"%\(ENV_([A-Z0-9_]+)\)s", self.conf))
+
+    def _has_image_default(self, name: str) -> bool:
+        """True when the Dockerfile bakes a default, e.g. `ENV NAME=` or `ARG NAME=`."""
+        return (
+            re.search(rf"^\s*(?:ENV|ARG)\s+{re.escape(name)}=", self.dockerfile, re.MULTILINE)
+            is not None
+        )
+
+    def _set_by_preview_workflow(self, name: str) -> bool:
+        """True when preview.yml sets the variable as a Fly secret, e.g. `NAME="..."`."""
+        return (
+            re.search(rf"^\s*{re.escape(name)}=", self.preview_workflow, re.MULTILINE) is not None
+        )
+
+    def test_every_referenced_var_is_guaranteed_set(self):
+        referenced = self._referenced_vars()
+        assert referenced, "no %(ENV_*)s references found, the parser is wrong"
+        unresolvable = sorted(
+            name
+            for name in referenced
+            if not self._has_image_default(name) and not self._set_by_preview_workflow(name)
+        )
+        assert not unresolvable, (
+            "supervisord.conf references "
+            f"{unresolvable} but nothing guarantees they are set. supervisord "
+            "will abort the whole config, so [program:backend] never starts and "
+            "the deploy hangs until it times out. Add an ENV default in "
+            "backend/Dockerfile (empty is fine when the consumer no-ops on an "
+            "empty value)."
+        )
+
+    def test_sentry_dsn_multiplayer_has_an_image_default(self):
+        """The specific case that broke preview deploys. Fly secrets override the
+        image default in prod, and multi-player/server.js skips Sentry init on an
+        empty DSN, so an empty default is safe everywhere.
+        """
+        assert "%(ENV_SENTRY_DSN_MULTIPLAYER)s" in self.conf
+        assert self._has_image_default("SENTRY_DSN_MULTIPLAYER"), (
+            "backend/Dockerfile must default SENTRY_DSN_MULTIPLAYER (empty is "
+            "fine) so supervisord can expand it on deploy targets that have no "
+            "such secret."
+        )
+
+
 class TestFlyToml:
     fly = _read("backend/fly.toml")
 
