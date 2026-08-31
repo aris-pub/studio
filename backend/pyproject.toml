@@ -27,6 +27,12 @@ dependencies = [
     "resend>=2.10.0",
     "shortuuid>=1.0.13",
     "rsm-lang>=1.2.0",
+    # Cap tree-sitter: the tree-sitter-rsm grammar is pinned to language ABI-14
+    # (see rsm commit a5288b08), and tree-sitter 0.26 no longer loads it, so a
+    # fresh resolve to 0.26 segfaults the renderer (SIGSEGV). Keep it in the
+    # 0.24-0.25 window. The Docker build does `rm -f uv.lock && uv sync`, so this
+    # cap must live here, not only in the lockfile.
+    "tree-sitter>=0.23.2,<0.26",
     "sentry-sdk[fastapi]>=2.0.0",
     "slowapi>=0.1.10",
 ]
