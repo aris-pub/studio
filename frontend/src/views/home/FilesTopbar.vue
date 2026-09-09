@@ -9,11 +9,11 @@
     const trimmedSearch = (searchString || "").trim();
 
     if (!trimmedSearch) {
-      fileStore.value.clearFilter("search");
+      fileStore.value?.clearFilter("search");
       return;
     }
 
-    fileStore.value.applyFilter("search", (file) => {
+    fileStore.value?.applyFilter("search", (file) => {
       const searchTerms = trimmedSearch.toLowerCase().split(/\s+/);
 
       const searchableFields = [
@@ -38,11 +38,11 @@
   const onSegmentChange = (idx) => {
     activeSegment.value = idx;
     if (idx === 0) {
-      fileStore.value.clearFilter("ownership");
+      fileStore.value?.clearFilter("ownership");
     } else if (idx === 1) {
-      fileStore.value.applyFilter("ownership", (file) => file.role !== "OWNER");
+      fileStore.value?.applyFilter("ownership", (file) => file.role !== "OWNER");
     } else if (idx === 2) {
-      fileStore.value.applyFilter("ownership", (file) => file.role === "OWNER");
+      fileStore.value?.applyFilter("ownership", (file) => file.role === "OWNER");
     }
   };
 

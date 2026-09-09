@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ref, nextTick } from "vue";
-import { mount, RouterLinkStub } from "@vue/test-utils";
+import { mount, flushPromises, RouterLinkStub } from "@vue/test-utils";
 import LoginView from "@/views/login/View.vue";
 import AuthLayout from "@/components/layout/AuthLayout.vue";
 import Button from "@/components/base/Button.vue";
@@ -389,5 +389,71 @@ describe("LoginView", () => {
     expect(devWrapper.find('[data-testid="password-input"]').element.value).toBe("devpassword");
 
     vi.unstubAllEnvs();
+  });
+});
+
+// Regression: onLogin used to write the token before awaiting /me, so a failed
+// /me left a token behind with no user. The router guard then let that stale
+// token render the home route with a null user (prod Sentry, 2026-09-04).
+describe("LoginView does not persist a half session", () => {
+  let api;
+
+  const fillAndSubmit = async (wrapper) => {
+    await wrapper.findAll("input")[0].setValue("a@b.com");
+    await wrapper.findAll("input")[1].setValue("password123");
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+  };
+
+  const mountLogin = () =>
+    mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+
+  beforeEach(() => {
+    localStorage.clear();
+    pushMock.mockClear();
+    api = {
+      post: vi.fn().mockResolvedValue({
+        data: { access_token: "at", refresh_token: "rt" },
+      }),
+      get: vi.fn(),
+      defaults: { baseURL: "http://localhost:8000" },
+    };
+  });
+
+  it("stores no token when /me fails", async () => {
+    api.get = vi.fn().mockRejectedValue(new Error("network"));
+
+    await fillAndSubmit(mountLogin());
+
+    expect(localStorage.getItem("accessToken")).toBeNull();
+    expect(localStorage.getItem("refreshToken")).toBeNull();
+    expect(localStorage.getItem("user")).toBeNull();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("never leaves a token without a user, whatever /me returns", async () => {
+    api.get = vi.fn().mockResolvedValue({ data: null });
+
+    await fillAndSubmit(mountLogin());
+
+    const token = localStorage.getItem("accessToken");
+    const storedUser = localStorage.getItem("user");
+    expect(token === null || (storedUser !== null && storedUser !== "null")).toBe(true);
+  });
+
+  it("stores token and user together on success", async () => {
+    api.get = vi.fn().mockResolvedValue({ data: { id: 1, name: "Alice" } });
+
+    await fillAndSubmit(mountLogin());
+
+    expect(localStorage.getItem("accessToken")).toBe("at");
+    expect(JSON.parse(localStorage.getItem("user"))).toEqual({ id: 1, name: "Alice" });
+    expect(pushMock).toHaveBeenCalledWith("/");
   });
 });

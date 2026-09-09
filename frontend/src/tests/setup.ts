@@ -41,3 +41,66 @@ global.originalConsoleLog = originalConsoleLog;
 global.originalConsoleDebug = originalConsoleDebug;
 // @ts-ignore
 global.originalConsoleWarn = originalConsoleWarn;
+// Node 25 defines a global localStorage whose methods are missing unless the
+// process was started with a storage file, and it shadows the jsdom one on both
+// globalThis and window. Only patch when the environment's storage is actually
+// broken, so the Node version CI uses keeps jsdom's real implementation. The
+// methods go on Storage.prototype because tests spy there.
+const storageIsBroken = (() => {
+  try {
+    // @ts-ignore
+    return typeof globalThis.localStorage?.setItem !== "function";
+  } catch {
+    return true;
+  }
+})();
+
+if (storageIsBroken && typeof Storage === "function") {
+  const contents = new WeakMap<object, Map<string, string>>();
+  const dataFor = (self: object) => {
+    let data = contents.get(self);
+    if (!data) {
+      data = new Map();
+      contents.set(self, data);
+    }
+    return data;
+  };
+
+  Object.assign(Storage.prototype, {
+    getItem(key: string) {
+      const data = dataFor(this);
+      return data.has(String(key)) ? data.get(String(key)) : null;
+    },
+    setItem(key: string, value: string) {
+      dataFor(this).set(String(key), String(value));
+    },
+    removeItem(key: string) {
+      dataFor(this).delete(String(key));
+    },
+    clear() {
+      dataFor(this).clear();
+    },
+    key(index: number) {
+      return Array.from(dataFor(this).keys())[index] ?? null;
+    },
+  });
+  Object.defineProperty(Storage.prototype, "length", {
+    get() {
+      return dataFor(this).size;
+    },
+    configurable: true,
+  });
+
+  for (const name of ["localStorage", "sessionStorage"] as const) {
+    const storage = Object.create(Storage.prototype);
+    // @ts-ignore
+    const targets = new Set([globalThis, globalThis.window].filter(Boolean));
+    for (const target of targets) {
+      Object.defineProperty(target, name, {
+        value: storage,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+}

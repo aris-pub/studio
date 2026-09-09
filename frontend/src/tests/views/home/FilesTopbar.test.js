@@ -281,3 +281,21 @@ describe("FilesTopbar.vue", () => {
     });
   });
 });
+
+// Regression: a null store used to throw out of the search and ownership
+// handlers. The store is null while the session is still hydrating, and a
+// thrown TypeError there takes down the rest of the page's event handling.
+describe("FilesTopbar with no file store", () => {
+  it("does not throw on search submit, clear, or ownership change", () => {
+    const wrapper = mount(FilesTopbar, {
+      global: {
+        provide: { fileStore: ref(null), xsMode: ref(false) },
+        stubs: { SearchBar: true, SegmentedControl: true },
+      },
+    });
+
+    expect(() => wrapper.vm.onSearchSubmit("hello")).not.toThrow();
+    expect(() => wrapper.vm.onSearchSubmit("")).not.toThrow();
+    expect(() => wrapper.vm.activeSegment).not.toThrow();
+  });
+});
