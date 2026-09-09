@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+
+import { readSession, clearSession } from "@/auth/session.js";
 // Conditionally stub view components during unit testing to avoid .vue imports
 // E2E tests need real components, so only stub for unit tests (vitest)
 const isUnitTest = import.meta.env.TEST && import.meta.env.VITEST;
@@ -56,8 +58,11 @@ router.beforeEach((to, from, next) => {
 
   if (!authRequired) return next();
 
-  const token = localStorage.getItem("accessToken")?.trim();
-  return !token ? next("/login") : next();
+  // A token alone is not enough: without the stored user the authenticated views
+  // render against null refs and crash.
+  if (readSession()) return next();
+  clearSession();
+  return next("/login");
 });
 
 export default router;

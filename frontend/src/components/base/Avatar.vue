@@ -23,7 +23,7 @@
 
   const props = defineProps({
     size: { type: String, default: "md" },
-    user: { type: Object, required: true },
+    user: { type: Object, default: null },
     tooltip: { type: Boolean, default: true },
   });
   const api = inject("api");
@@ -50,14 +50,16 @@
   const style = computed(() => {
     if (props.size === "sm") {
       return {
-        backgroundColor: props.user.avatar_color,
+        backgroundColor: props.user?.avatar_color,
       };
     }
     return {
-      backgroundColor: hasAvatar.value ? "transparent" : props.user.avatar_color,
+      backgroundColor: hasAvatar.value ? "transparent" : props.user?.avatar_color,
       backgroundImage: hasAvatar.value ? `url(${avatarUrl.value})` : "none",
     };
   });
+
+  const borderColor = computed(() => props.user?.avatar_color ?? "transparent");
 
   const selfRef = useTemplateRef("self-ref");
 </script>
@@ -72,7 +74,7 @@
     <span v-if="!hasAvatar && props.size !== 'sm'" class="av-name">
       {{ initials }}
     </span>
-    <Tooltip v-if="tooltip" :anchor="selfRef" :content="user.name" />
+    <Tooltip v-if="tooltip && user" :anchor="selfRef" :content="user.name" />
   </div>
 </template>
 
@@ -103,7 +105,7 @@
   }
 
   .av-wrapper.has-avatar:not(.size-sm) {
-    border: 2px solid v-bind(props.user.avatar_color);
+    border: 2px solid v-bind(borderColor);
     box-shadow: var(--shadow-soft);
   }
 </style>

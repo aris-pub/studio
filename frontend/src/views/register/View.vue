@@ -3,6 +3,7 @@
   import { useRouter, RouterLink } from "vue-router";
   import { toast } from "@/utils/toast";
   import { createFileStore } from "@/store/FileStore.js";
+  import { readSession, saveSession, clearSession } from "@/auth/session.js";
   import AuthLayout from "@/components/layout/AuthLayout.vue";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
   import PasswordStrength from "@/components/ui/PasswordStrength.vue";
@@ -29,17 +30,13 @@
   });
 
   onMounted(() => {
-    const token = localStorage.getItem("accessToken");
-    let storedUser = null;
-    try {
-      storedUser = JSON.parse(localStorage.getItem("user"));
-    } catch {
-      localStorage.removeItem("user");
-    }
-    if (token && storedUser) {
-      if (!user.value) user.value = storedUser;
+    const session = readSession();
+    if (session) {
+      if (!user.value) user.value = session.user;
       router.push("/");
+      return;
     }
+    clearSession();
   });
 
   const onRegister = async () => {
@@ -63,9 +60,11 @@
       });
 
       const { access_token, refresh_token, user: registeredUser } = response.data;
-      localStorage.setItem("accessToken", access_token);
-      localStorage.setItem("refreshToken", refresh_token);
-      localStorage.setItem("user", JSON.stringify(registeredUser));
+      saveSession({
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        user: registeredUser,
+      });
       user.value = registeredUser;
       // Initialize fileStore so the user can create/list files without a hard
       // reload (App.vue only runs createFileStore in onMounted).
@@ -166,7 +165,6 @@
     color: var(--gray-900);
     text-decoration: underline;
   }
-
 
   .form-footer {
     text-align: center;

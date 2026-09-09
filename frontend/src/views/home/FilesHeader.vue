@@ -25,11 +25,11 @@
   const handleColumnSortEvent = (columnName, mode) => {
     const sortKey = columnInfo[columnName]["sortKey"];
     if (mode === "asc") {
-      fileStore.value.sortFiles((a, b) => a[sortKey].localeCompare(b[sortKey]));
+      fileStore.value?.sortFiles((a, b) => a[sortKey].localeCompare(b[sortKey]));
     } else if (mode === "desc") {
-      fileStore.value.sortFiles((a, b) => b[sortKey].localeCompare(a[sortKey]));
+      fileStore.value?.sortFiles((a, b) => b[sortKey].localeCompare(a[sortKey]));
     } else {
-      fileStore.value.resetSort();
+      fileStore.value?.resetSort();
     }
     for (const name in columnState) {
       if (name === columnName) continue;
@@ -40,9 +40,9 @@
   };
   const handleColumnFilterEvent = (columnName, tags) => {
     if (tags.length === 0) {
-      fileStore.value.clearFilter("tags");
+      fileStore.value?.clearFilter("tags");
     } else {
-      fileStore.value.applyFilter("tags", (file) => {
+      fileStore.value?.applyFilter("tags", (file) => {
         const filterTagIds = tags.map((t) => t.id);
         const fileTagIds = file.tags.map((t) => t.id);
         return filterTagIds.every((id) => !fileTagIds.includes(id));

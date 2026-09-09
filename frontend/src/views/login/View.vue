@@ -2,6 +2,7 @@
   import { ref, inject, computed, onMounted, nextTick } from "vue";
   import { useRouter, RouterLink } from "vue-router";
   import { createFileStore } from "@/store/FileStore.js";
+  import { readSession, saveSession, clearSession } from "@/auth/session.js";
   import AuthLayout from "@/components/layout/AuthLayout.vue";
   import PasswordInput from "@/components/forms/PasswordInput.vue";
 
@@ -26,18 +27,13 @@
   );
 
   onMounted(() => {
-    const token = localStorage.getItem("accessToken");
-    let storedUser = null;
-    try {
-      storedUser = JSON.parse(localStorage.getItem("user"));
-    } catch {
-      localStorage.removeItem("user");
-    }
-    if (token && storedUser) {
-      if (!user.value) user.value = storedUser;
+    const session = readSession();
+    if (session) {
+      if (!user.value) user.value = session.user;
       router.push("/");
       return;
     }
+    clearSession();
 
     if (isDev) {
       email.value = emailPlaceholder.value;
@@ -58,16 +54,25 @@
 
     isLoading.value = true;
     try {
+      // Drop any stale session first so the request interceptor cannot attach an
+      // old token to the /me call below.
+      clearSession();
+
       const response = await api.post("/login", {
         email: email.value,
         password: password.value,
       });
-      localStorage.setItem("accessToken", response.data.access_token);
-      localStorage.setItem("refreshToken", response.data.refresh_token);
+      const { access_token: accessToken, refresh_token: refreshToken } = response.data;
 
-      const userData = await api.get("/me");
+      // Carry the new token explicitly rather than via storage: nothing is
+      // written until both halves are in hand, so a failed /me cannot leave a
+      // token behind with no user.
+      const userData = await api.get("/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      saveSession({ accessToken, refreshToken, user: userData.data });
+
       user.value = userData.data;
-      localStorage.setItem("user", JSON.stringify(userData.data));
       fileStore.value = createFileStore(api, user.value);
       await fileStore.value.loadFiles();
       await fileStore.value.loadTags();
@@ -138,7 +143,6 @@
 </template>
 
 <style scoped>
-
   .form-footer {
     text-align: center;
     color: var(--gray-600);

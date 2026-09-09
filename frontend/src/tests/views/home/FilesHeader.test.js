@@ -368,7 +368,12 @@ describe("FilesHeader.vue", () => {
         }
       );
 
-      expect(() => wrapper.vm.handleColumnSortEvent("Title", "asc")).toThrow();
+      // A null store used to throw here, which killed the whole page's handlers.
+      // Doing nothing is the right answer: the store is still loading or the
+      // session failed to hydrate.
+      expect(() => wrapper.vm.handleColumnSortEvent("Title", "asc")).not.toThrow();
+      expect(() => wrapper.vm.handleColumnFilterEvent("Tags", [])).not.toThrow();
+      expect(() => wrapper.vm.handleColumnFilterEvent("Tags", [{ id: 1 }])).not.toThrow();
     });
 
     it("handles missing sortKey gracefully", () => {

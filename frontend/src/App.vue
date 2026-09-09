@@ -4,6 +4,7 @@
   import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { createFileStore } from "@/store/FileStore.js";
+  import { readSession, clearSession } from "@/auth/session.js";
   import { getLogger } from "@/utils/logger.js";
   import { loadDesignAssets } from "@/utils/cssLoader.js";
   import axios from "axios";
@@ -68,10 +69,9 @@
           try {
             const refreshToken = localStorage.getItem("refreshToken");
 
-            const response = await axios.post(
-              `${import.meta.env.VITE_API_BASE_URL}/refresh`,
-              { refresh_token: refreshToken },
-            );
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/refresh`, {
+              refresh_token: refreshToken,
+            });
 
             const newAccessToken = response.data.access_token;
 
@@ -219,6 +219,26 @@
     }
   };
 
+  /**
+   * Fill the app-level refs from a stored session.
+   *
+   * onMounted only runs for the URL the browser landed on. Public views such as
+   * verify-email and login hand off to a protected route with router.push, and
+   * nothing reloads, so without this the refs stay null and the authenticated
+   * views render against them (prod Sentry, 2026-09-04).
+   */
+  const hydrateSession = (session) => {
+    if (!session) return;
+    if (!user.value) user.value = session.user;
+    if (!fileStore.value) {
+      try {
+        fileStore.value = createFileStore(api, user.value);
+      } catch (storeError) {
+        logger.error("FileStore creation failed", { error: storeError.message });
+      }
+    }
+  };
+
   // App-wide loading state
   const isAppLoading = ref(true);
 
@@ -228,8 +248,8 @@
     const startTime = performance.now();
 
     try {
-      const token = localStorage.getItem("accessToken");
-      const storedUser = JSON.parse(localStorage.getItem("user"));
+      const session = readSession();
+      const storedUser = session?.user ?? null;
 
       // Check if we're on a public route that shouldn't require authentication
       const currentPath = window.location.pathname;
@@ -237,20 +257,18 @@
       const isVerificationRoute = currentPath.startsWith("/verify-email/");
       const isPublicRoute = publicPages.includes(currentPath) || isVerificationRoute;
 
-      if (token && storedUser && !isPublicRoute) {
+      if (session && !isPublicRoute) {
         logger.info("Found existing auth credentials for protected route", {
           userId: storedUser.id,
           email: storedUser.email,
           currentPath,
         });
-        user.value = storedUser;
+        hydrateSession(session);
 
         try {
-          logger.debug("Creating FileStore instance", { userId: storedUser.id });
-          fileStore.value = createFileStore(api, user.value);
-          logger.debug("FileStore created successfully", {
+          logger.debug("Session hydrated", {
+            userId: storedUser.id,
             hasFileStore: !!fileStore.value,
-            storeType: typeof fileStore.value,
           });
 
           // Only load files/tags on the home route — HomeView triggers loading
@@ -274,7 +292,7 @@
             error: storeError.message,
             stack: storeError.stack,
             userId: storedUser.id,
-            hasToken: !!token,
+            hasSession: !!session,
             hasUser: !!user.value,
             hasFileStore: !!fileStore.value,
           });
@@ -284,15 +302,18 @@
       } else if (isPublicRoute) {
         logger.info("Public route detected, skipping authenticated initialization", {
           currentPath,
-          hasToken: !!token,
+          hasSession: !!session,
           hasUser: !!storedUser,
         });
         // Don't set user or create fileStore for public routes
       } else {
-        logger.info("No auth credentials found, cleaning storage");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
+        // A leftover token with no usable user is not a session. Clear it and
+        // send the browser to /login, otherwise the protected view renders with
+        // `user` and `fileStore` still null and crashes on first interaction.
+        const hadToken = !!localStorage.getItem("accessToken");
+        logger.info("No usable session found, cleaning storage", { hadToken });
+        clearSession();
+        if (hadToken) router.replace("/login");
       }
     } catch (error) {
       logger.error("App initialization failed", {
@@ -310,30 +331,18 @@
 
   // Handle authentication redirects after router is ready
   router.beforeResolve((to, from, next) => {
-    const token = localStorage.getItem("accessToken");
-    let storedUser = null;
-    try {
-      const userItem = localStorage.getItem("user");
-      storedUser = userItem ? JSON.parse(userItem) : null;
-    } catch (e) {
-      console.warn("[App Guard] Invalid user data in localStorage, clearing:", e);
-      localStorage.removeItem("user");
-      storedUser = null;
-    }
+    const session = readSession();
     const publicPages = ["/login", "/register", "/demo"];
     const isVerificationRoute = to.path.startsWith("/verify-email/");
     const isDebugRoute = to.path.startsWith("/debug/");
 
     // If user is not authenticated and trying to access a protected page
-    if (
-      !token &&
-      !storedUser &&
-      !publicPages.includes(to.path) &&
-      !isVerificationRoute &&
-      !isDebugRoute
-    ) {
+    const authRequired = !publicPages.includes(to.path) && !isVerificationRoute && !isDebugRoute;
+
+    if (!session && authRequired) {
       next("/login");
     } else {
+      if (session && authRequired) hydrateSession(session);
       next();
     }
   });

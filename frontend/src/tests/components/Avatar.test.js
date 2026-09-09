@@ -78,3 +78,39 @@ describe("Avatar.vue", () => {
     expect(wrapper.find(".av-name").exists()).toBe(false);
   });
 });
+
+// Regression: UserMenu passes the injected app-level user straight in, and that
+// ref is null until App.vue finishes auth init. Avatar must not crash on it.
+describe("Avatar.vue with no user", () => {
+  it("renders without throwing when user is null", () => {
+    const api = { get: vi.fn().mockRejectedValue(new Error("no avatar")) };
+    const wrapper = mount(Avatar, {
+      props: { user: null },
+      global: { provide: { api } },
+    });
+
+    expect(wrapper.find(".av-wrapper").exists()).toBe(true);
+    expect(wrapper.text()).toBe("");
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("renders without throwing when user is undefined", () => {
+    const api = { get: vi.fn().mockRejectedValue(new Error("no avatar")) };
+    const wrapper = mount(Avatar, {
+      props: { user: undefined },
+      global: { provide: { api } },
+    });
+
+    expect(wrapper.find(".av-wrapper").exists()).toBe(true);
+  });
+
+  it("renders without throwing when a null user is passed at size sm", () => {
+    const api = { get: vi.fn().mockRejectedValue(new Error("no avatar")) };
+    const wrapper = mount(Avatar, {
+      props: { user: null, size: "sm" },
+      global: { provide: { api } },
+    });
+
+    expect(wrapper.find(".av-wrapper").exists()).toBe(true);
+  });
+});
