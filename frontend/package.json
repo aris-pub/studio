@@ -13,7 +13,7 @@
     "test:browser": "vitest --config vitest.browser.config.js",
     "test:coverage": "vitest run --coverage",
     "test:coverage:ui": "vitest --coverage --ui",
-    "test:e2e": "node --max-old-space-size=2048 ./node_modules/playwright/cli.js test --reporter=line --quiet --grep-invert '@mobile-only'",
+    "test:e2e": "node --max-old-space-size=2048 ../node_modules/playwright/cli.js test --reporter=line --quiet --grep-invert '@mobile-only'",
     "test:e2e:all": "CI=true playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
