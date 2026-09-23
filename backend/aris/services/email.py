@@ -399,6 +399,12 @@ def get_email_service() -> Optional[EmailService]:
     """Get configured email service instance.
 
     Returns None unless ENV is PROD or STAGING and a real RESEND_API_KEY is set.
+
+    Returning None on an empty key is load-bearing, not an oversight: it is how Fly
+    preview apps turn email off while running with ENV="PROD" (see
+    .github/workflows/preview.yml and config.require_prod_config). Do not change this
+    to raise, and do not make RESEND_API_KEY required at boot, without first giving
+    previews another way to say "no email".
     """
     if (
         settings.ENV not in ("PROD", "STAGING")

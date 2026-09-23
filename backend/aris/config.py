@@ -108,16 +108,29 @@ class Settings(BaseSettings):
     """Test database URL override. If empty, will auto-detect based on environment."""
 
     RESEND_API_KEY: str = Field("", json_schema_extra={"env": "RESEND_API_KEY"})
-    """Resend API key for sending emails."""
+    """Resend API key for sending emails.
+
+    Empty means email is off: services/email.py get_email_service returns None. That
+    is the supported way to disable mail, and Fly preview apps rely on it, so this is
+    NOT required in PROD despite everything around it being required. See
+    require_prod_config for why. The .env.example placeholder IS rejected, because
+    that means someone meant to configure email and did not finish."""
 
     FROM_EMAIL: str = Field("", json_schema_extra={"env": "FROM_EMAIL"})
     """Sender address for outgoing email. No hardcoded default on purpose: a silent
     fallback to an unverified domain let a broken sender hide for a year. Empty here,
     required in PROD and STAGING (see require_prod_config), optional in
-    LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain."""
+    LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain.
+
+    Unlike RESEND_API_KEY this stays required in PROD, because it is not how email gets
+    disabled and preview apps set it to a real verified sender."""
 
     ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
-    """Admin email for notifications (signups, etc.)."""
+    """Admin email for notifications (signups, etc.).
+
+    Optional everywhere, including PROD. Email may legitimately be off (see
+    RESEND_API_KEY), and an admin address is meaningless without a way to send to it.
+    EmailConfig already treats an empty value as "no admin notifications"."""
 
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
     """Frontend base URL used for building email links. The localhost default is
@@ -185,11 +198,30 @@ class Settings(BaseSettings):
 
         A missing critical var must crash, not degrade to a silent default. A
         silent noreply@aris.pub fallback let a broken, unverified sender hide for
-        a year. The same shape of defect applies to the rest of these: an unset
-        RESEND_API_KEY turns email off without saying so (services/email.py
-        get_email_service returns None), and the two URLs default to localhost,
-        which boots cleanly in production and then emits links and signed asset
-        URLs pointing at the developer's own machine.
+        a year. The two URLs have the same shape of defect: they default to
+        localhost, boot cleanly in production, and then emit email links and
+        signed asset URLs pointing at a developer's machine.
+
+        DELIBERATELY NOT REQUIRED: RESEND_API_KEY and ADMIN_EMAIL. Do not add them.
+
+        Fly preview apps run with ENV="PROD" on purpose, because several gates key
+        off it: main.py:183 and main.py:282 return 404 for debug endpoints, and
+        lsp.py:94 picks the Docker image path for the LSP server. A preview is a
+        public URL, so it needs all of that. What a preview does NOT have is real
+        email credentials, and the way it turns email off is by leaving
+        RESEND_API_KEY empty, which makes services/email.py get_email_service
+        return None (see .github/workflows/preview.yml, "Previews never send mail").
+
+        Requiring RESEND_API_KEY here therefore stops every preview app from
+        booting. That was tried on PR #500 and broke the preview deploy with
+        "Required in PROD but not set: RESEND_API_KEY, ADMIN_EMAIL".
+
+        The underlying problem is that ENV answers two questions at once: is this
+        deployment public and hardened (previews: yes) and does it hold real
+        production credentials (previews: no). Previews are where those diverge.
+        Splitting them needs a second setting, which is a bigger change than this
+        validator. Until someone makes it, an empty RESEND_API_KEY stays a valid
+        way to say "email is off", and this check leaves it alone.
         """
         if self.ENV not in ("PROD", "STAGING"):
             return self
@@ -199,9 +231,7 @@ class Settings(BaseSettings):
             for name in (
                 "JWT_SECRET_KEY",
                 "INTERNAL_SHARED_SECRET",
-                "RESEND_API_KEY",
                 "FROM_EMAIL",
-                "ADMIN_EMAIL",
             )
             if not getattr(self, name).strip()
         ]
@@ -213,8 +243,10 @@ class Settings(BaseSettings):
                 "(e.g. noreply@updates.aris.pub)."
             )
 
-        # services/email.py treats this placeholder as "no key" and disables email
-        # without failing, so a boot that only checked for empty would still be silent.
+        # An empty key means "email is off" and is allowed (see the docstring). The
+        # placeholder is different: it means someone intended to configure email and
+        # pasted the example value. services/email.py reads it as "no key" and disables
+        # email without failing, so it would be silent.
         if self.RESEND_API_KEY.strip() == RESEND_PLACEHOLDER_KEY:
             raise ValueError(
                 f"RESEND_API_KEY is still the placeholder {RESEND_PLACEHOLDER_KEY!r} in "

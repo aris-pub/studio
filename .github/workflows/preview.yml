@@ -127,6 +127,13 @@ jobs:
         # created before it became required crash on boot without it. Previews
         # never send mail (RESEND_API_KEY is empty), so any non-empty verified
         # sender is fine.
+        #
+        # Do NOT set RESEND_API_KEY or ADMIN_EMAIL here, and do not make them
+        # required in backend/aris/config.py. An empty RESEND_API_KEY is how a
+        # preview turns email off: get_email_service returns None. Setting a dummy
+        # key instead would make previews build a real client and attempt Resend
+        # calls that fail at send time. Requiring it at boot stops previews starting
+        # at all, which is what happened on PR #500.
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q FROM_EMAIL; then
           flyctl secrets set --app "$APP_NAME" \
             FROM_EMAIL="noreply@updates.aris.pub"

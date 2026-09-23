@@ -105,14 +105,31 @@ def test_prod_boots_when_everything_is_set(monkeypatch):
     [
         "JWT_SECRET_KEY",
         "INTERNAL_SHARED_SECRET",
-        "RESEND_API_KEY",
         "FROM_EMAIL",
-        "ADMIN_EMAIL",
     ],
 )
 def test_prod_refuses_to_boot_without_a_critical_var(monkeypatch, var):
     with pytest.raises(ValidationError, match=var):
         _prod_settings(monkeypatch, **{var: ""})
+
+
+@pytest.mark.parametrize("var", ["RESEND_API_KEY", "ADMIN_EMAIL"])
+def test_prod_still_boots_without_the_optional_email_vars(monkeypatch, var):
+    """These two must stay optional in PROD. Requiring them breaks every preview app.
+
+    Fly previews run with ENV="PROD" and turn email off by leaving RESEND_API_KEY
+    empty. Adding either of these to the required set stops them booting, which is
+    what happened on PR #500. See config.require_prod_config for the full reason.
+    """
+    settings = _prod_settings(monkeypatch, **{var: ""})
+    assert getattr(settings, var) == ""
+
+
+def test_prod_boots_the_way_a_preview_app_is_configured(monkeypatch):
+    """The exact shape a Fly preview app has: ENV=PROD, no email credentials."""
+    settings = _prod_settings(monkeypatch, RESEND_API_KEY="", ADMIN_EMAIL="")
+    assert settings.ENV == "PROD"
+    assert settings.RESEND_API_KEY == ""
 
 
 @pytest.mark.parametrize("var", ["FRONTEND_URL", "BACKEND_URL"])
@@ -136,8 +153,8 @@ def test_prod_refuses_a_short_secret(monkeypatch, var):
 
 
 def test_staging_is_checked_the_same_way(monkeypatch):
-    with pytest.raises(ValidationError, match="ADMIN_EMAIL"):
-        _prod_settings(monkeypatch, ENV="STAGING", ADMIN_EMAIL="")
+    with pytest.raises(ValidationError, match="FROM_EMAIL"):
+        _prod_settings(monkeypatch, ENV="STAGING", FROM_EMAIL="")
 
 
 def test_local_still_boots_on_the_defaults(monkeypatch):
