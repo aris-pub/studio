@@ -8,12 +8,17 @@ from aris.authorization import (
     PermissionLevel,
     get_user_role_for_file,
     has_permission,
+    list_user_accessible_files,
     require_edit,
     require_manage,
     require_view,
 )
 from aris.crud.file import create_file
-from aris.crud.permissions import create_permission
+from aris.crud.permissions import (
+    create_permission,
+    get_permission_by_file_and_user,
+    revoke_permission,
+)
 from aris.models.models import FileRole, User
 
 
@@ -411,3 +416,70 @@ async def test_require_manage_denies_commenter(db_session: AsyncSession, test_us
     with pytest.raises(HTTPException) as exc_info:
         await require_manage(file.id, test_user2, db_session)
     assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_matches_the_permission_gate(db_session: AsyncSession, test_user: User):
+    """A file the list returns must also pass has_permission for the same user."""
+    file = await create_file(source="# Test", owner_id=test_user.id, db=db_session)
+
+    listed = await list_user_accessible_files(test_user.id, db_session)
+    assert [f.id for f, _ in listed] == [file.id]
+    assert await has_permission(file.id, test_user.id, PermissionLevel.VIEW, db_session)
+
+
+@pytest.mark.asyncio
+async def test_list_excludes_a_file_whose_owner_id_has_no_permission_row(
+    db_session: AsyncSession, test_user: User, test_user2: User
+):
+    """owner_id alone must not put a file in someone's list.
+
+    This is the shape a duplicated file used to have: owner_id pointing at the
+    original owner, the OWNER permission row belonging to whoever made the copy.
+    The list payload carries the manuscript source, so listing it leaked content
+    the user could not otherwise open.
+    """
+    copy = await create_file(source="# Private edits", owner_id=test_user.id, db=db_session)
+    # Hand the only OWNER permission to user2 while owner_id still names user1.
+    owner_row = await get_permission_by_file_and_user(copy.id, test_user.id, db_session)
+    await revoke_permission(owner_row.id, copy.id, db_session)
+    await create_permission(
+        file_id=copy.id,
+        user_id=test_user2.id,
+        role=FileRole.OWNER,
+        granted_by=test_user2.id,
+        db=db_session,
+    )
+
+    listed_for_owner_id = await list_user_accessible_files(test_user.id, db_session)
+    assert copy.id not in [f.id for f, _ in listed_for_owner_id]
+    assert not await has_permission(copy.id, test_user.id, PermissionLevel.VIEW, db_session)
+
+    listed_for_real_owner = await list_user_accessible_files(test_user2.id, db_session)
+    assert copy.id in [f.id for f, _ in listed_for_real_owner]
+
+
+@pytest.mark.asyncio
+async def test_list_returns_each_file_once_with_the_strongest_role(
+    db_session: AsyncSession, test_user: User, test_user2: User
+):
+    """Duplicate undeleted permission rows must not duplicate the list entry."""
+    file = await create_file(source="# Test", owner_id=test_user.id, db=db_session)
+    await create_permission(
+        file_id=file.id,
+        user_id=test_user2.id,
+        role=FileRole.COMMENTER,
+        granted_by=test_user.id,
+        db=db_session,
+    )
+    await create_permission(
+        file_id=file.id,
+        user_id=test_user2.id,
+        role=FileRole.EDITOR,
+        granted_by=test_user.id,
+        db=db_session,
+    )
+
+    listed = await list_user_accessible_files(test_user2.id, db_session)
+    entries = [(f.id, role) for f, role in listed if f.id == file.id]
+    assert entries == [(file.id, FileRole.EDITOR)]

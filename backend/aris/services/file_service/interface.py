@@ -91,11 +91,13 @@ class FileServiceInterface(ABC):
         pass
     
     @abstractmethod
-    async def duplicate_file(self, file_id: int, db=None) -> Optional[FileData]:
+    async def duplicate_file(self, file_id: int, owner_id: int, db=None) -> Optional[FileData]:
         """Create a duplicate of an existing file.
 
         Args:
             file_id: Unique identifier of the file to duplicate
+            owner_id: User who owns the copy, which is whoever asked for it and
+                not necessarily the owner of the original
             db: Optional database session passed through to create_file
 
         Returns:

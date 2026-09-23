@@ -372,21 +372,24 @@ class TestInMemoryFileService:
         await file_service.initialize()
 
         original_file = await file_service.create_file(sample_create_data)
-        duplicated_file = await file_service.duplicate_file(original_file.id)
+        duplicated_file = await file_service.duplicate_file(
+            original_file.id, owner_id=original_file.owner_id + 1
+        )
 
         assert duplicated_file is not None
         assert duplicated_file.id != original_file.id
         assert duplicated_file.title == f"{original_file.title} (copy)"
         assert duplicated_file.source == original_file.source
-        assert duplicated_file.owner_id == original_file.owner_id
         assert duplicated_file.status == original_file.status
+        # The copy belongs to whoever asked for it, never to the original's owner.
+        assert duplicated_file.owner_id == original_file.owner_id + 1
 
     @pytest.mark.asyncio
     async def test_duplicate_file_not_found(self, file_service):
         """Test duplicating a non-existent file."""
         await file_service.initialize()
 
-        duplicated_file = await file_service.duplicate_file(999)
+        duplicated_file = await file_service.duplicate_file(999, owner_id=1)
         assert duplicated_file is None
 
     @pytest.mark.asyncio
@@ -919,7 +922,7 @@ class TestCreateFileWithDatabase:
             obj.id = 200
         mock_db.add = MagicMock(side_effect=fake_add)
 
-        dup = await file_service.duplicate_file(original.id, db=mock_db)
+        dup = await file_service.duplicate_file(original.id, owner_id=1, db=mock_db)
 
         assert dup is not None
         assert dup.id == 200
