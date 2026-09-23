@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..asset_filenames import validate_asset_filename
 from ..logging_config import get_logger
 from ..models import FileAsset
 
@@ -21,6 +22,11 @@ class FileAssetCreate(BaseModel):
     content: str
     content_encoding: str = "plain"  # "plain" or "base64"
     file_id: int
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, v):
+        return validate_asset_filename(v)
 
     @field_validator("content_encoding")
     @classmethod
@@ -43,6 +49,11 @@ class FileAssetUpdate(BaseModel):
     filename: str | None = None
     content: str | None = None
     deleted_at: datetime | None = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, v):
+        return v if v is None else validate_asset_filename(v)
 
     @classmethod
     def validate_optional_content(cls, v):

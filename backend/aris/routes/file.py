@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db, get_file_service
+from ..asset_filenames import validate_asset_filename
 from ..authorization import (
     list_user_accessible_files,
     require_edit,
@@ -742,6 +743,11 @@ class _AssetBody(BaseModel):
     content: str
     content_encoding: str = "plain"
 
+    @field_validator("filename")
+    @classmethod
+    def _validate_filename(cls, v: str) -> str:
+        return validate_asset_filename(v)
+
     @field_validator("content_encoding")
     @classmethod
     def _validate_encoding(cls, v: str) -> str:
@@ -1060,8 +1066,10 @@ async def download_file_pdf(
             .where(FileAsset.deleted_at.is_(None))
         )
         for asset in asset_result.scalars().all():
-            asset_path = os.path.join(tmpdir, asset.filename)
             try:
+                # Rows written before filenames were validated on the way in can
+                # still carry a path, which would escape tmpdir.
+                asset_path = os.path.join(tmpdir, validate_asset_filename(asset.filename))
                 encoding = getattr(asset, "content_encoding", "plain")
                 if encoding == "base64":
                     data = base64.b64decode(asset.content)
@@ -1070,7 +1078,7 @@ async def download_file_pdf(
                 else:
                     with open(asset_path, "w", encoding="utf-8") as af:
                         af.write(asset.content)
-            except (binascii.Error, OSError):
+            except (binascii.Error, OSError, ValueError):
                 logger.warning("Failed to write asset %s for file %s", asset.filename, file_id, exc_info=True)
         # First compilation attempt
         try:
