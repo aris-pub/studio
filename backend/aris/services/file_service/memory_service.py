@@ -183,8 +183,16 @@ class InMemoryFileService(FileServiceInterface):
             logger.debug(f"Cleared render cache for file {file_id}")
             return True
 
-    async def duplicate_file(self, file_id: int, db: AsyncSession | None = None) -> Optional[FileData]:
-        """Create a duplicate of an existing file."""
+    async def duplicate_file(
+        self, file_id: int, owner_id: int, db: AsyncSession | None = None
+    ) -> Optional[FileData]:
+        """Create a duplicate of an existing file, owned by the requesting user.
+
+        The copy must NOT inherit the original's owner_id. Anyone with view
+        access can duplicate, and File.owner_id is read as an access check in
+        several places (crud/file_settings.py, crud/tag.py) and decides who sees
+        the file in list_user_accessible_files.
+        """
         async with self._lock:
             original = self._files.get(file_id)
             if not original or original.is_deleted():
@@ -194,7 +202,7 @@ class InMemoryFileService(FileServiceInterface):
                 title=f"{original.title} (copy)",
                 abstract=original.abstract,
                 source=original.source,
-                owner_id=original.owner_id,
+                owner_id=owner_id,
                 status=original.status,
             )
 

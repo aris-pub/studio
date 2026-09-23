@@ -586,7 +586,7 @@ async def duplicate_file(
     # Sync from database to ensure we have latest data
     await file_service.sync_from_database(db)
     
-    new_doc = await file_service.duplicate_file(file_id, db=db)
+    new_doc = await file_service.duplicate_file(file_id, owner_id=user.id, db=db)
     if not new_doc:
         raise HTTPException(status_code=404, detail="File not found")
 

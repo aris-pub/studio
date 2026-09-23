@@ -226,13 +226,16 @@ async def soft_delete_file(file_id: int, db: AsyncSession):
     return {"message": f"File {file_id} soft deleted"}
 
 
-async def duplicate_file(file_id: int, db: AsyncSession):
+async def duplicate_file(file_id: int, owner_id: int, db: AsyncSession):
     """Create a duplicate copy of an existing file with all its tags.
 
     Parameters
     ----------
     file_id : int
         The unique identifier of the file to duplicate.
+    owner_id : int
+        User who owns the copy. Anyone with view access can duplicate, so this
+        is the requesting user and not the owner of the original.
     db : AsyncSession
         SQLAlchemy async database session.
 
@@ -258,7 +261,7 @@ async def duplicate_file(file_id: int, db: AsyncSession):
     new_file = File(
         title=f"{original.title} (copy)",
         source=original.source,
-        owner_id=original.owner_id,
+        owner_id=owner_id,
         last_edited_at=datetime.now(UTC),
     )
     db.add(new_file)

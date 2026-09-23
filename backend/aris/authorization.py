@@ -8,7 +8,7 @@ guards for enforcing file access control based on user roles.
 from typing import Optional
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import and_, desc, or_, select
+from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.deps import current_user, get_db
@@ -29,10 +29,12 @@ async def list_user_accessible_files(
 ) -> list[tuple[File, FileRole]]:
     """List all non-deleted files a user can access, with their effective role.
 
-    Returns the union of:
-      - files where the user is owner (role is FileRole.OWNER even when no
-        FilePermission row exists, to be safe against legacy data);
-      - files where an undeleted FilePermission row grants the user any role.
+    Access comes from undeleted FilePermission rows only, which is the same
+    source get_user_role_for_file uses. The two used to disagree: this function
+    also counted File.owner_id, so a file with a stale owner_id listed for a user
+    who then got a 403 opening it, and the list payload includes the manuscript
+    source. Migration 453e2da040b7 backfilled an OWNER row for every file, and
+    create_file writes one, so owner_id adds nothing here.
 
     Parameters
     ----------
@@ -49,7 +51,7 @@ async def list_user_accessible_files(
     """
     stmt = (
         select(File, FilePermission.role)
-        .outerjoin(
+        .join(
             FilePermission,
             and_(
                 FilePermission.file_id == File.id,
@@ -57,20 +59,21 @@ async def list_user_accessible_files(
                 FilePermission.deleted_at.is_(None),
             ),
         )
-        .where(
-            File.deleted_at.is_(None),
-            or_(File.owner_id == user_id, FilePermission.id.isnot(None)),
-        )
+        .where(File.deleted_at.is_(None))
         .order_by(desc(File.last_edited_at))
     )
     result = await db.execute(stmt)
-    rows = result.all()
 
-    files_with_roles: list[tuple[File, FileRole]] = []
-    for file, role in rows:
-        effective_role = role if role is not None else FileRole.OWNER
-        files_with_roles.append((file, effective_role))
-    return files_with_roles
+    # The unique constraint on file_permissions includes deleted_at, so a file
+    # can carry more than one undeleted row for the same user (std-3gj40g).
+    # Keep the strongest role rather than listing the file twice.
+    strength = {FileRole.OWNER: 3, FileRole.EDITOR: 2, FileRole.COMMENTER: 1}
+    best: dict[int, tuple[File, FileRole]] = {}
+    for file, role in result.all():
+        seen = best.get(file.id)
+        if seen is None or strength[role] > strength[seen[1]]:
+            best[file.id] = (file, role)
+    return list(best.values())
 
 
 async def get_user_role_for_file(

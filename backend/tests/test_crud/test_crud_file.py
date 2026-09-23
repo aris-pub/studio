@@ -54,10 +54,10 @@ async def test_soft_delete_file(db_session, test_user):
 async def test_duplicate_file(mock_extract_title, db_session, test_user):
     mock_extract_title.return_value = "Original"
     file = await create_file("content", owner_id=test_user.id, title="Original", db=db_session)
-    duplicate = await duplicate_file(file.id, db_session)
+    duplicate = await duplicate_file(file.id, owner_id=test_user.id, db=db_session)
     assert duplicate.id != file.id
     assert duplicate.title == "Original (copy)"
-    assert duplicate.owner_id == file.owner_id
+    assert duplicate.owner_id == test_user.id
 
 
 @patch("aris.crud.file.rsm.render", return_value="<div>HTML</div>")
