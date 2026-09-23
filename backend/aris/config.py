@@ -12,6 +12,14 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+RESEND_PLACEHOLDER_KEY = "your_resend_api_key_here"
+"""The value .env.example ships. services/email.py reads it as an unset key."""
+
+MIN_SECRET_LENGTH = 32
+"""Floor for signing secrets in PROD and STAGING. 32 characters is what
+`secrets.token_urlsafe(32)` produces after base64 padding is stripped."""
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -105,14 +113,16 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = Field("", json_schema_extra={"env": "FROM_EMAIL"})
     """Sender address for outgoing email. No hardcoded default on purpose: a silent
     fallback to an unverified domain let a broken sender hide for a year. Empty here,
-    required in PROD and STAGING (see require_prod_email_config), optional in
+    required in PROD and STAGING (see require_prod_config), optional in
     LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain."""
 
     ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
     """Admin email for notifications (signups, etc.)."""
 
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
-    """Frontend base URL used for building email links."""
+    """Frontend base URL used for building email links. The localhost default is
+    rejected in PROD and STAGING (see require_prod_config), because booting with it
+    sends working-looking email whose links point at the reader's own machine."""
 
     BACKEND_URL: str = Field("http://localhost:8000", json_schema_extra={"env": "BACKEND_URL"})
     """Public base URL of this backend, the origin a browser reaches. Used to build
@@ -170,16 +180,70 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def require_prod_email_config(self):
-        """Fail fast at boot in PROD/STAGING if the email sender is not configured.
-        A missing critical var must crash, not degrade to a silent bad default. A
-        silent noreply@aris.pub fallback let a broken, unverified sender hide for a
-        year, this refuses to boot instead."""
-        if self.ENV in ("PROD", "STAGING") and not self.FROM_EMAIL:
+    def require_prod_config(self):
+        """Fail fast at boot in PROD/STAGING when a critical var is missing.
+
+        A missing critical var must crash, not degrade to a silent default. A
+        silent noreply@aris.pub fallback let a broken, unverified sender hide for
+        a year. The same shape of defect applies to the rest of these: an unset
+        RESEND_API_KEY turns email off without saying so (services/email.py
+        get_email_service returns None), and the two URLs default to localhost,
+        which boots cleanly in production and then emits links and signed asset
+        URLs pointing at the developer's own machine.
+        """
+        if self.ENV not in ("PROD", "STAGING"):
+            return self
+
+        missing = [
+            name
+            for name in (
+                "JWT_SECRET_KEY",
+                "INTERNAL_SHARED_SECRET",
+                "RESEND_API_KEY",
+                "FROM_EMAIL",
+                "ADMIN_EMAIL",
+            )
+            if not getattr(self, name).strip()
+        ]
+        if missing:
             raise ValueError(
-                "FROM_EMAIL is not set. It is required in PROD and STAGING and must be "
-                "an address on a verified Resend domain (e.g. noreply@updates.aris.pub). "
-                "Refusing to boot rather than silently fall back to an unverified domain."
+                f"Required in {self.ENV} but not set: {', '.join(missing)}. "
+                "Refusing to boot rather than degrade to a silent default. "
+                "FROM_EMAIL must be an address on a verified Resend domain "
+                "(e.g. noreply@updates.aris.pub)."
+            )
+
+        # services/email.py treats this placeholder as "no key" and disables email
+        # without failing, so a boot that only checked for empty would still be silent.
+        if self.RESEND_API_KEY.strip() == RESEND_PLACEHOLDER_KEY:
+            raise ValueError(
+                f"RESEND_API_KEY is still the placeholder {RESEND_PLACEHOLDER_KEY!r} in "
+                f"{self.ENV}. Email would be disabled without any error."
+            )
+
+        localhost_urls = [
+            f"{name}={getattr(self, name)}"
+            for name in ("FRONTEND_URL", "BACKEND_URL")
+            if "localhost" in getattr(self, name) or "127.0.0.1" in getattr(self, name)
+        ]
+        if localhost_urls:
+            raise ValueError(
+                f"Still on the localhost default in {self.ENV}: {', '.join(localhost_urls)}. "
+                "FRONTEND_URL builds the links in outgoing email and BACKEND_URL builds "
+                "signed asset URLs that load in plain <img> tags, so both must be the "
+                "externally reachable origin."
+            )
+
+        short_secrets = [
+            name
+            for name in ("JWT_SECRET_KEY", "INTERNAL_SHARED_SECRET")
+            if len(getattr(self, name).strip()) < MIN_SECRET_LENGTH
+        ]
+        if short_secrets:
+            raise ValueError(
+                f"Shorter than {MIN_SECRET_LENGTH} characters in {self.ENV}: "
+                f"{', '.join(short_secrets)}. Generate one with "
+                "`python -c \'import secrets; print(secrets.token_urlsafe(32))\'`."
             )
         return self
 

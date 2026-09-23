@@ -3,7 +3,7 @@ from typing import Optional
 import resend
 from pydantic import BaseModel
 
-from ..config import settings
+from ..config import RESEND_PLACEHOLDER_KEY, settings
 from ..logging_config import get_logger
 
 
@@ -403,7 +403,7 @@ def get_email_service() -> Optional[EmailService]:
     if (
         settings.ENV not in ("PROD", "STAGING")
         or not settings.RESEND_API_KEY
-        or settings.RESEND_API_KEY == "your_resend_api_key_here"
+        or settings.RESEND_API_KEY == RESEND_PLACEHOLDER_KEY
     ):
         logger.info("Email service disabled: ENV=%s, key_set=%s", settings.ENV, bool(settings.RESEND_API_KEY))
         return None
