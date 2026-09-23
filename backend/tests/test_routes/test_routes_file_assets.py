@@ -418,3 +418,72 @@ async def test_upload_asset_over_default_limit_returns_413(
     )
     assert response.status_code == 413
     assert response.json()["detail"] == "Asset exceeds 25 MB limit"
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["../../pwned.png", "..\\..\\pwned.png", "", ".."],
+)
+async def test_upload_asset_rejects_traversal_filename(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image, filename
+):
+    """A filename that could escape the PDF export temp dir must not reach the DB."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": filename,
+            "mime_type": "image/png",
+            "content": valid_base64_image,
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 422
+
+    listed = await client.get(f"/files/{test_file['id']}/assets", headers=headers)
+    assert listed.json() == []
+
+
+async def test_upload_asset_strips_a_directory_prefix(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image
+):
+    """A name with a harmless directory part is stored as the bare filename."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    response = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "figures/plot.png",
+            "mime_type": "image/png",
+            "content": valid_base64_image,
+            "content_encoding": "base64",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["filename"] == "plot.png"
+
+
+async def test_update_asset_rejects_traversal_filename(
+    client: AsyncClient, authenticated_user, test_file, valid_base64_image
+):
+    """Renaming an existing asset goes through the same check as uploading one."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    created = await client.post(
+        f"/files/{test_file['id']}/assets",
+        headers=headers,
+        json={
+            "filename": "ok.png",
+            "mime_type": "image/png",
+            "content": valid_base64_image,
+            "content_encoding": "base64",
+        },
+    )
+    asset_id = created.json()["id"]
+
+    response = await client.put(
+        f"/files/{test_file['id']}/assets/{asset_id}",
+        headers=headers,
+        json={"filename": "../../pwned.png"},
+    )
+    assert response.status_code == 422
