@@ -209,6 +209,11 @@ export function validateAuthForDocName(payload, docName) {
   if (typeof role !== 'string') return 'auth-invalid-role';
   if (role === 'backend') return null;
 
+  // A non-backend token must carry an exp so the session can be bound to it
+  // (see handleConnection). Refuse one without, rather than letting the socket
+  // outlive any expiry.
+  if (typeof payload.exp !== 'number') return 'auth-missing-exp';
+
   const fileId = parseFileIdFromDocName(docName);
   if (fileId === null) return 'auth-bad-docname';
   if (payload.file_id !== fileId) return 'auth-file-mismatch';
@@ -382,23 +387,19 @@ export async function handleConnection(ws, req, opts) {
     return;
   }
 
-  // Bind a non-backend session to the token's expiry. Revoking a user's access
-  // does not tear down a socket they already hold, so without this a revoked
-  // editor keeps their live session until they disconnect on their own. Closing
-  // at exp bounds that to the token TTL. The client refreshes via
-  // /files/{id}/collab/start on close, which is gated by require_view, so a
-  // revoked user fails the refresh and stays out while a legitimate user
-  // reconnects transparently. The backend peer is system-trust, has its own
-  // reconnect loop that re-mints its token, and has no revocation case, so it is
-  // left alone rather than forced through a flush and restore every TTL.
-  if (ws._role !== 'backend' && typeof authPayload.exp === 'number') {
+  // Bind a non-backend session to its token expiry. A revoked user's refresh at
+  // /collab/start fails require_view, so closing at exp forces them out within the
+  // token TTL. The backend peer is system-trust and reconnects on its own, so it
+  // is left alone rather than restarted every TTL. exp is guaranteed for
+  // non-backend tokens by validateAuthForDocName.
+  if (ws._role !== 'backend') {
     const expiryTimer = setTimeout(() => {
       console.warn(`[Y.js Server] Token expired for ${docName}, closing ${ws._role} socket`);
       try { ws.close(TOKEN_EXPIRED_CLOSE_CODE, 'token-expired'); } catch (_e) { /* already closed */ }
-    }, Math.max(0, authPayload.exp * 1000 - Date.now()));
+    }, authPayload.exp * 1000 - Date.now());
     if (typeof expiryTimer.unref === 'function') expiryTimer.unref();
-    // Clear on any close, including a disconnect during the bootstrap window
-    // that returns before the role-aware close listener below is attached.
+    // Clear on any close, including a bootstrap-window disconnect that returns
+    // before the role-aware close listener below is attached.
     ws.once('close', () => clearTimeout(expiryTimer));
   }
 

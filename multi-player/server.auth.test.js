@@ -111,26 +111,35 @@ describe('awaitAuthFrame', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateAuthForDocName', () => {
+  const FUTURE_EXP = Math.floor(Date.now() / 1000) + 300;
+
   it('accepts a matching file_id for normal roles', () => {
-    expect(validateAuthForDocName({ role: 'EDITOR', file_id: 42 }, 'file-42-local')).toBe(null);
-    expect(validateAuthForDocName({ role: 'OWNER', file_id: 7 }, 'file-7-local')).toBe(null);
-    expect(validateAuthForDocName({ role: 'COMMENTER', file_id: 1 }, 'file-1-prod')).toBe(null);
+    expect(validateAuthForDocName({ role: 'EDITOR', file_id: 42, exp: FUTURE_EXP }, 'file-42-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'OWNER', file_id: 7, exp: FUTURE_EXP }, 'file-7-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'COMMENTER', file_id: 1, exp: FUTURE_EXP }, 'file-1-prod')).toBe(null);
   });
 
   it('rejects mismatched file_id', () => {
     expect(
-      validateAuthForDocName({ role: 'EDITOR', file_id: 5 }, 'file-42-local'),
+      validateAuthForDocName({ role: 'EDITOR', file_id: 5, exp: FUTURE_EXP }, 'file-42-local'),
     ).toBe('auth-file-mismatch');
   });
 
-  it('accepts backend role for any docName', () => {
+  it('accepts backend role for any docName, with or without exp', () => {
     expect(validateAuthForDocName({ role: 'backend', file_id: 999 }, 'file-1-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'backend', file_id: 999, exp: FUTURE_EXP }, 'file-1-local')).toBe(null);
+  });
+
+  it('rejects a non-backend token with no exp', () => {
+    expect(
+      validateAuthForDocName({ role: 'EDITOR', file_id: 42 }, 'file-42-local'),
+    ).toBe('auth-missing-exp');
   });
 
   it('rejects malformed payloads', () => {
     expect(validateAuthForDocName(null, 'file-1-local')).toMatch(/auth-invalid/);
     expect(validateAuthForDocName({}, 'file-1-local')).toMatch(/auth-invalid/);
-    expect(validateAuthForDocName({ role: 'EDITOR' }, 'not-a-room')).toBe('auth-bad-docname');
+    expect(validateAuthForDocName({ role: 'EDITOR', exp: FUTURE_EXP }, 'not-a-room')).toBe('auth-bad-docname');
   });
 });
 
