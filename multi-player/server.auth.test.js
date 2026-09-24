@@ -111,26 +111,35 @@ describe('awaitAuthFrame', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateAuthForDocName', () => {
+  const FUTURE_EXP = Math.floor(Date.now() / 1000) + 300;
+
   it('accepts a matching file_id for normal roles', () => {
-    expect(validateAuthForDocName({ role: 'EDITOR', file_id: 42 }, 'file-42-local')).toBe(null);
-    expect(validateAuthForDocName({ role: 'OWNER', file_id: 7 }, 'file-7-local')).toBe(null);
-    expect(validateAuthForDocName({ role: 'COMMENTER', file_id: 1 }, 'file-1-prod')).toBe(null);
+    expect(validateAuthForDocName({ role: 'EDITOR', file_id: 42, exp: FUTURE_EXP }, 'file-42-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'OWNER', file_id: 7, exp: FUTURE_EXP }, 'file-7-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'COMMENTER', file_id: 1, exp: FUTURE_EXP }, 'file-1-prod')).toBe(null);
   });
 
   it('rejects mismatched file_id', () => {
     expect(
-      validateAuthForDocName({ role: 'EDITOR', file_id: 5 }, 'file-42-local'),
+      validateAuthForDocName({ role: 'EDITOR', file_id: 5, exp: FUTURE_EXP }, 'file-42-local'),
     ).toBe('auth-file-mismatch');
   });
 
-  it('accepts backend role for any docName', () => {
+  it('accepts backend role for any docName, with or without exp', () => {
     expect(validateAuthForDocName({ role: 'backend', file_id: 999 }, 'file-1-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'backend', file_id: 999, exp: FUTURE_EXP }, 'file-1-local')).toBe(null);
+  });
+
+  it('rejects a non-backend token with no exp', () => {
+    expect(
+      validateAuthForDocName({ role: 'EDITOR', file_id: 42 }, 'file-42-local'),
+    ).toBe('auth-missing-exp');
   });
 
   it('rejects malformed payloads', () => {
     expect(validateAuthForDocName(null, 'file-1-local')).toMatch(/auth-invalid/);
     expect(validateAuthForDocName({}, 'file-1-local')).toMatch(/auth-invalid/);
-    expect(validateAuthForDocName({ role: 'EDITOR' }, 'not-a-room')).toBe('auth-bad-docname');
+    expect(validateAuthForDocName({ role: 'EDITOR', exp: FUTURE_EXP }, 'not-a-room')).toBe('auth-bad-docname');
   });
 });
 
@@ -236,5 +245,77 @@ describe('handleConnection auth integration', () => {
     expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
     expect(ws.close).not.toHaveBeenCalledWith(4401, 'auth-failed');
     expect(ws._role).toBe('backend');
+  });
+
+  // Pre-seat a backend conn so needsBootstrap is false and handleConnection
+  // goes straight to joinRoom, keeping the expiry tests off the bootstrap path.
+  function seatBackendPeer(docName) {
+    opts.docs.set(docName, { conns: new Map([[{ _role: 'backend', close: vi.fn() }, new Set()]]) });
+  }
+
+  it('closes a non-backend session when its token expires (std-knez)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      seatBackendPeer('file-1-local');
+      const token = mintToken({ sub: '7', file_id: 1, role: 'EDITOR' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
+      expect(ws.close).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not bind the backend peer to token expiry', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      const token = mintToken({ sub: 'backend', file_id: 1, role: 'backend' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
+
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).not.toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the expiry timer on a normal disconnect', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      seatBackendPeer('file-1-local');
+      const token = mintToken({ sub: '7', file_id: 1, role: 'EDITOR' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      // Client disconnects normally, well before the token would expire.
+      ws.emit('close');
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).not.toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
