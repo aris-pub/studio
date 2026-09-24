@@ -2,6 +2,7 @@
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.authorization import (
@@ -460,26 +461,35 @@ async def test_list_excludes_a_file_whose_owner_id_has_no_permission_row(
 
 
 @pytest.mark.asyncio
-async def test_list_returns_each_file_once_with_the_strongest_role(
+async def test_second_active_grant_is_rejected_so_the_list_never_duplicates(
     db_session: AsyncSession, test_user: User, test_user2: User
 ):
-    """Duplicate undeleted permission rows must not duplicate the list entry."""
+    """A user cannot hold two active permissions on one file (partial unique index,
+    std-3gj40g), so list_user_accessible_files can never show that file twice for
+    them. The strongest-role dedup in list_user_accessible_files stays as defense in
+    depth, but the duplicate state it guarded against can no longer be created."""
     file = await create_file(source="# Test", owner_id=test_user.id, db=db_session)
+    # Capture ids before the failed commit + rollback, which expires the ORM
+    # instances (reading test_user2.id afterward would trigger a sync lazy-load).
+    file_id = file.id
+    user2_id = test_user2.id
     await create_permission(
-        file_id=file.id,
-        user_id=test_user2.id,
+        file_id=file_id,
+        user_id=user2_id,
         role=FileRole.COMMENTER,
         granted_by=test_user.id,
         db=db_session,
     )
-    await create_permission(
-        file_id=file.id,
-        user_id=test_user2.id,
-        role=FileRole.EDITOR,
-        granted_by=test_user.id,
-        db=db_session,
-    )
+    with pytest.raises(IntegrityError):
+        await create_permission(
+            file_id=file_id,
+            user_id=user2_id,
+            role=FileRole.EDITOR,
+            granted_by=test_user.id,
+            db=db_session,
+        )
+    await db_session.rollback()
 
-    listed = await list_user_accessible_files(test_user2.id, db_session)
-    entries = [(f.id, role) for f, role in listed if f.id == file.id]
-    assert entries == [(file.id, FileRole.EDITOR)]
+    listed = await list_user_accessible_files(user2_id, db_session)
+    entries = [(f.id, role) for f, role in listed if f.id == file_id]
+    assert entries == [(file_id, FileRole.COMMENTER)]
