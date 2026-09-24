@@ -63,3 +63,108 @@ def test_missing_required_env_vars(monkeypatch):
         monkeypatch.delenv(key, raising=False)
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+# ---------------------------------------------------------------------------
+# PROD/STAGING boot checks (require_prod_config)
+# ---------------------------------------------------------------------------
+
+GOOD_SECRET = "x" * 32
+
+PROD_ENV = {
+    "ENV": "PROD",
+    "DB_URL_PROD": "postgresql://user:pass@host/db",
+    "JWT_SECRET_KEY": GOOD_SECRET,
+    "INTERNAL_SHARED_SECRET": GOOD_SECRET,
+    "RESEND_API_KEY": "re_live_key",
+    "FROM_EMAIL": "noreply@updates.aris.pub",
+    "ADMIN_EMAIL": "admin@aris.pub",
+    "FRONTEND_URL": "https://app.aris.pub",
+    "BACKEND_URL": "https://aris-backend.fly.dev",
+}
+
+
+def _prod_settings(monkeypatch, **overrides):
+    env = {**PROD_ENV, **overrides}
+    for key, val in env.items():
+        if val is None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            monkeypatch.setenv(key, val)
+    return Settings(_env_file=None)
+
+
+def test_prod_boots_when_everything_is_set(monkeypatch):
+    settings = _prod_settings(monkeypatch)
+    assert settings.ENV == "PROD"
+    assert settings.FRONTEND_URL == "https://app.aris.pub"
+
+
+@pytest.mark.parametrize(
+    "var",
+    [
+        "JWT_SECRET_KEY",
+        "INTERNAL_SHARED_SECRET",
+        "FROM_EMAIL",
+    ],
+)
+def test_prod_refuses_to_boot_without_a_critical_var(monkeypatch, var):
+    with pytest.raises(ValidationError, match=var):
+        _prod_settings(monkeypatch, **{var: ""})
+
+
+@pytest.mark.parametrize("var", ["RESEND_API_KEY", "ADMIN_EMAIL"])
+def test_prod_still_boots_without_the_optional_email_vars(monkeypatch, var):
+    """These two must stay optional in PROD. Requiring them breaks every preview app.
+
+    Fly previews run with ENV="PROD" and turn email off by leaving RESEND_API_KEY
+    empty. Adding either of these to the required set stops them booting, which is
+    what happened on PR #500. See config.require_prod_config for the full reason.
+    """
+    settings = _prod_settings(monkeypatch, **{var: ""})
+    assert getattr(settings, var) == ""
+
+
+def test_prod_boots_the_way_a_preview_app_is_configured(monkeypatch):
+    """The exact shape a Fly preview app has: ENV=PROD, no email credentials."""
+    settings = _prod_settings(monkeypatch, RESEND_API_KEY="", ADMIN_EMAIL="")
+    assert settings.ENV == "PROD"
+    assert settings.RESEND_API_KEY == ""
+
+
+@pytest.mark.parametrize("var", ["FRONTEND_URL", "BACKEND_URL"])
+@pytest.mark.parametrize("value", ["http://localhost:5173", "http://127.0.0.1:8000"])
+def test_prod_refuses_to_boot_on_a_localhost_url(monkeypatch, var, value):
+    """Booting with these would send email and asset links pointing at a laptop."""
+    with pytest.raises(ValidationError, match=var):
+        _prod_settings(monkeypatch, **{var: value})
+
+
+def test_prod_refuses_the_resend_placeholder_key(monkeypatch):
+    """services/email.py reads the placeholder as no key and disables email silently."""
+    with pytest.raises(ValidationError, match="placeholder"):
+        _prod_settings(monkeypatch, RESEND_API_KEY="your_resend_api_key_here")
+
+
+@pytest.mark.parametrize("var", ["JWT_SECRET_KEY", "INTERNAL_SHARED_SECRET"])
+def test_prod_refuses_a_short_secret(monkeypatch, var):
+    with pytest.raises(ValidationError, match=var):
+        _prod_settings(monkeypatch, **{var: "short"})
+
+
+def test_staging_is_checked_the_same_way(monkeypatch):
+    with pytest.raises(ValidationError, match="FROM_EMAIL"):
+        _prod_settings(monkeypatch, ENV="STAGING", FROM_EMAIL="")
+
+
+def test_local_still_boots_on_the_defaults(monkeypatch):
+    """LOCAL and TEST must stay usable with nothing configured."""
+    for key in PROD_ENV:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("JWT_SECRET_KEY", "dev")
+    monkeypatch.setenv("INTERNAL_SHARED_SECRET", "dev")
+
+    settings = Settings(_env_file=None)
+    assert settings.ENV == "LOCAL"
+    assert settings.FRONTEND_URL == "http://localhost:5173"
+    assert settings.RESEND_API_KEY == ""

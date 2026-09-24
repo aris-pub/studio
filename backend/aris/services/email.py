@@ -3,7 +3,7 @@ from typing import Optional
 import resend
 from pydantic import BaseModel
 
-from ..config import settings
+from ..config import RESEND_PLACEHOLDER_KEY, settings
 from ..logging_config import get_logger
 
 
@@ -399,11 +399,17 @@ def get_email_service() -> Optional[EmailService]:
     """Get configured email service instance.
 
     Returns None unless ENV is PROD or STAGING and a real RESEND_API_KEY is set.
+
+    Returning None on an empty key is load-bearing, not an oversight: it is how Fly
+    preview apps turn email off while running with ENV="PROD" (see
+    .github/workflows/preview.yml and config.require_prod_config). Do not change this
+    to raise, and do not make RESEND_API_KEY required at boot, without first giving
+    previews another way to say "no email".
     """
     if (
         settings.ENV not in ("PROD", "STAGING")
         or not settings.RESEND_API_KEY
-        or settings.RESEND_API_KEY == "your_resend_api_key_here"
+        or settings.RESEND_API_KEY == RESEND_PLACEHOLDER_KEY
     ):
         logger.info("Email service disabled: ENV=%s, key_set=%s", settings.ENV, bool(settings.RESEND_API_KEY))
         return None

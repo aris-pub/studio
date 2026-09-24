@@ -101,7 +101,7 @@ jobs:
 
           flyctl secrets set --app "$APP_NAME" \
             ENV="PROD" \
-            JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}" \
+            JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}-jwt-signing-key-32-chars-min" \
             INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars" \
             TEST_USER_EMAIL="${{ steps.backend.outputs.test_user }}" \
             TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
@@ -127,10 +127,25 @@ jobs:
         # created before it became required crash on boot without it. Previews
         # never send mail (RESEND_API_KEY is empty), so any non-empty verified
         # sender is fine.
+        #
+        # Do NOT set RESEND_API_KEY or ADMIN_EMAIL here, and do not make them
+        # required in backend/aris/config.py. An empty RESEND_API_KEY is how a
+        # preview turns email off: get_email_service returns None. Setting a dummy
+        # key instead would make previews build a real client and attempt Resend
+        # calls that fail at send time. Requiring it at boot stops previews starting
+        # at all, which is what happened on PR #500.
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q FROM_EMAIL; then
           flyctl secrets set --app "$APP_NAME" \
             FROM_EMAIL="noreply@updates.aris.pub"
         fi
+        # JWT_SECRET_KEY used to be set to "preview-<N>", eleven characters, on an app
+        # reachable from the public internet. config.require_prod_config now refuses to
+        # boot below 32. Set unconditionally rather than only-if-missing: apps created
+        # before this still hold the short value, and it is present, so a presence check
+        # would skip them. Fly does not restart when the value is unchanged, so this is
+        # a no-op on apps that already have the long one.
+        flyctl secrets set --app "$APP_NAME" \
+          JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}-jwt-signing-key-32-chars-min"
 
     - name: Deploy backend to Fly
       if: steps.pr.outputs.skip != 'true'

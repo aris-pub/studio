@@ -12,6 +12,14 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+RESEND_PLACEHOLDER_KEY = "your_resend_api_key_here"
+"""The value .env.example ships. services/email.py reads it as an unset key."""
+
+MIN_SECRET_LENGTH = 32
+"""Floor for signing secrets in PROD and STAGING. 32 characters is what
+`secrets.token_urlsafe(32)` produces after base64 padding is stripped."""
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -100,19 +108,34 @@ class Settings(BaseSettings):
     """Test database URL override. If empty, will auto-detect based on environment."""
 
     RESEND_API_KEY: str = Field("", json_schema_extra={"env": "RESEND_API_KEY"})
-    """Resend API key for sending emails."""
+    """Resend API key for sending emails.
+
+    Empty means email is off: services/email.py get_email_service returns None. That
+    is the supported way to disable mail, and Fly preview apps rely on it, so this is
+    NOT required in PROD despite everything around it being required. See
+    require_prod_config for why. The .env.example placeholder IS rejected, because
+    that means someone meant to configure email and did not finish."""
 
     FROM_EMAIL: str = Field("", json_schema_extra={"env": "FROM_EMAIL"})
     """Sender address for outgoing email. No hardcoded default on purpose: a silent
     fallback to an unverified domain let a broken sender hide for a year. Empty here,
-    required in PROD and STAGING (see require_prod_email_config), optional in
-    LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain."""
+    required in PROD and STAGING (see require_prod_config), optional in
+    LOCAL/TEST/CI where email is off. Must be an address on a verified Resend domain.
+
+    Unlike RESEND_API_KEY this stays required in PROD, because it is not how email gets
+    disabled and preview apps set it to a real verified sender."""
 
     ADMIN_EMAIL: str = Field("", json_schema_extra={"env": "ADMIN_EMAIL"})
-    """Admin email for notifications (signups, etc.)."""
+    """Admin email for notifications (signups, etc.).
+
+    Optional everywhere, including PROD. Email may legitimately be off (see
+    RESEND_API_KEY), and an admin address is meaningless without a way to send to it.
+    EmailConfig already treats an empty value as "no admin notifications"."""
 
     FRONTEND_URL: str = Field("http://localhost:5173", json_schema_extra={"env": "FRONTEND_URL"})
-    """Frontend base URL used for building email links."""
+    """Frontend base URL used for building email links. The localhost default is
+    rejected in PROD and STAGING (see require_prod_config), because booting with it
+    sends working-looking email whose links point at the reader's own machine."""
 
     BACKEND_URL: str = Field("http://localhost:8000", json_schema_extra={"env": "BACKEND_URL"})
     """Public base URL of this backend, the origin a browser reaches. Used to build
@@ -170,16 +193,89 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def require_prod_email_config(self):
-        """Fail fast at boot in PROD/STAGING if the email sender is not configured.
-        A missing critical var must crash, not degrade to a silent bad default. A
-        silent noreply@aris.pub fallback let a broken, unverified sender hide for a
-        year, this refuses to boot instead."""
-        if self.ENV in ("PROD", "STAGING") and not self.FROM_EMAIL:
+    def require_prod_config(self):
+        """Fail fast at boot in PROD/STAGING when a critical var is missing.
+
+        A missing critical var must crash, not degrade to a silent default. A
+        silent noreply@aris.pub fallback let a broken, unverified sender hide for
+        a year. The two URLs have the same shape of defect: they default to
+        localhost, boot cleanly in production, and then emit email links and
+        signed asset URLs pointing at a developer's machine.
+
+        DELIBERATELY NOT REQUIRED: RESEND_API_KEY and ADMIN_EMAIL. Do not add them.
+
+        Fly preview apps run with ENV="PROD" on purpose, because several gates key
+        off it: main.py:183 and main.py:282 return 404 for debug endpoints, and
+        lsp.py:94 picks the Docker image path for the LSP server. A preview is a
+        public URL, so it needs all of that. What a preview does NOT have is real
+        email credentials, and the way it turns email off is by leaving
+        RESEND_API_KEY empty, which makes services/email.py get_email_service
+        return None (see .github/workflows/preview.yml, "Previews never send mail").
+
+        Requiring RESEND_API_KEY here therefore stops every preview app from
+        booting. That was tried on PR #500 and broke the preview deploy with
+        "Required in PROD but not set: RESEND_API_KEY, ADMIN_EMAIL".
+
+        The underlying problem is that ENV answers two questions at once: is this
+        deployment public and hardened (previews: yes) and does it hold real
+        production credentials (previews: no). Previews are where those diverge.
+        Splitting them needs a second setting, which is a bigger change than this
+        validator. Until someone makes it, an empty RESEND_API_KEY stays a valid
+        way to say "email is off", and this check leaves it alone.
+        """
+        if self.ENV not in ("PROD", "STAGING"):
+            return self
+
+        missing = [
+            name
+            for name in (
+                "JWT_SECRET_KEY",
+                "INTERNAL_SHARED_SECRET",
+                "FROM_EMAIL",
+            )
+            if not getattr(self, name).strip()
+        ]
+        if missing:
             raise ValueError(
-                "FROM_EMAIL is not set. It is required in PROD and STAGING and must be "
-                "an address on a verified Resend domain (e.g. noreply@updates.aris.pub). "
-                "Refusing to boot rather than silently fall back to an unverified domain."
+                f"Required in {self.ENV} but not set: {', '.join(missing)}. "
+                "Refusing to boot rather than degrade to a silent default. "
+                "FROM_EMAIL must be an address on a verified Resend domain "
+                "(e.g. noreply@updates.aris.pub)."
+            )
+
+        # An empty key means "email is off" and is allowed (see the docstring). The
+        # placeholder is different: it means someone intended to configure email and
+        # pasted the example value. services/email.py reads it as "no key" and disables
+        # email without failing, so it would be silent.
+        if self.RESEND_API_KEY.strip() == RESEND_PLACEHOLDER_KEY:
+            raise ValueError(
+                f"RESEND_API_KEY is still the placeholder {RESEND_PLACEHOLDER_KEY!r} in "
+                f"{self.ENV}. Email would be disabled without any error."
+            )
+
+        localhost_urls = [
+            f"{name}={getattr(self, name)}"
+            for name in ("FRONTEND_URL", "BACKEND_URL")
+            if "localhost" in getattr(self, name) or "127.0.0.1" in getattr(self, name)
+        ]
+        if localhost_urls:
+            raise ValueError(
+                f"Still on the localhost default in {self.ENV}: {', '.join(localhost_urls)}. "
+                "FRONTEND_URL builds the links in outgoing email and BACKEND_URL builds "
+                "signed asset URLs that load in plain <img> tags, so both must be the "
+                "externally reachable origin."
+            )
+
+        short_secrets = [
+            name
+            for name in ("JWT_SECRET_KEY", "INTERNAL_SHARED_SECRET")
+            if len(getattr(self, name).strip()) < MIN_SECRET_LENGTH
+        ]
+        if short_secrets:
+            raise ValueError(
+                f"Shorter than {MIN_SECRET_LENGTH} characters in {self.ENV}: "
+                f"{', '.join(short_secrets)}. Generate one with "
+                "`python -c \'import secrets; print(secrets.token_urlsafe(32))\'`."
             )
         return self
 
