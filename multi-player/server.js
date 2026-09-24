@@ -138,6 +138,7 @@ function joinRoom(ws, req) {
 
 const AUTH_TIMEOUT_MS = 5000;
 const AUTH_CLOSE_CODE = 4401;
+const TOKEN_EXPIRED_CLOSE_CODE = 4403;
 
 /**
  * Read the first WebSocket frame and verify the auth JWT.
@@ -379,6 +380,26 @@ export async function handleConnection(ws, req, opts) {
   } catch (err) {
     console.warn(`[Y.js Server] Failed to send auth_ok for ${docName}: ${err.message}`);
     return;
+  }
+
+  // Bind a non-backend session to the token's expiry. Revoking a user's access
+  // does not tear down a socket they already hold, so without this a revoked
+  // editor keeps their live session until they disconnect on their own. Closing
+  // at exp bounds that to the token TTL. The client refreshes via
+  // /files/{id}/collab/start on close, which is gated by require_view, so a
+  // revoked user fails the refresh and stays out while a legitimate user
+  // reconnects transparently. The backend peer is system-trust, has its own
+  // reconnect loop that re-mints its token, and has no revocation case, so it is
+  // left alone rather than forced through a flush and restore every TTL.
+  if (ws._role !== 'backend' && typeof authPayload.exp === 'number') {
+    const expiryTimer = setTimeout(() => {
+      console.warn(`[Y.js Server] Token expired for ${docName}, closing ${ws._role} socket`);
+      try { ws.close(TOKEN_EXPIRED_CLOSE_CODE, 'token-expired'); } catch (_e) { /* already closed */ }
+    }, Math.max(0, authPayload.exp * 1000 - Date.now()));
+    if (typeof expiryTimer.unref === 'function') expiryTimer.unref();
+    // Clear on any close, including a disconnect during the bootstrap window
+    // that returns before the role-aware close listener below is attached.
+    ws.once('close', () => clearTimeout(expiryTimer));
   }
 
   let needsBootstrap = false;

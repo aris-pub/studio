@@ -237,4 +237,76 @@ describe('handleConnection auth integration', () => {
     expect(ws.close).not.toHaveBeenCalledWith(4401, 'auth-failed');
     expect(ws._role).toBe('backend');
   });
+
+  // Pre-seat a backend conn so needsBootstrap is false and handleConnection
+  // goes straight to joinRoom, keeping the expiry tests off the bootstrap path.
+  function seatBackendPeer(docName) {
+    opts.docs.set(docName, { conns: new Map([[{ _role: 'backend', close: vi.fn() }, new Set()]]) });
+  }
+
+  it('closes a non-backend session when its token expires (std-knez)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      seatBackendPeer('file-1-local');
+      const token = mintToken({ sub: '7', file_id: 1, role: 'EDITOR' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
+      expect(ws.close).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not bind the backend peer to token expiry', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      const token = mintToken({ sub: 'backend', file_id: 1, role: 'backend' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
+
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).not.toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the expiry timer on a normal disconnect', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ws = makeMockWs();
+      opts.authTimeoutMs = 200;
+      seatBackendPeer('file-1-local');
+      const token = mintToken({ sub: '7', file_id: 1, role: 'EDITOR' }, 300);
+
+      const p = handleConnection(ws, makeReq('file-1-local'), opts);
+      ws.emit('message', JSON.stringify({ type: 'auth', token }));
+      try { await p; } catch (_e) { /* joinRoom/setupWSConnection on the mock ws */ }
+
+      // Client disconnects normally, well before the token would expire.
+      ws.emit('close');
+      vi.advanceTimersByTime(300 * 1000 + 1000);
+
+      expect(ws.close).not.toHaveBeenCalledWith(4403, 'token-expired');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
