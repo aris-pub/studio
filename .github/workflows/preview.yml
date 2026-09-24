@@ -107,7 +107,8 @@ jobs:
             TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
             RESEND_API_KEY="" \
             FROM_EMAIL="noreply@updates.aris.pub" \
-            FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app"
+            FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app" \
+            BACKEND_URL="https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev"
         fi
 
     - name: Ensure required secrets present on existing preview apps
@@ -137,6 +138,14 @@ jobs:
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q FROM_EMAIL; then
           flyctl secrets set --app "$APP_NAME" \
             FROM_EMAIL="noreply@updates.aris.pub"
+        fi
+        # BACKEND_URL builds signed asset URLs. config.require_prod_config now refuses to
+        # boot on a localhost BACKEND_URL in PROD (which previews use), so apps created
+        # before this became required crash on redeploy without it. The value is the
+        # app's own public origin.
+        if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q BACKEND_URL; then
+          flyctl secrets set --app "$APP_NAME" \
+            BACKEND_URL="https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev"
         fi
         # JWT_SECRET_KEY used to be set to "preview-<N>", eleven characters, on an app
         # reachable from the public internet. config.require_prod_config now refuses to
