@@ -107,8 +107,6 @@ CLAUDE.md
 .hns/
 # Dolt database files (added by bd init)
 .dolt/
-# Beads / Dolt files (added by bd init)
-.beads-credential-key
 *.pyc
 *.pyo
 *.egg-info/
