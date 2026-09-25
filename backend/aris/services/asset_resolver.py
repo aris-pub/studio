@@ -49,11 +49,11 @@ class FileAssetResolver(AssetResolver):
         if not asset_info:
             return None
 
-        content = asset_info[0]
-        encoding = asset_info[1]
+        content: str = asset_info[0]
+        encoding: str = asset_info[1]
         # content_hash is present for rows loaded from the DB; a directly
         # constructed resolver or a legacy row without it falls back to hashing.
-        content_hash = asset_info[2] if len(asset_info) > 2 else None
+        content_hash: str | None = asset_info[2] if len(asset_info) > 2 else None
 
         # Only return URL paths for image assets — HTML content must always
         # be inlined since there's no browser-native way to embed HTML by URL.

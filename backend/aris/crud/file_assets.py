@@ -153,7 +153,9 @@ class FileAssetDB:
             asset.filename = payload.filename
         if payload.content is not None:
             asset.content = payload.content
-            asset.content_hash = compute_content_hash(asset.content, asset.content_encoding)
+            asset.content_hash = compute_content_hash(
+                str(asset.content), str(asset.content_encoding)
+            )
         if payload.deleted_at is not None:
             asset.deleted_at = payload.deleted_at
         await db.commit()
