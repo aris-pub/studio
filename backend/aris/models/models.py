@@ -536,6 +536,11 @@ class FileAsset(Base):
     mime_type = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     content_encoding = Column(String, nullable=False, default="plain")
+    # sha256 hex of the decoded content bytes, set on every write. Lets the asset
+    # URL carry a cache-stable, content-derived version without rehashing the bytes
+    # on every render (std-do5t). Nullable for rows written before the column
+    # existed; the resolver falls back to hashing on the fly for those.
+    content_hash = Column(String, nullable=True)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
