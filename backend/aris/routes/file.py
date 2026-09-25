@@ -23,7 +23,7 @@ from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..logging_config import get_logger
 from ..models import FileAsset
-from ..models.models import FileRole
+from ..models.models import File, FileRole
 from ..rate_limiting import ASSET_UPLOAD_RATE_LIMIT, FILE_CREATE_RATE_LIMIT, limiter
 from ..services.file_events import FileEventBroker, get_event_broker, sse_event_stream
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
@@ -416,10 +416,7 @@ async def collab_flush(
     Gate is ``require_edit`` (mirrors ``collab_start``): only users with write
     access may force a flush of a file's live collaboration client.
     """
-    manager = get_collaboration_manager()
-    client = manager.clients.get(file_id)
-    if client and client.text:
-        await client._save_to_db(force=True)
+    await get_collaboration_manager().flush(file_id)
     return {"status": "ok"}
 
 
@@ -1020,13 +1017,16 @@ async def download_file_pdf(
     if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Priority: request body > Y.js client > DB
+    # Priority: request body > flushed DB content
     source = (body.source if body and body.source else None)
     if not source:
-        manager = get_collaboration_manager()
-        client = manager.clients.get(file_id)
-        if client and client.text and len(client.text) > 0:
-            source = str(client.text)
+        # Flush the live collab client to the DB, then read the persisted source.
+        # Reading the Y.js client's text directly races the save loop and touches
+        # pycrdt internals from outside its own loop (std-es20w7).
+        await get_collaboration_manager().flush(file_id)
+        source = (
+            await db.execute(select(File.source).where(File.id == file_id))
+        ).scalar_one_or_none()
     if not source:
         source = file_data.source
     if not source:
@@ -1056,8 +1056,6 @@ async def download_file_pdf(
         # Write file assets (images, SVGs, static fallbacks) to temp dir
         import base64
         import binascii
-
-        from sqlalchemy import select
 
         from ..models.models import FileAsset
         asset_result = await db.execute(
@@ -1164,13 +1162,16 @@ async def download_file(
     if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Priority: request body > Y.js client > DB
+    # Priority: request body > flushed DB content
     source = (body.source if body and body.source else None)
     if not source:
-        manager = get_collaboration_manager()
-        client = manager.clients.get(file_id)
-        if client and client.text and len(client.text) > 0:
-            source = str(client.text)
+        # Flush the live collab client to the DB, then read the persisted source.
+        # Reading the Y.js client's text directly races the save loop and touches
+        # pycrdt internals from outside its own loop (std-es20w7).
+        await get_collaboration_manager().flush(file_id)
+        source = (
+            await db.execute(select(File.source).where(File.id == file_id))
+        ).scalar_one_or_none()
     if not source:
         source = file_data.source
     if not source:

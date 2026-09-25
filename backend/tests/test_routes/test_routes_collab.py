@@ -11,6 +11,7 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aris.collaboration.manager import CollaborationManager
 from aris.crud.file import create_file
 from aris.crud.permissions import create_permission
 from aris.models.models import FileRole
@@ -322,8 +323,11 @@ async def test_collab_flush_saves_for_owner(
     mock_client.text = "content"
     mock_client._save_to_db = AsyncMock()
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
-        mock_get.return_value.clients = {file_id: mock_client}
+    # Use a real manager so the endpoint exercises the real flush helper, which is
+    # what now calls _save_to_db(force=True).
+    manager = CollaborationManager()
+    manager.clients = {file_id: mock_client}
+    with patch("aris.routes.file.get_collaboration_manager", return_value=manager):
         response = await authenticated_client.post(_collab_url(file_id, "flush"))
 
     assert response.status_code == status.HTTP_200_OK
