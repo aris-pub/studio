@@ -260,8 +260,8 @@
         </div>
 
         <p class="publish-hint">
-          Your manuscript will be downloaded as HTML and Scroll Press will open with metadata
-          pre-filled.
+          Your manuscript will be downloaded as HTML. Scroll Press will open in a new tab,
+          where you upload that file and enter these details.
         </p>
 
         <Button
