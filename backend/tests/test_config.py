@@ -1,4 +1,8 @@
+import re
+from pathlib import Path
+
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from aris.config import Settings
@@ -126,7 +130,13 @@ def test_prod_still_boots_without_the_optional_email_vars(monkeypatch, var):
 
 
 def test_prod_boots_the_way_a_preview_app_is_configured(monkeypatch):
-    """The exact shape a Fly preview app has: ENV=PROD, no email credentials."""
+    """A representative preview-shaped config: ENV=PROD, no email credentials.
+
+    This is a hand-written stand-in, not the real workflow, so it can drift from
+    what preview.yml actually sets (and has before). test_preview_yml_secrets_boot
+    parses the real preview.yml and runs it through require_prod_config, so that is
+    the test that actually guards the workflow against the boot contract.
+    """
     settings = _prod_settings(monkeypatch, RESEND_API_KEY="", ADMIN_EMAIL="")
     assert settings.ENV == "PROD"
     assert settings.RESEND_API_KEY == ""
@@ -168,3 +178,101 @@ def test_local_still_boots_on_the_defaults(monkeypatch):
     assert settings.ENV == "LOCAL"
     assert settings.FRONTEND_URL == "http://localhost:5173"
     assert settings.RESEND_API_KEY == ""
+
+
+# ---------------------------------------------------------------------------
+# preview.yml boot-contract guard
+# ---------------------------------------------------------------------------
+#
+# preview.yml sets the environment a fresh Fly preview backend boots with, and
+# require_prod_config above is the contract that boot must satisfy. The two have
+# drifted apart twice, each time crashing a live preview deploy before anything
+# caught it. The prod tests above check hand-written dicts, which are a second
+# copy of the contract that can drift the same way. This test parses the real
+# workflow and runs the real validator against it, so it tracks future edits to
+# either side on its own instead of being a third hand-maintained copy.
+
+PREVIEW_WORKFLOW = Path(__file__).resolve().parents[2] / ".github/workflows/preview.yml"
+
+# The create-app secrets block must set at least these. Finding fewer means the
+# parser stopped matching the workflow, not that the workflow shrank, so the test
+# fails loudly rather than passing on nothing.
+REQUIRED_PREVIEW_SECRET_KEYS = frozenset(
+    {
+        "ENV",
+        "JWT_SECRET_KEY",
+        "INTERNAL_SHARED_SECRET",
+        "FROM_EMAIL",
+        "FRONTEND_URL",
+        "BACKEND_URL",
+    }
+)
+
+
+def _preview_create_app_secrets():
+    """Extract the KEY="value" secrets preview.yml sets when it first creates a
+    preview app, with the ${{ ... }} template expressions blanked out so the result
+    can be fed to Settings. Only the create-app block is parsed, not the separate
+    backfill step for already-existing apps."""
+    assert PREVIEW_WORKFLOW.exists(), (
+        f"preview.yml not found at {PREVIEW_WORKFLOW}. This path is resolved relative to "
+        "the test file; fix it if the workflow or the test moved."
+    )
+    workflow = yaml.safe_load(PREVIEW_WORKFLOW.read_text())
+
+    steps = workflow["jobs"]["deploy"]["steps"]
+    step = next((s for s in steps if s.get("name") == "Create preview app and database"), None)
+    assert step is not None, (
+        "No 'Create preview app and database' step in preview.yml. It was renamed or "
+        "removed; point this parser at the step that sets the new-preview secrets."
+    )
+
+    run = step["run"]
+    assert "flyctl secrets set" in run, (
+        "No 'flyctl secrets set' in the create-app step. The command changed; update this "
+        "parser."
+    )
+    # Scope to the secrets block. The step's earlier flyctl commands set no KEY="value"
+    # pairs, and the backfill step's own secrets set commands live in a different step.
+    secrets_block = run.split("flyctl secrets set", 1)[1]
+
+    # Blank the template expressions. Each value stays a single token because the
+    # ${{ ... }} sit inside the double quotes. Empty is a safe stand-in: the literal
+    # parts of JWT_SECRET_KEY and INTERNAL_SHARED_SECRET still clear 32 characters
+    # without the PR number, and the URL literals keep their https:// prefix so they
+    # stay non-localhost.
+    secrets_block = re.sub(r"\$\{\{.*?\}\}", "", secrets_block)
+
+    return dict(re.findall(r'([A-Z][A-Z0-9_]*)="([^"]*)"', secrets_block))
+
+
+def test_preview_yml_secrets_boot(monkeypatch):
+    """The real preview.yml create-app secrets must pass require_prod_config.
+
+    Feeds the exact secrets a new preview app is created with into Settings and
+    asserts it constructs. Running the real validator against the real workflow means
+    a future edit to either side that breaks the boot contract fails here, not on a
+    live preview deploy.
+    """
+    secrets = _preview_create_app_secrets()
+
+    missing = REQUIRED_PREVIEW_SECRET_KEYS - secrets.keys()
+    assert not missing, (
+        f"Parsed only {sorted(secrets)} from preview.yml, missing {sorted(missing)}. The "
+        "secrets block changed shape or the regex stopped matching, so fix this parser "
+        "before trusting the boot check below: a guard that finds nothing and passes is "
+        "worse than no guard."
+    )
+
+    for key, value in secrets.items():
+        monkeypatch.setenv(key, value)
+
+    try:
+        settings = Settings(_env_file=None)
+    except ValidationError as exc:
+        pytest.fail(
+            "preview.yml's create-app secrets no longer satisfy require_prod_config, so a "
+            f"fresh preview app would crash on boot:\n{exc}"
+        )
+
+    assert settings.ENV == "PROD"
