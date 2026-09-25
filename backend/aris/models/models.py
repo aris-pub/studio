@@ -880,7 +880,19 @@ class FilePermission(Base):
 
     __tablename__ = "file_permissions"
     __table_args__ = (
-        UniqueConstraint("file_id", "user_id", "deleted_at", name="uq_file_user_permission"),
+        # Partial unique index rather than UniqueConstraint(file_id, user_id,
+        # deleted_at): NULL != NULL in a unique constraint, so the plain version let
+        # two active (deleted_at IS NULL) rows exist for the same user and file. This
+        # enforces one active permission per user per file while still allowing many
+        # soft-deleted rows. See std-3gj40g.
+        Index(
+            "uq_active_file_user_permission",
+            "file_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
         Index("ix_file_permissions_file_id", "file_id"),
         Index("ix_file_permissions_user_id", "user_id"),
     )
