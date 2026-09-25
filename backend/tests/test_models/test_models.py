@@ -2,6 +2,8 @@
 
 import random
 
+import pytest
+
 from aris.models.models import (
     Annotation,
     AnnotationMessage,
@@ -10,8 +12,52 @@ from aris.models.models import (
     File,
     FileSettings,
     FileStatus,
+    Reaction,
     User,
 )
+
+
+@pytest.mark.parametrize(
+    "model, expected_indexes",
+    [
+        (Annotation, {"ix_annotation_file_id", "ix_annotation_owner_id"}),
+        (
+            AnnotationMessage,
+            {
+                "ix_annotation_message_annotation_id",
+                "ix_annotation_message_owner_id",
+            },
+        ),
+        (
+            File,
+            {
+                "ix_files_version",
+                "ix_files_prev_version_id",
+                "ix_files_owner_id",
+                "ix_files_deleted_at",
+                "ix_files_last_edited_at",
+            },
+        ),
+        (Reaction, {"ix_reaction_file_id", "ix_reaction_owner_node"}),
+    ],
+)
+def test_model_declares_expected_indexes(model, expected_indexes):
+    """Guard against a model losing an index declaration.
+
+    Indexes are near-invisible in the ORM, so a rename or accidental deletion
+    would otherwise pass unnoticed until a slow query in production.
+    """
+    declared = {index.name for index in model.__table__.indexes}
+    missing = expected_indexes - declared
+    assert not missing, f"{model.__tablename__} is missing indexes: {sorted(missing)}"
+
+
+def test_reaction_owner_node_index_is_unique():
+    """The (owner_id, file_id, node_id) index enforces one reaction per node."""
+    index = next(
+        i for i in Reaction.__table__.indexes if i.name == "ix_reaction_owner_node"
+    )
+    assert index.unique is True
 
 
 def test_avatar_color_values():
