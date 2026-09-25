@@ -244,3 +244,67 @@ async def test_file_asset_update_validation():
     # Invalid string should raise
     with pytest.raises(ValueError, match="Invalid base64-encoded string"):
         FileAssetUpdate(content="invalid_base64")
+
+
+async def test_create_asset_stores_content_hash(db_session, test_user, test_file):
+    """create_asset stores the sha256 of the decoded bytes (std-do5t)."""
+    from aris.asset_signing import compute_content_hash
+
+    payload = FileAssetCreate(
+        filename="c.png",
+        mime_type="image/png",
+        content=base64.b64encode(b"png-bytes").decode(),
+        content_encoding="base64",
+        file_id=test_file.id,
+    )
+    asset = await FileAssetDB.create_asset(payload, test_user.id, db_session)
+    assert asset.content_hash == compute_content_hash(payload.content, "base64")
+
+
+async def test_update_asset_recomputes_content_hash(db_session, test_user, test_file):
+    """Changing an asset's content refreshes its content_hash (std-do5t)."""
+    from aris.asset_signing import compute_content_hash
+
+    payload = FileAssetCreate(
+        filename="c.png",
+        mime_type="image/png",
+        content=base64.b64encode(b"before").decode(),
+        content_encoding="base64",
+        file_id=test_file.id,
+    )
+    asset = await FileAssetDB.create_asset(payload, test_user.id, db_session)
+    old_hash = asset.content_hash
+
+    new_content = base64.b64encode(b"after-different-bytes").decode()
+    updated = await FileAssetDB.update_asset(
+        asset, FileAssetUpdate(content=new_content), db_session
+    )
+    assert updated.content_hash == compute_content_hash(new_content, "base64")
+    assert updated.content_hash != old_hash
+
+
+async def test_create_asset_reuse_branch_refreshes_content_hash(db_session, test_user, test_file):
+    """Re-creating under a soft-deleted filename reuses the row and refreshes the hash."""
+    from aris.asset_signing import compute_content_hash
+
+    first = FileAssetCreate(
+        filename="r.png",
+        mime_type="image/png",
+        content=base64.b64encode(b"first").decode(),
+        content_encoding="base64",
+        file_id=test_file.id,
+    )
+    a1 = await FileAssetDB.create_asset(first, test_user.id, db_session)
+    await FileAssetDB.soft_delete_asset(a1, db_session)
+
+    second = FileAssetCreate(
+        filename="r.png",
+        mime_type="image/png",
+        content=base64.b64encode(b"second-bytes").decode(),
+        content_encoding="base64",
+        file_id=test_file.id,
+    )
+    a2 = await FileAssetDB.create_asset(second, test_user.id, db_session)
+    assert a2.id == a1.id  # reused the soft-deleted row
+    assert a2.deleted_at is None
+    assert a2.content_hash == compute_content_hash(second.content, "base64")

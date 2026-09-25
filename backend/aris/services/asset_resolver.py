@@ -12,7 +12,7 @@ from typing import Optional
 from rsm.asset_resolver import AssetResolver
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..asset_signing import sign_asset_path
+from ..asset_signing import compute_content_hash, sign_asset_path
 from ..config import settings
 from ..models.models import FileAsset
 
@@ -27,7 +27,7 @@ class FileAssetResolver(AssetResolver):
     In standalone mode, returns raw content for base64 inlining.
     """
 
-    def __init__(self, assets: dict[str, tuple[str, str]], file_id: int = 0, standalone: bool = False):
+    def __init__(self, assets: dict[str, tuple], file_id: int = 0, standalone: bool = False):
         self._assets = assets
         self._file_id = file_id
         self._standalone = standalone
@@ -49,19 +49,28 @@ class FileAssetResolver(AssetResolver):
         if not asset_info:
             return None
 
+        content: str = asset_info[0]
+        encoding: str = asset_info[1]
+        # content_hash is present for rows loaded from the DB; a directly
+        # constructed resolver or a legacy row without it falls back to hashing.
+        content_hash: str | None = asset_info[2] if len(asset_info) > 2 else None
+
         # Only return URL paths for image assets — HTML content must always
         # be inlined since there's no browser-native way to embed HTML by URL.
         is_image = any(path.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
         if not self._standalone and is_image:
             # Absolute (frontend and backend are different origins in prod, so a
             # root-relative path would resolve against the frontend and 404) and
-            # signed (a plain <img> cannot send a bearer token, so the short-lived
-            # HMAC is what authorizes the fetch). Signed here, downstream of the
-            # VIEW check the caller already passed to reach rendering.
-            query = sign_asset_path(self._file_id, path)
+            # signed (a plain <img> cannot send a bearer token, so the HMAC is what
+            # authorizes the fetch). Signed here, downstream of the VIEW check the
+            # caller already passed to reach rendering. The content hash makes the
+            # signed URL cache-stable across renders (std-do5t); hash on the fly
+            # only for a legacy row that predates the stored column.
+            if not content_hash:
+                content_hash = compute_content_hash(content, encoding)
+            query = sign_asset_path(self._file_id, path, content_hash)
             return f"{settings.BACKEND_URL}/files/{self._file_id}/assets/raw/{path}?{query}"
 
-        content, encoding = asset_info
         if encoding == "base64":
             try:
                 data = base64.b64decode(content)
@@ -101,14 +110,17 @@ class FileAssetResolver(AssetResolver):
             )
             assets = result.scalars().all()
             
-            # Create assets dictionary with content and encoding
-            assets_dict: dict[str, tuple[str, str]] = {}
+            # Create assets dictionary with content, encoding, and stored hash
+            assets_dict: dict[str, tuple[str, str, str | None]] = {}
             for asset in assets:
                 try:
-                    # Store content and encoding as tuple
+                    # Store content, encoding, and the stored content hash as a tuple.
+                    # The hash lets the resolver mint a cache-stable URL without
+                    # rehashing the bytes on every render (std-do5t).
                     content = str(asset.content)
                     encoding = getattr(asset, 'content_encoding', 'plain')  # Default to plain for backward compatibility
-                    assets_dict[str(asset.filename)] = (content, encoding)
+                    content_hash = getattr(asset, 'content_hash', None)
+                    assets_dict[str(asset.filename)] = (content, encoding, content_hash)
                     logger.info(f"Loaded asset {asset.filename} ({encoding}): {len(content)} chars")
                 except (AttributeError, TypeError, ValueError) as e:
                     logger.error(f"Failed to load asset {asset.filename} for file {file_id}: {e}")

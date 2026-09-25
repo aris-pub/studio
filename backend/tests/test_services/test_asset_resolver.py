@@ -41,8 +41,28 @@ class TestFileAssetResolver:
         url = resolver.resolve_asset("chart.png")
         assert url.startswith(f"{settings.BACKEND_URL}/files/42/assets/raw/chart.png?")
         q = parse_qs(urlparse(url).query)
-        assert verify_asset_signature(42, "chart.png", int(q["exp"][0]), q["sig"][0]) is True
+        assert verify_asset_signature(42, "chart.png", q["v"][0], int(q["exp"][0]), q["sig"][0]) is True
         assert resolver.resolve_asset("missing.js") is None
+
+    def test_image_url_is_stable_across_calls(self):
+        """The same image resolves to a byte-identical URL across renders in the
+        same window, so the browser cache-key does not churn (std-do5t)."""
+        assets = {"chart.png": ("base64data", "plain", "deadbeef" * 8)}
+        resolver = FileAssetResolver(assets, file_id=42)
+        assert resolver.resolve_asset("chart.png") == resolver.resolve_asset("chart.png")
+
+    def test_image_url_uses_the_stored_content_hash(self):
+        """The minted URL's v is derived from the stored content hash, not a rehash."""
+        from urllib.parse import parse_qs, urlparse
+
+        from aris.asset_signing import content_version
+
+        stored_hash = "c0ffee" * 10 + "abcd"
+        assets = {"chart.png": ("whatever", "plain", stored_hash)}
+        resolver = FileAssetResolver(assets, file_id=7)
+        url = resolver.resolve_asset("chart.png")
+        v = parse_qs(urlparse(url).query)["v"][0]
+        assert v == content_version(7, "chart.png", stored_hash)
 
     def test_resolver_with_assets_standalone_mode(self):
         """Test resolver always returns content in standalone mode."""
