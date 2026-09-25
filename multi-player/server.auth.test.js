@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
+import { generateKeyPairSync } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {
   awaitAuthFrame,
@@ -98,6 +99,34 @@ describe('awaitAuthFrame', () => {
     await expect(p).rejects.toThrow(/auth-invalid/);
   });
 
+  it('rejects a token signed with alg "none"', async () => {
+    const ws = makeMockWs();
+    // The classic alg-confusion attack: an unsigned token asking the verifier
+    // to skip signature checking. jwt.verify pins algorithms to HS256, so this
+    // must be refused rather than trusted.
+    const none = jwt.sign(
+      { sub: '7', file_id: 1, role: 'EDITOR', exp: Math.floor(Date.now() / 1000) + 60 },
+      '',
+      { algorithm: 'none' },
+    );
+    const p = awaitAuthFrame(ws, { secret: SECRET, timeoutMs: 1000 });
+    ws.emit('message', JSON.stringify({ type: 'auth', token: none }));
+    await expect(p).rejects.toThrow(/auth-invalid/);
+  });
+
+  it('rejects a token signed with RS256 (algorithm confusion)', async () => {
+    const ws = makeMockWs();
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const rs = jwt.sign(
+      { sub: '7', file_id: 1, role: 'EDITOR', exp: Math.floor(Date.now() / 1000) + 60 },
+      privateKey,
+      { algorithm: 'RS256' },
+    );
+    const p = awaitAuthFrame(ws, { secret: SECRET, timeoutMs: 1000 });
+    ws.emit('message', JSON.stringify({ type: 'auth', token: rs }));
+    await expect(p).rejects.toThrow(/auth-invalid/);
+  });
+
   it('rejects when the socket closes before sending auth', async () => {
     const ws = makeMockWs();
     const p = awaitAuthFrame(ws, { secret: SECRET, timeoutMs: 1000 });
@@ -125,9 +154,18 @@ describe('validateAuthForDocName', () => {
     ).toBe('auth-file-mismatch');
   });
 
-  it('accepts backend role for any docName, with or without exp', () => {
-    expect(validateAuthForDocName({ role: 'backend', file_id: 999 }, 'file-1-local')).toBe(null);
-    expect(validateAuthForDocName({ role: 'backend', file_id: 999, exp: FUTURE_EXP }, 'file-1-local')).toBe(null);
+  it('accepts a backend token whose file_id matches the docName, with or without exp', () => {
+    expect(validateAuthForDocName({ role: 'backend', file_id: 1 }, 'file-1-local')).toBe(null);
+    expect(validateAuthForDocName({ role: 'backend', file_id: 1, exp: FUTURE_EXP }, 'file-1-local')).toBe(null);
+  });
+
+  it('rejects a backend token whose file_id does not match the docName (room-jumping)', () => {
+    expect(
+      validateAuthForDocName({ role: 'backend', file_id: 999 }, 'file-1-local'),
+    ).toBe('auth-file-mismatch');
+    expect(
+      validateAuthForDocName({ role: 'backend', file_id: 999, exp: FUTURE_EXP }, 'file-1-local'),
+    ).toBe('auth-file-mismatch');
   });
 
   it('rejects a non-backend token with no exp', () => {
@@ -180,6 +218,23 @@ describe('handleConnection auth integration', () => {
     await handleConnection(ws, makeReq('file-1-local'), opts);
 
     expect(ws.close).toHaveBeenCalledWith(4401, 'auth-failed');
+  });
+
+  it('drops a Y.js document message sent before the auth handshake', async () => {
+    const ws = makeMockWs();
+    opts.authTimeoutMs = 200;
+    // A binary y-protocol frame (MESSAGE_SYNC, SYNC_STEP_1) in place of the
+    // expected auth frame. It must not be applied: the socket is closed 4401
+    // and never joins the room, so no auth_ok and no role tagging.
+    const yjsFrame = Buffer.from([0x00, 0x00]);
+
+    const p = handleConnection(ws, makeReq('file-1-local'), opts);
+    setImmediate(() => ws.emit('message', yjsFrame));
+    await p;
+
+    expect(ws.close).toHaveBeenCalledWith(4401, 'auth-failed');
+    expect(ws.send).not.toHaveBeenCalledWith(JSON.stringify({ type: 'auth_ok' }));
+    expect(ws._role).toBeUndefined();
   });
 
   it('closes 4401 when token file_id does not match docName', async () => {

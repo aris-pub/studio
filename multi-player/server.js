@@ -19,8 +19,8 @@
  * Connection Roles:
  * - Every client must present a short-lived JWT as the first WS frame (see
  *   `awaitAuthFrame`). The token's `role` claim ('backend' | 'OWNER' |
- *   'EDITOR' | 'COMMENTER') is what drives cleanup behaviour; non-backend
- *   tokens additionally have their `file_id` claim cross-checked against the
+ *   'EDITOR' | 'COMMENTER') is what drives cleanup behaviour. Every token,
+ *   backend included, has its `file_id` claim cross-checked against the
  *   docName so a token minted for file A can't be used to join room file B.
  *
  * Cleanup Logic:
@@ -198,8 +198,13 @@ export function awaitAuthFrame(ws, opts) {
 /**
  * Validate a decoded auth payload against the docName.
  *
- * - For role='backend', any file_id is acceptable (system trust).
- * - For all other roles, the token's file_id must match the docName's id.
+ * - Every role, backend included, must carry a file_id that matches the
+ *   docName's file id. This is what stops a token minted for file A from being
+ *   used to join room file B (room-jumping), and it holds for backend tokens
+ *   too: the backend peer always mints its token with the room's own file_id,
+ *   so requiring the match does not lock it out.
+ * - Non-backend roles must additionally carry an exp so the session can be
+ *   bound to it (see handleConnection). Backend tokens are exempt from exp.
  *
  * Returns null on success or an error string on failure.
  */
@@ -207,16 +212,20 @@ export function validateAuthForDocName(payload, docName) {
   if (!payload || typeof payload !== 'object') return 'auth-invalid';
   const role = payload.role;
   if (typeof role !== 'string') return 'auth-invalid-role';
+
+  // Check file_id before the backend short-circuit so no role, backend
+  // included, can present a token minted for one file and join another
+  // file's room.
+  const fileId = parseFileIdFromDocName(docName);
+  if (fileId === null) return 'auth-bad-docname';
+  if (payload.file_id !== fileId) return 'auth-file-mismatch';
+
   if (role === 'backend') return null;
 
   // A non-backend token must carry an exp so the session can be bound to it
   // (see handleConnection). Refuse one without, rather than letting the socket
   // outlive any expiry.
   if (typeof payload.exp !== 'number') return 'auth-missing-exp';
-
-  const fileId = parseFileIdFromDocName(docName);
-  if (fileId === null) return 'auth-bad-docname';
-  if (payload.file_id !== fileId) return 'auth-file-mismatch';
   return null;
 }
 
