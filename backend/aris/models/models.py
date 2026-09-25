@@ -327,6 +327,9 @@ class File(Base):
     __table_args__ = (
         Index("ix_files_version", "version"),
         Index("ix_files_prev_version_id", "prev_version_id"),
+        Index("ix_files_owner_id", "owner_id"),
+        Index("ix_files_deleted_at", "deleted_at"),
+        Index("ix_files_last_edited_at", "last_edited_at"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -723,6 +726,10 @@ class AnnotationVisibility(str, enum.Enum):
 
 class Annotation(Base):
     __tablename__ = "annotation"
+    __table_args__ = (
+        Index("ix_annotation_file_id", "file_id"),
+        Index("ix_annotation_owner_id", "owner_id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     # CASCADE on both: an annotation is personal content, removed when either its
@@ -751,6 +758,10 @@ class Annotation(Base):
 
 class AnnotationMessage(Base):
     __tablename__ = "annotation_message"
+    __table_args__ = (
+        Index("ix_annotation_message_annotation_id", "annotation_id"),
+        Index("ix_annotation_message_owner_id", "owner_id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     annotation_id = Column(
@@ -948,6 +959,12 @@ class Reaction(Base):
     """
 
     __tablename__ = "reaction"
+    # These indexes already exist in the DB (migration f1a2b3c4d5e6). They are
+    # declared here only so the model matches the schema; no migration adds them.
+    __table_args__ = (
+        Index("ix_reaction_file_id", "file_id"),
+        Index("ix_reaction_owner_node", "owner_id", "file_id", "node_id", unique=True),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     file_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False)
