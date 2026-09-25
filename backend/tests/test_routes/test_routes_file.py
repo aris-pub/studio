@@ -2,7 +2,7 @@
 
 import logging
 import shutil
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -906,3 +906,66 @@ async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authent
     assert response.status_code == 500
     assert "Failed to write asset" in caplog.text
     assert "bad.svg" in caplog.text
+
+
+async def test_download_file_flushes_collab_client_and_reads_db(
+    client: AsyncClient, authenticated_user
+):
+    """download flushes the live collab client to the DB and reads the persisted
+    source, instead of reading the Y.js client's text directly, which races the
+    save loop and touches pycrdt internals from outside its loop (std-es20w7)."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Flush DB Test",
+            "abstract": "x",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# From DB\n\nDB content wins",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+        mock_manager = mock_get.return_value
+        mock_manager.flush = AsyncMock()
+        mock_manager.clients = MagicMock()
+        response = await client.post(f"/files/{file_id}/download", headers=headers)
+
+    assert response.status_code == 200
+    mock_manager.flush.assert_awaited_once_with(file_id)
+    mock_manager.clients.get.assert_not_called()
+    assert "From DB" in response.text
+    assert "DB content wins" in response.text
+
+
+@pytest.mark.skipif(
+    not shutil.which("typst") or not shutil.which("pandoc"),
+    reason="pandoc and typst required",
+)
+async def test_download_pdf_flushes_collab_client(client: AsyncClient, authenticated_user):
+    """download/pdf routes through the flush helper rather than reading client.text
+    directly (std-es20w7)."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Flush PDF Test",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Flush PDF Test\n\nContent to export",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+        mock_manager = mock_get.return_value
+        mock_manager.flush = AsyncMock()
+        mock_manager.clients = MagicMock()
+        response = await client.post(f"/files/{file_id}/download/pdf", headers=headers)
+
+    assert response.status_code == 200
+    mock_manager.flush.assert_awaited_once_with(file_id)
+    mock_manager.clients.get.assert_not_called()

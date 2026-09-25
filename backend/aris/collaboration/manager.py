@@ -161,6 +161,20 @@ class CollaborationManager:
             logger.error(f"Failed to stop YDocClient for file {file_id}: {e}", exc_info=True)
             return False
 
+    async def flush(self, file_id: int) -> bool:
+        """Force the live client for a file to persist its content to the DB.
+
+        Thin wrapper around the save the /collab/flush route triggers, so export
+        paths can read the latest content from the DB instead of reading the Y.js
+        client's text directly, which races the save loop. No-op when no client is
+        running for the file. Returns True if a client was flushed.
+        """
+        client = self.clients.get(file_id)
+        if client and client.text:
+            await client._save_to_db(force=True)
+            return True
+        return False
+
     def is_running(self, file_id: int) -> bool:
         """
         Check if a YDocClient is running for the given file.
