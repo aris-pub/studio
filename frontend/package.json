@@ -21,7 +21,7 @@
     "test:all": "pnpm run test:run && pnpm run test:e2e",
     "storybook": "node ../docker/env-check.js && storybook dev -p ${STORYBOOK_PORT}",
     "build-storybook": "node ../docker/env-check.js && storybook build",
-    "postinstall": "([ \"$NETLIFY\" = \"true\" ] || pnpm exec playwright install chromium firefox webkit --with-deps) && node scripts/patch-y-codemirror.cjs"
+    "postinstall": "([ \"$NETLIFY\" = \"true\" ] || pnpm exec playwright install chromium firefox webkit --with-deps) && node scripts/patch-y-codemirror.cjs && node scripts/verify-y-codemirror-patch.cjs"
   },
   "dependencies": {
     "@codemirror/collab": "^6.1.1",

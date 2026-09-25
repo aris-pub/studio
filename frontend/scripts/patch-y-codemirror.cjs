@@ -40,11 +40,14 @@
 const fs = require('fs');
 const path = require('path');
 
-// Support both local and hoisted (pnpm node-linker=hoisted) layouts
-const candidates = [
-  path.join(__dirname, '../node_modules/y-codemirror.next'),
-  path.join(__dirname, '../../node_modules/y-codemirror.next'),
-];
+// Support both local and hoisted (pnpm node-linker=hoisted) layouts.
+// Y_CODEMIRROR_DIR overrides the search so tests can point the patch at a copy.
+const candidates = process.env.Y_CODEMIRROR_DIR
+  ? [process.env.Y_CODEMIRROR_DIR]
+  : [
+      path.join(__dirname, '../node_modules/y-codemirror.next'),
+      path.join(__dirname, '../../node_modules/y-codemirror.next'),
+    ];
 const pkgDir = candidates.find(d => fs.existsSync(d));
 
 console.log(`📍 Patch script location: ${__dirname}`);
