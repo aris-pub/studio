@@ -853,8 +853,10 @@ async def create_asset_for_file(
 
 @public_router.get("/{file_id}/assets/raw/{filename:path}")
 async def get_asset_raw(
+    request: Request,
     file_id: int,
     filename: str,
+    v: str = "",
     exp: int = 0,
     sig: str = "",
     db: AsyncSession = Depends(get_db),
@@ -862,18 +864,33 @@ async def get_asset_raw(
     """Serve raw asset bytes for browser <img> rendering.
 
     This stays on the public router because an <img> tag cannot send a bearer
-    token. Access is proved instead by the short-lived HMAC signature the renderer
-    minted for a caller it had already authorized (see aris.asset_signing). The
-    signature is checked before any DB lookup, so a caller without a valid one
-    cannot use the 200-vs-404 response to discover which filenames exist.
+    token. Access is proved instead by the HMAC signature the renderer minted for a
+    caller it had already authorized (see aris.asset_signing). The signature is
+    verified before any DB lookup, so a caller without a valid one cannot use the
+    200-vs-404 response to discover which filenames exist.
+
+    The URL is cache-stable (std-do5t): the content-derived ``v`` only changes when
+    the bytes change, so the browser caches an unchanged image instead of
+    refetching it on every debounced render. An ``ETag`` lets a stale cache
+    revalidate cheaply, and a content change (same filename, new bytes) yields a new
+    ETag so the browser gets the fresh bytes.
     """
     import base64 as b64
     import mimetypes
 
-    from aris.asset_signing import verify_asset_signature
+    from aris.asset_signing import (
+        ASSET_URL_STEP_SECONDS,
+        asset_etag,
+        compute_content_hash,
+        verify_asset_signature,
+    )
 
-    if not verify_asset_signature(file_id, filename, exp, sig):
-        raise HTTPException(status_code=403, detail="Invalid or expired asset signature")
+    no_store = {"Cache-Control": "no-store"}
+
+    if not verify_asset_signature(file_id, filename, v, exp, sig):
+        raise HTTPException(
+            status_code=403, detail="Invalid or expired asset signature", headers=no_store
+        )
 
     from sqlalchemy import select
     result = await db.execute(
@@ -884,17 +901,36 @@ async def get_asset_raw(
     )
     asset = result.scalar_one_or_none()
     if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise HTTPException(status_code=404, detail="Asset not found", headers=no_store)
+
+    encoding = getattr(asset, "content_encoding", "plain")
+    # Prefer the stored hash; fall back to hashing for a legacy row without one. The
+    # ETag reflects the CURRENT bytes, so an old URL whose v is stale still gets the
+    # fresh content (a 200, not a 304) when the image has changed.
+    content_hash = asset.content_hash or compute_content_hash(asset.content, encoding)
+    etag = f'"{asset_etag(file_id, filename, content_hash)}"'
+    cache_headers = {
+        # private so no shared cache/CDN keeps a private manuscript image. immutable
+        # is safe because a content change mints a new URL, so within max-age the
+        # browser never needs to revalidate. max-age is the quantization step, at or
+        # below the token TTL, so caching never outlives the token.
+        "Cache-Control": f"private, max-age={ASSET_URL_STEP_SECONDS}, immutable, no-transform",
+        "ETag": etag,
+    }
+
+    if_none_match = request.headers.get("if-none-match", "")
+    presented = {tag.strip().removeprefix("W/") for tag in if_none_match.split(",") if tag.strip()}
+    if etag in presented or "*" in presented:
+        return Response(status_code=304, headers=cache_headers)
 
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    encoding = getattr(asset, "content_encoding", "plain")
     if encoding == "base64":
         data = b64.b64decode(asset.content)
     else:
         content_str: str = asset.content  # type: ignore[assignment]
         data = content_str.encode("utf-8")
 
-    return Response(content=data, media_type=mime)
+    return Response(content=data, media_type=mime, headers=cache_headers)
 
 
 @router.get("/{file_id}/assets/by-name/{filename:path}", response_model=FileAssetOut)

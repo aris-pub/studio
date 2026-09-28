@@ -9,6 +9,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..asset_filenames import validate_asset_filename
+from ..asset_signing import compute_content_hash
 from ..logging_config import get_logger
 from ..models import FileAsset
 
@@ -114,6 +115,7 @@ class FileAssetDB:
             existing.content = payload.content
             existing.mime_type = payload.mime_type
             existing.content_encoding = payload.content_encoding
+            existing.content_hash = compute_content_hash(payload.content, payload.content_encoding)
             existing.owner_id = user_id
             existing.deleted_at = None
             await db.commit()
@@ -125,6 +127,7 @@ class FileAssetDB:
             mime_type=payload.mime_type,
             content=payload.content,
             content_encoding=payload.content_encoding,
+            content_hash=compute_content_hash(payload.content, payload.content_encoding),
             file_id=payload.file_id,
             owner_id=user_id,
         )
@@ -150,6 +153,9 @@ class FileAssetDB:
             asset.filename = payload.filename
         if payload.content is not None:
             asset.content = payload.content
+            asset.content_hash = compute_content_hash(
+                str(asset.content), str(asset.content_encoding)
+            )
         if payload.deleted_at is not None:
             asset.deleted_at = payload.deleted_at
         await db.commit()
