@@ -217,7 +217,7 @@ jobs:
     - name: Run unit tests
       run: pnpm --filter ./multi-player run test
 
-  # Site E2E Tests (All Browsers)
+  # Site E2E Tests (chromium only; firefox dropped from CI, std-flgpkn)
   e2e-site:
     needs: build-backend-image
     timeout-minutes: 25
@@ -227,7 +227,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
+        browser: [chromium]
         device: [desktop, mobile]
     runs-on: ubuntu-latest
     env:
@@ -408,9 +408,19 @@ jobs:
       packages: read
     strategy:
       fail-fast: false
+      # chromium only (firefox dropped from CI). Shards are sized by test load so
+      # no single shard dominates the run: content and interface are the heavy
+      # suites, so each is split in two with playwright --shard; flows and core
+      # are light and run whole. Splitting is safe because each shard is its own
+      # compose stack with its own seeded test user. std-flgpkn.
       matrix:
-        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
-        test-type: [auth-content, auth-interface, auth-flows, core]
+        shard:
+          - { name: content-1,   path: "src/tests/e2e/content/",   grep: "@auth",        split: "1/2" }
+          - { name: content-2,   path: "src/tests/e2e/content/",   grep: "@auth",        split: "2/2" }
+          - { name: interface-1, path: "src/tests/e2e/interface/", grep: "@auth",        split: "1/2" }
+          - { name: interface-2, path: "src/tests/e2e/interface/", grep: "@auth",        split: "2/2" }
+          - { name: flows,       path: "",                         grep: "@auth-flows",  split: "" }
+          - { name: core,        path: "",                         grep: "@core",        split: "" }
     runs-on: ubuntu-latest
     env:
       ENV: CI
@@ -419,7 +429,7 @@ jobs:
       # or 82s startup install); frontend still builds per shard.
       COMPOSE_FILE: docker/docker-compose.ci.yml
       BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/studio-backend:${{ github.sha }}
-      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+      COMPOSE_PROJECT_NAME: studio-e2e-frontend-${{ matrix.shard.name }}
 
     steps:
     - uses: actions/checkout@v7
@@ -452,11 +462,11 @@ jobs:
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-browsers-frontend-${{ runner.os }}-${{ matrix.browser }}
+        key: playwright-browsers-frontend-${{ runner.os }}-chromium
 
     - name: Install Playwright browsers
       working-directory: frontend
-      run: npx playwright install ${{ matrix.browser }} --with-deps
+      run: npx playwright install chromium --with-deps
 
     - name: Create .env file
       run: cp .env.example .env
@@ -523,43 +533,25 @@ jobs:
     - name: Run frontend E2E tests
       working-directory: frontend
       run: |
-        echo "🧪 Running ${{ matrix.test-type }} E2E tests on ${{ matrix.browser }} (Docker environment)..."
+        echo "🧪 Running ${{ matrix.shard.name }} E2E tests (Docker environment)..."
 
         # Source .env file to set port variables for Playwright config
         export $(cat ../.env | grep -v '^#' | grep -v '^$' | xargs)
 
-        # Map test-type to test path and grep pattern
-        case "${{ matrix.test-type }}" in
-          auth-content)
-            TEST_PATH="src/tests/e2e/content/"
-            PATTERN="@auth"
-            ;;
-          auth-interface)
-            TEST_PATH="src/tests/e2e/interface/"
-            PATTERN="@auth"
-            ;;
-          auth-flows)
-            TEST_PATH=""
-            PATTERN="@auth-flows"
-            ;;
-          core)
-            TEST_PATH=""
-            PATTERN="@core"
-            ;;
-        esac
-
-        # Run tests
-        if [ "${{ matrix.browser }}" = "firefox" ]; then
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=firefox --reporter=github
-        else
-          npx playwright test $TEST_PATH --grep "$PATTERN" --project=chromium --reporter=github
+        # Heavy suites (content, interface) carry a playwright --shard split so no
+        # single job runs the whole suite; light ones leave split empty.
+        SHARD_ARG=""
+        if [ -n "${{ matrix.shard.split }}" ]; then
+          SHARD_ARG="--shard=${{ matrix.shard.split }}"
         fi
+
+        npx playwright test ${{ matrix.shard.path }} --grep "${{ matrix.shard.grep }}" --project=chromium $SHARD_ARG --reporter=github
 
     - name: Upload test results on failure
       if: failure()
       uses: actions/upload-artifact@v7
       with:
-        name: playwright-results-frontend-${{ matrix.browser }}-${{ matrix.test-type }}
+        name: playwright-results-frontend-${{ matrix.shard.name }}
         path: frontend/test-results/
         retention-days: 7
 
@@ -589,7 +581,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: ${{ github.event_name == 'push' && fromJSON('["chromium", "firefox"]') || fromJSON('["chromium"]') }}
+        browser: [chromium]
     runs-on: ubuntu-latest
     env:
       # CI-specific overrides (everything else comes from .env.example)
