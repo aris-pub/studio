@@ -1,9 +1,12 @@
 """Test render routes."""
 
+import asyncio
 import tempfile
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
+import rsm
 from httpx import AsyncClient
 
 
@@ -385,3 +388,55 @@ async def test_render_structured_logs_on_build_error(client: AsyncClient, caplog
     # The error should have been logged
     assert "Structured render failed" in caplog.text
     assert "parse explosion" in caplog.text
+
+
+async def test_structured_render_runs_off_the_event_loop_thread(client: AsyncClient):
+    """std-b7d6t0: the structured render (rsm.build) must run off the event-loop
+    thread so a long compile does not freeze the worker. Deterministic: the test
+    runs on the loop thread, so the spy runs elsewhere only if dispatched to a
+    worker via asyncio.to_thread."""
+    loop_thread = threading.current_thread()
+    real_build = rsm.build
+    seen = {}
+
+    def spy(*args, **kwargs):
+        seen["off_loop"] = threading.current_thread() is not loop_thread
+        return real_build(*args, **kwargs)
+
+    with patch("rsm.build", side_effect=spy):
+        response = await client.post(
+            "/render", json={"source": "# Test\n\nHello", "format": "structured"}
+        )
+
+    assert response.status_code == 200
+    assert seen.get("off_loop") is True, (
+        "rsm.build ran on the event-loop thread; wrap it in asyncio.to_thread"
+    )
+
+
+async def test_concurrent_structured_renders_run_in_parallel(client: AsyncClient):
+    """std-b7d6t0: two renders must overlap rather than serialize. The barrier of
+    two only trips if both rsm.build calls are in flight at the same time; if the
+    render blocked the loop, the second could never start and the barrier would
+    time out (BrokenBarrierError)."""
+    barrier = threading.Barrier(2, timeout=8)
+    real_build = rsm.build
+    broke = {"v": False}
+
+    def spy(*args, **kwargs):
+        try:
+            barrier.wait()
+        except threading.BrokenBarrierError:
+            broke["v"] = True
+        return real_build(*args, **kwargs)
+
+    with patch("rsm.build", side_effect=spy):
+        r1, r2 = await asyncio.gather(
+            client.post("/render", json={"source": "# A\n\na", "format": "structured"}),
+            client.post("/render", json={"source": "# B\n\nb", "format": "structured"}),
+        )
+
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert broke["v"] is False, (
+        "structured renders serialized (barrier timed out); the event loop was blocked"
+    )

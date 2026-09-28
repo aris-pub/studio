@@ -1,3 +1,4 @@
+import asyncio
 import time
 from pathlib import Path
 from typing import Optional
@@ -76,7 +77,9 @@ async def render(src: str):
     try:
         # Create static file asset resolver for public endpoint
         asset_resolver = StaticFileAssetResolver()
-        result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
+        # to_thread: rsm.render is CPU-bound; running it inline would block the
+        # event loop (and the whole uvicorn worker) for the length of the compile.
+        result = await asyncio.to_thread(rsm.render, src, handrails=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render completed successfully in {render_time:.3f}s")
     except (rsm.RSMApplicationError, RSMNodeError) as e:
@@ -95,7 +98,9 @@ async def render_with_assets(src: str, file_id: int, db: AsyncSession, user_id: 
         # Create asset resolver for this file with pre-loaded assets
         asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
 
-        result = rsm.render(src, handrails=True, asset_resolver=asset_resolver)
+        # to_thread: rsm.render is CPU-bound; running it inline would block the
+        # event loop (and the whole uvicorn worker) for the length of the compile.
+        result = await asyncio.to_thread(rsm.render, src, handrails=True, asset_resolver=asset_resolver)
         render_time = time.time() - start_time
         logger.debug(f"RSM render with assets completed successfully in {render_time:.3f}s")
     except (rsm.RSMApplicationError, RSMNodeError) as e:
