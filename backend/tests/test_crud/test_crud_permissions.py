@@ -200,6 +200,28 @@ async def test_revoke_permission_soft_deletes(db_session: AsyncSession, test_use
 
 
 @pytest.mark.asyncio
+async def test_revoke_permission_records_revoked_by(
+    db_session: AsyncSession, test_user: User, test_user2: User
+):
+    """Revoking a permission records who revoked it."""
+    file = await create_file(source="# Test", owner_id=test_user.id, db=db_session)
+    permission = await create_permission(
+        file_id=file.id,
+        user_id=test_user2.id,
+        role=FileRole.EDITOR,
+        granted_by=test_user.id,
+        db=db_session,
+    )
+
+    revoked = await revoke_permission(
+        permission.id, file.id, db_session, revoked_by=test_user.id
+    )
+
+    assert revoked is not None
+    assert revoked.revoked_by == test_user.id
+
+
+@pytest.mark.asyncio
 async def test_revoke_permission_returns_none_for_nonexistent(db_session: AsyncSession):
     """Test revoking nonexistent permission returns None."""
     result = await revoke_permission(99999, 99999, db_session)

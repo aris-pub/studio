@@ -198,7 +198,7 @@ async def update_file(
     return file
 
 
-async def soft_delete_file(file_id: int, db: AsyncSession):
+async def soft_delete_file(file_id: int, db: AsyncSession, deleted_by: int | None = None):
     """Soft delete a file by setting deleted_at timestamp.
 
     Parameters
@@ -207,6 +207,8 @@ async def soft_delete_file(file_id: int, db: AsyncSession):
         The unique identifier of the file to delete.
     db : AsyncSession
         SQLAlchemy async database session.
+    deleted_by : int | None
+        User id of the actor performing the delete, recorded for attribution.
 
     Returns
     -------
@@ -222,6 +224,7 @@ async def soft_delete_file(file_id: int, db: AsyncSession):
     if not file:
         return None
     file.deleted_at = datetime.now(UTC)
+    file.deleted_by = deleted_by
     await db.commit()
     return {"message": f"File {file_id} soft deleted"}
 

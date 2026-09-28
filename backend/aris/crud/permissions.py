@@ -92,7 +92,7 @@ async def update_permission_role(
 
 
 async def revoke_permission(
-    permission_id: int, file_id: int, db: AsyncSession
+    permission_id: int, file_id: int, db: AsyncSession, revoked_by: int | None = None
 ) -> Optional[FilePermission]:
     """Revoke a permission (soft delete).
 
@@ -106,6 +106,8 @@ async def revoke_permission(
         able to revoke a permission that belongs to a different file).
     db : AsyncSession
         Database session.
+    revoked_by : int | None
+        User id of the actor performing the revoke, recorded for attribution.
 
     Returns
     -------
@@ -125,6 +127,7 @@ async def revoke_permission(
 
     if permission:
         permission.deleted_at = datetime.now(timezone.utc)
+        permission.revoked_by = revoked_by
         await db.commit()
         await db.refresh(permission)
 

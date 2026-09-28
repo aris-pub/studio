@@ -136,7 +136,7 @@ async def update_user(user_id: int, name: str, initials: str, email: str, db: As
     return user
 
 
-async def soft_delete_user(user_id: int, db: AsyncSession):
+async def soft_delete_user(user_id: int, db: AsyncSession, deleted_by: int | None = None):
     """Soft delete a user by setting deleted_at timestamp.
 
     Parameters
@@ -145,6 +145,8 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
         The unique identifier of the user to delete.
     db : AsyncSession
         SQLAlchemy async database session.
+    deleted_by : int | None
+        User id of the actor who initiated the delete, recorded for attribution.
 
     Returns
     -------
@@ -216,6 +218,7 @@ async def soft_delete_user(user_id: int, db: AsyncSession):
     await db.execute(delete(Signup).where(Signup.email == user.email))
 
     user.deleted_at = now
+    user.deleted_by = deleted_by
     await db.commit()
     return user
 

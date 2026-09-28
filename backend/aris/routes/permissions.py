@@ -209,6 +209,7 @@ async def remove_collaborator(
     file_id: int,
     permission_id: int,
     user_role: FileRole = Depends(require_manage),
+    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a collaborator from a file.
@@ -237,6 +238,6 @@ async def remove_collaborator(
         404 if permission not found.
 
     """
-    permission = await revoke_permission(permission_id, file_id, db)
+    permission = await revoke_permission(permission_id, file_id, db, revoked_by=user.id)
     if not permission:
         raise HTTPException(status_code=404, detail="Permission not found")
