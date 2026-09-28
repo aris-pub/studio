@@ -7,20 +7,24 @@ import asyncio
 import os
 from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from aris.config import settings
-from aris.jwt import decode_token
+from aris.deps import UserRead, current_user
+from aris.jwt import LSP_TOKEN_SCOPE, create_lsp_token, decode_token
 from aris.logging_config import get_logger
 
 
 logger = get_logger(__name__)
 router = APIRouter()
 
-# The browser passes the access JWT as a WebSocket subprotocol, ["lsp", <token>],
-# because an <img>/WebSocket cannot send an Authorization header. Verifying it
-# during the handshake lets us reject before accept(), so an unauthenticated
-# client never gets an accepted socket, let alone a subprocess.
+# The browser passes a short-lived scope=lsp token as a WebSocket subprotocol,
+# ["lsp", <token>], because an <img>/WebSocket cannot send an Authorization
+# header. The token is minted at POST /lsp/start (below); it is NOT the user's
+# full access token, so a leaked subprotocol value only opens the LSP socket for
+# ~2 minutes rather than exposing 2 hours of API access. Verifying it during the
+# handshake lets us reject before accept(), so an unauthenticated client never
+# gets an accepted socket, let alone a subprocess.
 LSP_SUBPROTOCOL = "lsp"
 
 # Reject any inbound frame larger than this before forwarding it to the language
@@ -37,16 +41,18 @@ _active_per_user: dict[int, int] = {}
 def _extract_lsp_user_id(websocket: WebSocket) -> Optional[int]:
     """Return the authenticated user id from the ["lsp", <token>] subprotocol.
 
-    Returns None (caller rejects the handshake) for a missing/malformed
-    subprotocol, an invalid or expired access token, a refresh token, or a token
-    with no numeric subject. Pure and sync so the auth contract is unit-testable
-    without standing up a socket.
+    Requires a token minted by POST /lsp/start, i.e. one whose ``scope`` claim
+    is ``"lsp"``. Returns None (caller rejects the handshake) for a
+    missing/malformed subprotocol, an expired or invalid token, a normal access
+    token (no scope) or a refresh token (scope != lsp), or a token with no
+    numeric subject. Pure and sync so the auth contract is unit-testable without
+    standing up a socket.
     """
     protocols = websocket.scope.get("subprotocols") or []
     if len(protocols) < 2 or protocols[0] != LSP_SUBPROTOCOL:
         return None
     payload = decode_token(protocols[1])
-    if not payload or payload.get("type") == "refresh":
+    if not payload or payload.get("scope") != LSP_TOKEN_SCOPE:
         return None
     sub = payload.get("sub")
     if sub is None:
@@ -55,6 +61,20 @@ def _extract_lsp_user_id(websocket: WebSocket) -> Optional[int]:
         return int(sub)
     except (TypeError, ValueError):
         return None
+
+
+@router.post("/lsp/start")
+async def lsp_start(user: UserRead = Depends(current_user)) -> dict[str, str]:
+    """Mint a short-lived scope=lsp token for the LSP WebSocket handshake.
+
+    The frontend calls this (with its normal access token) right before opening
+    the LSP socket, then passes the returned token as the ["lsp", <token>]
+    subprotocol. The token expires in ~2 minutes and only opens the LSP socket,
+    so a leaked subprotocol value is not worth the full access token's lifetime
+    of API access.
+    """
+    token = create_lsp_token({"sub": str(user.id)})
+    return {"token": token}
 
 
 def _try_acquire_lsp_slot(user_id: int) -> bool:
@@ -267,8 +287,8 @@ async def lsp_websocket(websocket: WebSocket):
 
     Proxies LSP JSON-RPC between the browser and the stdio RSM LSP server. Because
     each connection spawns a node subprocess, nothing is spent until the caller is
-    authenticated (via the ["lsp", <access-jwt>] subprotocol, checked before the
-    handshake is accepted) and a concurrency slot is free.
+    authenticated (via the ["lsp", <scope=lsp token>] subprotocol, checked before
+    the handshake is accepted) and a concurrency slot is free.
     """
     user_id = _extract_lsp_user_id(websocket)
     if user_id is None:

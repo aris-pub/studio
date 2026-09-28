@@ -12,10 +12,13 @@ import { LSPClient, languageServerExtensions } from "@codemirror/lsp-client";
  * Create WebSocket transport for LSP communication.
  *
  * @param {string} uri - WebSocket URI (e.g., "ws://localhost:8080/ws/lsp")
- * @param {string} [token] - Access JWT, sent as the ["lsp", token] subprotocol.
- *   A browser cannot set an Authorization header on a WebSocket, so the backend
- *   reads the token from Sec-WebSocket-Protocol and verifies it during the
- *   handshake (before accepting the socket or spawning the LSP process).
+ * @param {string} [token] - Short-lived scope=lsp token (from POST /lsp/start),
+ *   sent as the ["lsp", token] subprotocol. A browser cannot set an
+ *   Authorization header on a WebSocket, so the backend reads the token from
+ *   Sec-WebSocket-Protocol and verifies it during the handshake (before
+ *   accepting the socket or spawning the LSP process). It is not the user's
+ *   full access token, so a leaked subprotocol value only opens the LSP socket
+ *   for ~2 minutes.
  * @returns {Promise<Object>} Transport object with send/subscribe/unsubscribe methods
  */
 function createWebSocketTransport(uri, token) {
@@ -138,10 +141,11 @@ export function useLSPClient({ serverUrl, documentUri, token }) {
   const indexReady = createIndexReadyTracker();
 
   // Resolve the auth token fresh at connect time (it may be a getter/ref so a
-  // refreshed access token is picked up on reconnect). Accepts a string, a Vue
-  // ref, or a function.
-  function resolveToken() {
-    if (typeof token === "function") return token();
+  // freshly minted scoped token is fetched on each reconnect). Accepts a string,
+  // a Vue ref, or a function; the function may be async (it typically calls
+  // POST /lsp/start to mint a short-lived scope=lsp token).
+  async function resolveToken() {
+    if (typeof token === "function") return await token();
     if (token && typeof token === "object" && "value" in token) return token.value;
     return token;
   }
@@ -166,8 +170,9 @@ export function useLSPClient({ serverUrl, documentUri, token }) {
    */
   async function connect() {
     try {
-      // Create WebSocket transport (async)
-      transport.value = await createWebSocketTransport(serverUrl, resolveToken());
+      // Create WebSocket transport (async). resolveToken may hit the network to
+      // mint a scope=lsp token, so await it before opening the socket.
+      transport.value = await createWebSocketTransport(serverUrl, await resolveToken());
 
       // Observe rsm/indexReady notifications alongside the LSP client's own
       // handling (the transport fans every message out to all subscribers), so

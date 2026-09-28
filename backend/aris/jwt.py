@@ -8,6 +8,16 @@ from jose import JWTError, jwt
 from .config import settings
 
 
+# Scope claim marking a token that may only open the LSP WebSocket. The LSP
+# socket accepts a token as a subprotocol value (a browser cannot set an
+# Authorization header on a WebSocket), so that value can leak into logs or
+# proxies more easily than a normal request. Minting a dedicated, short-lived
+# token for it means a leaked LSP credential is worth ~2 minutes of LSP access,
+# not the full access token's ~2 hours of API access.
+LSP_TOKEN_SCOPE = "lsp"
+LSP_TOKEN_EXPIRE_SECONDS = 120
+
+
 def create_access_token(data: dict) -> str:
     """Create a JWT access token with expiration.
 
@@ -55,6 +65,36 @@ def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + timedelta(minutes=settings.JWT_REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_lsp_token(data: dict, ttl_seconds: int = LSP_TOKEN_EXPIRE_SECONDS) -> str:
+    """Create a short-lived JWT scoped to the LSP WebSocket handshake.
+
+    Parameters
+    ----------
+    data : dict
+        User data to encode, typically ``{"sub": str(user_id)}`` (the same
+        subject claim the access token uses).
+    ttl_seconds : int
+        Token lifetime in seconds. Default 120s; short by design so a leaked
+        subprotocol value expires almost immediately.
+
+    Returns
+    -------
+    str
+        Encoded JWT carrying ``scope: "lsp"`` and a short ``exp``.
+
+    Notes
+    -----
+    Signed with the same JWT_SECRET_KEY as the access token and read back by
+    ``decode_token``, since it is minted and verified in the same process. The
+    LSP WebSocket handler requires ``scope == "lsp"``, so a normal access token
+    or a refresh token cannot open the socket.
+    """
+    to_encode = data.copy()
+    expire = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
+    to_encode.update({"exp": expire, "scope": LSP_TOKEN_SCOPE})
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
