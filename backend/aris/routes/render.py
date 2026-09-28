@@ -1,5 +1,7 @@
 """Routes for rendering RSM into HTML."""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +49,11 @@ async def render(request: Request, data: RenderObject):
         # Import rsm here to avoid circular imports
         import rsm
         try:
-            structured_content = rsm.build(data.source, handrails=True, structured=True, theme_toggle=False)
+            # to_thread: rsm.build is CPU-bound; inline it would block the event
+            # loop (the whole uvicorn worker) for the length of the compile.
+            structured_content = await asyncio.to_thread(
+                rsm.build, data.source, handrails=True, structured=True, theme_toggle=False
+            )
             if not isinstance(structured_content, dict):
                 # Fallback if structured format fails
                 html = await crud.render(data.source)
