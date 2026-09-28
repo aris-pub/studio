@@ -143,6 +143,7 @@ SELF_SCOPED: dict[tuple[str, str], str] = {
     ("POST", "/files/import"): "imported file is owned by the caller",
     ("POST", "/users/lookup"): "intentional email->public-profile directory lookup, rate-limited; not an ownership boundary",
     ("GET", "/debug/user-state"): "non-PROD diagnostic; no external resource id, returns fixed TEST_USER_EMAIL state (std-9xtntz)",
+    ("POST", "/lsp/start"): "mints a scope=lsp token for the caller only; no external id, touches no other user's data (std-o87u)",
 }
 
 
