@@ -386,7 +386,7 @@ async def soft_delete_user(
     Requires authentication. Sets deleted_at timestamp instead of
     permanently removing the record.
     """
-    user = await crud.soft_delete_user(user_id, db)
+    user = await crud.soft_delete_user(user_id, db, deleted_by=current_user.id)
     if not user:
         raise not_found_exception("User", user_id)
     return {"message": f"User {user_id} soft deleted"}

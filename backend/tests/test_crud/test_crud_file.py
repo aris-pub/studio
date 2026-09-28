@@ -50,6 +50,18 @@ async def test_soft_delete_file(db_session, test_user):
     assert await get_file(file.id, db_session) is None
 
 
+async def test_soft_delete_file_records_deleted_by(db_session, test_user):
+    from sqlalchemy import select
+
+    from aris.models.models import File
+
+    file = await create_file("source", owner_id=test_user.id, title="DeleteMe", db=db_session)
+    await soft_delete_file(file.id, db_session, deleted_by=test_user.id)
+    row = (await db_session.execute(select(File).where(File.id == file.id))).scalar_one()
+    assert row.deleted_at is not None
+    assert row.deleted_by == test_user.id
+
+
 @patch("aris.crud.file.extract_title", new_callable=AsyncMock)
 async def test_duplicate_file(mock_extract_title, db_session, test_user):
     mock_extract_title.return_value = "Original"

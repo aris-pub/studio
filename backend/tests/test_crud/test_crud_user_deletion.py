@@ -94,6 +94,13 @@ async def test_soft_delete_user_cascades_to_all_personal_data(db_session, test_u
     assert await db_session.get(Signup, signup_id) is None, "signup not hard-deleted"
 
 
+async def test_soft_delete_user_records_deleted_by(db_session, test_user, test_user2):
+    """soft_delete_user records who initiated the deletion."""
+    deleted = await soft_delete_user(test_user.id, db_session, deleted_by=test_user2.id)
+    assert deleted is not None
+    assert deleted.deleted_by == test_user2.id
+
+
 async def test_soft_delete_user_leaves_other_users_data_untouched(
     db_session, test_user, test_user2
 ):

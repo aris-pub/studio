@@ -22,6 +22,30 @@ Only the `public` schema is dumped: that is where all studio application data
 lives. Supabase-managed schemas (`auth`, `storage`, extensions) are Supabase's
 responsibility and the app role cannot fully dump them.
 
+## Deletion policy
+
+Everything soft-deletes by default: a delete sets a `deleted_at` timestamp and
+the row stays, so application queries filter it out while the data remains
+recoverable. Hard deletion (physically removing the row) happens in exactly one
+place, the GDPR retention purge below (`hard_delete_expired_users`), which
+erases accounts for good once the grace window has passed.
+
+Two deliberate exceptions, where soft delete would not help:
+
+- **`reaction`** is an ephemeral per-paragraph emoji badge (one per user per
+  node, toggled on and off). Un-reacting hard-deletes the row. There is no
+  meaningful history to keep.
+- **`signup`** is the mailing-list record, keyed by email and not part of the
+  application's own data. It is hard-deleted when the matching account is
+  deleted, which is the correct behaviour for a contact record.
+
+Who acted is recorded for attribution, not only when: `file_permissions.granted_by`
+and `revoked_by`, `file_versions.created_by`, `file_assets.owner_id`,
+`files.deleted_by`, and `users.deleted_by`. All are nullable and `ON DELETE SET
+NULL`, so erasing an account anonymizes these references (the contribution
+survives without naming the erased user) instead of orphaning the row or
+blocking the purge.
+
 ## Account deletion (GDPR erasure)
 
 Two stages:

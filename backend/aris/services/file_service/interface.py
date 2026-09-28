@@ -203,13 +203,14 @@ class FileServiceInterface(ABC):
         pass
     
     @abstractmethod
-    async def delete_file_in_database(self, file_id: int, db) -> bool:
+    async def delete_file_in_database(self, file_id: int, db, deleted_by: int | None = None) -> bool:
         """Soft delete a specific file in database.
-        
+
         Args:
             file_id: Unique identifier of the file
             db: Database session
-            
+            deleted_by: User id of the actor performing the delete, for attribution
+
         Returns:
             True if deleted successfully, False otherwise
         """

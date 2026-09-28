@@ -468,7 +468,9 @@ class InMemoryFileService(FileServiceInterface):
                 logger.debug(f"Updated file {file_id} in database")
             return success
     
-    async def delete_file_in_database(self, file_id: int, db: AsyncSession) -> bool:
+    async def delete_file_in_database(
+        self, file_id: int, db: AsyncSession, deleted_by: int | None = None
+    ) -> bool:
         """Soft delete a specific file in database."""
         if db is None:
             return False
@@ -485,6 +487,7 @@ class InMemoryFileService(FileServiceInterface):
             if db_file:
                 # Soft delete the file
                 db_file.deleted_at = file_data.deleted_at
+                db_file.deleted_by = deleted_by
 
                 # Also soft delete all associated versions
                 from aris.crud.versions import soft_delete_versions_for_file

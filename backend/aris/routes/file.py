@@ -499,6 +499,7 @@ async def soft_delete_file(
     user_role: FileRole = Depends(require_manage),
     file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
+    user: UserRead = Depends(current_user),
 ):
     """Soft delete a file by setting deleted_at timestamp.
 
@@ -537,7 +538,7 @@ async def soft_delete_file(
         raise HTTPException(status_code=404, detail="File not found")
     
     # Save to database
-    await file_service.delete_file_in_database(file_id, db)
+    await file_service.delete_file_in_database(file_id, db, deleted_by=user.id)
     
     return {"message": f"File {file_id} soft deleted"}
 

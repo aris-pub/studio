@@ -137,6 +137,11 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Who initiated the soft-delete (self-service or an admin). Attribution only,
+    # SET NULL on erasure (std-x4a4h9).
+    deleted_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     initials = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
@@ -154,7 +159,7 @@ class User(Base):
     email_verification_token = Column(String, nullable=True)
     email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
 
-    files = relationship("File", back_populates="owner")
+    files = relationship("File", back_populates="owner", foreign_keys="File.owner_id")
     tags = relationship("Tag", back_populates="owner", cascade="all, delete-orphan")
     file_settings = relationship(
         "FileSettings", back_populates="user", cascade="all, delete-orphan"
@@ -351,6 +356,10 @@ class File(Base):
     # files predating this column: seeded once from `source`, then authoritative.
     ydoc_state = Column(LargeBinary, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Who soft-deleted this file. Attribution only, SET NULL on erasure (std-x4a4h9).
+    deleted_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     # ON DELETE CASCADE: deleting an account permanently removes its files (and,
     # via the files' own cascades, their versions/assets/settings/permissions/
     # annotations). Used by the hard-delete retention job.
@@ -364,7 +373,7 @@ class File(Base):
         Integer, ForeignKey("files.id", ondelete="SET NULL"), nullable=True
     )
 
-    owner = relationship("User", back_populates="files")
+    owner = relationship("User", back_populates="files", foreign_keys="File.owner_id")
     tags = relationship("Tag", secondary=file_tags, back_populates="files")
     annotations = relationship(
         "Annotation", back_populates="file", cascade="all, delete-orphan"
@@ -926,10 +935,16 @@ class FilePermission(Base):
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Who revoked (soft-deleted) this grant. Attribution only, SET NULL on
+    # erasure like granted_by (std-x4a4h9).
+    revoked_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     file = relationship("File", back_populates="permissions")
     user = relationship("User", foreign_keys=[user_id], back_populates="file_permissions")
     grantor = relationship("User", foreign_keys=[granted_by])
+    revoker = relationship("User", foreign_keys=[revoked_by])
 
 
 class Feedback(Base):
