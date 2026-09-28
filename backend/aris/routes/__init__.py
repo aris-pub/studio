@@ -1,8 +1,12 @@
 from .auth import router as auth_router
 from .feedback import router as feedback_router
-from .file import public_router as file_public_router
-from .file import router as file_router
 from .file_annotations import router as file_annotations_router
+from .file_assets import public_router as file_assets_public_router
+from .file_assets import router as file_assets_router
+from .file_collab import router as file_collab_router
+from .file_core import router as file_core_router
+from .file_export import router as file_export_router
+from .file_import import router as file_import_router
 from .file_reactions import router as file_reactions_router
 from .file_settings import router as file_settings_router
 from .internal import router as internal_router
@@ -21,9 +25,13 @@ __all__ = [
     "auth_router",
     "feedback_router",
     "file_annotations_router",
+    "file_assets_public_router",
+    "file_assets_router",
+    "file_collab_router",
+    "file_core_router",
+    "file_export_router",
+    "file_import_router",
     "file_reactions_router",
-    "file_public_router",
-    "file_router",
     "file_settings_router",
     "internal_router",
     "lsp_router",

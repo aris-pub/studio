@@ -37,7 +37,7 @@ class TestFileServiceRouteIntegration:
         # Check that the route function has file_service parameter
         import inspect
 
-        from aris.routes.file import get_files
+        from aris.routes.file_core import get_files
         
         sig = inspect.signature(get_files)
         params = list(sig.parameters.keys())
@@ -51,7 +51,7 @@ class TestFileServiceRouteIntegration:
         """Test that POST /files should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import create_file
+        from aris.routes.file_core import create_file
         
         sig = inspect.signature(create_file)
         params = list(sig.parameters.keys())
@@ -65,7 +65,7 @@ class TestFileServiceRouteIntegration:
         """Test that GET /files/{file_id} should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import get_file
+        from aris.routes.file_core import get_file
         
         sig = inspect.signature(get_file)
         params = list(sig.parameters.keys())
@@ -79,7 +79,7 @@ class TestFileServiceRouteIntegration:
         """Test that PUT /files/{file_id} should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import update_file
+        from aris.routes.file_core import update_file
         
         sig = inspect.signature(update_file)
         params = list(sig.parameters.keys())
@@ -93,7 +93,7 @@ class TestFileServiceRouteIntegration:
         """Test that DELETE /files/{file_id} should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import soft_delete_file
+        from aris.routes.file_core import soft_delete_file
         
         sig = inspect.signature(soft_delete_file)
         params = list(sig.parameters.keys())
@@ -107,7 +107,7 @@ class TestFileServiceRouteIntegration:
         """Test that POST /files/{file_id}/duplicate should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import duplicate_file
+        from aris.routes.file_core import duplicate_file
         
         sig = inspect.signature(duplicate_file)
         params = list(sig.parameters.keys())
@@ -121,7 +121,7 @@ class TestFileServiceRouteIntegration:
         """Test that GET /files/{file_id}/content should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import get_file_content
+        from aris.routes.file_core import get_file_content
         
         sig = inspect.signature(get_file_content)
         params = list(sig.parameters.keys())
@@ -135,7 +135,7 @@ class TestFileServiceRouteIntegration:
         """Test that GET /files/{file_id}/content/{section_name} should use file service instead of crud."""
         import inspect
 
-        from aris.routes.file import get_file_section
+        from aris.routes.file_core import get_file_section
         
         sig = inspect.signature(get_file_section)
         params = list(sig.parameters.keys())
