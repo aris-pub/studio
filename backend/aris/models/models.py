@@ -277,7 +277,7 @@ file_tags = Table(
 
 
 class FileStatus(enum.Enum):
-    """Enum representing the status of a research file."""
+    """File status. Studio is authoring-only, so DRAFT is the only state."""
 
     DRAFT = "DRAFT"
 
@@ -296,8 +296,8 @@ class File(Base):
     keywords : str
         Optional comma-separated keywords.
     status : FileStatus
-        Currently only DRAFT exists. Published/public states are not modeled yet
-        (anonymous public reading lives in Press, not Studio).
+        Always DRAFT. Studio is authoring-only, so there are no review or
+        published states. Publishing and public reading live in Press, not Studio.
     last_edited_at : datetime
         Auto-updated on edit.
     created_at : datetime
