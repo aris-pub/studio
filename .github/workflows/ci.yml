@@ -483,9 +483,11 @@ jobs:
 
     - name: Start services (baked backend image + built frontend)
       run: |
-        echo "🐳 Pulling baked backend, building frontend..."
+        # Only the services this suite needs. The marketing site is not exercised
+        # by frontend e2e, so building and starting it here is wasted per-shard time.
+        echo "🐳 Pulling baked backend, building frontend (site skipped)..."
         docker compose --env-file .env pull backend
-        docker compose --env-file .env up -d --build
+        docker compose --env-file .env up -d --build backend frontend postgres
 
         echo "⏳ Polling for services to be ready (max 240s)..."
         READY=false
@@ -648,10 +650,12 @@ jobs:
 
     - name: Start services (baked backend image + built frontend)
       run: |
-        echo "🐳 Logging in to GHCR, pulling baked backend, building frontend..."
+        # Collab e2e uses backend (multiplayer runs inside it via supervisord) and
+        # frontend. The marketing site is not exercised here, so it is skipped.
+        echo "🐳 Logging in to GHCR, pulling baked backend, building frontend (site skipped)..."
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
         docker compose --env-file .env pull backend
-        docker compose --env-file .env up -d --build
+        docker compose --env-file .env up -d --build backend frontend postgres
 
         echo "⏳ Polling for services to be ready (max 240s)..."
         READY=false
