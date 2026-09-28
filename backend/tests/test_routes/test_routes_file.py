@@ -846,7 +846,7 @@ async def test_pdf_retry_logs_when_typst_not_found(client: AsyncClient, authenti
 
     with patch("rsm.app.pandoc_export", return_value='#set text(size: 12pt)\nTest content'):
         with patch("subprocess.run", side_effect=mock_subprocess_run):
-            with caplog.at_level(logging.ERROR, logger="aris.routes.file"):
+            with caplog.at_level(logging.ERROR, logger="aris.routes.file_export"):
                 response = await client.post(
                     f"/files/{file_id}/download/pdf",
                     headers=headers,
@@ -897,7 +897,7 @@ async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authent
 
     with patch("rsm.app.pandoc_export", return_value='#set text(size: 12pt)\nTest content'):
         with patch("subprocess.run", side_effect=mock_subprocess_run):
-            with caplog.at_level(logging.WARNING, logger="aris.routes.file"):
+            with caplog.at_level(logging.WARNING, logger="aris.routes.file_export"):
                 response = await client.post(
                     f"/files/{file_id}/download/pdf",
                     headers=headers,
@@ -927,7 +927,7 @@ async def test_download_file_flushes_collab_client_and_reads_db(
     )
     file_id = create_response.json()["id"]
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_export.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.flush = AsyncMock()
         mock_manager.clients = MagicMock()
@@ -960,7 +960,7 @@ async def test_download_pdf_flushes_collab_client(client: AsyncClient, authentic
     )
     file_id = create_response.json()["id"]
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_export.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.flush = AsyncMock()
         mock_manager.clients = MagicMock()

@@ -43,7 +43,7 @@ async def test_collab_start_requires_auth(client: AsyncClient, authenticated_use
 
 @pytest.mark.asyncio
 async def test_collab_start_404_for_unknown_file(authenticated_client: AsyncClient):
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.start_client = AsyncMock(return_value=True)
         response = await authenticated_client.post(_collab_url(99999, "start"))
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -81,7 +81,7 @@ async def test_collab_start_allows_commenter_read_only(
         db=db_session,
     )
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.start_client = AsyncMock(return_value=True)
         response = await client.post(
             _collab_url(file_id, "start"),
@@ -153,7 +153,7 @@ async def test_collab_start_calls_manager(
 ):
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.start_client = AsyncMock(return_value=True)
 
@@ -174,7 +174,7 @@ async def test_collab_start_returns_valid_token(
 
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.start_client = AsyncMock(return_value=True)
         response = await authenticated_client.post(_collab_url(file_id, "start"))
 
@@ -196,7 +196,7 @@ async def test_collab_start_returns_already_running_gracefully(
     """Calling start when already running is idempotent."""
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.start_client = AsyncMock(return_value=True)
 
@@ -227,7 +227,7 @@ async def test_collab_stop_404_for_unknown_file(authenticated_client: AsyncClien
     before running the handler, so a stop for a file that does not exist is a
     404 rather than a silent success.
     """
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.stop_client = AsyncMock(return_value=False)
         response = await authenticated_client.post(_collab_url(99999, "stop"))
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -241,7 +241,7 @@ async def test_collab_stop_calls_manager(
 ):
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.stop_client = AsyncMock(return_value=True)
 
@@ -260,7 +260,7 @@ async def test_collab_stop_when_not_running_is_fine(
     """Stopping a client that isn't running should not error."""
     file_id = await _create_file(db_session, authenticated_user["user_id"])
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_manager = mock_get.return_value
         mock_manager.stop_client = AsyncMock(return_value=False)  # not running
 
@@ -289,7 +289,7 @@ async def test_collab_stop_forbidden_for_user_without_permission(
     assert reg.status_code == 200
     stranger_token = reg.json()["access_token"]
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.stop_client = AsyncMock(return_value=True)
         response = await client.post(
             _collab_url(file_id, "stop"),
@@ -327,7 +327,7 @@ async def test_collab_flush_saves_for_owner(
     # what now calls _save_to_db(force=True).
     manager = CollaborationManager()
     manager.clients = {file_id: mock_client}
-    with patch("aris.routes.file.get_collaboration_manager", return_value=manager):
+    with patch("aris.routes.file_collab.get_collaboration_manager", return_value=manager):
         response = await authenticated_client.post(_collab_url(file_id, "flush"))
 
     assert response.status_code == status.HTTP_200_OK
@@ -354,7 +354,7 @@ async def test_collab_flush_forbidden_for_user_without_permission(
     assert reg.status_code == 200
     stranger_token = reg.json()["access_token"]
 
-    with patch("aris.routes.file.get_collaboration_manager") as mock_get:
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
         mock_get.return_value.clients = {}
         response = await client.post(
             _collab_url(file_id, "flush"),
