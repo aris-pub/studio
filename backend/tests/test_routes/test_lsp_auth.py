@@ -1,9 +1,12 @@
 """Auth and concurrency-cap tests for the LSP WebSocket (std-5smn).
 
 /ws/lsp spawns a node subprocess per connection, so it must prove the caller is
-logged in and cap concurrent sessions before spending anything. The access JWT is
-passed as a WebSocket subprotocol ["lsp", <token>] so it never lands in a URL or
-access log, and it is checked during the handshake before the socket is accepted.
+logged in and cap concurrent sessions before spending anything. A short-lived
+scope=lsp token (minted at POST /lsp/start) is passed as a WebSocket subprotocol
+["lsp", <token>] so it never lands in a URL or access log, and it is checked
+during the handshake before the socket is accepted. A normal access token or a
+refresh token is refused, so a leaked subprotocol value only opens the LSP socket
+for ~2 minutes rather than exposing full API access.
 """
 
 import asyncio
@@ -48,9 +51,24 @@ def _access(user_id: int) -> str:
     return jwt_helpers.create_access_token({"sub": str(user_id)})
 
 
+def _lsp(user_id: int) -> str:
+    return jwt_helpers.create_lsp_token({"sub": str(user_id)})
+
+
 class TestExtractLspUserId:
-    def test_valid_access_token_returns_user_id(self):
-        assert _extract_lsp_user_id(_FakeWS(["lsp", _access(7)])) == 7
+    def test_valid_lsp_token_returns_user_id(self):
+        assert _extract_lsp_user_id(_FakeWS(["lsp", _lsp(7)])) == 7
+
+    def test_plain_access_token_rejected(self):
+        # A full access token (no scope claim) must NOT open the LSP socket
+        # anymore: the whole point of the scoped token is to keep the access
+        # token out of the subprotocol value.
+        assert _extract_lsp_user_id(_FakeWS(["lsp", _access(7)])) is None
+
+    def test_wrong_scope_rejected(self):
+        payload = {"sub": "5", "scope": "api", "exp": int(time.time()) + 60}
+        tok = jose_jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+        assert _extract_lsp_user_id(_FakeWS(["lsp", tok])) is None
 
     def test_missing_subprotocols_returns_none(self):
         assert _extract_lsp_user_id(_FakeWS([])) is None
@@ -60,7 +78,7 @@ class TestExtractLspUserId:
         assert _extract_lsp_user_id(_FakeWS(["lsp"])) is None
 
     def test_wrong_marker_returns_none(self):
-        assert _extract_lsp_user_id(_FakeWS(["notlsp", _access(1)])) is None
+        assert _extract_lsp_user_id(_FakeWS(["notlsp", _lsp(1)])) is None
 
     def test_garbage_token_returns_none(self):
         assert _extract_lsp_user_id(_FakeWS(["lsp", "not-a-jwt"])) is None
@@ -69,13 +87,18 @@ class TestExtractLspUserId:
         refresh = jwt_helpers.create_refresh_token({"sub": "5"})
         assert _extract_lsp_user_id(_FakeWS(["lsp", refresh])) is None
 
-    def test_expired_token_rejected(self):
-        payload = {"sub": "5", "exp": int(time.time()) - 10}
+    def test_expired_lsp_token_rejected(self):
+        payload = {"sub": "5", "scope": "lsp", "exp": int(time.time()) - 10}
         tok = jose_jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
         assert _extract_lsp_user_id(_FakeWS(["lsp", tok])) is None
 
     def test_token_without_sub_rejected(self):
-        payload = {"exp": int(time.time()) + 60}
+        payload = {"scope": "lsp", "exp": int(time.time()) + 60}
+        tok = jose_jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+        assert _extract_lsp_user_id(_FakeWS(["lsp", tok])) is None
+
+    def test_non_numeric_sub_rejected(self):
+        payload = {"sub": "not-a-number", "scope": "lsp", "exp": int(time.time()) + 60}
         tok = jose_jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
         assert _extract_lsp_user_id(_FakeWS(["lsp", tok])) is None
 
@@ -155,14 +178,14 @@ class TestLspEndpointWiring:
     async def test_cap_reached_rejected_with_1013_no_spawn(self, monkeypatch):
         started = self._no_spawn_proxy(monkeypatch)
         monkeypatch.setattr(settings, "LSP_MAX_CONCURRENT_SESSIONS", 0)
-        ws = _RecordingWS(["lsp", _access(1)])
+        ws = _RecordingWS(["lsp", _lsp(1)])
         await lsp_websocket(ws)
         assert ws.closed_code == 1013
         assert started["n"] == 0
 
     async def test_authenticated_accepts_spawns_and_releases(self, monkeypatch):
         started = self._no_spawn_proxy(monkeypatch)
-        ws = _RecordingWS(["lsp", _access(42)])
+        ws = _RecordingWS(["lsp", _lsp(42)])
         await lsp_websocket(ws)
         assert ws.accepted_subprotocol == "lsp"
         assert started["n"] == 1
@@ -229,3 +252,37 @@ class TestLspProxyReleasesOnDisconnect:
         proxy = LSPProxy(_WS())
         # Would hang here (and TimeoutError) without the FIRST_COMPLETED fix.
         await asyncio.wait_for(proxy.start(), timeout=5)
+
+
+class TestLspStartEndpoint:
+    """POST /lsp/start mints the scope=lsp token the WebSocket handshake requires.
+
+    It is gated by the same current-user dependency as other authenticated HTTP
+    routes, so an anonymous caller gets 401 and never obtains a token.
+    """
+
+    async def test_requires_auth(self, client):
+        response = await client.post("/lsp/start")
+        assert response.status_code == 401
+
+    async def test_returns_scoped_token_for_authed_user(
+        self, authenticated_client, authenticated_user
+    ):
+        response = await authenticated_client.post("/lsp/start")
+        assert response.status_code == 200
+        token = response.json()["token"]
+        payload = jwt_helpers.decode_token(token)
+        assert payload is not None
+        assert payload["scope"] == "lsp"
+        assert payload["sub"] == str(authenticated_user["user_id"])
+
+    async def test_returned_token_authenticates_the_ws_handshake(
+        self, authenticated_client, authenticated_user
+    ):
+        # End to end: the token handed out by /lsp/start is exactly what the WS
+        # auth accepts, and it resolves back to the same user.
+        response = await authenticated_client.post("/lsp/start")
+        token = response.json()["token"]
+        assert _extract_lsp_user_id(_FakeWS(["lsp", token])) == int(
+            authenticated_user["user_id"]
+        )

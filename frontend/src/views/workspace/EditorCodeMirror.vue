@@ -89,9 +89,14 @@
   const lsp = useLSPClient({
     serverUrl: lspServerUrl,
     documentUri: computed(() => `file:///${file.value?.id || "untitled"}.rsm`),
-    // Read fresh at connect time so a refreshed access token is used on reconnect.
-    // The backend authenticates the LSP socket via the ["lsp", token] subprotocol.
-    token: () => localStorage.getItem("accessToken"),
+    // Mint a short-lived scope=lsp token at connect time (fresh on each
+    // reconnect). The backend authenticates the LSP socket via the
+    // ["lsp", token] subprotocol, and this scoped token, unlike the full access
+    // token, only opens the LSP socket for ~2 minutes if it leaks.
+    token: async () => {
+      const resp = await api.post("/lsp/start");
+      return resp.data?.token || null;
+    },
   });
 
   // User info for awareness
