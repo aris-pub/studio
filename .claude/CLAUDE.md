@@ -105,6 +105,8 @@ For CI/STAGING/PROD: set `ENV=CI/STAGING/PROD` and provide all vars directly in 
 
 ## Critical Rules
 
+Persistent conventions, deploy and migration drills, the delete policy, and hard-won lessons live in **beads memories**, injected at session start by `bd prime` and searchable with `bd memories <keyword>`. Check there before deploying, touching prod data, or delegating a repo-wide change to an agent. Keep this file lean, durable knowledge goes in memories.
+
 ### Development Practices
 - **ALWAYS use `osascript` for macOS notifications** (allowed in any directory)
 - **ALWAYS use `git mv` to move files** (preserve history)
