@@ -309,6 +309,71 @@ async def test_delete_own_annotation(client: AsyncClient, authenticated_user):
     assert len(list_resp.json()) == 0
 
 
+async def test_resolve_own_annotation_hides_but_keeps(
+    client: AsyncClient, authenticated_user
+):
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    file_id = await _create_file(client, headers, authenticated_user["user_id"])
+    ann = await _create_annotation(client, headers, file_id)
+
+    resp = await client.post(f"/annotations/{ann['id']}/resolve", headers=headers)
+    assert resp.status_code == 204
+
+    # Hidden from the default list
+    default = await client.get(
+        "/annotations/", headers=headers, params={"file_id": file_id}
+    )
+    assert len(default.json()) == 0
+
+    # Kept and retrievable with include_resolved, resolved_at and resolved_by set,
+    # and not marked deleted
+    included = await client.get(
+        "/annotations/",
+        headers=headers,
+        params={"file_id": file_id, "include_resolved": True},
+    )
+    rows = included.json()
+    assert len(rows) == 1
+    assert rows[0]["resolved_at"] is not None
+    assert rows[0]["resolved_by"] == authenticated_user["user_id"]
+    assert rows[0]["deleted_at"] is None
+
+
+async def test_resolve_annotation_not_owner(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h1, file_id, visibility="shared")
+
+    # A collaborator who is neither the annotation owner nor the file owner
+    # cannot resolve it
+    resp = await client.post(f"/annotations/{ann['id']}/resolve", headers=h2)
+    assert resp.status_code == 403
+
+
+async def test_file_owner_can_resolve_shared_annotation(
+    client: AsyncClient,
+    authenticated_user,
+    second_authenticated_user,
+):
+    h1 = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    h2 = {"Authorization": f"Bearer {second_authenticated_user['token']}"}
+
+    file_id = await _create_file(client, h1, authenticated_user["user_id"])
+    await _share_file(client, h1, file_id, second_authenticated_user["user_id"])
+    ann = await _create_annotation(client, h2, file_id, visibility="shared")
+
+    # File owner resolves a shared annotation created by the collaborator
+    resp = await client.post(f"/annotations/{ann['id']}/resolve", headers=h1)
+    assert resp.status_code == 204
+
+
 async def test_delete_annotation_not_owner(
     client: AsyncClient,
     authenticated_user,

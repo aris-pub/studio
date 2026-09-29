@@ -84,6 +84,7 @@ CROSS_USER_TESTED: dict[tuple[str, str], str] = {
     ("POST", "/annotations/{annotation_id}/messages"): "test_cross_user_annotations_denied",
     ("DELETE", "/annotations/{annotation_id}"): "test_cross_user_annotations_denied",
     ("DELETE", "/annotations/messages/{message_id}"): "test_cross_user_annotations_denied",
+    ("POST", "/annotations/{annotation_id}/resolve"): "test_routes_file_annotations.py::test_resolve_annotation_not_owner",
     ("GET", "/users/{user_id}/export"): "test_cross_user_user_scoped_denied",
     ("DELETE", "/users/{user_id}/files/{file_id}/tags/{tag_id}"): "test_cross_user_user_scoped_denied",
     # --- covered by the per-route suites (mostly #453) ---

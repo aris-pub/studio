@@ -48,12 +48,22 @@ class Annotation(Base):
     selected_text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Resolve is distinct from delete: the thread is settled and hidden by default
+    # but kept, so it can be reopened or restored later (std-9325). resolved_by is
+    # attribution only, SET NULL on erasure like the other actor columns.
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     messages = relationship(
         "AnnotationMessage", back_populates="annotation", cascade="all, delete-orphan"
     )
     file = relationship("File", back_populates="annotations")
-    owner = relationship("User", back_populates="owned_annotations")
+    # foreign_keys pinned: the table now has two FKs to users (owner_id, resolved_by).
+    owner = relationship(
+        "User", foreign_keys=[owner_id], back_populates="owned_annotations"
+    )
 
 
 class AnnotationMessage(Base):
