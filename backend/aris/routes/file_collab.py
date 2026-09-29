@@ -12,7 +12,7 @@ from ..authorization import (
 from ..collaboration import get_collaboration_manager, mint_collab_token
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models.models import FileRole
+from ..models import FileRole
 from ..services.file_service import InMemoryFileService
 
 

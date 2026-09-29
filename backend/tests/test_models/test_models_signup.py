@@ -2,7 +2,7 @@
 
 import json
 
-from aris.models.models import Signup, SignupStatus
+from aris.models import Signup, SignupStatus
 
 
 class TestSignupModel:

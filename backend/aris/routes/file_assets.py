@@ -19,8 +19,7 @@ from ..config import settings
 from ..crud.file_assets import FileAssetCreate, FileAssetDB, FileAssetOut, FileAssetUpdate
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models import FileAsset
-from ..models.models import FileRole
+from ..models import FileAsset, FileRole
 from ..rate_limiting import ASSET_UPLOAD_RATE_LIMIT, limiter
 from ..services.file_events import get_event_broker
 from ..services.file_service import InMemoryFileService

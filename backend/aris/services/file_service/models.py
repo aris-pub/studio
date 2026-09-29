@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Optional
 
-from ...models.models import FileStatus
+from ...models import FileStatus
 
 
 @dataclass

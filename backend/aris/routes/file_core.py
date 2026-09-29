@@ -16,7 +16,7 @@ from ..authorization import (
 from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models.models import FileRole
+from ..models import FileRole
 from ..rate_limiting import FILE_CREATE_RATE_LIMIT, limiter
 from ..services.file_events import FileEventBroker, get_event_broker, sse_event_stream
 from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
@@ -432,7 +432,7 @@ async def duplicate_file(
     )
 
     # Copy tags from original file (using original logic)
-    from ..models.models import file_tags
+    from ..models import file_tags
     tag_ids = (
         await db.execute(file_tags.select().where(file_tags.c.file_id == file_id))
     ).fetchall()

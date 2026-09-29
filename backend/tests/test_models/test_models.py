@@ -1,10 +1,10 @@
-"""Unit tests for model-level logic in aris.models.models."""
+"""Unit tests for model-level logic in aris.models."""
 
 import random
 
 import pytest
 
-from aris.models.models import (
+from aris.models import (
     Annotation,
     AnnotationMessage,
     AnnotationVisibility,

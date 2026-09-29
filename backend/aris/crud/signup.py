@@ -14,7 +14,7 @@ from sqlalchemy.engine.result import Result
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.models import Signup, SignupStatus
+from ..models import Signup, SignupStatus
 
 
 class SignupError(Exception):

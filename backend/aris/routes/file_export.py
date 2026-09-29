@@ -15,7 +15,7 @@ from ..authorization import (
 )
 from ..collaboration import get_collaboration_manager
 from ..logging_config import get_logger
-from ..models.models import File, FileRole
+from ..models import File, FileRole
 from ..services.file_service import InMemoryFileService
 
 
@@ -97,7 +97,7 @@ async def download_file_pdf(
         import base64
         import binascii
 
-        from ..models.models import FileAsset
+        from ..models import FileAsset
         asset_result = await db.execute(
             select(FileAsset)
             .where(FileAsset.file_id == file_id)

@@ -1,4 +1,5 @@
-from .models import File, FileStatus, Tag, User
+from .file import File, FileStatus, Tag
+from .user import User
 
 
 MOCK_USERS = [

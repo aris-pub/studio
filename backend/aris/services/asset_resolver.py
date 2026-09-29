@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..asset_signing import compute_content_hash, sign_asset_path
 from ..config import settings
-from ..models.models import FileAsset
+from ..models import FileAsset
 
 
 logger = logging.getLogger(__name__)

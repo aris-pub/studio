@@ -93,7 +93,7 @@ class TestDatabaseConstraints:
 
     async def test_annotation_constraints(self, db_session: AsyncSession, test_user, test_file):
         """Test annotation model constraints."""
-        from aris.models.models import AnnotationVisibility
+        from aris.models import AnnotationVisibility
 
         annotation = Annotation(
             file_id=test_file.id,
@@ -147,7 +147,7 @@ class TestDatabaseConstraints:
 
     async def test_signup_email_uniqueness(self, db_session: AsyncSession):
         """Test signup email uniqueness constraint."""
-        from aris.models.models import SignupStatus
+        from aris.models import SignupStatus
         
         # Create first signup
         signup1 = Signup(

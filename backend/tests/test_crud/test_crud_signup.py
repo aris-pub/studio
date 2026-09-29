@@ -15,7 +15,7 @@ from aris.crud.signup import (
     unsubscribe_signup,
     update_signup_status,
 )
-from aris.models.models import SignupStatus
+from aris.models import SignupStatus
 
 
 class TestCreateSignup:

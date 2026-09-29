@@ -6,7 +6,7 @@ data (and the user's contributions to other people's files) untouched.
 """
 
 from aris.crud.user import soft_delete_user
-from aris.models.models import (
+from aris.models import (
     Annotation,
     AnnotationMessage,
     File,

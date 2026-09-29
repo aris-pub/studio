@@ -19,7 +19,7 @@ from typing import Any
 from jose import JWTError, jwt
 
 from ..config import settings
-from ..models.models import FileRole
+from ..models import FileRole
 
 
 COLLAB_TOKEN_TTL_SECS: int = 300

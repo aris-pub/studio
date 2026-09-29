@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from aris.crud.file import create_file
 from aris.crud.permissions import create_permission
 from aris.crud.versions import create_version
-from aris.models.models import FileRole
+from aris.models import FileRole
 
 
 async def test_create_version_success(authenticated_client: AsyncClient, authenticated_user, db_session):

@@ -53,7 +53,7 @@ async def test_soft_delete_file(db_session, test_user):
 async def test_soft_delete_file_records_deleted_by(db_session, test_user):
     from sqlalchemy import select
 
-    from aris.models.models import File
+    from aris.models import File
 
     file = await create_file("source", owner_id=test_user.id, title="DeleteMe", db=db_session)
     await soft_delete_file(file.id, db_session, deleted_by=test_user.id)

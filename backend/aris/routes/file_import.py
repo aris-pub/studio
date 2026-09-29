@@ -8,7 +8,7 @@ from .. import current_user, get_db, get_file_service
 from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models.models import FileRole
+from ..models import FileRole
 from ..services.file_service import FileCreateData, InMemoryFileService
 
 

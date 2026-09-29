@@ -144,7 +144,7 @@ async def create_file(
     await db.refresh(file)
 
     # Create OWNER permission for the file creator
-    from ..models.models import FileRole
+    from ..models import FileRole
     from .permissions import create_permission
     await create_permission(
         file_id=file.id,  # type: ignore[arg-type]

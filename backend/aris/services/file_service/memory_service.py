@@ -11,7 +11,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...logging_config import get_logger
-from ...models.models import File as DbFile
+from ...models import File as DbFile
 from .interface import FileServiceInterface
 from .models import FileCreateData, FileData, FileUpdateData
 

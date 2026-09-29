@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aris.models.models import FileAsset
+from aris.models import FileAsset
 from aris.services.asset_resolver import FileAssetResolver
 
 
