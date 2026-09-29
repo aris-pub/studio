@@ -1,7 +1,7 @@
 """Unit tests for model mock data in aris.models.mock_data."""
 
-from aris.models.mock_data import MOCK_FILES, MOCK_TAGS, MOCK_USERS
 from aris.models import File, FileStatus, Tag, User
+from aris.models.mock_data import MOCK_FILES, MOCK_TAGS, MOCK_USERS
 
 
 def test_mock_data_collections_non_empty():
