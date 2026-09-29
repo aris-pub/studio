@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from aris.crud.file import create_file
 from aris.crud.permissions import create_permission
-from aris.models.models import FileAsset, FileRole
+from aris.models import FileAsset, FileRole
 
 
 class TestRenderPrivate:

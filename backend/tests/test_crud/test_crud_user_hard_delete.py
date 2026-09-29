@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from aris.crud.user import hard_delete_expired_users
-from aris.models.models import (
+from aris.models import (
     Annotation,
     AnnotationMessage,
     File,

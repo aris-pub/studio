@@ -22,7 +22,7 @@ from ..crud.versions import (
     rename_version,
 )
 from ..deps import UserRead
-from ..models.models import FileRole
+from ..models import FileRole
 
 
 router = APIRouter(prefix="/files", tags=["versions"], dependencies=[Depends(current_user)])

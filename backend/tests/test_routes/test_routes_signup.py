@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient
 
 from aris.crud.signup import get_signup_by_email
-from aris.models.models import SignupStatus
+from aris.models import SignupStatus
 
 
 class TestCreateSignupEndpoint:

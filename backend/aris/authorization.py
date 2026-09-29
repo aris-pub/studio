@@ -12,7 +12,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.deps import current_user, get_db
-from aris.models.models import File, FilePermission, FileRole, User
+from aris.models import File, FilePermission, FileRole, User
 
 
 class PermissionLevel:

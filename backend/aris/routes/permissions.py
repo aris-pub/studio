@@ -17,7 +17,7 @@ from aris.crud.permissions import (
 )
 from aris.crud.user_settings import UserSettingsDB
 from aris.deps import current_user, get_db
-from aris.models.models import File, FileRole, User
+from aris.models import File, FileRole, User
 from aris.services.email import get_email_service
 
 

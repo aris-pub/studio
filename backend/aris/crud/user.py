@@ -6,17 +6,19 @@ from sqlalchemy import case, delete, desc, or_, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import File, FileSettings, User
-from ..models.models import (
+from ..models import (
     Annotation,
     AnnotationMessage,
+    File,
     FileAsset,
     FilePermission,
     FileRole,
+    FileSettings,
     FileVersion,
     ProfilePicture,
     Signup,
     Tag,
+    User,
     UserSettings,
 )
 from .file import get_file, get_file_section
@@ -363,7 +365,7 @@ async def get_user_files(user_id: int, with_tags: bool, db: AsyncSession):
     # Batch-load reactions for all files
     reactions_by_file: dict[int, list[dict]] = {doc.id: [] for doc in docs}
     if docs:
-        from ..models.models import Reaction
+        from ..models import Reaction
 
         rxn_stmt = select(Reaction.file_id, Reaction.node_id, Reaction.reaction_type).where(
             Reaction.file_id.in_(file_ids)

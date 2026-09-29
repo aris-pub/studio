@@ -23,7 +23,7 @@ from ..crud.signup import (
 )
 from ..deps import get_db
 from ..logging_config import get_logger
-from ..models.models import SignupStatus
+from ..models import SignupStatus
 from ..services.email import get_email_service
 
 

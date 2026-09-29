@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from aris.models.models import FileStatus
+from aris.models import FileStatus
 from aris.services.file_service.memory_service import InMemoryFileService
 from aris.services.file_service.models import FileCreateData, FileData, FileUpdateData
 
@@ -791,7 +791,7 @@ class TestInMemoryFileServiceAssetIntegration:
         # Asset content should be base64 encoded as it's stored in the database
         import base64
 
-        from aris.models.models import FileAsset
+        from aris.models import FileAsset
         html_content = "<div class='test-asset'>Test Asset Content</div>"
         base64_content = base64.b64encode(html_content.encode('utf-8')).decode('ascii')
 

@@ -13,8 +13,7 @@ from aris.crud.tag import (
     soft_delete_tag,
     update_tag,
 )
-from aris.models import File, FilePermission, Tag, file_tags
-from aris.models.models import FileRole
+from aris.models import File, FilePermission, FileRole, Tag, file_tags
 
 
 async def test_create_tag_success(db_session, test_user):

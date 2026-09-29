@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aris.collaboration.manager import CollaborationManager
 from aris.crud.file import create_file
 from aris.crud.permissions import create_permission
-from aris.models.models import FileRole
+from aris.models import FileRole
 
 
 # ---------------------------------------------------------------------------

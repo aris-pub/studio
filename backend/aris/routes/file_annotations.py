@@ -11,8 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from .. import current_user, get_db
 from ..authorization import PermissionLevel, has_permission
-from ..models import Annotation, AnnotationMessage
-from ..models.models import AnnotationVisibility, User
+from ..models import Annotation, AnnotationMessage, AnnotationVisibility, User
 
 
 router = APIRouter(

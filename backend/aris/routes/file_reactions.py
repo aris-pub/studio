@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import current_user, get_db
 from ..authorization import PermissionLevel, has_permission
-from ..models.models import Reaction, User
+from ..models import Reaction, User
 
 
 router = APIRouter(

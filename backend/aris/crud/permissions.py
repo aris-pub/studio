@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aris.models.models import FilePermission, FileRole, User
+from aris.models import FilePermission, FileRole, User
 
 
 async def create_permission(

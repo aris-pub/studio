@@ -11,7 +11,7 @@ from aris.crud.permissions import (
     revoke_permission,
     update_permission_role,
 )
-from aris.models.models import FileRole, User
+from aris.models import FileRole, User
 
 
 @pytest.mark.asyncio

@@ -268,7 +268,7 @@ class TestEmailVerification:
 
     async def test_verification_token_generation_unique(self, db_session):
         """Test that verification tokens are unique."""
-        from aris.models.models import User
+        from aris.models import User
         
         user1 = User(name="User 1", email="user1@test.com", password_hash="hash1")
         user2 = User(name="User 2", email="user2@test.com", password_hash="hash2")
