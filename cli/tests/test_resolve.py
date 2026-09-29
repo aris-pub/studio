@@ -33,10 +33,10 @@ class TestResolveCommand:
 
     @responses.activate
     def test_resolve_success(self, tmp_path: Path) -> None:
-        """Resolve command soft-deletes an annotation."""
+        """Resolve command marks an annotation resolved via the resolve route."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/42",
+            responses.POST,
+            "http://localhost:8000/annotations/42/resolve",
             status=204,
         )
 
@@ -52,8 +52,8 @@ class TestResolveCommand:
     def test_resolve_success_json(self, tmp_path: Path) -> None:
         """Resolve command outputs JSON when --json flag is set."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/42",
+            responses.POST,
+            "http://localhost:8000/annotations/42/resolve",
             status=204,
         )
 
@@ -71,8 +71,8 @@ class TestResolveCommand:
     def test_resolve_not_found(self, tmp_path: Path) -> None:
         """Resolve command handles 404 (already resolved or doesn't exist)."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/999",
+            responses.POST,
+            "http://localhost:8000/annotations/999/resolve",
             json={"detail": "Annotation not found"},
             status=404,
         )
@@ -90,8 +90,8 @@ class TestResolveCommand:
     def test_resolve_not_found_json(self, tmp_path: Path) -> None:
         """Resolve with --json handles 404 idempotently."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/999",
+            responses.POST,
+            "http://localhost:8000/annotations/999/resolve",
             json={"detail": "Annotation not found"},
             status=404,
         )
@@ -110,9 +110,9 @@ class TestResolveCommand:
     def test_resolve_forbidden(self, tmp_path: Path) -> None:
         """Resolve command handles 403 (not authorized)."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/42",
-            json={"detail": "You can only delete your own annotations"},
+            responses.POST,
+            "http://localhost:8000/annotations/42/resolve",
+            json={"detail": "You can only resolve your own annotations"},
             status=403,
         )
 
@@ -122,7 +122,7 @@ class TestResolveCommand:
             result = runner.invoke(cli, ["file", "-f", "0", "resolve", "42"])
 
             assert result.exit_code != 0
-            assert "403" in result.output or "permission" in result.output.lower() or "delete your own" in result.output.lower()
+            assert "403" in result.output or "permission" in result.output.lower() or "resolve your own" in result.output.lower()
 
     def test_resolve_without_login(self, tmp_path: Path) -> None:
         """Resolve command fails without login."""
@@ -137,8 +137,8 @@ class TestResolveCommand:
     def test_resolve_network_error(self, tmp_path: Path) -> None:
         """Resolve command handles network errors."""
         responses.add(
-            responses.DELETE,
-            "http://localhost:8000/annotations/42",
+            responses.POST,
+            "http://localhost:8000/annotations/42/resolve",
             body=requests.ConnectionError("Connection refused"),
         )
 

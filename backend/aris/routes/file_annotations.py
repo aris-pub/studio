@@ -80,6 +80,8 @@ class AnnotationResponse(BaseModel):
     selected_text: str
     created_at: datetime
     deleted_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[int] = None
     messages: list[AnnotationMessageResponse] = []
     owner: Optional[AnnotationOwnerResponse] = None
 
@@ -119,6 +121,7 @@ async def create_annotation(
 async def get_annotations(
     file_id: int,
     include_deleted: bool = False,
+    include_resolved: bool = False,
     skip: int = 0,
     limit: int = 100,
     user: User = Depends(current_user),
@@ -131,6 +134,10 @@ async def get_annotations(
 
     if not include_deleted:
         query = query.where(Annotation.deleted_at.is_(None))
+
+    # Resolved threads are settled and hidden by default but kept (std-9325).
+    if not include_resolved:
+        query = query.where(Annotation.resolved_at.is_(None))
 
     query = query.where(Annotation.file_id == file_id)
 
@@ -244,6 +251,46 @@ async def delete_annotation(
             )
 
     annotation.deleted_at = datetime.now(timezone.utc)  # type: ignore
+    await db.commit()
+
+
+@router.post("/{annotation_id}/resolve", status_code=status.HTTP_204_NO_CONTENT)
+async def resolve_annotation(
+    annotation_id: int,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark an annotation resolved: settled, hidden by default, but kept.
+
+    Distinct from delete. Resolving records resolved_at and who resolved it, and
+    the thread is filtered out of the default view (see get_annotations) while
+    the row is retained so it can be reopened or restored later (std-9325).
+    Allowed for the annotation owner, or the file owner on a shared thread, which
+    matches the Resolve control shown in the UI.
+    """
+    query = select(Annotation).where(
+        and_(Annotation.id == annotation_id, Annotation.deleted_at.is_(None))
+    )
+    result = await db.execute(query)
+    annotation = result.scalar_one_or_none()
+
+    if not annotation:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+    is_annotation_owner = annotation.owner_id == user.id
+    is_file_owner = await has_permission(
+        annotation.file_id, user.id, PermissionLevel.MANAGE, db
+    )
+    if not (
+        is_annotation_owner
+        or (annotation.visibility == AnnotationVisibility.SHARED and is_file_owner)
+    ):
+        raise HTTPException(
+            status_code=403, detail="You can only resolve your own annotations"
+        )
+
+    annotation.resolved_at = datetime.now(timezone.utc)  # type: ignore
+    annotation.resolved_by = user.id
     await db.commit()
 
 

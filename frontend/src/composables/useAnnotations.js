@@ -96,6 +96,14 @@ export function useAnnotations(fileId, api) {
     _notifyYjs();
   }
 
+  // Resolve is distinct from delete: the thread is settled and drops out of the
+  // default view but is kept server-side (std-9325).
+  async function resolveAnnotation(id) {
+    await api.post(`/annotations/${id}/resolve`);
+    annotations.value = annotations.value.filter((a) => a.id !== id);
+    _notifyYjs();
+  }
+
   async function addNote(annotationId, content) {
     const response = await api.post(`/annotations/${annotationId}/messages`, { content });
     const ann = annotations.value.find((a) => a.id === annotationId);
@@ -137,6 +145,7 @@ export function useAnnotations(fileId, api) {
     createAnnotation,
     updateAnnotation,
     deleteAnnotation,
+    resolveAnnotation,
     addNote,
     updateNote,
     deleteNote,

@@ -155,7 +155,10 @@ class User(Base):
         super().__init__(**kwargs)
 
     owned_annotations = relationship(
-        "Annotation", back_populates="owner", cascade="all, delete-orphan"
+        "Annotation",
+        foreign_keys="Annotation.owner_id",
+        back_populates="owner",
+        cascade="all, delete-orphan",
     )
     annotation_messages = relationship(
         "AnnotationMessage", back_populates="owner", cascade="all, delete-orphan"
