@@ -283,3 +283,17 @@ class StudioAPI:
             timeout=10,
         )
         response.raise_for_status()
+
+    def resolve_annotation(self, annotation_id: int) -> None:
+        """POST /annotations/{annotation_id}/resolve.
+
+        Resolve is distinct from delete: it marks the thread settled and hidden
+        by default but keeps it, so the annotation stays as the record of what
+        the agent did.
+        """
+        response = requests.post(
+            f"{self.base_url}/annotations/{annotation_id}/resolve",
+            headers=self._get_headers(),
+            timeout=10,
+        )
+        response.raise_for_status()

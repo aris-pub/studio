@@ -47,6 +47,7 @@ function createWrapper(
   const activeAnnotationId = ref(activeId);
   const annotationActions = {
     deleteAnnotation: vi.fn().mockResolvedValue({}),
+    resolveAnnotation: vi.fn().mockResolvedValue({}),
     updateNote: vi.fn().mockResolvedValue({}),
     addNote: vi.fn().mockResolvedValue({}),
     ...actions,
@@ -186,65 +187,24 @@ describe("Note.vue — card structure (std-fv7e)", () => {
   });
 });
 
-describe("Note.vue — delete confirmation pill (std-t3dj)", () => {
-  it("first click arms confirmation (switches to danger pill with Delete text)", async () => {
-    const { wrapper } = createWrapper(makeAnnotation());
-    const deleteBtn = wrapper.find(".delete-btn");
+describe("Note.vue — resolve is one click (std-9325)", () => {
+  it("clicking resolve calls resolveAnnotation immediately, no confirm step", async () => {
+    const { wrapper, annotationActions } = createWrapper(makeAnnotation({ id: 7 }));
+    const resolveBtn = wrapper.find(".resolve-btn");
 
-    await deleteBtn.trigger("click");
+    await resolveBtn.trigger("click");
     await nextTick();
 
-    const btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
-    expect(btn).toBeTruthy();
-    expect(btn.props("text")).toBe("Delete");
-  });
-
-  it("second click within debounce window does NOT delete", async () => {
-    const { wrapper, annotationActions } = createWrapper(makeAnnotation());
-    const deleteBtn = wrapper.find(".delete-btn");
-
-    await deleteBtn.trigger("click"); // arm
-    await nextTick();
-    await deleteBtn.trigger("click"); // within 400ms debounce
-    await nextTick();
-
+    expect(annotationActions.resolveAnnotation).toHaveBeenCalledWith(7);
     expect(annotationActions.deleteAnnotation).not.toHaveBeenCalled();
   });
 
-  it("second click after debounce window deletes", async () => {
-    vi.useFakeTimers();
-    const { wrapper, annotationActions } = createWrapper(makeAnnotation({ id: 7 }));
-    const deleteBtn = wrapper.find(".delete-btn");
-
-    await deleteBtn.trigger("click"); // arm
-    await nextTick();
-
-    vi.advanceTimersByTime(500); // past 400ms debounce
-
-    await deleteBtn.trigger("click"); // confirm
-    await nextTick();
-
-    expect(annotationActions.deleteAnnotation).toHaveBeenCalledWith(7);
-    vi.useRealTimers();
-  });
-
-  it("confirmation resets after 3s timeout", async () => {
-    vi.useFakeTimers();
+  it("shows a Resolve button and no Delete button or confirm pill", () => {
     const { wrapper } = createWrapper(makeAnnotation());
-    const deleteBtn = wrapper.find(".delete-btn");
-
-    await deleteBtn.trigger("click");
-    await nextTick();
-
-    let btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
-    expect(btn).toBeTruthy();
-
-    vi.advanceTimersByTime(3100);
-    await nextTick();
-
-    btn = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
-    expect(btn).toBeUndefined();
-    vi.useRealTimers();
+    expect(wrapper.find(".resolve-btn").exists()).toBe(true);
+    expect(wrapper.find(".delete-btn").exists()).toBe(false);
+    const danger = wrapper.findAllComponents(Button).find((b) => b.props("kind") === "danger");
+    expect(danger).toBeUndefined();
   });
 });
 
@@ -270,11 +230,11 @@ describe("Note.vue — chevron only with note (std-r0j0)", () => {
     expect(findButtonByIcon(w2, "Edit")).toBeTruthy();
   });
 
-  it("delete button renders regardless of note", () => {
+  it("resolve button renders regardless of note", () => {
     const { wrapper: w1 } = createWrapper(makeAnnotation());
     const { wrapper: w2 } = createWrapper(makeAnnotationWithNote());
-    expect(w1.find(".delete-btn").exists()).toBe(true);
-    expect(w2.find(".delete-btn").exists()).toBe(true);
+    expect(w1.find(".resolve-btn").exists()).toBe(true);
+    expect(w2.find(".resolve-btn").exists()).toBe(true);
   });
 });
 
@@ -423,15 +383,6 @@ describe("Note.vue — collapsed chevron affordance (std-u3o4)", () => {
     const { wrapper } = createWrapper(makeAnnotationWithNote({ id: 90 }));
     const chevronDown = findButtonByIcon(wrapper, "ChevronDown");
     expect(chevronDown).toBeTruthy();
-  });
-});
-
-describe("Note.vue — trash button squircle (std-0f70)", () => {
-  it("delete button has border-radius 8px (squircle, not circle)", () => {
-    const { wrapper } = createWrapper(makeAnnotation());
-    const deleteBtn = wrapper.find(".delete-btn");
-    expect(deleteBtn.exists()).toBe(true);
-    // Verified via CSS: .delete-btn { border-radius: 8px; }
   });
 });
 
@@ -619,7 +570,7 @@ describe("Note.vue — file owner delete on shared annotations (std-5mzi)", () =
     await resolveBtn.trigger("click");
     await nextTick();
 
-    expect(annotationActions.deleteAnnotation).toHaveBeenCalledWith(99);
+    expect(annotationActions.resolveAnnotation).toHaveBeenCalledWith(99);
   });
 });
 
@@ -728,9 +679,8 @@ describe("Note.vue — orphaned annotation indicator (std-2roe)", () => {
     expect(wrapper.find(".orphan-banner").exists()).toBe(false);
   });
 
-  it("delete button still works on orphaned annotations", async () => {
-    vi.useFakeTimers();
-    const deleteAnnotation = vi.fn().mockResolvedValue({});
+  it("resolve button still works on orphaned annotations", async () => {
+    const resolveAnnotation = vi.fn().mockResolvedValue({});
     const wrapper = mount(Note, {
       props: {
         annotation: makeAnnotation({ id: 42 }),
@@ -740,7 +690,8 @@ describe("Note.vue — orphaned annotation indicator (std-2roe)", () => {
         components: { Button },
         provide: {
           annotationActions: {
-            deleteAnnotation,
+            deleteAnnotation: vi.fn().mockResolvedValue({}),
+            resolveAnnotation,
             updateNote: vi.fn().mockResolvedValue({}),
             addNote: vi.fn().mockResolvedValue({}),
           },
@@ -750,14 +701,10 @@ describe("Note.vue — orphaned annotation indicator (std-2roe)", () => {
         },
       },
     });
-    const deleteBtn = wrapper.find(".delete-btn");
-    await deleteBtn.trigger("click");
+    const resolveBtn = wrapper.find(".resolve-btn");
+    await resolveBtn.trigger("click");
     await nextTick();
-    vi.advanceTimersByTime(500);
-    await deleteBtn.trigger("click");
-    await nextTick();
-    expect(deleteAnnotation).toHaveBeenCalledWith(42);
-    vi.useRealTimers();
+    expect(resolveAnnotation).toHaveBeenCalledWith(42);
   });
 });
 

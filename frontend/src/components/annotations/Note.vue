@@ -62,9 +62,7 @@
   const editText = ref("");
   const isSaving = ref(false);
   const editInput = ref(null);
-  const confirmingDelete = ref(false);
   const confirmingShare = ref(false);
-  let deleteTimeout = null;
   let shareTimeout = null;
   const annotationActions = inject("annotationActions", null);
   const activeAnnotationId = inject("activeAnnotationId", ref(null));
@@ -320,32 +318,15 @@
     if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  let deleteArmedAt = 0;
   const DEBOUNCE_MS = 400;
 
-  function onDeleteClick() {
-    if (confirmingDelete.value) {
-      if (Date.now() - deleteArmedAt < DEBOUNCE_MS) return;
-      onDelete();
-      confirmingDelete.value = false;
-      clearTimeout(deleteTimeout);
-    } else {
-      confirmingDelete.value = true;
-      deleteArmedAt = Date.now();
-      clearTimeout(deleteTimeout);
-      deleteTimeout = setTimeout(() => {
-        confirmingDelete.value = false;
-      }, 3000);
-    }
-  }
-
-  async function onDelete() {
+  async function onResolve() {
     if (!annotationActions) return;
     try {
-      await annotationActions.deleteAnnotation(props.annotation.id);
+      await annotationActions.resolveAnnotation(props.annotation.id);
     } catch (err) {
-      console.error("Failed to delete annotation:", err);
-      toast.error("Couldn't delete annotation");
+      console.error("Failed to resolve annotation:", err);
+      toast.error("Couldn't resolve annotation");
     }
   }
 
@@ -429,7 +410,6 @@
   }
 
   onUnmounted(() => {
-    clearTimeout(deleteTimeout);
     clearTimeout(shareTimeout);
     clearTimeout(deleteMessageTimeout);
   });
@@ -498,25 +478,14 @@
           @click.stop="onEdit"
         />
         <Button
-          v-if="canDelete && isShared"
+          v-if="canDelete"
           kind="tertiary"
           size="xs"
           icon="CircleCheck"
           class="resolve-btn"
           title="Resolve"
           aria-label="Resolve annotation"
-          @click.stop="onDelete"
-        />
-        <Button
-          v-if="canDelete && !isShared"
-          :kind="confirmingDelete ? 'danger' : 'danger-ghost'"
-          size="xs"
-          :icon="confirmingDelete ? '' : 'Trash'"
-          :text="confirmingDelete ? 'Delete' : ''"
-          :title="confirmingDelete ? 'Confirm delete' : 'Delete'"
-          class="delete-btn"
-          :aria-label="confirmingDelete ? 'Confirm delete' : 'Delete annotation'"
-          @click.stop="onDeleteClick"
+          @click.stop="onResolve"
         />
         <Button
           v-if="note"

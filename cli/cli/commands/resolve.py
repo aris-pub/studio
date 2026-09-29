@@ -1,4 +1,4 @@
-"""Resolve command: soft-delete an annotation."""
+"""Resolve command: mark an annotation resolved (distinct from delete)."""
 
 import json
 import sys
@@ -13,7 +13,7 @@ from cli.core import StudioAPI, console
 @click.argument("annotation_id", type=int)
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def resolve(annotation_id: int, as_json: bool) -> None:
-    """Mark an annotation as resolved (soft-delete)."""
+    """Mark an annotation as resolved: settled and hidden by default, but kept."""
     api = StudioAPI()
 
     if not api.session.is_valid():
@@ -21,7 +21,7 @@ def resolve(annotation_id: int, as_json: bool) -> None:
         sys.exit(1)
 
     try:
-        api.delete_annotation(annotation_id)
+        api.resolve_annotation(annotation_id)
 
         if as_json:
             click.echo(json.dumps({"annotation_id": annotation_id, "status": "resolved"}))

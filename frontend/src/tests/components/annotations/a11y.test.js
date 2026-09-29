@@ -52,8 +52,8 @@ describe("Note.vue — aria-labels on action buttons (std-01at)", () => {
     expect(noteTemplate).toMatch(/icon="Edit"[\s\S]*?aria-label/);
   });
 
-  it("delete button has aria-label", () => {
-    expect(noteTemplate).toMatch(/delete-btn[\s\S]*?aria-label/);
+  it("resolve button has aria-label", () => {
+    expect(noteTemplate).toMatch(/resolve-btn[\s\S]*?aria-label/);
   });
 
   it("collapse button has aria-label", () => {
