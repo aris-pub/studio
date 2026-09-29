@@ -908,6 +908,50 @@ async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authent
     assert "bad.svg" in caplog.text
 
 
+async def test_download_pdf_413_when_total_size_exceeds_cap(
+    client: AsyncClient, authenticated_user, monkeypatch
+):
+    """PDF export returns 413 and does not invoke typst when the total size of
+    the source plus assets exceeds PDF_EXPORT_MAX_TOTAL_BYTES (std-cxow1q)."""
+    from aris.config import settings as _settings
+
+    monkeypatch.setattr(_settings, "PDF_EXPORT_MAX_TOTAL_BYTES", 10)
+
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Too Big",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Test\n\nContent",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    typst_called = False
+    original_run = __import__("subprocess").run
+
+    def mock_subprocess_run(cmd, *args, **kwargs):
+        nonlocal typst_called
+        if isinstance(cmd, list) and cmd and cmd[0] == "typst":
+            typst_called = True
+        return original_run(cmd, *args, **kwargs)
+
+    with patch(
+        "rsm.app.pandoc_export",
+        return_value="#set text(size: 12pt)\ntypst source well over ten bytes",
+    ):
+        with patch("subprocess.run", side_effect=mock_subprocess_run):
+            response = await client.post(
+                f"/files/{file_id}/download/pdf", headers=headers
+            )
+
+    assert response.status_code == 413
+    assert not typst_called
+
+
 async def test_download_file_flushes_collab_client_and_reads_db(
     client: AsyncClient, authenticated_user
 ):
