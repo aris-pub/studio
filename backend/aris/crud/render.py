@@ -108,3 +108,39 @@ async def render_with_assets(src: str, file_id: int, db: AsyncSession, user_id: 
         logger.error(f"RSM render with assets failed after {render_time:.3f}s: {e}")
         result = ""
     return result
+
+
+async def render_structured(
+    src: str, file_id: Optional[int] = None, db: Optional[AsyncSession] = None
+) -> dict:
+    """Render RSM source to structured content: {head, body, init_script}.
+
+    With a db session and file_id it resolves the file's database assets,
+    otherwise it renders without them. Mirrors the structured render the
+    InMemoryFileService used to do (std-g6rtr0). Never raises: on failure it
+    returns a fallback body so callers always get a dict.
+    """
+    try:
+        if db is not None and file_id is not None:
+            asset_resolver = await FileAssetResolver.create_for_file(file_id, db)
+            rendered = await asyncio.to_thread(
+                rsm.build,
+                src,
+                handrails=True,
+                asset_resolver=asset_resolver,
+                structured=True,
+                theme_toggle=False,
+            )
+        else:
+            rendered = await asyncio.to_thread(
+                rsm.build, src, handrails=True, structured=True, theme_toggle=False
+            )
+        if not isinstance(rendered, dict):
+            logger.error(
+                "Expected dict from RSM structured render, got %s", type(rendered)
+            )
+            return {"head": "", "body": str(rendered), "init_script": ""}
+        return rendered
+    except Exception as e:
+        logger.error("Failed to render structured RSM content: %s", e)
+        return {"head": "", "body": f"<p>Rendered: {src}</p>", "init_script": ""}

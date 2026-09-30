@@ -64,6 +64,17 @@ async def get_file(file_id: int, db: AsyncSession):
     return file
 
 
+async def get_file_title(file_id: int, db: AsyncSession) -> Optional[str]:
+    """The file's title, manual if set otherwise extracted from the RSM source.
+
+    Returns None if the file does not exist or is deleted. get_file already
+    filters deleted files and sets the extracted title, so this reads it off
+    that. Replaces InMemoryFileService.get_file_title (std-g6rtr0).
+    """
+    file = await get_file(file_id, db)
+    return file.title if file else None
+
+
 async def get_file_html(file_id: int, db: AsyncSession):
     """Retrieve rendered HTML for a file's RSM content.
 

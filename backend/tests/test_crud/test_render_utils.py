@@ -66,3 +66,44 @@ def test_render_with_assets_runs_off_the_event_loop_thread(monkeypatch):
     assert seen.get("off_loop") is True, (
         "rsm.render (render_with_assets) ran on the event-loop thread; wrap it in asyncio.to_thread"
     )
+
+
+def test_render_structured_returns_dict(monkeypatch):
+    from aris.crud.render import render_structured
+
+    monkeypatch.setattr(
+        rsm,
+        "build",
+        lambda src, handrails=True, structured=True, theme_toggle=False: {
+            "head": "H",
+            "body": "B",
+            "init_script": "S",
+        },
+    )
+    result = asyncio.run(render_structured("src"))
+    assert result == {"head": "H", "body": "B", "init_script": "S"}
+
+
+def test_render_structured_wraps_non_dict(monkeypatch):
+    from aris.crud.render import render_structured
+
+    monkeypatch.setattr(
+        rsm,
+        "build",
+        lambda src, handrails=True, structured=True, theme_toggle=False: "<p>x</p>",
+    )
+    result = asyncio.run(render_structured("src"))
+    assert result == {"head": "", "body": "<p>x</p>", "init_script": ""}
+
+
+def test_render_structured_falls_back_on_error(monkeypatch, caplog):
+    from aris.crud.render import render_structured
+
+    def boom(src, handrails=True, structured=True, theme_toggle=False):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(rsm, "build", boom)
+    caplog.set_level(logging.ERROR)
+    result = asyncio.run(render_structured("mysrc"))
+    assert result == {"head": "", "body": "<p>Rendered: mysrc</p>", "init_script": ""}
+    assert "Failed to render structured RSM content" in caplog.text

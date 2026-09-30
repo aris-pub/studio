@@ -87,3 +87,18 @@ async def test_get_file_section(mock_extract_section, db_session, test_user):
     section = await get_file_section(file.id, "Intro", db_session)
     assert "<section>Intro</section>" in section
     mock_extract_section.assert_called_once()
+
+
+async def test_get_file_title_manual(db_session, test_user):
+    from aris.crud.file import get_file_title
+
+    file = await create_file(
+        "# irrelevant", owner_id=test_user.id, title="My Manual Title", db=db_session
+    )
+    assert await get_file_title(file.id, db_session) == "My Manual Title"
+
+
+async def test_get_file_title_none_for_missing(db_session):
+    from aris.crud.file import get_file_title
+
+    assert await get_file_title(999999, db_session) is None
