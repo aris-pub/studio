@@ -447,3 +447,31 @@ class TestSignupEndpointEmailIntegration:
         assert "<script>" not in data["improvements"]
         assert "&lt;script&gt;" in data["improvements"]
         assert "Dr. Jane" in data["improvements"]
+
+
+class TestDeployPreviewSignupBlock:
+    """Signup is disabled on Netlify deploy-preview origins (shared regex with auth)."""
+
+    DEPLOY_PREVIEW_ORIGIN = "https://deploy-preview-42--rsm-studio-site.netlify.app"
+    # Ends past the anchored pattern, so a naive substring check would pass it but
+    # the anchored regex must reject it.
+    LOOKALIKE_ORIGIN = (
+        "https://deploy-preview-42--rsm-studio-site.netlify.app.evil.com"
+    )
+
+    async def test_signup_blocked_on_deploy_preview(self, client: AsyncClient):
+        response = await client.post(
+            "/signup/",
+            json={"email": "preview@example.com"},
+            headers={"origin": self.DEPLOY_PREVIEW_ORIGIN},
+        )
+        assert response.status_code == 403
+        assert "deploy preview" in response.json()["detail"].lower()
+
+    async def test_signup_lookalike_origin_not_blocked(self, client: AsyncClient):
+        response = await client.post(
+            "/signup/",
+            json={"email": "lookalike@example.com"},
+            headers={"origin": self.LOOKALIKE_ORIGIN},
+        )
+        assert response.status_code == 200
