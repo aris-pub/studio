@@ -16,11 +16,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import get_db, get_file_service
+from .. import crud, get_db
 from ..collaboration import get_collaboration_manager
 from ..config import settings
 from ..logging_config import get_logger
-from ..services.file_service import InMemoryFileService
 
 
 logger = get_logger(__name__)
@@ -51,7 +50,6 @@ class CollabStartRequest(BaseModel):
 @router.post("/collab/start", dependencies=[Depends(verify_internal_secret)])
 async def internal_collab_start(
     body: CollabStartRequest,
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Ensure a backend YDocClient is running and in the room for ``file_id``.
@@ -64,8 +62,7 @@ async def internal_collab_start(
     Returns 503 if the YDocClient cannot be brought to readiness within the
     configured timeout (``YJS_READY_TIMEOUT_SECS``, default 10s).
     """
-    await file_service.sync_from_database(db)
-    doc = await file_service.get_file(body.file_id)
+    doc = await crud.get_file(body.file_id, db)
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 

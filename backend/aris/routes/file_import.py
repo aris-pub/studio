@@ -4,12 +4,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import current_user, get_db, get_file_service
-from ..crud.permissions import create_permission
+from .. import crud, current_user, get_db
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models import FileRole
-from ..services.file_service import FileCreateData, InMemoryFileService
 
 
 logger = get_logger(__name__)
@@ -33,7 +30,6 @@ async def import_file(
     file: UploadFile,
     format: str | None = None,
     user: UserRead = Depends(current_user),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     import asyncio
@@ -84,18 +80,12 @@ async def import_file(
     title_match = re.search(r"^#\s+(.+)$", rsm_source, re.MULTILINE)
     title = title_match.group(1).strip() if title_match else os.path.splitext(filename)[0]
 
-    create_data = FileCreateData(
-        title=title,
-        abstract="",
+    # crud.create_file also creates the OWNER permission for the creator.
+    result = await crud.create_file(
         source=rsm_source,
         owner_id=user.id,
-    )
-    result = await file_service.create_file(create_data, db=db)
-    await create_permission(
-        file_id=result.id,
-        user_id=user.id,
-        role=FileRole.OWNER,
-        granted_by=user.id,
+        title=title,
+        abstract="",
         db=db,
     )
 

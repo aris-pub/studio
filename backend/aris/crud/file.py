@@ -69,7 +69,7 @@ async def get_file_title(file_id: int, db: AsyncSession) -> Optional[str]:
 
     Returns None if the file does not exist or is deleted. get_file already
     filters deleted files and sets the extracted title, so this reads it off
-    that. Replaces InMemoryFileService.get_file_title (std-g6rtr0).
+    that. Added in std-g6rtr0 for direct crud reads.
     """
     file = await get_file(file_id, db)
     return file.title if file else None
@@ -173,8 +173,9 @@ async def update_file(
     title: str,
     source: str,
     db: AsyncSession,
+    abstract: Optional[str] = None,
 ):
-    """Update an existing file's title and source content.
+    """Update an existing file's title, source, and optionally abstract.
 
     Parameters
     ----------
@@ -186,6 +187,8 @@ async def update_file(
         New RSM source content for the file.
     db : AsyncSession
         SQLAlchemy async database session.
+    abstract : str, optional
+        New abstract. Left unchanged when None.
 
     Returns
     -------
@@ -203,6 +206,8 @@ async def update_file(
 
     file.title = title
     file.source = source
+    if abstract is not None:
+        file.abstract = abstract
     file.last_edited_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(file)
@@ -268,12 +273,19 @@ async def duplicate_file(file_id: int, owner_id: int, db: AsyncSession):
     Creates a copy with '(copy)' appended to the title and copies all
     associated tags. Sets last_edited_at to current time for the new file.
     """
-    original = await get_file(file_id, db)
-    if not original or original.deleted_at:
+    # Direct query for the raw stored title and abstract. get_file replaces the
+    # title with the RSM-extracted one, and the copy must preserve exactly what
+    # was stored, including the abstract.
+    result: Result[Any] = await db.execute(
+        select(File).where(File.id == file_id, File.deleted_at.is_(None))
+    )
+    original = result.scalars().first()
+    if not original:
         raise ValueError("File not found")
 
     new_file = File(
         title=f"{original.title} (copy)",
+        abstract=original.abstract,
         source=original.source,
         owner_id=owner_id,
         last_edited_at=datetime.now(UTC),

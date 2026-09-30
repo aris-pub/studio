@@ -428,11 +428,8 @@ async def get_user_files(
         result = await crud.get_user_files(user_id, with_tags, db)
 
         # Add rendered HTML for home page minimap
-        from ..deps import get_file_service
-        file_service = await get_file_service()
-        await file_service.sync_from_database(db)
         for f in result:
-            html = await file_service.get_file_html(f["id"], db=db)
+            html = await crud.get_file_html(f["id"], db)
             f["html"] = html or ""
 
         return result

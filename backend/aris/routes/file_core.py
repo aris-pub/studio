@@ -4,9 +4,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import current_user, get_db, get_file_service
+from .. import crud, current_user, get_db
 from ..authorization import (
     list_user_accessible_files,
     require_edit,
@@ -16,10 +17,9 @@ from ..authorization import (
 from ..crud.permissions import create_permission
 from ..deps import UserRead
 from ..logging_config import get_logger
-from ..models import FileRole
+from ..models import File, FileRole
 from ..rate_limiting import FILE_CREATE_RATE_LIMIT, limiter
 from ..services.file_events import FileEventBroker, get_event_broker, sse_event_stream
-from ..services.file_service import FileCreateData, FileUpdateData, InMemoryFileService
 
 
 logger = get_logger(__name__)
@@ -82,7 +82,6 @@ class FileUpdate(BaseModel):
 @router.get("")
 async def get_files(
     user: UserRead = Depends(current_user),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Retrieve files the current user can access (owned or shared).
@@ -95,8 +94,6 @@ async def get_files(
     ----------
     user : UserRead
         Current authenticated user.
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -105,13 +102,11 @@ async def get_files(
     list of dict
         Non-deleted files the user can access, ordered by last edited descending.
     """
-    await file_service.sync_from_database(db)
-
     files_with_roles = await list_user_accessible_files(user.id, db)
 
     result = []
     for f, role in files_with_roles:
-        title = await file_service.get_file_title(f.id)
+        title = await crud.get_file_title(f.id, db)
         # Do NOT compile html here. Rendering a large manuscript can take many
         # seconds, and the home page would block on every file's compile even
         # though it only displays metadata (title, role, last edited). The
@@ -138,7 +133,6 @@ async def create_file(
     request: Request,
     doc: FileCreate,
     user: UserRead = Depends(current_user),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new file with RSM source content.
@@ -149,8 +143,6 @@ async def create_file(
         File creation data including source, title, and abstract.
     user : UserRead
         Current authenticated user; owns the new file.
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -172,22 +164,12 @@ async def create_file(
     """
     # Validation happens automatically via Pydantic field_validator
 
-    # Create file data
-    create_data = FileCreateData(
-        title=doc.title,
-        abstract=doc.abstract,
+    # crud.create_file also creates the OWNER permission for the creator.
+    result = await crud.create_file(
         source=doc.source,
         owner_id=user.id,
-    )
-
-    result = await file_service.create_file(create_data, db=db)
-
-    # Create OWNER permission for the file creator
-    await create_permission(
-        file_id=result.id,
-        user_id=user.id,
-        role=FileRole.OWNER,
-        granted_by=user.id,
+        title=doc.title,
+        abstract=doc.abstract,
         db=db,
     )
 
@@ -198,7 +180,6 @@ async def create_file(
 async def get_file(
     file_id: int,
     user_role: FileRole = Depends(require_view),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve a specific file by ID.
@@ -209,8 +190,6 @@ async def get_file(
         The unique identifier of the file to retrieve.
     user_role : FileRole
         User's role for permission checking (injected by require_view).
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -227,18 +206,14 @@ async def get_file(
 
     Notes
     -----
-    Requires authentication and VIEW permission. Uses file service for in-memory access.
+    Requires authentication and VIEW permission.
     """
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-
-    # Get file from memory
-    doc = await file_service.get_file(file_id)
+    doc = await crud.get_file(file_id, db)
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
     # Get extracted title
-    title = await file_service.get_file_title(file_id)
+    title = await crud.get_file_title(file_id, db)
 
     return {
         "id": file_id,
@@ -258,7 +233,6 @@ async def update_file(
     file_id: int,
     file_data: FileUpdate,
     user_role: FileRole = Depends(require_edit),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Update an existing file's content and metadata.
@@ -271,14 +245,12 @@ async def update_file(
         Updated file data including title, abstract, and source.
     user_role : FileRole
         User's role for permission checking (injected by require_edit).
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
     Returns
     -------
-    FileData
+    dict
         The updated file object.
 
     Raises
@@ -289,34 +261,36 @@ async def update_file(
 
     Notes
     -----
-    Requires authentication and EDIT permission. Uses file service for in-memory updates.
+    Requires authentication and EDIT permission. Empty request fields leave the
+    stored value unchanged, so a direct read of the current row supplies the
+    defaults (get_file would substitute the RSM-extracted title).
     """
     # Validation happens automatically via Pydantic field_validator
 
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-    
-    # Create update data
-    update_data = FileUpdateData(
-        title=file_data.title if file_data.title else None,
-        abstract=file_data.abstract if file_data.abstract else None,
-        source=file_data.source if file_data.source else None
-    )
-    
-    # Update in memory
-    doc = await file_service.update_file(file_id, update_data)
+    current = (
+        await db.execute(
+            select(File).where(File.id == file_id, File.deleted_at.is_(None))
+        )
+    ).scalars().first()
+    if not current:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # An empty request field means "leave unchanged", preserving the previous
+    # partial-update semantics.
+    title = file_data.title if file_data.title else current.title
+    source = file_data.source if file_data.source else current.source
+    abstract = file_data.abstract if file_data.abstract else current.abstract
+
+    doc = await crud.update_file(file_id, title, source, db, abstract=abstract)
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
-    
-    # Save to database
-    await file_service.update_file_in_database(file_id, db)
-    
+
     # Get extracted title
-    title = await file_service.get_file_title(file_id)
-    
+    extracted = await crud.get_file_title(file_id, db)
+
     return {
         "id": doc.id,
-        "title": title or doc.title,  # Use extracted title or fallback to original
+        "title": extracted or doc.title,  # Use extracted title or fallback to original
         "abstract": doc.abstract,
         "last_edited_at": doc.last_edited_at,
         "source": doc.source,
@@ -330,7 +304,6 @@ async def update_file(
 async def soft_delete_file(
     file_id: int,
     user_role: FileRole = Depends(require_manage),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
     user: UserRead = Depends(current_user),
 ):
@@ -342,10 +315,10 @@ async def soft_delete_file(
         The unique identifier of the file to delete.
     user_role : FileRole
         User's role for permission checking (injected by require_manage).
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
+    user : UserRead
+        Current authenticated user; recorded as the actor.
 
     Returns
     -------
@@ -360,19 +333,12 @@ async def soft_delete_file(
 
     Notes
     -----
-    Requires authentication and OWNER permission. Uses file service for in-memory soft delete.
+    Requires authentication and OWNER permission.
     """
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-    
-    # Delete in memory
-    deleted = await file_service.delete_file(file_id)
-    if not deleted:
+    result = await crud.soft_delete_file(file_id, db, deleted_by=user.id)
+    if not result:
         raise HTTPException(status_code=404, detail="File not found")
-    
-    # Save to database
-    await file_service.delete_file_in_database(file_id, db, deleted_by=user.id)
-    
+
     return {"message": f"File {file_id} soft deleted"}
 
 
@@ -381,7 +347,6 @@ async def duplicate_file(
     file_id: int,
     user_role: FileRole = Depends(require_view),
     user: UserRead = Depends(current_user),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a duplicate copy of an existing file.
@@ -394,8 +359,6 @@ async def duplicate_file(
         User's role for permission checking (injected by require_view).
     user : UserRead
         Current authenticated user.
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -412,14 +375,13 @@ async def duplicate_file(
 
     Notes
     -----
-    Requires authentication and VIEW permission. Uses file service for in-memory duplication
-    and copies tags from the original file. User becomes OWNER of the duplicated file.
+    Requires authentication and VIEW permission. crud.duplicate_file copies the
+    original's tags; the OWNER permission for the duplicating user is created
+    here. User becomes OWNER of the duplicated file.
     """
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-    
-    new_doc = await file_service.duplicate_file(file_id, owner_id=user.id, db=db)
-    if not new_doc:
+    try:
+        new_doc = await crud.duplicate_file(file_id, user.id, db)
+    except ValueError:
         raise HTTPException(status_code=404, detail="File not found")
 
     # Create OWNER permission for the duplicating user
@@ -431,18 +393,6 @@ async def duplicate_file(
         db=db,
     )
 
-    # Copy tags from original file (using original logic)
-    from ..models import file_tags
-    tag_ids = (
-        await db.execute(file_tags.select().where(file_tags.c.file_id == file_id))
-    ).fetchall()
-    if tag_ids:
-        await db.execute(
-            file_tags.insert(),
-            [{"file_id": new_doc.id, "tag_id": tag.tag_id} for tag in tag_ids],
-        )
-        await db.commit()
-
     return {"id": new_doc.id, "message": "File duplicated successfully"}
 
 
@@ -451,7 +401,6 @@ async def get_file_content(
     file_id: int,
     format: str = "html",
     user_role: FileRole = Depends(require_view),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Retrieve rendered content for a file in specified format.
@@ -464,8 +413,6 @@ async def get_file_content(
         Response format: "html" for HTML response or "structured" for JSON with head/body/init_script (default: "html").
     user_role : FileRole
         User's role for permission checking (injected by require_view).
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -484,25 +431,22 @@ async def get_file_content(
 
     Notes
     -----
-    Requires authentication and VIEW permission. Uses file service for cached rendering.
+    Requires authentication and VIEW permission.
     Structured format enables tooltip support by providing head dependencies and init scripts.
     """
     # Validate format parameter
     if format not in ["html", "structured"]:
         raise HTTPException(status_code=400, detail="Format must be 'html' or 'structured'")
-    
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-    
+
     if format == "structured":
         # Get structured content with head, body, and init_script
-        content = await file_service.get_file_content_structured(file_id, db=db)
-        if not content:
+        doc = await crud.get_file(file_id, db)
+        if not doc:
             raise HTTPException(status_code=404, detail="File not found")
-        return content
+        return await crud.render_structured(doc.source, file_id, db)
     else:
         # Get HTML content (backward compatibility)
-        html = await file_service.get_file_html(file_id, db=db)
+        html = await crud.get_file_html(file_id, db)
         if not html:
             raise HTTPException(status_code=404, detail="File not found")
         return HTMLResponse(content=html)
@@ -514,7 +458,6 @@ async def get_file_section(
     section_name: str,
     handrails: bool = True,
     user_role: FileRole = Depends(require_view),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve rendered HTML for a specific section of a file.
@@ -529,8 +472,6 @@ async def get_file_section(
         Whether to enable handrails in the rendered output (default: True).
     user_role : FileRole
         User's role for permission checking (injected by require_view).
-    file_service : InMemoryFileService
-        File service dependency.
     db : AsyncSession
         SQLAlchemy async database session dependency.
 
@@ -547,16 +488,12 @@ async def get_file_section(
 
     Notes
     -----
-    Requires authentication and VIEW permission. Uses file service for cached section rendering.
+    Requires authentication and VIEW permission.
     """
-    # Sync from database to ensure we have latest data
-    await file_service.sync_from_database(db)
-    
-    # Get section HTML from file service (with caching)
-    html = await file_service.get_file_section(file_id, section_name, handrails)
+    html = await crud.get_file_section(file_id, section_name, db, handrails)
     if not html:
         raise HTTPException(status_code=404, detail=f"Section {section_name} not found")
-    
+
     return HTMLResponse(content=html)
 
 
@@ -590,5 +527,3 @@ async def file_events(
             "X-Accel-Buffering": "no",
         },
     )
-
-

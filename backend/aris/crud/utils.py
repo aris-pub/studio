@@ -33,6 +33,14 @@ async def extract_section(file: File, section_name: str, handrails: bool = True)
     html = app.translator.body
 
     soup = BeautifulSoup(html, "lxml")
-    element = soup.find("div", class_=section_name)
-    # Return the string content of the element, or empty string if not found
+    # Match the section class on any tag, not just <div>. RSM renders sections as
+    # <section class="... level-2">, so a div-only query would miss them. The
+    # fallback scan matches when section_name is one class among several.
+    element = soup.find(attrs={"class": section_name})
+    if not element:
+        for elem in soup.find_all():
+            classes = elem.get("class")
+            if classes and section_name in classes:
+                element = elem
+                break
     return str(element) if element else ""
