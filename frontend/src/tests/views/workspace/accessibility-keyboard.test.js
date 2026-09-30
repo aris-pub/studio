@@ -1,4 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+// Stub the collaboration session so mounting View does not open a real Y.js
+// WebSocket in these non-collab tests (session moved to useCollabSession, std-hvgpnr).
+vi.mock("@/composables/useCollabSession", async () => {
+  const { ref, shallowRef } = await import("vue");
+  return {
+    useCollabSession: () => ({
+      ydoc: shallowRef(null),
+      ytext: shallowRef(null),
+      awareness: shallowRef(null),
+      provider: shallowRef(null),
+      isConnected: ref(false),
+      isSynced: ref(false),
+      collabStartFailed: ref(false),
+      retry: () => {},
+      roomName: ref(""),
+    }),
+  };
+});
 import { nextTick, ref, reactive } from "vue";
 import { mount } from "@vue/test-utils";
 import WorkspaceView from "@/views/workspace/View.vue";

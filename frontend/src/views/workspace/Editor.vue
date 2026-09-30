@@ -65,23 +65,14 @@
   provide("cmView", cmView);
   provide("cursorPos", cursorPos);
 
-  // Collab/LSP state from EditorCodeMirror (shared with status bar)
-  const collabIsConnected = ref(false);
-  const collabIsSynced = ref(false);
   // True persistence state (std-wmjv): "saved" | "saving" | "not-saving".
   // Reflects whether the backend actually committed to the DB, not just the relay.
+  // The editor writes it; collab connection/sync/retry state is owned by the view
+  // (useCollabSession) and injected by the status bar directly (std-hvgpnr).
   const saveState = ref("saved");
-  // collabConnectError: session could not be started (needs an explicit retry).
-  // collabRetry: EditorCodeMirror publishes its retry handler here for the bar.
-  const collabConnectError = ref(false);
-  const collabRetry = shallowRef(null);
   const lspClient = inject("lspClient", shallowRef(null));
   const documentUri = inject("documentUri", ref(""));
-  provide("collabIsConnected", collabIsConnected);
-  provide("collabIsSynced", collabIsSynced);
   provide("saveState", saveState);
-  provide("collabConnectError", collabConnectError);
-  provide("collabRetry", collabRetry);
   provide("lspClient", lspClient);
   provide("documentUri", documentUri);
 

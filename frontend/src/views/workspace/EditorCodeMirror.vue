@@ -32,10 +32,6 @@
   import { lintKeymap, lintGutter } from "@codemirror/lint";
   import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
   import * as Y from "yjs";
-  import { WebsocketProvider } from "y-websocket";
-  import { captureException } from "@sentry/vue";
-  import { AuthedWebSocket } from "@/composables/authedWebSocket";
-  import { toast } from "@/utils/toast.js";
   import { useLSPClient } from "@/composables/useLSPClient";
   import { semanticTokensExtension, requestSemanticTokens } from "@/composables/useSemanticTokens";
   import { rsmKeymap } from "@/composables/useRSMCommands";
@@ -44,7 +40,6 @@
 
   const file = defineModel({ type: Object, required: true });
   const api = inject("api");
-  const user = inject("user");
   const compile = inject("compile", null);
   const mobileMode = inject("mobileMode");
 
@@ -54,34 +49,28 @@
 
   // DOM ref for CodeMirror container
   const editorContainer = ref(null);
-  const activeCollabFileId = ref(null);
   // Subscription to this file's server-sent event stream (asset changes, etc.).
   let fileEvents = null;
-  // Y.js objects must use shallowRef — Vue's reactive Proxy breaks Y.js
-  // internal identity checks (UndoManager scope, findRootTypeKey, etc.)
+  // Y.js objects must use shallowRef — Vue's reactive Proxy breaks Y.js internal
+  // identity checks (UndoManager scope, findRootTypeKey, etc.)
   const view = shallowRef(null);
+
+  // The collaboration session is owned by the view (useCollabSession) and shared
+  // through these injected refs. This component is a pure consumer (std-hvgpnr): it
+  // binds the CodeMirror editor to the shared ytext/awareness when its panel
+  // mounts, and reads connection/sync state. It never creates the provider or
+  // calls /collab/start.
   const ydoc = inject("ydoc", shallowRef(null));
-  const parentYtext = inject("ytext", null);
-  const ytext = shallowRef(null);
-  const provider = shallowRef(null);
+  const ytext = inject("ytext", shallowRef(null));
   const awareness = inject("awareness", shallowRef(null));
-  const isConnected = ref(false);
-  const isSynced = ref(false);
-  const isInitialized = ref(false);
-  // True when the collaborative session could not be started (/collab/start
-  // failed or returned no token). Distinct from a transient !isConnected drop:
-  // it means no session was ever established, so an explicit retry is offered.
-  const collabStartFailed = ref(false);
-  const roomName = ref("");
+  const isConnected = inject("collabIsConnected", ref(false));
+  const isSynced = inject("collabIsSynced", ref(false));
   const readOnlyCompartment = new Compartment();
 
-  // True save state (std-wmjv): tracks whether the user's edits have actually
-  // been persisted to the DB, from local edits + backend "persisted" acks + the
-  // relay link, not just whether the relay is connected.
+  // True save state (std-wmjv): tracks whether the user's edits have actually been
+  // persisted to the DB, from local edits + backend "persisted" acks + the relay
+  // link, not just whether the relay is connected.
   const saveStatus = useSaveStatus({ isConnected });
-
-  // WebSocket server URL
-  const serverUrl = ref(import.meta.env.VITE_MULTIPLAYER_URL || "ws://localhost:1234");
 
   // LSP client setup
   const backendUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -89,29 +78,11 @@
   const lsp = useLSPClient({
     serverUrl: lspServerUrl,
     documentUri: computed(() => `file:///${file.value?.id || "untitled"}.rsm`),
-    // Mint a short-lived scope=lsp token at connect time (fresh on each
-    // reconnect). The backend authenticates the LSP socket via the
-    // ["lsp", token] subprotocol, and this scoped token, unlike the full access
-    // token, only opens the LSP socket for ~2 minutes if it leaks.
+    // Mint a short-lived scope=lsp token at connect time (fresh on each reconnect).
     token: async () => {
       const resp = await api.post("/lsp/start");
       return resp.data?.token || null;
     },
-  });
-
-  // User info for awareness
-  const userInfo = computed(() => {
-    if (!user?.value?.name && !user?.value?.email) {
-      throw new Error("User information is required for collaboration");
-    }
-    const color = user.value.avatar_color || "#0E9AE9";
-    return {
-      name: user.value.name || user.value.email,
-      color,
-      colorLight: color + "33",
-      id: user.value.id,
-      avatar_color: user.value.avatar_color,
-    };
   });
 
   // Cursor position listener for status bar breadcrumbs
@@ -134,312 +105,198 @@
   // Lint extensions (added separately to ensure they come after LSP plugin)
   const lintExtensions = [lintGutter(), keymap.of(lintKeymap)];
 
-  // Auto-compilation on Y.Doc changes
+  // Y.Text observer cleanup (auto-compile + save indicator)
   let ytextObserverCleanup = null;
+  // Guards the once-per-session LSP/semantic-tokens wiring so a reconnect that
+  // re-fires isSynced does not re-run it.
+  let syncedHandledFor = null;
 
-  // Cleanup function
-  const cleanup = () => {
-    // Remove Y.Doc observer
+  function teardownView() {
     if (ytextObserverCleanup) {
       ytextObserverCleanup();
       ytextObserverCleanup = null;
     }
-
-    // Disconnect LSP client
     if (lsp.isConnected.value) {
       lsp.disconnect();
     }
-
-    if (parentCmView) parentCmView.value = null;
-
     if (view.value) {
       view.value.destroy();
       view.value = null;
     }
-
-    if (provider.value) {
-      try {
-        AuthedWebSocket.clearToken(`${serverUrl.value}/${provider.value.roomname}`);
-      } catch (_e) {
-        /* ignore */
-      }
-      provider.value.destroy();
-      provider.value = null;
-    }
-
-    if (ydoc.value) {
-      ydoc.value.destroy();
-      ydoc.value = null;
-    }
-
-    if (activeCollabFileId.value) {
-      // Best-effort: cleanup must not block on the network, but a failed stop
-      // leaves a backend Y.js client lingering, so report it (std-eisqeg)
-      // instead of swallowing. The notice stays non-blocking since the user has
-      // already navigated away from this file.
-      const stoppingFileId = activeCollabFileId.value;
-      api.post(`/files/${stoppingFileId}/collab/stop`).catch((err) => {
-        captureException(err);
-        toast.warning("Couldn't cleanly close the previous collaboration session.");
-      });
-      activeCollabFileId.value = null;
-    }
-
-    if (fileEvents) {
-      fileEvents.close();
-      fileEvents = null;
-    }
-
-    ytext.value = null;
-    if (parentYtext) parentYtext.value = null;
-    awareness.value = null;
-    isConnected.value = false;
-    isSynced.value = false;
-    isInitialized.value = false;
-    // Don't carry a stale save indicator into the next file.
-    saveStatus.reset();
-    collabStartFailed.value = false;
-
-    // Clean up window globals for testing
-    if (import.meta.env.DEV) {
+    if (parentCmView) parentCmView.value = null;
+    if (!import.meta.env.PROD) {
       delete window.__cmView;
-      delete window.__ydoc;
-      delete window.__ytext;
-      delete window.__provider;
-      delete window.__awareness;
+      delete window.EditorView;
       delete window.__lspClient;
     }
-  };
+    saveStatus.reset();
+    syncedHandledFor = null;
+  }
 
-  // Setup Y.js and WebSocket when file changes
+  function buildView(yt, aw, container) {
+    const MAX_UNDO_STACK = 200;
+    const undoManager = new Y.UndoManager(yt, { captureTimeout: 500 });
+    undoManager.on("stack-item-added", () => {
+      if (undoManager.undoStack.length > MAX_UNDO_STACK) {
+        undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK);
+      }
+    });
+    const docContent = yt.toString();
+
+    const yCollabExtension = yCollab(yt, aw, { undoManager });
+
+    const isReadOnly = file.value?.role === "COMMENTER" || mobileMode.value;
+    const roExts = isReadOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+    const readOnlyExtension = readOnlyCompartment.of(roExts);
+
+    // Semantic tokens extension (works without LSP — falls back gracefully)
+    const semanticTokens = semanticTokensExtension(
+      lsp.client,
+      computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
+    );
+
+    const state = EditorState.create({
+      doc: docContent,
+      extensions: [
+        customSetup,
+        cmSearchExtension(),
+        yCollabExtension,
+        keymap.of(yUndoManagerKeymap),
+        readOnlyExtension,
+        semanticTokens,
+        lintExtensions,
+        EditorView.lineWrapping,
+        EditorView.theme({
+          "&": {
+            height: "100%",
+            fontSize: "14px",
+          },
+          ".cm-scroller": {
+            fontFamily: '"Source Code Pro", monospace',
+            overflow: "auto",
+          },
+          ".cm-content": {
+            padding: "16px",
+            minHeight: "100%",
+          },
+        }),
+      ],
+    });
+
+    view.value = new EditorView({ state, parent: container });
+    if (parentCmView) parentCmView.value = view.value;
+
+    // Observe Y.Text for the save indicator and auto-compile. Only the user's OWN
+    // edits (transaction.local) move the indicator to "saving"; remote edits arrive
+    // already persisted by whoever made them, so they must not.
+    const handleYtextChange = (_event, transaction) => {
+      if (transaction?.local) saveStatus.noteLocalEdit();
+      if (compile) compile();
+    };
+    yt.observe(handleYtextChange);
+    ytextObserverCleanup = () => yt.unobserve(handleYtextChange);
+
+    // Expose for testing
+    if (!import.meta.env.PROD) {
+      window.__cmView = view.value;
+      window.EditorView = EditorView;
+    }
+
+    // If the session already synced before the view existed, wire LSP now.
+    if (isSynced.value) wireLspAfterSync();
+  }
+
+  // LSP and semantic tokens connect asynchronously after sync, and need the view.
+  async function wireLspAfterSync() {
+    if (!view.value) return;
+    const fileId = file.value?.id;
+    if (syncedHandledFor === fileId) return;
+    syncedHandledFor = fileId;
+
+    let lspPlugin = null;
+    try {
+      lspPlugin = await lsp.connect();
+      if (lspPlugin && view.value) {
+        view.value.dispatch({
+          effects: StateEffect.appendConfig.of(lspPlugin),
+        });
+      }
+    } catch {
+      // LSP is optional
+    }
+
+    if (!import.meta.env.PROD) {
+      window.__lspClient = toRaw(lsp.client.value);
+    }
+
+    if (lsp.client.value && view.value) {
+      const uri = `file:///${file.value?.id || "untitled"}.rsm`;
+      // Wait for the LSP's index before requesting semantic tokens (same cold-index
+      // race that affected source/preview navigation; resolves on rsm/indexReady).
+      await lsp.awaitIndexReady(uri);
+      if (lsp.client.value && view.value) {
+        await requestSemanticTokens(lsp.client, uri, view.value);
+      }
+    }
+  }
+
+  // Tear the view down synchronously the moment the shared ytext changes or goes
+  // away, so the yCollab binding releases the old Y.Text before useCollabSession
+  // destroys the doc. flush:"sync" is required for that ordering: the composable
+  // nulls ytext then destroys the doc within the same tick.
   watch(
-    [() => file.value?.id, editorContainer],
-    async ([fileId, container]) => {
-      if (!fileId || !container) return;
+    ytext,
+    (yt, prev) => {
+      if (prev && view.value) teardownView();
+    },
+    { flush: "sync" }
+  );
 
-      // Cleanup previous instance
-      cleanup();
+  // Build the editor once the session's text, awareness, and the container are all
+  // present. A panel-closed session never mounts a container, so no view is built,
+  // but the session still runs at the view level.
+  watch(
+    [ytext, awareness, editorContainer],
+    ([yt, aw, container]) => {
+      if (yt && aw && container && !view.value) buildView(yt, aw, container);
+    },
+    { immediate: true }
+  );
 
-      // Use environment namespace to prevent conflicts between dev/test
-      const env = (import.meta.env.VITE_ENV || "local").toLowerCase();
-      roomName.value = `file-${fileId}-${env}`;
-      // Create Y.Doc and Y.Text
-      ydoc.value = new Y.Doc();
-      ytext.value = ydoc.value.getText("text");
-      if (parentYtext) parentYtext.value = ytext.value;
-
-      // Recompile when an asset for this file changes out of band (an agent,
-      // another tab, or another user), so the rendered image refreshes without a
-      // manual save. Reuses the general per-file event channel (std-iu0n).
+  // Per-file server-sent events: recompile when an asset changes out of band (an
+  // agent, another tab, another user) so the rendered image refreshes without a
+  // manual save (std-iu0n), and settle the save indicator on a real backend
+  // persistence ack (std-wmjv).
+  watch(
+    () => file.value?.id,
+    (fileId) => {
+      if (fileEvents) {
+        fileEvents.close();
+        fileEvents = null;
+      }
+      if (!fileId) return;
       fileEvents = useFileEvents(fileId, {
         "asset-changed": () => compile && compile(true),
-        // The backend published this only after a committed DB write, so it is a
-        // true persistence ack: settle the save indicator to "saved" (std-wmjv).
         persisted: () => saveStatus.notePersisted(),
-      });
-
-      // Tell the backend to start its Y.js client and get a short-lived WS auth
-      // token. The multi-player server requires the token as the first frame on
-      // the WebSocket — without one we'd be rejected with code 4401.
-      activeCollabFileId.value = fileId;
-      let token = null;
-      try {
-        const startResp = await api.post(`/files/${fileId}/collab/start`);
-        token = startResp?.data?.token ?? null;
-        if (!token) {
-          collabStartFailed.value = true;
-          console.error(`[Collab] /collab/start for file ${fileId} returned no token`);
-        }
-      } catch (err) {
-        collabStartFailed.value = true;
-        console.error(
-          `[Collab] Failed to start backend client for file ${fileId}:`,
-          err?.response?.status,
-          err?.response?.data || err.message
-        );
-      }
-
-      // Bail if the file or watcher changed while we awaited the token.
-      if (file.value?.id !== fileId) return;
-
-      const wsUrl = `${serverUrl.value}/${roomName.value}`;
-      if (token) AuthedWebSocket.registerToken(wsUrl, token);
-
-      // Create WebSocket provider with our authed wrapper as the polyfill so
-      // y-websocket sees a normal socket while we handle the auth handshake.
-      provider.value = new WebsocketProvider(serverUrl.value, roomName.value, ydoc.value, {
-        WebSocketPolyfill: AuthedWebSocket,
-      });
-      awareness.value = provider.value.awareness;
-      awareness.value.setLocalStateField("user", userInfo.value);
-
-      // Log WebSocket errors only
-      provider.value.ws?.addEventListener("error", (error) => {
-        console.error("[Y.js WS] WebSocket ERROR:", error);
-      });
-
-      // Monitor connection
-      provider.value.on("status", (event) => {
-        isConnected.value = event.status === "connected";
-      });
-
-      // Log connection errors
-      provider.value.on("connection-error", (event) => {
-        console.error("[Y.js] Connection error:", event);
-      });
-
-      // Refresh the WS auth token before each reconnect; the token is short-lived
-      // (5 min) and y-websocket would otherwise reconnect with a stale one and
-      // be rejected with code 4401.
-      provider.value.on("connection-close", async (closeEvent) => {
-        if (file.value?.id !== fileId) return;
-        try {
-          const refresh = await api.post(`/files/${fileId}/collab/start`);
-          const fresh = refresh?.data?.token;
-          if (fresh) AuthedWebSocket.registerToken(wsUrl, fresh);
-        } catch (err) {
-          console.error(
-            `[Collab] Failed to refresh token for file ${fileId}:`,
-            err?.response?.status,
-            err?.response?.data || err.message
-          );
-        }
-      });
-
-      // NB: the frontend must NEVER seed file.source into the shared Y.Text.
-      // The backend is the single authoritative seeder: /collab/start awaits the
-      // backend YDocClient's readiness (DB restore + broadcast) before this
-      // provider is created, and its content arrives via normal sync — even if we
-      // connect first, the backend's broadcast reaches us through the relay.
-      // Typing plaintext in here mints fresh CRDT items that merge into duplicate
-      // copies (the historical 1x->2x->4x content-duplication bug). Restores are
-      // idempotent only because they go through the backend's encoded ydoc_state.
-
-      // Observe Y.Text changes for two things: auto-compilation (local + remote
-      // agent edits) and the save indicator. Only the user's OWN edits move the
-      // indicator to "saving"; remote edits (transaction.local === false) arrive
-      // already persisted by whoever made them, so they must not.
-      const handleYtextChange = (_event, transaction) => {
-        if (transaction?.local) saveStatus.noteLocalEdit();
-        if (compile) compile();
-      };
-
-      ytext.value.observe(handleYtextChange);
-
-      ytextObserverCleanup = () => {
-        ytext.value.unobserve(handleYtextChange);
-      };
-
-      // Create editor immediately — don't wait for WebSocket sync
-      const MAX_UNDO_STACK = 200;
-      const undoManager = new Y.UndoManager(ytext.value, { captureTimeout: 500 });
-      undoManager.on("stack-item-added", () => {
-        if (undoManager.undoStack.length > MAX_UNDO_STACK) {
-          undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK);
-        }
-      });
-      const docContent = ytext.value.toString();
-
-      const yCollabExtension = yCollab(ytext.value, awareness.value, { undoManager });
-
-      const isReadOnly = file.value?.role === "COMMENTER" || mobileMode.value;
-      const roExts = isReadOnly
-        ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
-        : [];
-      const readOnlyExtension = readOnlyCompartment.of(roExts);
-
-      // Semantic tokens extension (works without LSP — falls back gracefully)
-      const semanticTokens = semanticTokensExtension(
-        lsp.client,
-        computed(() => `file:///${file.value?.id || "untitled"}.rsm`)
-      );
-
-      const state = EditorState.create({
-        doc: docContent,
-        extensions: [
-          customSetup,
-          cmSearchExtension(),
-          yCollabExtension,
-          keymap.of(yUndoManagerKeymap),
-          readOnlyExtension,
-          semanticTokens,
-          lintExtensions,
-          EditorView.lineWrapping,
-          EditorView.theme({
-            "&": {
-              height: "100%",
-              fontSize: "14px",
-            },
-            ".cm-scroller": {
-              fontFamily: '"Source Code Pro", monospace',
-              overflow: "auto",
-            },
-            ".cm-content": {
-              padding: "16px",
-              minHeight: "100%",
-            },
-          }),
-        ],
-      });
-
-      view.value = new EditorView({
-        state,
-        parent: container,
-      });
-
-      if (parentCmView) parentCmView.value = view.value;
-
-      // Expose for testing
-      if (!import.meta.env.PROD) {
-        window.__cmView = view.value;
-        window.__ydoc = ydoc.value;
-        window.__ytext = ytext.value;
-        window.__provider = provider.value;
-        window.EditorView = EditorView;
-        window.__awareness = awareness.value;
-      }
-
-      // LSP and semantic tokens connect asynchronously after sync
-      provider.value.once("synced", async () => {
-        let lspPlugin = null;
-        try {
-          lspPlugin = await lsp.connect();
-          if (lspPlugin && view.value) {
-            view.value.dispatch({
-              effects: StateEffect.appendConfig.of(lspPlugin),
-            });
-          }
-        } catch {
-          // LSP is optional
-        }
-
-        if (!import.meta.env.PROD) {
-          window.__lspClient = toRaw(lsp.client.value);
-        }
-
-        if (lsp.client.value && view.value) {
-          const uri = `file:///${file.value?.id || "untitled"}.rsm`;
-          // Wait for the LSP's index to be ready before requesting semantic tokens,
-          // instead of a fixed 2s retry guess. This is the same cold-index race
-          // that affected source/preview navigation; awaitIndexReady resolves as
-          // soon as the server emits rsm/indexReady (and falls through on timeout).
-          await lsp.awaitIndexReady(uri);
-          if (lsp.client.value && view.value) {
-            await requestSemanticTokens(lsp.client, uri, view.value);
-          }
-        }
-
-        isSynced.value = true;
       });
     },
     { immediate: true }
   );
 
-  onBeforeUnmount(() => {
-    cleanup();
+  // Wire LSP + semantic tokens once the session reports synced.
+  watch(isSynced, (synced) => {
+    if (synced) wireLspAfterSync();
   });
 
-  // Toggle read-only state when viewport crosses the mobile breakpoint
+  onBeforeUnmount(() => {
+    teardownView();
+    if (fileEvents) {
+      fileEvents.close();
+      fileEvents = null;
+    }
+  });
+
+  // Toggle read-only state when the viewport crosses the mobile breakpoint
   watch(mobileMode, (mobile) => {
     if (!view.value) return;
     const ro = file.value?.role === "COMMENTER" || mobile;
@@ -447,75 +304,19 @@
     view.value.dispatch({ effects: readOnlyCompartment.reconfigure(exts) });
   });
 
-  // Shared refs from parent Editor.vue (for status bar sibling)
-  const parentCollabConnected = inject("collabIsConnected", null);
-  const parentCollabSynced = inject("collabIsSynced", null);
+  // Write-backs to the shared refs the status bar and Canvas read. Collab
+  // connection/sync/retry state is owned by the view (useCollabSession) and read
+  // by the status bar directly, so it is not re-published here.
   const parentSaveState = inject("saveState", null);
-  const parentCollabConnectError = inject("collabConnectError", null);
-  const parentCollabRetry = inject("collabRetry", null);
   const parentLspClient = inject("lspClient", null);
   const parentDocumentUri = inject("documentUri", null);
-
-  // Re-attempt a failed collaborative session without a full page reload:
-  // fetch a fresh token and force the existing provider to reconnect now
-  // instead of waiting for y-websocket's backoff. Wired to the status bar's
-  // Retry affordance via the injected collabRetry ref.
-  async function retryCollabConnection() {
-    const fileId = file.value?.id;
-    if (!fileId) return;
-    try {
-      const startResp = await api.post(`/files/${fileId}/collab/start`);
-      const token = startResp?.data?.token ?? null;
-      if (!token) throw new Error("/collab/start returned no token");
-      AuthedWebSocket.registerToken(`${serverUrl.value}/${roomName.value}`, token);
-      collabStartFailed.value = false;
-      if (provider.value) {
-        provider.value.disconnect();
-        provider.value.connect();
-      }
-    } catch (err) {
-      collabStartFailed.value = true;
-      console.error(
-        `[Collab] Retry to start backend client for file ${fileId} failed:`,
-        err?.response?.status,
-        err?.response?.data || err.message
-      );
-    }
-  }
-  if (parentCollabRetry) parentCollabRetry.value = retryCollabConnection;
-  // awaitIndexReady is a stable function from useLSPClient; publish it once for
-  // Canvas's source<->preview navigation.
   const parentAwaitIndexReady = inject("awaitIndexReady", null);
   if (parentAwaitIndexReady) parentAwaitIndexReady.value = lsp.awaitIndexReady;
 
   watch(
-    isConnected,
-    (v) => {
-      if (parentCollabConnected) parentCollabConnected.value = v;
-      // A successful (re)connect clears any prior start failure, covering both
-      // manual retry and y-websocket's own eventual reconnect.
-      if (v) collabStartFailed.value = false;
-    },
-    { immediate: true }
-  );
-  watch(
-    collabStartFailed,
-    (v) => {
-      if (parentCollabConnectError) parentCollabConnectError.value = v;
-    },
-    { immediate: true }
-  );
-  watch(
     saveStatus.saveState,
     (v) => {
       if (parentSaveState) parentSaveState.value = v;
-    },
-    { immediate: true }
-  );
-  watch(
-    isSynced,
-    (v) => {
-      if (parentCollabSynced) parentCollabSynced.value = v;
     },
     { immediate: true }
   );
@@ -581,8 +382,6 @@
     border-left-color: var(--extra-dark);
   }
 </style>
-
-<!-- Semantic token highlighting from tree-sitter-rsm (unscoped so tok-* classes reach CodeMirror DOM) -->
 <style>
   @import "@/assets/css/syntax-highlights.css";
 </style>
