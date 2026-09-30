@@ -9,7 +9,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import current_user, get_db, get_file_service
+from .. import current_user, get_db
 from ..asset_filenames import validate_asset_filename
 from ..authorization import (
     require_edit,
@@ -22,7 +22,6 @@ from ..logging_config import get_logger
 from ..models import FileAsset, FileRole
 from ..rate_limiting import ASSET_UPLOAD_RATE_LIMIT, limiter
 from ..services.file_events import get_event_broker
-from ..services.file_service import InMemoryFileService
 
 
 logger = get_logger(__name__)
@@ -131,7 +130,6 @@ async def create_asset_for_file(
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
     user: UserRead = Depends(current_user),
-    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Upload a new asset to a file. Requires edit permission."""
     _enforce_asset_size_limit(payload.content, payload.content_encoding)
@@ -146,7 +144,6 @@ async def create_asset_for_file(
         user.id,
         db,
     )
-    await file_service.clear_file_cache(file_id)
     get_event_broker().publish(file_id, {"type": "asset-changed"})
     return asset
 
@@ -261,7 +258,6 @@ async def update_asset_for_file(
     payload: FileAssetUpdate,
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
-    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Update an asset's filename or content. Requires edit permission."""
     asset = await db.get(FileAsset, asset_id)
@@ -272,7 +268,6 @@ async def update_asset_for_file(
         # decoded-size check matches how the content will actually be persisted.
         _enforce_asset_size_limit(payload.content, getattr(asset, "content_encoding", "base64"))
     result = await FileAssetDB.update_asset(asset, payload, db)
-    await file_service.clear_file_cache(file_id)
     get_event_broker().publish(file_id, {"type": "asset-changed"})
     return result
 
@@ -283,14 +278,12 @@ async def delete_asset_for_file(
     asset_id: int,
     user_role: FileRole = Depends(require_edit),
     db: AsyncSession = Depends(get_db),
-    file_service: InMemoryFileService = Depends(get_file_service),
 ):
     """Soft-delete an asset. Requires edit permission."""
     asset = await db.get(FileAsset, asset_id)
     if not asset or asset.file_id != file_id or asset.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Asset not found")
     await FileAssetDB.soft_delete_asset(asset, db)
-    await file_service.clear_file_cache(file_id)
     get_event_broker().publish(file_id, {"type": "asset-changed"})
     return {"message": f"Asset {asset_id} deleted"}
 

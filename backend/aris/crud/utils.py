@@ -2,8 +2,13 @@ import asyncio
 
 import rsm
 from bs4 import BeautifulSoup
+from rsm.nodes import RSMNodeError
 
+from ..logging_config import get_logger
 from ..models import File
+
+
+logger = get_logger(__name__)
 
 
 async def extract_title(file: File) -> str:
@@ -28,11 +33,25 @@ async def extract_title(file: File) -> str:
 
 async def extract_section(file: File, section_name: str, handrails: bool = True) -> str:
     source_content = str(file.source) if file.source is not None else ""
-    app = rsm.app.ProcessorApp(plain=source_content, handrails=handrails)
-    await asyncio.to_thread(app.run)
-    html = app.translator.body
+    try:
+        app = rsm.app.ProcessorApp(plain=source_content, handrails=handrails)
+        await asyncio.to_thread(app.run)
+        html = app.translator.body
+    except (rsm.RSMApplicationError, RSMNodeError) as e:
+        # Invalid RSM degrades to empty (the route then returns 404), matching
+        # crud.render, so a broken document does not 500 (std-g6rtr0).
+        logger.error("Failed to render section %s: %s", section_name, e)
+        return ""
 
     soup = BeautifulSoup(html, "lxml")
-    element = soup.find("div", class_=section_name)
-    # Return the string content of the element, or empty string if not found
+    # Match the section class on any tag, not just <div>. RSM renders sections as
+    # <section class="... level-2">, so a div-only query would miss them. The
+    # fallback scan matches when section_name is one class among several.
+    element = soup.find(attrs={"class": section_name})
+    if not element:
+        for elem in soup.find_all():
+            classes = elem.get("class")
+            if classes and section_name in classes:
+                element = elem
+                break
     return str(element) if element else ""

@@ -116,8 +116,8 @@ async def render_structured(
     """Render RSM source to structured content: {head, body, init_script}.
 
     With a db session and file_id it resolves the file's database assets,
-    otherwise it renders without them. Mirrors the structured render the
-    InMemoryFileService used to do (std-g6rtr0). Never raises: on failure it
+    otherwise it renders without them. Added in std-g6rtr0 as the direct
+    structured render. Never raises: on failure it
     returns a fallback body so callers always get a dict.
     """
     try:

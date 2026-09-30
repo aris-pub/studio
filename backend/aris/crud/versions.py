@@ -224,7 +224,7 @@ async def soft_delete_versions_for_file(
     for version in versions:
         version.deleted_at = deleted_at
 
-    # Commit is handled by the caller (delete_file_in_database)
+    # Commit is handled by the caller.
 
 
 async def delete_auto_checkpoints_older_than(

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import current_user, get_db, get_file_service
+from .. import crud, current_user, get_db
 from ..asset_filenames import validate_asset_filename
 from ..authorization import (
     require_view,
@@ -17,7 +17,6 @@ from ..collaboration import get_collaboration_manager
 from ..config import settings
 from ..logging_config import get_logger
 from ..models import File, FileRole
-from ..services.file_service import InMemoryFileService
 
 
 logger = get_logger(__name__)
@@ -36,7 +35,6 @@ async def download_file_pdf(
     file_id: int,
     body: Optional[_ExportBody] = None,
     user_role: FileRole = Depends(require_view),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Download file as a PDF document via Typst.
@@ -53,8 +51,7 @@ async def download_file_pdf(
 
     from rsm.app import pandoc_export as rsm_pandoc_export
 
-    await file_service.sync_from_database(db)
-    file_data = await file_service.get_file(file_id)
+    file_data = await crud.get_file(file_id, db)
     if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -184,7 +181,7 @@ async def download_file_pdf(
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-    title = await file_service.get_file_title(file_id)
+    title = await crud.get_file_title(file_id, db)
     if not title:
         title = str(file_data.title) if file_data.title else "manuscript"
     filename = re.sub(r'[<>:"/\\|?*]', '_', title) + ".pdf"
@@ -201,7 +198,6 @@ async def download_file(
     file_id: int,
     body: Optional[_ExportBody] = None,
     user_role: FileRole = Depends(require_view),
-    file_service: InMemoryFileService = Depends(get_file_service),
     db: AsyncSession = Depends(get_db),
 ):
     """Download file as a complete standalone HTML document.
@@ -215,8 +211,7 @@ async def download_file(
 
     import rsm
 
-    await file_service.sync_from_database(db)
-    file_data = await file_service.get_file(file_id)
+    file_data = await crud.get_file(file_id, db)
     if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -250,7 +245,7 @@ async def download_file(
     )
 
     # Get file title for filename
-    title = await file_service.get_file_title(file_id)
+    title = await crud.get_file_title(file_id, db)
     if not title:
         title = str(file_data.title) if file_data.title else "manuscript"
 

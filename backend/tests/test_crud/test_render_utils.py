@@ -107,3 +107,17 @@ def test_render_structured_falls_back_on_error(monkeypatch, caplog):
     result = asyncio.run(render_structured("mysrc"))
     assert result == {"head": "", "body": "<p>Rendered: mysrc</p>", "init_script": ""}
     assert "Failed to render structured RSM content" in caplog.text
+
+
+def test_extract_section_returns_empty_on_render_error(monkeypatch, caplog):
+    from aris.crud.utils import extract_section
+    from aris.models import File
+
+    def boom(*args, **kwargs):
+        raise rsm.RSMApplicationError("bad rsm")
+
+    monkeypatch.setattr(rsm.app, "ProcessorApp", boom)
+    caplog.set_level(logging.ERROR)
+    result = asyncio.run(extract_section(File(source="broken"), "abstract"))
+    assert result == ""
+    assert "Failed to render section" in caplog.text

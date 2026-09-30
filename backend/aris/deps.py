@@ -14,7 +14,7 @@ Environment variables:
 
 """
 
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 from uuid import UUID
 
 from dotenv import load_dotenv
@@ -27,7 +27,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from . import crud
 from .config import settings
-from .services.file_service import InMemoryFileService
 
 
 load_dotenv()
@@ -163,26 +162,3 @@ async def current_user(
     if user is None:
         raise credentials_exception
     return user  # type: ignore
-
-
-# Global singleton file service instance
-_file_service_instance: Optional[InMemoryFileService] = None
-
-
-async def get_file_service() -> InMemoryFileService:
-    """Dependency that provides a singleton file service instance.
-    
-    Returns:
-        InMemoryFileService: The singleton file service instance.
-    """
-    global _file_service_instance
-    
-    if _file_service_instance is None:
-        _file_service_instance = InMemoryFileService()
-        await _file_service_instance.initialize()
-        
-        # Also update the package-level instance for external access
-        import aris.services.file_service as fs_module
-        fs_module.file_service_instance = _file_service_instance
-    
-    return _file_service_instance
