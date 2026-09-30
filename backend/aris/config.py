@@ -160,6 +160,15 @@ class Settings(BaseSettings):
     in routes/file.py (base64 inflates ~33%). Default 25 MB; lower via env to fit a
     smaller instance."""
 
+    PDF_EXPORT_MAX_TOTAL_BYTES: int = Field(
+        100 * 1024 * 1024, json_schema_extra={"env": "PDF_EXPORT_MAX_TOTAL_BYTES"}
+    )
+    """Maximum TOTAL decoded size (bytes) of a PDF export: the Typst source plus
+    every referenced asset written to the temp dir. Per-asset size is capped by
+    MAX_ASSET_BYTES, but a document can reference many assets, so without a total
+    cap the export is a disk-fill vector. Over this limit the endpoint returns 413
+    and writes no assets. Default 100 MB."""
+
 
     model_config = SettingsConfigDict(
         extra="ignore",

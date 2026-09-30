@@ -14,6 +14,7 @@ from ..authorization import (
     require_view,
 )
 from ..collaboration import get_collaboration_manager
+from ..config import settings
 from ..logging_config import get_logger
 from ..models import File, FileRole
 from ..services.file_service import InMemoryFileService
@@ -103,7 +104,24 @@ async def download_file_pdf(
             .where(FileAsset.file_id == file_id)
             .where(FileAsset.deleted_at.is_(None))
         )
-        for asset in asset_result.scalars().all():
+        assets = asset_result.scalars().all()
+
+        # Per-asset size is capped on upload (MAX_ASSET_BYTES), but a document can
+        # reference many assets, so cap the TOTAL bytes to avoid a disk-fill DoS.
+        # base64 content decodes to about 3/4 of its length.
+        total_bytes = len(typst_source.encode("utf-8"))
+        for a in assets:
+            if getattr(a, "content_encoding", "plain") == "base64":
+                total_bytes += len(a.content) * 3 // 4
+            else:
+                total_bytes += len(a.content.encode("utf-8"))
+        if total_bytes > settings.PDF_EXPORT_MAX_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Document exceeds the maximum total size for PDF export",
+            )
+
+        for asset in assets:
             try:
                 # Rows written before filenames were validated on the way in can
                 # still carry a path, which would escape tmpdir.
