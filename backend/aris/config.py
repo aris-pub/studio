@@ -5,6 +5,7 @@ Implemented as a Pydantic model that is then read by FastAPI.
 """
 
 import os
+import re
 import uuid
 from pathlib import Path
 
@@ -18,6 +19,13 @@ RESEND_PLACEHOLDER_KEY = "your_resend_api_key_here"
 MIN_SECRET_LENGTH = 32
 """Floor for signing secrets in PROD and STAGING. 32 characters is what
 `secrets.token_urlsafe(32)` produces after base64 padding is stripped."""
+
+DEPLOY_PREVIEW_ORIGIN_RE = re.compile(
+    r"^https://deploy-preview-\d+--rsm-studio-(site|frontend)\.netlify\.app$"
+)
+"""Matches Netlify deploy-preview origins for the site and frontend apps.
+routes/auth.py and routes/signup.py gate preview-only behavior on it, so it
+lives here as the single source of truth."""
 
 
 class Settings(BaseSettings):

@@ -6,13 +6,13 @@ including creation, status checking, and unsubscription.
 
 import html
 import json
-import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import DEPLOY_PREVIEW_ORIGIN_RE
 from ..crud.signup import (
     DuplicateEmailError,
     SignupError,
@@ -151,7 +151,7 @@ async def create_signup_endpoint(
     signup information with sanitized data.
     """
     origin = request.headers.get("origin", "")
-    if re.match(r"^https://deploy-preview-\d+--rsm-studio-(site|frontend)\.netlify\.app$", origin):
+    if DEPLOY_PREVIEW_ORIGIN_RE.match(origin):
         raise HTTPException(
             status_code=403,
             detail="Signup is disabled on deploy previews.",

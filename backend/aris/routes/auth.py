@@ -1,4 +1,3 @@
-import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,17 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user, get_db, jwt
-from ..config import settings
+from ..config import DEPLOY_PREVIEW_ORIGIN_RE, settings
 from ..logging_config import get_logger
 from ..models import User
 from ..rate_limiting import LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, limiter
 from ..security import hash_password, verify_password
 from ..services.email import get_email_service
-
-
-_DEPLOY_PREVIEW_RE = re.compile(
-    r"^https://deploy-preview-\d+--rsm-studio-(site|frontend)\.netlify\.app$"
-)
 
 
 logger = get_logger(__name__)
@@ -157,7 +151,7 @@ async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depen
     Deploy preview origins are restricted to the test user account only.
     """
     origin = request.headers.get("origin", "")
-    if _DEPLOY_PREVIEW_RE.match(origin):
+    if DEPLOY_PREVIEW_ORIGIN_RE.match(origin):
         allowed_emails = {settings.TEST_USER_EMAIL, settings.TEST_USER2_EMAIL}
         if user_data.email not in allowed_emails:
             raise HTTPException(
@@ -247,7 +241,7 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
     Includes user profile data in response for client initialization.
     """
     origin = request.headers.get("origin", "")
-    if _DEPLOY_PREVIEW_RE.match(origin):
+    if DEPLOY_PREVIEW_ORIGIN_RE.match(origin):
         raise HTTPException(
             status_code=403,
             detail="Registration is disabled on deploy previews.",
