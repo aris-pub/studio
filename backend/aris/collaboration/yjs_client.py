@@ -101,20 +101,26 @@ class YDocClient:
                     await self._flush_before_reconnect()
                     await self._wait_before_reconnect()
             except ConnectionClosed as e:
-                if e.rcvd is not None and e.rcvd.code == 4000:
-                    # All frontends left and the multi-player server tore the room
-                    # down. Our next reconnect rejoins an empty, freshly recreated
-                    # room; the seed gate (len(text) == 0 in _connect_and_run) then
-                    # restores from ydoc_state. That restore is idempotent, so it
-                    # is safe even if a frontend races back into the room before
-                    # us — no duplication, and no "edits lost after reload".
-                    logger.info(
-                        f"Server cleanup close for file {self.file_id} "
-                        f"(all frontends left); will restore from DB on reconnect"
-                    )
+                is_server_cleanup = e.rcvd is not None and e.rcvd.code == 4000
                 if not self._shutdown:
-                    logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._flush_before_reconnect()
+                    if is_server_cleanup:
+                        # A code-4000 "all-frontends-left" close is a normal room
+                        # teardown (typically a reload), not a fault. The frontend is
+                        # about to rejoin, so reconnect immediately and re-broadcast
+                        # the restored ydoc_state instead of waiting out the backoff
+                        # (2^0 = 1s on the first attempt), which leaves the reloaded
+                        # editor empty for ~1s (std-rpc4). The seed gate in
+                        # _connect_and_run restores from ydoc_state, and that restore
+                        # is idempotent, so a frontend racing back in cannot duplicate
+                        # content. The server only sends 4000 on a frontend-disconnect,
+                        # never to a backend-alone room, so this cannot tight-loop.
+                        logger.info(
+                            f"Server cleanup close for file {self.file_id} "
+                            f"(all frontends left); reconnecting immediately"
+                        )
+                        continue
+                    logger.warning(f"WebSocket closed for file {self.file_id}: {e}, reconnecting...")
                     await self._wait_before_reconnect()
             except WebSocketException as e:
                 if not self._shutdown:

@@ -121,7 +121,9 @@ async def _drive_one_iteration(client: YDocClient, exc: Exception | None):
 
 
 class TestRunFlushOrdering:
-    """run() must call _flush_before_reconnect BEFORE _wait_before_reconnect on every reconnect path."""
+    """run() must flush before backing off on every reconnect path. The code-4000
+    path is the one exception: it flushes and reconnects immediately (no wait),
+    covered by its own test below."""
 
     @pytest.mark.asyncio
     async def test_normal_close_flushes_before_wait(self):
@@ -132,12 +134,35 @@ class TestRunFlushOrdering:
         )
 
     @pytest.mark.asyncio
-    async def test_connection_closed_4000_flushes_before_wait(self):
+    async def test_code_4000_reconnects_immediately_without_waiting(self):
+        # A code-4000 all-frontends-left close (a reload) must flush and reconnect
+        # immediately, skipping the exponential backoff, so the reloaded editor is
+        # not left empty for ~1s (std-rpc4).
         client = _make_client()
-        order = await _drive_one_iteration(client, exc=_connection_closed_4000())
-        assert order == ["flush", "wait"], (
-            f"Expected flush before wait on code-4000 close; got {order}"
-        )
+        calls = {"connect": 0, "flush": 0, "wait": 0}
+
+        async def fake_connect_and_run():
+            calls["connect"] += 1
+            if calls["connect"] == 1:
+                raise _connection_closed_4000()
+            # The immediate reconnect: exit cleanly so the loop does not spin.
+            client._shutdown = True
+
+        async def fake_flush():
+            calls["flush"] += 1
+
+        async def fake_wait():
+            calls["wait"] += 1
+
+        client._connect_and_run = fake_connect_and_run  # type: ignore[method-assign]
+        client._flush_before_reconnect = fake_flush  # type: ignore[method-assign]
+        client._wait_before_reconnect = fake_wait  # type: ignore[method-assign]
+
+        await asyncio.wait_for(client.run(), timeout=1.0)
+
+        assert calls["connect"] == 2, "should reconnect after the 4000"
+        assert calls["flush"] == 1, "should flush before reconnecting"
+        assert calls["wait"] == 0, "must not back off on the 4000 path (immediate)"
 
     @pytest.mark.asyncio
     async def test_generic_websocket_exception_flushes_before_wait(self):
