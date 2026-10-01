@@ -34,6 +34,14 @@ PUBLIC_RENDER_RATE_LIMIT = "30/minute"
 FILE_CREATE_RATE_LIMIT = "30/minute"
 ASSET_UPLOAD_RATE_LIMIT = "60/minute"
 
+# Collab session start. The frontend mints a fresh WS token per connect (std-3ulu),
+# so y-websocket's reconnect-backoff loop points at this route, which does real work
+# (DB lookup + ensure the backend Y.js client is in the room). The client caches a
+# token for ~30s per file, so legitimate use is a couple of calls per minute per
+# file; this cap is generous headroom for several open files and still stops a
+# runaway reconnect loop. Defense-in-depth over the client cache (std-m9p7).
+COLLAB_START_RATE_LIMIT = "60/minute"
+
 RATE_LIMIT_MESSAGE = "Too many requests. Please slow down and try again shortly."
 
 

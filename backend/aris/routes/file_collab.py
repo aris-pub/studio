@@ -1,7 +1,7 @@
 """Collaboration session signals: start, stop, and flush the Y.js client."""
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, current_user, get_db
@@ -13,6 +13,7 @@ from ..collaboration import get_collaboration_manager, mint_collab_token
 from ..deps import UserRead
 from ..logging_config import get_logger
 from ..models import FileRole
+from ..rate_limiting import COLLAB_START_RATE_LIMIT, limiter
 
 
 logger = get_logger(__name__)
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(curren
 
 
 @router.post("/{file_id}/collab/start")
+@limiter.limit(COLLAB_START_RATE_LIMIT)
 async def collab_start(
+    request: Request,
     file_id: int,
     user: UserRead = Depends(current_user),
     user_role: FileRole = Depends(require_view),
