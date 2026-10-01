@@ -17,7 +17,13 @@ import {
  */
 
 describe('parseFileIdFromDocName', () => {
-  it('extracts numeric file_id from file-{id}-{env}', () => {
+  it('extracts numeric file_id from the canonical file-{id}', () => {
+    expect(parseFileIdFromDocName('file-1')).toBe(1);
+    expect(parseFileIdFromDocName('file-42')).toBe(42);
+    expect(parseFileIdFromDocName('file-99999')).toBe(99999);
+  });
+
+  it('still extracts file_id from the legacy file-{id}-{env} (deploy transition)', () => {
     expect(parseFileIdFromDocName('file-1-local')).toBe(1);
     expect(parseFileIdFromDocName('file-322-dev')).toBe(322);
     expect(parseFileIdFromDocName('file-99999-prod')).toBe(99999);

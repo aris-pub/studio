@@ -251,11 +251,14 @@ export function resetBootstrapState() {
 }
 
 /**
- * Parse a numeric file id out of a docName like ``file-{id}-{env}``.
- * Returns null if the format doesn't match.
+ * Parse a numeric file id out of a docName like ``file-{id}`` (or the legacy
+ * ``file-{id}-{env}``). Returns null if the format doesn't match.
  */
 export function parseFileIdFromDocName(docName) {
-  const m = /^file-(\d+)-[^-]+$/.exec(docName);
+  // Canonical room name is `file-{id}`. The optional `-{env}` suffix is legacy
+  // (dropped in std-0g12); still accepted so clients that loaded before a deploy
+  // and still use `file-{id}-{env}` keep validating until they reload.
+  const m = /^file-(\d+)(?:-[^-]+)?$/.exec(docName);
   if (!m) return null;
   return parseInt(m[1], 10);
 }

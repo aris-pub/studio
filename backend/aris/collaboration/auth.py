@@ -45,7 +45,7 @@ def mint_collab_token(
         "backend" is acceptable (no associated user).
     file_id : int
         The numeric file id; the multi-player server checks this against
-        the ``file-{id}-{env}`` docName the client connected to.
+        the ``file-{id}`` docName the client connected to.
     role : str
         One of ``OWNER`` / ``EDITOR`` / ``COMMENTER`` (matching
         ``FileRole``) or ``backend``. The multi-player server passes this

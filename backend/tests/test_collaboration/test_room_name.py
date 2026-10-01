@@ -1,12 +1,14 @@
 """
-Regression test for the Y.js room name mismatch bug.
+Regression test for the Y.js room name.
 
-Bug: CollaborationManager normalized ENV=LOCAL → "dev" for room names, while the
-frontend used VITE_ENV=local → "file-{id}-local". They never shared a Y.js room,
-so the backend never seeded or persisted content for the frontend.
+The room name used to carry an environment suffix (file-{id}-{env}): the frontend
+derived {env} from VITE_ENV and the backend from ENV, and those could disagree
+(VITE_ENV=preview vs backend ENV=PROD on previews), putting the two in different
+rooms so nothing synced (std-0g12).
 
-Fix: Use ENV as-is (lowercased), no normalization. Both sides produce "local"
-when running locally.
+Fix: drop the suffix. The room is file-{id}, independent of ENV. Each deployment
+runs its own multiplayer server, so rooms cannot collide across environments
+without it.
 """
 
 import asyncio
@@ -62,41 +64,14 @@ def manager():
         return CollaborationManager()
 
 
-class TestRoomNameEnvNormalization:
-    """ENV must be lowercased and used directly — no LOCAL→dev normalization."""
+class TestRoomNameHasNoEnvSuffix:
+    """The room name is file-{id}, with no environment suffix, for any ENV."""
 
-    def test_env_local_stays_local(self, manager):
-        """ENV=LOCAL must produce 'local' to match frontend VITE_ENV=local."""
-        url = _extract_room_url(manager, FILE_ID, "LOCAL")
-        assert url.endswith(f"file-{FILE_ID}-local")
-
-    def test_env_dev_unchanged(self, manager):
-        url = _extract_room_url(manager, FILE_ID, "DEV")
-        assert url.endswith(f"file-{FILE_ID}-dev")
-
-    def test_env_test_unchanged(self, manager):
-        url = _extract_room_url(manager, FILE_ID, "TEST")
-        assert url.endswith(f"file-{FILE_ID}-test")
-
-    def test_env_ci_unchanged(self, manager):
-        url = _extract_room_url(manager, FILE_ID, "CI")
-        assert url.endswith(f"file-{FILE_ID}-ci")
-
-    def test_env_staging_unchanged(self, manager):
-        url = _extract_room_url(manager, FILE_ID, "STAGING")
-        assert url.endswith(f"file-{FILE_ID}-staging")
-
-    def test_env_prod_unchanged(self, manager):
-        url = _extract_room_url(manager, FILE_ID, "PROD")
-        assert url.endswith(f"file-{FILE_ID}-prod")
-
-    def test_env_unset_defaults_to_local(self, manager):
-        url = _extract_room_url(manager, FILE_ID, None)
-        assert url.endswith(f"file-{FILE_ID}-local")
-
-    @pytest.mark.parametrize("env_value", ["Local", "local", "LOCAL", "LoCAl"])
-    def test_case_insensitivity(self, manager, env_value):
+    @pytest.mark.parametrize(
+        "env_value", ["LOCAL", "local", "DEV", "TEST", "CI", "STAGING", "PROD", None]
+    )
+    def test_room_is_env_independent(self, manager, env_value):
         url = _extract_room_url(manager, FILE_ID, env_value)
-        assert url.endswith(f"file-{FILE_ID}-local"), (
-            f"ENV={env_value!r} should produce room suffix 'local', got URL: {url}"
+        assert url.endswith(f"file-{FILE_ID}"), (
+            f"ENV={env_value!r} should produce room 'file-{FILE_ID}' with no suffix, got: {url}"
         )
