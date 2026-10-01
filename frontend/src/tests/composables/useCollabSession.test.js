@@ -197,7 +197,7 @@ describe("useCollabSession: retry", () => {
     expect(h.session.collabStartFailed.value).toBe(false);
     expect(providerInstances[0].disconnect).toHaveBeenCalled();
     expect(providerInstances[0].connect).toHaveBeenCalled();
-    expect(AuthedWebSocket._tokens.get("ws://test:1234/file-7-local")).toBe("fresh");
+    expect(AuthedWebSocket._tokens.get("ws://test:1234/file-7")).toBe("fresh");
 
     wrapper.unmount();
   });

@@ -124,8 +124,11 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
   async function _start(id) {
     const gen = ++generation;
 
-    const env = (import.meta.env.VITE_ENV || "local").toLowerCase();
-    roomName.value = `file-${id}-${env}`;
+    // The room name carries no environment suffix. Each deployment runs its own
+    // multiplayer server, so rooms cannot collide across environments, and the
+    // suffix only ever created a frontend/backend mismatch when their env values
+    // disagreed (VITE_ENV=preview vs backend ENV=PROD on previews). See std-0g12.
+    roomName.value = `file-${id}`;
 
     ydoc.value = new Y.Doc();
     ytext.value = ydoc.value.getText("text");

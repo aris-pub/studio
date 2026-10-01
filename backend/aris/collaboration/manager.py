@@ -78,11 +78,11 @@ class CollaborationManager:
             self.tasks.pop(file_id, None)
 
         try:
-            # Room name must match the frontend's convention:
-            # frontend uses VITE_ENV (default "local"), lowercased.
-            # Backend uses ENV. Both must produce the same room name.
-            env = os.getenv("ENV", "local").lower()
-            websocket_url = f"{self.websocket_base_url}/file-{file_id}-{env}"
+            # No environment suffix in the room name. Each deployment runs its own
+            # multiplayer server, so rooms cannot collide across environments, and
+            # the suffix only broke sync when the frontend and backend env values
+            # disagreed (VITE_ENV=preview vs ENV=PROD on previews). See std-0g12.
+            websocket_url = f"{self.websocket_base_url}/file-{file_id}"
             logger.info(f"Starting YDocClient for file {file_id} at {websocket_url}")
 
             debounce_ms = int(os.getenv("YJS_DEBOUNCE_MS", "500"))
