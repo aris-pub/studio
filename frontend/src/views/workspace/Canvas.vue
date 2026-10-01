@@ -659,6 +659,16 @@
       &::-webkit-scrollbar {
         display: none;
       }
+
+      /* Pending cue for a cold source jump (std-fda7): a busy pointer while the
+         jump resolves. :deep reaches the v-html rendered manuscript content, whose
+         links and text would otherwise set their own cursor. */
+      &.nav-pending {
+        cursor: progress;
+        :deep(*) {
+          cursor: progress;
+        }
+      }
     }
   }
 
