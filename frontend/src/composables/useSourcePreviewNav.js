@@ -15,6 +15,9 @@ import { toast } from "@/utils/toast.js";
 const HIGHLIGHT_DURATION = 2000;
 const RETRY_MAX_ATTEMPTS = 14; // ~2s total with RETRY_DELAY_MS
 const RETRY_DELAY_MS = 150;
+// Show the pending cue only once a jump is slow enough to notice (a cold LSP
+// index). Below this, the jump reads as instant, so warm clicks never flicker.
+const PENDING_CUE_DELAY_MS = 250;
 
 /**
  * Call `requestFn` and, if it resolves falsy, retry with a fixed delay up to
@@ -87,67 +90,84 @@ export function useSourcePreviewNav({
    * Click-to-source: given a nodeid from the preview, scroll the editor
    * to the corresponding source line.
    */
-  async function navigateToSource(nodeid) {
+  async function navigateToSource(nodeid, paneEl) {
     const uri = documentUri?.value;
     if (!uri) return;
 
     const token = ++navToken;
-    // Wait for the LSP's nodeid<->source index to be ready for this document (the
-    // server emits rsm/indexReady): deterministic readiness instead of relying on
-    // the retry's polling. Falls through on timeout, so it only ever helps.
-    await awaitIndexReady?.value?.(uri);
-    if (token !== navToken) return;
-    const pos = await requestWithRetry("rsm/nodePosition", {
-      textDocument: { uri },
-      nodeid,
-    });
-    // A newer click superseded this one while we were retrying — drop it so the
-    // last-clicked element wins the scroll.
-    if (token !== navToken) return;
-    if (!pos) {
-      // The element had a nodeid but the LSP never resolved it within the retry
-      // budget. Break the silence (silent no-op was the original bug) — but only
-      // when an LSP client exists; with no LSP, staying quiet is correct.
-      if (toRaw(lspClient?.value)) {
-        toast.info("Couldn't jump to the source for this element.");
+
+    // Delayed pending cue (std-fda7): a busy pointer on the preview pane while a
+    // cold jump is in flight. Armed after a threshold so warm clicks show nothing,
+    // and cleared on every exit path via the finally below so the cursor can never
+    // get stuck on.
+    const cueTimer = setTimeout(() => {
+      if (token === navToken) paneEl?.classList.add("nav-pending");
+    }, PENDING_CUE_DELAY_MS);
+    const clearCue = () => {
+      clearTimeout(cueTimer);
+      paneEl?.classList.remove("nav-pending");
+    };
+
+    try {
+      // Wait for the LSP's nodeid<->source index to be ready for this document (the
+      // server emits rsm/indexReady): deterministic readiness instead of relying on
+      // the retry's polling. Falls through on timeout, so it only ever helps.
+      await awaitIndexReady?.value?.(uri);
+      if (token !== navToken) return;
+      const pos = await requestWithRetry("rsm/nodePosition", {
+        textDocument: { uri },
+        nodeid,
+      });
+      // A newer click superseded this one while we were retrying — drop it so the
+      // last-clicked element wins the scroll.
+      if (token !== navToken) return;
+      if (!pos) {
+        // The element had a nodeid but the LSP never resolved it within the retry
+        // budget. Break the silence (silent no-op was the original bug) — but only
+        // when an LSP client exists; with no LSP, staying quiet is correct.
+        if (toRaw(lspClient?.value)) {
+          toast.info("Couldn't jump to the source for this element.");
+        }
+        return;
       }
-      return;
+
+      const view = toRaw(cmView?.value);
+      if (!view) return;
+
+      const { EditorView } = await import("@codemirror/view");
+      const startLine = view.state.doc.line(pos.startLine + 1);
+      const endLine = view.state.doc.line(Math.min(pos.endLine + 1, view.state.doc.lines));
+
+      // Place cursor at content start (after tag + meta region)
+      const contentLine = view.state.doc.line(pos.contentStartLine + 1);
+      const cursorPos = contentLine.from + pos.contentStartCol;
+
+      view.dispatch({
+        selection: { anchor: cursorPos },
+        effects: EditorView.scrollIntoView(startLine.from, { y: "start", yMargin: 20 }),
+      });
+      view.focus();
+
+      // Highlight the entire source range: gutter + background
+      const targetLineNums = new Set();
+      for (let i = startLine.number; i <= endLine.number; i++) {
+        targetLineNums.add(String(i));
+        const lineEl = view.domAtPos(view.state.doc.line(i).from)?.node?.parentElement;
+        if (lineEl) {
+          lineEl.classList.add("cm-synctarget-line");
+          setTimeout(() => lineEl.classList.remove("cm-synctarget-line"), HIGHLIGHT_DURATION);
+        }
+      }
+      const gutterEls = view.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement");
+      gutterEls.forEach((el) => {
+        if (targetLineNums.has(el.textContent.trim())) {
+          el.classList.add("cm-synctarget-gutter");
+          setTimeout(() => el.classList.remove("cm-synctarget-gutter"), HIGHLIGHT_DURATION);
+        }
+      });
+    } finally {
+      clearCue();
     }
-
-    const view = toRaw(cmView?.value);
-    if (!view) return;
-
-    const { EditorView } = await import("@codemirror/view");
-    const startLine = view.state.doc.line(pos.startLine + 1);
-    const endLine = view.state.doc.line(Math.min(pos.endLine + 1, view.state.doc.lines));
-
-    // Place cursor at content start (after tag + meta region)
-    const contentLine = view.state.doc.line(pos.contentStartLine + 1);
-    const cursorPos = contentLine.from + pos.contentStartCol;
-
-    view.dispatch({
-      selection: { anchor: cursorPos },
-      effects: EditorView.scrollIntoView(startLine.from, { y: "start", yMargin: 20 }),
-    });
-    view.focus();
-
-    // Highlight the entire source range: gutter + background
-    const targetLineNums = new Set();
-    for (let i = startLine.number; i <= endLine.number; i++) {
-      targetLineNums.add(String(i));
-      const lineEl = view.domAtPos(view.state.doc.line(i).from)?.node?.parentElement;
-      if (lineEl) {
-        lineEl.classList.add("cm-synctarget-line");
-        setTimeout(() => lineEl.classList.remove("cm-synctarget-line"), HIGHLIGHT_DURATION);
-      }
-    }
-    const gutterEls = view.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement");
-    gutterEls.forEach((el) => {
-      if (targetLineNums.has(el.textContent.trim())) {
-        el.classList.add("cm-synctarget-gutter");
-        setTimeout(() => el.classList.remove("cm-synctarget-gutter"), HIGHLIGHT_DURATION);
-      }
-    });
   }
 
   /**
@@ -202,7 +222,9 @@ export function useSourcePreviewNav({
     // Blur the handrail so its focus background doesn't persist
     target.blur();
 
-    navigateToSource(nodeid);
+    // currentTarget is the preview pane the listener is bound to; the pending cue
+    // (a busy pointer) is applied there while the cold jump resolves.
+    navigateToSource(nodeid, event.currentTarget);
   }
 
   return {
