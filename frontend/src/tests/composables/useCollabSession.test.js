@@ -256,3 +256,56 @@ describe("useCollabSession: failure surfacing (migrated from EditorCollabRetry)"
     expect(toast.warning).toHaveBeenCalled();
   });
 });
+
+describe("useCollabSession: serialized stop/start per file (std-i40m)", () => {
+  it("does not POST /collab/start for a file while its /collab/stop is still in flight", async () => {
+    const calls = [];
+    const deferreds = [];
+    const api = {
+      post: vi.fn((url) => {
+        calls.push(url);
+        let resolve;
+        const p = new Promise((r) => {
+          resolve = r;
+        });
+        deferreds.push({ url, resolve });
+        return p;
+      }),
+    };
+    const find = (url) => deferreds.find((d) => d.url === url && !d.done);
+    const resolve = (url, data) => {
+      const d = find(url);
+      d.done = true;
+      d.resolve({ data });
+    };
+
+    const fileId = ref(1);
+    const { wrapper } = mountSession(fileId, api);
+    await flushPromises();
+    resolve("/files/1/collab/start", { token: "t1" }); // first session settles
+    await flushPromises();
+
+    // 1 -> 2: stop(1) fires but is left pending; start(2) settles.
+    fileId.value = 2;
+    await nextTick();
+    await flushPromises();
+    resolve("/files/2/collab/start", { token: "t2" });
+    await flushPromises();
+
+    // 2 -> 1: stop(2) fires, and start(1) is requested again. It must wait behind
+    // the still-pending stop(1) rather than posting and racing it.
+    fileId.value = 1;
+    await nextTick();
+    await flushPromises();
+
+    const startsForOne = () => calls.filter((u) => u === "/files/1/collab/start").length;
+    expect(startsForOne()).toBe(1); // the second start(1) is queued behind stop(1)
+
+    resolve("/files/1/collab/stop", {});
+    await flushPromises();
+
+    expect(startsForOne()).toBe(2); // once stop(1) settles, start(1) posts
+
+    wrapper.unmount();
+  });
+});

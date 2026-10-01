@@ -56,6 +56,26 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
   let tokenCache = null;
   const TOKEN_CACHE_MS = 30000;
 
+  // Serialize /collab/start and /collab/stop for the SAME file so a fire-and-forget
+  // stop cannot overtake an in-flight start (or the reverse) on rapid A->B->A
+  // switching and orphan a backend client (std-i40m). Different files run
+  // independently.
+  const opChains = new Map();
+  function _serialize(id, op) {
+    const prev = opChains.get(id) || Promise.resolve();
+    // Run op after prev settles either way, so one failed op does not wedge the chain.
+    const next = prev.then(op, op);
+    const tail = next.then(
+      () => {},
+      () => {}
+    );
+    opChains.set(id, tail);
+    tail.then(() => {
+      if (opChains.get(id) === tail) opChains.delete(id);
+    });
+    return next;
+  }
+
   // Presence label for the awareness cursor. Returns null when we have no user
   // identity yet rather than throwing: awareness is presence-only, so a missing
   // label must never break the document session (a reader with the panel closed
@@ -117,7 +137,7 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
   // switching. Serializing stop-then-start is tracked separately (std-i40m).
   function _stopBackend(id) {
     if (!id) return;
-    api.post(`/files/${id}/collab/stop`).catch((err) => {
+    _serialize(id, () => api.post(`/files/${id}/collab/stop`)).catch((err) => {
       captureException(err);
       toast.warning("Couldn't cleanly close the previous collaboration session.");
     });
@@ -134,7 +154,7 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
       return tokenCache.token;
     }
     try {
-      const resp = await api.post(`/files/${id}/collab/start`);
+      const resp = await _serialize(id, () => api.post(`/files/${id}/collab/start`));
       if (gen !== generation) return null;
       const token = resp?.data?.token ?? null;
       if (!token) {
