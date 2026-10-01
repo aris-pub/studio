@@ -14,6 +14,7 @@
   import { useLocalStorage } from "@vueuse/core";
   import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts.js";
   import { useAnnotations } from "@/composables/useAnnotations.js";
+  import { useCollabSession } from "@/composables/useCollabSession.js";
   import { extractSourceAnchor } from "@/utils/sourceAnchor.js";
   import { extractAnchor } from "@/utils/anchorExtraction.js";
   import { toast } from "@/utils/toast.js";
@@ -27,6 +28,7 @@
   // Load and provide file
   const fileStore = inject("fileStore");
   const api = inject("api");
+  const user = inject("user");
   const route = useRoute();
 
   // Computed properties for different states
@@ -107,25 +109,31 @@
     document.title = "RSM Studio";
   });
 
-  // Shared Y.Doc ref — EditorCodeMirror writes to it, useAnnotations observes it
-  const ydoc = shallowRef(null);
-  provide("ydoc", ydoc);
+  const fileId = computed(() => file.value?.id);
 
-  // Shared CodeMirror view — EditorCodeMirror writes, VersionPreviewModal reads for restore
+  // The Y.js collaboration session is owned here at the view level, not inside the
+  // editor panel, so it comes up whenever a file is open regardless of which panels
+  // are showing (std-hvgpnr). The editor binds to the shared ytext/awareness when
+  // its panel mounts, and useAnnotations observes the shared ydoc for anchoring.
+  const collab = useCollabSession(fileId, { api, user });
+  const ydoc = collab.ydoc;
+  const ytext = collab.ytext;
+  const awareness = collab.awareness;
+  provide("ydoc", ydoc);
+  provide("ytext", ytext);
+  provide("awareness", awareness);
+  provide("collabIsConnected", collab.isConnected);
+  provide("collabIsSynced", collab.isSynced);
+  provide("collabConnectError", collab.collabStartFailed);
+  // The status bar injects collabRetry and calls its .value(), so wrap the stable
+  // retry function in a ref to keep that contract.
+  provide("collabRetry", shallowRef(collab.retry));
+
+  // Shared CodeMirror view — the editor panel writes it, VersionPreviewModal reads
+  // it for restore. Owned here so a Sidebar sibling can read it, but it stays null
+  // until the editor panel mounts.
   const cmView = shallowRef(null);
   provide("cmView", cmView);
-
-  // Shared Y.js awareness — EditorCodeMirror writes, Canvas re-provides it for the minimap,
-  // and VersionPreviewModal (a Sidebar sibling of Canvas) reads it to gate version restore
-  // to the sole-participant case.
-  const awareness = shallowRef(null);
-  provide("awareness", awareness);
-
-  // Shared Y.js text — EditorCodeMirror writes, Editor reads for compile
-  const ytext = shallowRef(null);
-  provide("ytext", ytext);
-
-  const fileId = computed(() => file.value?.id);
   const {
     annotations,
     loading: annotationsLoading,

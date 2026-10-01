@@ -1,4 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+// The collaboration session is owned by View.vue via useCollabSession. These
+// tests are not about collaboration, so stub it out to keep the real Y.js
+// WebSocket session from running when View mounts.
+vi.mock("@/composables/useCollabSession", async () => {
+  const { ref, shallowRef } = await import("vue");
+  return {
+    useCollabSession: () => ({
+      ydoc: shallowRef(null),
+      ytext: shallowRef(null),
+      awareness: shallowRef(null),
+      provider: shallowRef(null),
+      isConnected: ref(false),
+      isSynced: ref(false),
+      collabStartFailed: ref(false),
+      retry: () => {},
+      roomName: ref(""),
+    }),
+  };
+});
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import * as Y from "yjs";
