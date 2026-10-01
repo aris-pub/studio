@@ -9,12 +9,15 @@ These tests assert immediate over-limit behavior (the (N+1)th request is blocked
 there is no waiting on window resets.
 """
 
+from unittest.mock import AsyncMock, patch
+
 from conftest import TestDataFactory
 from httpx import AsyncClient
 from starlette.requests import Request
 
 from aris.rate_limiting import (
     ASSET_UPLOAD_RATE_LIMIT,
+    COLLAB_START_RATE_LIMIT,
     FILE_CREATE_RATE_LIMIT,
     LOGIN_RATE_LIMIT,
     PUBLIC_RENDER_RATE_LIMIT,
@@ -34,6 +37,7 @@ REGISTER_LIMIT = _limit_count(REGISTER_RATE_LIMIT)
 RENDER_LIMIT = _limit_count(PUBLIC_RENDER_RATE_LIMIT)
 FILE_CREATE_LIMIT = _limit_count(FILE_CREATE_RATE_LIMIT)
 ASSET_UPLOAD_LIMIT = _limit_count(ASSET_UPLOAD_RATE_LIMIT)
+COLLAB_START_LIMIT = _limit_count(COLLAB_START_RATE_LIMIT)
 
 BAD_LOGIN = {"email": "nobody@example.com", "password": "wrong-password"}
 
@@ -224,5 +228,24 @@ async def test_asset_upload_blocks_over_limit_with_clean_message(client: AsyncCl
         assert resp.status_code != 429, resp.text
 
     blocked = await client.post(f"/files/{file_id}/assets", json=asset(9999), headers=headers)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"detail": RATE_LIMIT_MESSAGE}
+
+
+async def test_collab_start_blocks_over_limit_with_clean_message(client: AsyncClient, auth_headers):
+    # Per-connect token minting (std-3ulu) points y-websocket's reconnect loop at
+    # /collab/start, so it is capped (std-m9p7). The collaboration manager is mocked
+    # so the limiter, not the Y.js machinery, is what the test exercises.
+    headers = _auth_ip(auth_headers, "203.0.113.25")
+    created = await client.post("/files", json=TestDataFactory.file_creation_data(), headers=headers)
+    file_id = created.json()["id"]
+
+    with patch("aris.routes.file_collab.get_collaboration_manager") as mock_get:
+        mock_get.return_value.start_client = AsyncMock(return_value=True)
+        for _ in range(COLLAB_START_LIMIT):
+            resp = await client.post(f"/files/{file_id}/collab/start", headers=headers)
+            assert resp.status_code != 429, resp.text
+
+        blocked = await client.post(f"/files/{file_id}/collab/start", headers=headers)
     assert blocked.status_code == 429
     assert blocked.json() == {"detail": RATE_LIMIT_MESSAGE}
