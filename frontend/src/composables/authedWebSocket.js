@@ -8,11 +8,20 @@
  * perform the auth handshake.
  *
  * Strategy:
- *   - On the underlying open event we send the auth JSON frame.
+ *   - A `fetchToken(url)` callback mints the token for THIS connection. It is
+ *     called once per connect (initial and every reconnect), so y-websocket's
+ *     auto-reconnect always carries a fresh token instead of a stale one parked
+ *     in a shared registry (std-3ulu). The caller owns freshness and caching; a
+ *     thrown or null result fails closed (we close the socket without authing).
+ *   - On the underlying open event we await the token, then send the auth frame.
  *   - We hold y-websocket's onopen callback until auth_ok arrives.
  *   - Any send() y-websocket attempts before auth_ok is queued and flushed
  *     immediately after auth_ok.
  *   - The auth_ok frame is consumed by us — y-websocket never sees it.
+ *
+ * y-websocket constructs its WebSocketPolyfill as `new Polyfill(url, protocols)`
+ * with no room to pass the fetcher, so `authedWebSocketWith(fetchToken)` binds a
+ * fetcher into a 2-arg subclass that is passed as the polyfill.
  */
 
 const READY_STATES = {
@@ -56,7 +65,14 @@ function _cloneCloseEvent(event) {
 }
 
 export class AuthedWebSocket extends EventTarget {
-  constructor(url, protocols) {
+  /**
+   * @param {string} url
+   * @param {string|string[]|undefined} protocols
+   * @param {(url: string) => Promise<string|null>} [fetchToken] mints the auth
+   *   token for this connection. Started immediately so the round trip overlaps
+   *   the socket handshake. A null/thrown result fails closed.
+   */
+  constructor(url, protocols, fetchToken) {
     super();
     this._inner = new WebSocket(url, protocols);
     this._inner.binaryType = "arraybuffer";
@@ -68,10 +84,20 @@ export class AuthedWebSocket extends EventTarget {
     this._userOnError = null;
     this._userOnClose = null;
 
-    this._token = AuthedWebSocket._resolveToken(url);
+    this._tokenPromise = (async () => {
+      try {
+        return fetchToken ? await fetchToken(url) : null;
+      } catch (_e) {
+        return null;
+      }
+    })();
 
-    this._inner.onopen = () => {
-      if (!this._token) {
+    this._inner.onopen = async () => {
+      const token = await this._tokenPromise;
+      if (!token) {
+        // Fail closed: no token means no auth frame. Closing lets y-websocket's
+        // normal backoff and status handler fire instead of stalling until the
+        // server's own auth timeout.
         try {
           this._inner.close(AUTH_FAILED_CODE, "no-token");
         } catch (_e) {
@@ -80,7 +106,7 @@ export class AuthedWebSocket extends EventTarget {
         return;
       }
       try {
-        this._inner.send(JSON.stringify({ type: "auth", token: this._token }));
+        this._inner.send(JSON.stringify({ type: "auth", token }));
       } catch (_e) {
         /* will surface via onclose */
       }
@@ -133,26 +159,6 @@ export class AuthedWebSocket extends EventTarget {
       if (this._userOnClose) this._userOnClose(event);
       this.dispatchEvent(_cloneCloseEvent(event));
     };
-  }
-
-  /**
-   * Token lookup hook.
-   *
-   * EditorCodeMirror.vue (and any other consumer) calls
-   * AuthedWebSocket.registerToken(url, token) after /collab/start returns.
-   */
-  static _tokens = new Map();
-
-  static registerToken(url, token) {
-    AuthedWebSocket._tokens.set(url, token);
-  }
-
-  static clearToken(url) {
-    AuthedWebSocket._tokens.delete(url);
-  }
-
-  static _resolveToken(url) {
-    return AuthedWebSocket._tokens.get(url) ?? null;
   }
 
   get readyState() {
@@ -210,6 +216,20 @@ export class AuthedWebSocket extends EventTarget {
   close(code, reason) {
     return this._inner.close(code, reason);
   }
+}
+
+/**
+ * Bind a token fetcher into a 2-arg WebSocket polyfill for y-websocket, which
+ * constructs its polyfill as `new Polyfill(url, protocols)` with no room for the
+ * fetcher. The fetcher's lifetime is tied to this class (and the provider that
+ * holds it), so there is no global token registry to clear.
+ */
+export function authedWebSocketWith(fetchToken) {
+  return class BoundAuthedWebSocket extends AuthedWebSocket {
+    constructor(url, protocols) {
+      super(url, protocols, fetchToken);
+    }
+  };
 }
 
 // Match the browser's WebSocket contract: these constants are accessible both
