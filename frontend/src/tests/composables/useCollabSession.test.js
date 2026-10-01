@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ref, nextTick } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
-import { AuthedWebSocket } from "@/composables/authedWebSocket";
 
 // Mock the heavy collaboration deps so we can drive the session lifecycle in
 // isolation. We record every provider constructed, with connect/disconnect/
@@ -101,7 +100,6 @@ function makeApi() {
 
 beforeEach(() => {
   providerInstances.length = 0;
-  AuthedWebSocket._tokens.clear();
 });
 
 afterEach(() => {
@@ -173,31 +171,27 @@ describe("useCollabSession: rapid file switching", () => {
 });
 
 describe("useCollabSession: retry", () => {
-  it("re-registers a token and forces reconnect, clearing the failure flag", async () => {
+  it("clears the failure flag and forces a reconnect (the wrapper re-mints)", async () => {
     const api = makeApi();
     const fileId = ref(7);
     const { wrapper, ...h } = mountSession(fileId, api);
     await flushPromises();
 
-    // First start returns no token -> the session is marked failed.
+    // First start (the pre-warm) returns no token -> the session is marked failed,
+    // but the provider is still created so a reconnect can re-mint through it.
     api.startDeferreds[0].resolve({ data: {} });
     await flushPromises();
     expect(h.session.collabStartFailed.value).toBe(true);
-    expect(providerInstances).toHaveLength(1); // provider still created; it will retry
+    expect(providerInstances).toHaveLength(1);
 
-    // Retry succeeds with a token.
-    const retryPromise = h.session.retry();
-    const retryDeferred = api.startDeferreds.find(
-      (d) => d.url === "/files/7/collab/start" && d !== api.startDeferreds[0]
-    );
-    retryDeferred.resolve({ data: { token: "fresh" } });
-    await retryPromise;
-    await flushPromises();
+    // Retry drops the cached token, clears the flag, and forces a reconnect. The
+    // fresh mint happens in the wrapper's fetcher on the next real connect, which
+    // the mocked provider does not perform, so we assert the reconnect, not a token.
+    h.session.retry();
 
     expect(h.session.collabStartFailed.value).toBe(false);
     expect(providerInstances[0].disconnect).toHaveBeenCalled();
     expect(providerInstances[0].connect).toHaveBeenCalled();
-    expect(AuthedWebSocket._tokens.get("ws://test:1234/file-7")).toBe("fresh");
 
     wrapper.unmount();
   });
@@ -222,23 +216,6 @@ describe("useCollabSession: failure surfacing (migrated from EditorCollabRetry)"
 
     expect(h.session.collabStartFailed.value).toBe(true);
     expect(providerInstances).toHaveLength(1);
-
-    wrapper.unmount();
-  });
-
-  it("keeps collabStartFailed when a retry also fails", async () => {
-    const api = {
-      post: vi.fn().mockRejectedValue({ response: { status: 503 }, message: "still down" }),
-    };
-    const fileId = ref(42);
-    const { wrapper, ...h } = mountSession(fileId, api);
-    await flushPromises();
-    expect(h.session.collabStartFailed.value).toBe(true);
-
-    await h.session.retry();
-    await flushPromises();
-
-    expect(h.session.collabStartFailed.value).toBe(true);
 
     wrapper.unmount();
   });

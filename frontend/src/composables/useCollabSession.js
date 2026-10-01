@@ -2,7 +2,7 @@ import { ref, shallowRef, watch, onBeforeUnmount } from "vue";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { captureException } from "@sentry/vue";
-import { AuthedWebSocket } from "@/composables/authedWebSocket";
+import { authedWebSocketWith } from "@/composables/authedWebSocket";
 import { toast } from "@/utils/toast.js";
 
 /**
@@ -49,6 +49,12 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
   // The file id we last told the backend to start a client for, so we can stop it
   // on switch/unmount even if its own start failed.
   let activeBackendFileId = null;
+  // The most recently minted WS auth token for the current file, with when it was
+  // minted. Lets a reconnect burst reuse one token instead of hitting /collab/start
+  // on every attempt (std-3ulu). Per-composable, reset on every file switch and
+  // teardown, so it never leaks across files.
+  let tokenCache = null;
+  const TOKEN_CACHE_MS = 30000;
 
   // Presence label for the awareness cursor. Returns null when we have no user
   // identity yet rather than throwing: awareness is presence-only, so a missing
@@ -92,11 +98,6 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
     if (ytext.value) ytext.value = null;
     if (awareness.value) awareness.value = null;
     if (provider.value) {
-      try {
-        AuthedWebSocket.clearToken(`${wsBase}/${provider.value.roomname}`);
-      } catch (_e) {
-        /* ignore */
-      }
       provider.value.destroy();
       provider.value = null;
     }
@@ -104,6 +105,7 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
       ydoc.value.destroy();
       ydoc.value = null;
     }
+    tokenCache = null;
     isConnected.value = false;
     isSynced.value = false;
     _clearTestGlobals();
@@ -121,6 +123,39 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
     });
   }
 
+  // Mint the auth token for one connection. Reuse a recently-minted token so a
+  // reconnect burst does not hit /collab/start on every attempt (that route also
+  // spins the backend client); within this short window the backend client is
+  // still alive, so skipping the re-ensure is safe. Generation-guarded and
+  // fail-closed: a superseded session, a missing token, or an error returns null,
+  // which makes the wrapper close the socket without authing. Never logs the token.
+  async function _mintToken(id, gen) {
+    if (tokenCache && Date.now() - tokenCache.mintedAt < TOKEN_CACHE_MS) {
+      return tokenCache.token;
+    }
+    try {
+      const resp = await api.post(`/files/${id}/collab/start`);
+      if (gen !== generation) return null;
+      const token = resp?.data?.token ?? null;
+      if (!token) {
+        collabStartFailed.value = true;
+        console.error(`[Collab] /collab/start for file ${id} returned no token`);
+        return null;
+      }
+      tokenCache = { token, mintedAt: Date.now() };
+      return token;
+    } catch (err) {
+      if (gen !== generation) return null;
+      collabStartFailed.value = true;
+      console.error(
+        `[Collab] Failed to start backend client for file ${id}:`,
+        err?.response?.status,
+        err?.response?.data || err.message
+      );
+      return null;
+    }
+  }
+
   async function _start(id) {
     const gen = ++generation;
 
@@ -133,36 +168,20 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
     ydoc.value = new Y.Doc();
     ytext.value = ydoc.value.getText("text");
 
-    // Tell the backend to start its Y.js client and mint a short-lived WS auth
-    // token. The multi-player server requires the token as the first frame or it
-    // rejects the socket with code 4401.
     activeBackendFileId = id;
-    let token = null;
-    try {
-      const startResp = await api.post(`/files/${id}/collab/start`);
-      token = startResp?.data?.token ?? null;
-      if (!token) {
-        collabStartFailed.value = true;
-        console.error(`[Collab] /collab/start for file ${id} returned no token`);
-      }
-    } catch (err) {
-      collabStartFailed.value = true;
-      console.error(
-        `[Collab] Failed to start backend client for file ${id}:`,
-        err?.response?.status,
-        err?.response?.data || err.message
-      );
-    }
+    tokenCache = null;
+    const fetchToken = () => _mintToken(id, gen);
 
-    // Bail if a newer session superseded us while we awaited the token.
+    // Pre-warm the token before the socket exists, so the first auth frame is not
+    // gated by a cold /collab/start under the multiplayer server's short first-frame
+    // timeout. On every (re)connect the wrapper mints via this same fetcher, so a
+    // reconnect never carries a stale token (std-3ulu). The wrapper owns the auth
+    // handshake, so y-websocket sees a normal socket.
+    await fetchToken();
     if (gen !== generation) return;
 
-    const wsUrl = `${wsBase}/${roomName.value}`;
-    if (token) AuthedWebSocket.registerToken(wsUrl, token);
-
-    // AuthedWebSocket handles the auth handshake so y-websocket sees a normal socket.
     provider.value = new WebsocketProvider(wsBase, roomName.value, ydoc.value, {
-      WebSocketPolyfill: AuthedWebSocket,
+      WebSocketPolyfill: authedWebSocketWith(fetchToken),
     });
     awareness.value = provider.value.awareness;
     const info = userInfo();
@@ -183,26 +202,6 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
       console.error("[Y.js] Connection error:", event);
     });
 
-    // Refresh the WS auth token before each reconnect; it is short-lived (5 min)
-    // and y-websocket would otherwise reconnect with a stale one and be rejected
-    // with code 4401. Guard on the session generation, not a captured id, so a
-    // refresh for an abandoned session never registers a token or starts a client.
-    provider.value.on("connection-close", async () => {
-      if (gen !== generation) return;
-      try {
-        const refresh = await api.post(`/files/${id}/collab/start`);
-        const fresh = refresh?.data?.token;
-        if (gen !== generation) return;
-        if (fresh) AuthedWebSocket.registerToken(wsUrl, fresh);
-      } catch (err) {
-        console.error(
-          `[Collab] Failed to refresh token for file ${id}:`,
-          err?.response?.status,
-          err?.response?.data || err.message
-        );
-      }
-    });
-
     // NB: the frontend must NEVER seed file.source into the shared Y.Text. The
     // backend is the single authoritative seeder: /collab/start awaits the backend
     // YDocClient's readiness (DB restore + broadcast) before this provider is
@@ -219,28 +218,17 @@ export function useCollabSession(fileId, { api, user, serverUrl } = {}) {
     _exposeForTests();
   }
 
-  // Re-attempt a failed session without a full reload: fetch a fresh token and
-  // force the existing provider to reconnect now instead of waiting for backoff.
-  async function retry() {
-    const id = fileId.value;
-    if (!id) return;
-    try {
-      const startResp = await api.post(`/files/${id}/collab/start`);
-      const token = startResp?.data?.token ?? null;
-      if (!token) throw new Error("/collab/start returned no token");
-      AuthedWebSocket.registerToken(`${wsBase}/${roomName.value}`, token);
-      collabStartFailed.value = false;
-      if (provider.value) {
-        provider.value.disconnect();
-        provider.value.connect();
-      }
-    } catch (err) {
-      collabStartFailed.value = true;
-      console.error(
-        `[Collab] Retry to start backend client for file ${id} failed:`,
-        err?.response?.status,
-        err?.response?.data || err.message
-      );
+  // Re-attempt a failed session without a full reload: drop the cached token so the
+  // next connect mints a fresh one, and reconnect now instead of waiting for
+  // y-websocket's backoff. The wrapper's fetcher does the minting and sets
+  // collabStartFailed again if it still fails.
+  function retry() {
+    if (!fileId.value) return;
+    tokenCache = null;
+    collabStartFailed.value = false;
+    if (provider.value) {
+      provider.value.disconnect();
+      provider.value.connect();
     }
   }
 
