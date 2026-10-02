@@ -79,6 +79,9 @@
 
       router.push("/");
     } catch (err) {
+      // A 429 is surfaced by the global rate-limit toast; showing the raw detail
+      // here too would double up and read like a credentials error.
+      if (err.response?.status === 429) return;
       const detail = err.response?.data?.detail;
       if (Array.isArray(detail)) {
         error.value = detail.map((e) => e.msg ?? e.message ?? String(e)).join(". ");
