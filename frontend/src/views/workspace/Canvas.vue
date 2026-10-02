@@ -27,6 +27,7 @@
   import Dock from "./Dock.vue";
   import Editor from "./Editor.vue";
   import ScrollbarMinimap from "./ScrollbarMinimap.vue";
+  import ManuscriptPresence from "./ManuscriptPresence.vue";
   import TopbarSearch from "./TopbarSearch.vue";
   import DockableAnnotations from "./DockableAnnotations.vue";
 
@@ -523,6 +524,9 @@
                 :keys="true"
                 :settings="fileSettings"
                 :show-footer="true"
+              />
+              <ManuscriptPresence
+                v-if="file.html && (!mobileMode || (mobileMode && !showEditor))"
               />
               <div
                 v-if="hasAnnotations && !mobileMode && showAnnotationCards"
