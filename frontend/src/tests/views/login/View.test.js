@@ -158,6 +158,31 @@ describe("LoginView", () => {
     expect(errorEl.classes()).toContain("error-alert");
   });
 
+  it("does not show an inline error on a 429 (the rate-limit toast handles it)", async () => {
+    const mockApi = {
+      post: vi.fn().mockRejectedValue({
+        response: {
+          status: 429,
+          data: { detail: "Too many requests. Please slow down and try again shortly." },
+        },
+      }),
+      get: vi.fn(),
+      defaults: { baseURL: "" },
+    };
+    const w = mount(LoginView, {
+      global: {
+        components: { AuthLayout, Button, InputText, PasswordInput, Logo },
+        stubs: { RouterLink: RouterLinkStub },
+        provide: { api: mockApi, user: ref(null), fileStore: ref(null), isDev: false },
+      },
+    });
+    await w.find('[data-testid="email-input"]').setValue("a@b.com");
+    await w.find('[data-testid="password-input"]').setValue("pass");
+    await w.vm.onLogin();
+    await nextTick();
+    expect(w.find('[data-testid="auth-error"]').exists()).toBe(false);
+  });
+
   it("register link is not a Button component", () => {
     const buttons = wrapper.findAllComponents(Button);
     const registerButton = buttons.find((b) => b.attributes("data-testid") === "register-link");

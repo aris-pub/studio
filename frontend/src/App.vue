@@ -7,6 +7,7 @@
   import { readSession, clearSession } from "@/auth/session.js";
   import { getLogger } from "@/utils/logger.js";
   import { loadDesignAssets } from "@/utils/cssLoader.js";
+  import { handleRateLimit } from "@/utils/rateLimit.js";
   import axios from "axios";
 
   const logger = getLogger("App");
@@ -55,6 +56,11 @@
       return response;
     },
     async (error) => {
+      if (error.response?.status === 429) {
+        handleRateLimit(error);
+        return Promise.reject(error);
+      }
+
       const originalRequest = error.config;
 
       if (

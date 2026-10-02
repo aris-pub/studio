@@ -108,6 +108,22 @@ describe("RegisterView", () => {
     expect(pushMock).toHaveBeenCalledWith("/");
   });
 
+  it("does not show an inline error on a 429 (the rate-limit toast handles it)", async () => {
+    api.post.mockRejectedValue({
+      response: {
+        status: 429,
+        data: { detail: "Too many requests. Please slow down and try again shortly." },
+      },
+    });
+    const inputs = wrapper.findAll("input");
+    await inputs[0].setValue("Bob");
+    await inputs[1].setValue("bob@test.com");
+    await inputs[2].setValue("secretpw");
+    await wrapper.vm.onRegister();
+    await nextTick();
+    expect(wrapper.find('[data-testid="auth-error"]').exists()).toBe(false);
+  });
+
   it("shows verification nudge toast after successful registration", async () => {
     const registeredUser = { id: 1, name: "Bob", initials: "BO", email: "bob@test.com" };
     api.post.mockResolvedValue({
