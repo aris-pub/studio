@@ -23,6 +23,7 @@ from .file import (
     file_tags,
 )
 from .permission import FilePermission, FileRole
+from .invitation import FileInvitation
 from .annotation import Annotation, AnnotationMessage, AnnotationVisibility
 from .signup import Feedback, InterestLevel, Signup, SignupStatus
 from .mock_data import *  # noqa: F401, F403
@@ -44,6 +45,7 @@ __all__ = [
     "file_tags",
     "FilePermission",
     "FileRole",
+    "FileInvitation",
     "Annotation",
     "AnnotationMessage",
     "AnnotationVisibility",
