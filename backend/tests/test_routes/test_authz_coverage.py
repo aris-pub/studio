@@ -101,6 +101,7 @@ CROSS_USER_TESTED: dict[tuple[str, str], str] = {
     ("PUT", "/files/{file_id}/versions/{version_id}"): "test_routes_versions.py::test_rename_version_unauthorized",
     ("GET", "/files/{file_id}/permissions"): "test_routes_permissions.py::test_list_collaborators_as_editor_forbidden",
     ("POST", "/files/{file_id}/permissions"): "test_routes_permissions.py::test_add_collaborator_as_editor_forbidden",
+    ("POST", "/files/{file_id}/permissions/invite"): "test_invitations.py::test_invite_as_editor_forbidden",
     ("PUT", "/files/{file_id}/permissions/{permission_id}"): "test_routes_permissions.py::test_update_collaborator_role_as_editor_forbidden",
     ("POST", "/render/private"): "test_render_private.py::test_render_private_forbidden_without_access",
     ("POST", "/settings/{file_id}"): "test_routes_file_settings.py::test_upsert_file_settings_access_denied",

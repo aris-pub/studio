@@ -2,12 +2,13 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.authorization import require_manage
 from aris.config import settings
+from aris.crud.invitations import create_invitation
 from aris.crud.permissions import (
     create_permission,
     get_file_collaborators,
@@ -15,9 +16,11 @@ from aris.crud.permissions import (
     revoke_permission,
     update_permission_role,
 )
+from aris.crud.user import get_user_by_email
 from aris.crud.user_settings import UserSettingsDB
 from aris.deps import current_user, get_db
 from aris.models import File, FileRole, User
+from aris.rate_limiting import INVITE_RATE_LIMIT, limiter
 from aris.services.email import get_email_service
 
 
@@ -37,6 +40,13 @@ class AddCollaboratorRequest(BaseModel):
 class UpdateCollaboratorRequest(BaseModel):
     """Request to update a collaborator's role."""
 
+    role: FileRole
+
+
+class InviteCollaboratorRequest(BaseModel):
+    """Invite a collaborator by email (existing account or new)."""
+
+    email: EmailStr
     role: FileRole
 
 
@@ -152,6 +162,103 @@ async def add_collaborator(
         "user_id": permission.user_id,
         "role": permission.role.value,
         "granted_at": permission.granted_at.isoformat() if permission.granted_at else None,
+    }
+
+
+@router.post("/{file_id}/permissions/invite", status_code=201)
+@limiter.limit(INVITE_RATE_LIMIT)
+async def invite_collaborator(
+    file_id: int,
+    invite: InviteCollaboratorRequest,
+    request: Request,
+    user_role: FileRole = Depends(require_manage),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invite a collaborator by email.
+
+    Requires OWNER permission. If the email already has a Studio account, grant
+    access directly (same as add_collaborator). Otherwise create a pending
+    magic-link invitation and email it. The invite link is returned so the owner
+    has a fallback if delivery fails.
+    """
+    if invite.role == FileRole.OWNER:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot invite as OWNER. Files can only have one owner.",
+        )
+
+    email = invite.email.strip().lower()
+    file = await db.get(File, file_id)
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    existing_user = await get_user_by_email(email, db)
+    if existing_user:
+        existing = await get_permission_by_file_and_user(file_id, existing_user.id, db)
+        if existing:
+            raise HTTPException(status_code=400, detail="This person already has access")
+
+        permission = await create_permission(
+            file_id=file_id,
+            user_id=existing_user.id,
+            role=invite.role,
+            granted_by=user.id,
+            db=db,
+        )
+        email_service = get_email_service()
+        if email_service:
+            try:
+                invitee_settings = await UserSettingsDB.get_user_settings(existing_user.id, db)
+                if not invitee_settings or invitee_settings.notification_shares:
+                    await email_service.send_invitation_email(
+                        to_email=existing_user.email,
+                        invitee_name=existing_user.name or existing_user.email,
+                        inviter_name=user.name or user.email,
+                        file_title=file.title or "Untitled",
+                        role=invite.role.value,
+                        frontend_url=settings.FRONTEND_URL,
+                        file_id=file_id,
+                    )
+            except Exception:
+                logger.warning(
+                    "Invitation email failed, permission was still granted", exc_info=True
+                )
+        return {
+            "status": "granted",
+            "user_id": existing_user.id,
+            "role": permission.role.value,
+        }
+
+    # No account yet: create a pending invitation and email the magic link.
+    raw_token, _invitation = await create_invitation(
+        file_id=file_id,
+        invited_email=email,
+        role=invite.role,
+        granted_by=user.id,
+        db=db,
+    )
+    invite_url = f"{settings.FRONTEND_URL}/invitations/{raw_token}"
+    email_service = get_email_service()
+    if email_service:
+        try:
+            await email_service.send_magic_link_invitation(
+                to_email=email,
+                inviter_name=user.name or user.email,
+                file_title=file.title or "Untitled",
+                role=invite.role.value,
+                invite_url=invite_url,
+            )
+        except Exception:
+            logger.warning(
+                "Magic-link invitation email failed, invitation was still created",
+                exc_info=True,
+            )
+    return {
+        "status": "invited",
+        "invited_email": email,
+        "role": invite.role.value,
+        "invite_url": invite_url,
     }
 
 

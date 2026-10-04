@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import case, delete, desc, or_, select, update
+from sqlalchemy import case, delete, desc, func, or_, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,17 @@ from ..models import (
 from .file import get_file, get_file_section
 from .tag import get_user_file_tags
 from .utils import extract_title
+
+
+async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
+    """Look up a non-deleted user by email, case-insensitively."""
+    result = await db.execute(
+        select(User).where(
+            func.lower(User.email) == email.strip().lower(),
+            User.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_user(user_id: int, db: AsyncSession):

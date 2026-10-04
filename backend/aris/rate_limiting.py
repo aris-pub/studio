@@ -42,6 +42,13 @@ ASSET_UPLOAD_RATE_LIMIT = "60/minute"
 # runaway reconnect loop. Defense-in-depth over the client cache (std-m9p7).
 COLLAB_START_RATE_LIMIT = "60/minute"
 
+# Collaborator invites. The endpoint sends Aris-branded mail to the invited
+# address, so the real risk is an owner using it to spray mail and spend the
+# sender reputation. Keyed on the client IP, this caps that from one source;
+# per-account and per-file caps are a later hardening step (std-nbpwwn security
+# review), out of scope for the closed beta's small trusted pool.
+INVITE_RATE_LIMIT = "20/minute"
+
 RATE_LIMIT_MESSAGE = "Too many requests. Please slow down and try again shortly."
 
 
