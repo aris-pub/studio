@@ -84,6 +84,21 @@ async def create_user(name: str, initials: str, email: str, password_hash: str, 
     Creates default FileSettings for the user with standard display preferences.
     The function commits the transaction and refreshes the user object before returning.
     """
+    user = await build_new_user(name, initials, email, password_hash, db)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def build_new_user(
+    name: str, initials: str, email: str, password_hash: str, db: AsyncSession
+) -> User:
+    """Add a new user and their default settings to the session, without committing.
+
+    Lets a caller include user creation in a larger transaction (the magic-link
+    invite consume must create the user, grant the permission, and mark the invite
+    consumed all-or-nothing).
+    """
     if not initials:
         initials = "".join([w[0].upper() for w in name.split()])
 
@@ -91,21 +106,18 @@ async def create_user(name: str, initials: str, email: str, password_hash: str, 
     db.add(user)
     await db.flush()  # Flush to get the user.id without committing
 
-    # Create default settings for the new user
-    default_settings = FileSettings(
-        file_id=None,  # NULL for default settings
-        user_id=user.id,
-        background="var(--surface-page)",
-        font_size="16px",
-        line_height="1.5",
-        font_family="Source Sans 3",
-        margin_width="16px",
-        columns=1,
+    db.add(
+        FileSettings(
+            file_id=None,  # NULL for default settings
+            user_id=user.id,
+            background="var(--surface-page)",
+            font_size="16px",
+            line_height="1.5",
+            font_family="Source Sans 3",
+            margin_width="16px",
+            columns=1,
+        )
     )
-    db.add(default_settings)
-
-    await db.commit()
-    await db.refresh(user)
     return user
 
 

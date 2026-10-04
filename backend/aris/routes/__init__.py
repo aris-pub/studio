@@ -10,6 +10,7 @@ from .file_import import router as file_import_router
 from .file_reactions import router as file_reactions_router
 from .file_settings import router as file_settings_router
 from .internal import router as internal_router
+from .invitations import router as invitations_router
 from .lsp import router as lsp_router
 from .permissions import router as permissions_router
 from .render import router as render_router
@@ -34,6 +35,7 @@ __all__ = [
     "file_reactions_router",
     "file_settings_router",
     "internal_router",
+    "invitations_router",
     "lsp_router",
     "permissions_router",
     "render_router",

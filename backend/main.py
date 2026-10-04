@@ -31,6 +31,7 @@ from aris.routes import (
     file_reactions_router,
     file_settings_router,
     internal_router,
+    invitations_router,
     lsp_router,
     permissions_router,
     render_router,
@@ -379,6 +380,7 @@ app.include_router(file_collab_router, tags=["files"])
 app.include_router(file_assets_router, tags=["files"])
 app.include_router(file_export_router, tags=["files"])
 app.include_router(permissions_router, prefix="/files", tags=["permissions"])
+app.include_router(invitations_router, tags=["invitations"])
 app.include_router(versions_router, tags=["versions"])
 app.include_router(tag_router, tags=["tags"])
 app.include_router(file_settings_router, tags=["file-settings"])
