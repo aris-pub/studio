@@ -394,6 +394,88 @@ The Aris Program — https://aris.pub
             logger.error(f"Failed to send invitation email to {to_email}: {str(e)}")
             return False
 
+    async def send_magic_link_invitation(
+        self,
+        to_email: str,
+        inviter_name: str,
+        file_title: str,
+        role: str,
+        invite_url: str,
+    ) -> bool:
+        """Invite someone without a Studio account yet, via a magic link.
+
+        The link lands on a prefilled signup that creates their account and grants
+        the file access in one step.
+        """
+        from html import escape
+
+        safe_title = escape(file_title)
+        role_label = "an editor" if role == "EDITOR" else "a commenter"
+        logger.info(f"Sending magic-link invitation email to {to_email}")
+
+        try:
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>You're invited — RSM Studio</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #027AC7; margin: 0;">RSM Studio</h1>
+                </div>
+
+                <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 30px; border-left: 4px solid #027AC7;">
+                    <p style="font-size: 16px; margin: 0 0 24px 0;">{escape(inviter_name)} invited you to collaborate as {role_label} on:</p>
+                    <p style="font-size: 18px; font-weight: 600; margin: 0 0 24px 0; color: #1a1a1a;">{safe_title}</p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{invite_url}" style="background: #027AC7; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Accept invitation</a>
+                    </div>
+
+                    <p style="font-size: 13px; color: #6b7280; margin: 20px 0 0 0;">
+                        The link sets up your Studio account and opens the manuscript. It expires in 7 days.
+                    </p>
+                </div>
+
+                <div style="text-align: center; color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <p style="font-size: 12px;">
+                        <a href="https://aris.pub" style="color: #027AC7; text-decoration: none;">The Aris Program</a> — Academic publishing for the post-PDF era.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+
+            text_content = f"""{inviter_name} invited you to collaborate as {role_label} on:
+
+  {file_title}
+
+Accept the invitation (the link sets up your Studio account and opens the
+manuscript, and expires in 7 days):
+{invite_url}
+
+The Aris Program — https://aris.pub
+"""
+
+            params = {
+                "from": f"RSM Studio <{self.config.from_email}>",
+                "to": [to_email],
+                "subject": f'{inviter_name} invited you to collaborate on "{safe_title}" — RSM Studio',
+                "html": html_content,
+                "text": text_content,
+            }
+
+            resend.Emails.send(params)  # type: ignore
+            logger.info(f"Magic-link invitation sent to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send magic-link invitation to {to_email}: {str(e)}")
+            return False
+
 
 def get_email_service() -> Optional[EmailService]:
     """Get configured email service instance.
