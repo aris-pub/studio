@@ -7,8 +7,9 @@ never reveals a live invite link. One-time use is enforced at consume time by a
 conditional update of ``consumed_at``.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
-    Column,
     DateTime,
     Enum,
     ForeignKey,
@@ -33,20 +34,26 @@ class FileInvitation(Base):
         Index("ix_file_invitations_invited_email", "invited_email"),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # SHA-256 hex of the raw token. The raw token lives only in the emailed link.
-    token_hash = Column(String(64), nullable=False)
-    file_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False)
-    invited_email = Column(String, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    file_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=False
+    )
+    invited_email: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[FileRole] = mapped_column(Enum(FileRole, name="filerole"), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # Attribution only: SET NULL so removing the inviting account does not block
     # the hard-delete job (the row itself goes via the file_id CASCADE).
-    granted_by = Column(
+    granted_by: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    consumed_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     file = relationship("File")
     grantor = relationship("User", foreign_keys=[granted_by])

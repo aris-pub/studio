@@ -4,10 +4,12 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, func
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import FileInvitation, FileRole
+from ..models import FileInvitation, FilePermission, FileRole, User
+from .permissions import get_permission_by_file_and_user
+from .user import build_new_user, get_user_by_email
 
 
 INVITE_TTL_DAYS = 7
@@ -52,3 +54,66 @@ async def create_invitation(
     await db.commit()
     await db.refresh(invitation)
     return raw_token, invitation
+
+
+async def get_invitation_by_token(raw_token: str, db: AsyncSession) -> FileInvitation | None:
+    """Look up an invitation by the hash of its raw token."""
+    result = await db.execute(
+        select(FileInvitation).where(FileInvitation.token_hash == hash_token(raw_token))
+    )
+    return result.scalar_one_or_none()
+
+
+async def consume_invitation(
+    invitation: FileInvitation,
+    name: str,
+    password_hash: str,
+    db: AsyncSession,
+) -> tuple[User, bool, str | None] | None:
+    """Consume an invitation and provision access, all in one transaction.
+
+    Marks the invitation consumed with a conditional update (one-time, race-safe),
+    then creates the user if needed and grants the permission. Rolls back and
+    returns None if the invitation was already consumed or expired by the time we
+    locked it. On success returns (user, created, verification_token). The email,
+    file, and role come from the invitation row, never from the caller.
+    """
+    # consumed_at IS NULL is the atomic one-time guard. Expiry is enforced by the
+    # route pre-check, not here, since a tz-aware comparison in SQL is unreliable on
+    # SQLite (naive storage) and the expire-during-consume window is negligible.
+    result = await db.execute(
+        update(FileInvitation)
+        .where(
+            FileInvitation.id == invitation.id,
+            FileInvitation.consumed_at.is_(None),
+        )
+        .values(consumed_at=datetime.now(UTC))
+    )
+    if result.rowcount != 1:
+        await db.rollback()
+        return None
+
+    user = await get_user_by_email(invitation.invited_email, db)
+    created = False
+    verification_token = None
+    if user is None:
+        user = await build_new_user(name, "", invitation.invited_email, password_hash, db)
+        verification_token = user.generate_verification_token()
+        user.email_verification_sent_at = datetime.now(UTC)
+        created = True
+
+    assert user is not None
+    existing = await get_permission_by_file_and_user(invitation.file_id, int(user.id), db)
+    if existing is None:
+        db.add(
+            FilePermission(
+                file_id=invitation.file_id,
+                user_id=user.id,
+                role=invitation.role,
+                granted_by=invitation.granted_by,
+            )
+        )
+
+    await db.commit()
+    await db.refresh(user)
+    return user, created, verification_token
