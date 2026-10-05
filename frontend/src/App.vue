@@ -118,7 +118,9 @@
           const currentPath = window.location.pathname;
           const publicPages = ["/login", "/register", "/demo"];
           const isVerificationRoute = currentPath.startsWith("/verify-email/");
-          const isPublicRoute = publicPages.includes(currentPath) || isVerificationRoute;
+          const isInvitationRoute = currentPath.startsWith("/invitations/");
+          const isPublicRoute =
+            publicPages.includes(currentPath) || isVerificationRoute || isInvitationRoute;
 
           if (isPublicRoute) {
             // Just clean storage but don't redirect
@@ -261,7 +263,9 @@
       const currentPath = window.location.pathname;
       const publicPages = ["/login", "/register", "/demo"];
       const isVerificationRoute = currentPath.startsWith("/verify-email/");
-      const isPublicRoute = publicPages.includes(currentPath) || isVerificationRoute;
+      const isInvitationRoute = currentPath.startsWith("/invitations/");
+      const isPublicRoute =
+        publicPages.includes(currentPath) || isVerificationRoute || isInvitationRoute;
 
       if (session && !isPublicRoute) {
         logger.info("Found existing auth credentials for protected route", {
@@ -340,10 +344,12 @@
     const session = readSession();
     const publicPages = ["/login", "/register", "/demo"];
     const isVerificationRoute = to.path.startsWith("/verify-email/");
+    const isInvitationRoute = to.path.startsWith("/invitations/");
     const isDebugRoute = to.path.startsWith("/debug/");
 
     // If user is not authenticated and trying to access a protected page
-    const authRequired = !publicPages.includes(to.path) && !isVerificationRoute && !isDebugRoute;
+    const authRequired =
+      !publicPages.includes(to.path) && !isVerificationRoute && !isInvitationRoute && !isDebugRoute;
 
     if (!session && authRequired) {
       next("/login");

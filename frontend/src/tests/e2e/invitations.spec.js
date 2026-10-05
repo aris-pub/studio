@@ -13,6 +13,27 @@ const META = {
   role: "EDITOR",
 };
 
+// The invitation API calls go out as XHR. A path match on /invitations/ alone
+// would also catch the SPA document and the dynamically imported view module
+// (/src/views/invitations/View.vue), serving them as JSON and breaking the
+// page, so only the XHR/fetch calls are mocked.
+function isApiCall(request) {
+  const type = request.resourceType();
+  return type === "fetch" || type === "xhr";
+}
+
+async function mockInvitationGet(page, { status, body }) {
+  await page.route("**/invitations/**", (route) => {
+    const req = route.request();
+    if (!isApiCall(req) || req.method() !== "GET") return route.fallback();
+    return route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+}
+
 test.describe("Magic-link invitation flow @auth-flows", () => {
   test.beforeEach(async ({ page }) => {
     const authHelpers = new AuthHelpers(page);
@@ -39,14 +60,7 @@ test.describe("Magic-link invitation flow @auth-flows", () => {
   }) => {
     const timeouts = getTimeouts();
 
-    await page.route("**/invitations/**", (route) => {
-      if (route.request().method() !== "GET") return route.continue();
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(META),
-      });
-    });
+    await mockInvitationGet(page, { status: 200, body: META });
 
     await page.goto("/invitations/good-token");
 
@@ -62,14 +76,7 @@ test.describe("Magic-link invitation flow @auth-flows", () => {
   test("shows the expired state when the backend returns 410 @auth-flows", async ({ page }) => {
     const timeouts = getTimeouts();
 
-    await page.route("**/invitations/**", (route) => {
-      if (route.request().method() !== "GET") return route.continue();
-      return route.fulfill({
-        status: 410,
-        contentType: "application/json",
-        body: JSON.stringify({ detail: "expired" }),
-      });
-    });
+    await mockInvitationGet(page, { status: 410, body: { detail: "expired" } });
 
     await page.goto("/invitations/expired-token");
 
@@ -82,7 +89,9 @@ test.describe("Magic-link invitation flow @auth-flows", () => {
     const timeouts = getTimeouts();
 
     await page.route("**/invitations/**", (route) => {
-      if (route.request().method() === "GET") {
+      const req = route.request();
+      if (!isApiCall(req)) return route.fallback();
+      if (req.method() === "GET") {
         return route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -101,9 +110,10 @@ test.describe("Magic-link invitation flow @auth-flows", () => {
       });
     });
     // Keep the file view the consume redirects into from bouncing the smoke on a 401.
-    await page.route("**/files/**", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: "{}" })
-    );
+    await page.route("**/files/**", (route) => {
+      if (!isApiCall(route.request())) return route.fallback();
+      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    });
 
     await page.goto("/invitations/good-token");
 
