@@ -18,6 +18,7 @@ const SettingsPreferencesView = isUnitTest
   : () => import("@/views/settings/PreferencesView.vue");
 const NotFoundView = isUnitTest ? {} : () => import("@/views/notfound/View.vue");
 const VerifyEmailView = isUnitTest ? {} : () => import("@/views/verify-email/View.vue");
+const InvitationView = isUnitTest ? {} : () => import("@/views/invitations/View.vue");
 
 const routes = [
   { path: "/login", component: LoginView },
@@ -27,6 +28,7 @@ const routes = [
   { path: "/demo", component: DemoView },
   { path: "/debug/buttons", component: DebugButtonsView },
   { path: "/verify-email/:token", name: "EmailVerification", component: VerifyEmailView },
+  { path: "/invitations/:token", name: "InvitationAccept", component: InvitationView },
   { path: "/account", component: AccountView },
   {
     path: "/settings",
@@ -51,10 +53,15 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const publicPages = ["/login", "/register"];
   const isVerificationRoute = to.path.startsWith("/verify-email/");
+  const isInvitationRoute = to.path.startsWith("/invitations/");
   const isDemoRoute = to.path.startsWith("/demo");
   const isDebugRoute = to.path.startsWith("/debug/");
   const authRequired =
-    !publicPages.includes(to.path) && !isVerificationRoute && !isDemoRoute && !isDebugRoute;
+    !publicPages.includes(to.path) &&
+    !isVerificationRoute &&
+    !isInvitationRoute &&
+    !isDemoRoute &&
+    !isDebugRoute;
 
   if (!authRequired) return next();
 

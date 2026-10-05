@@ -290,10 +290,10 @@ describe("DrawerShare", () => {
   });
 
   describe("invite flow", () => {
-    it("adds collaborator on valid email submit", async () => {
+    it("invites by email via the invite endpoint (existing user granted)", async () => {
       mockApi.post.mockImplementation((url) => {
-        if (url.includes("/lookup")) return Promise.resolve({ data: { user_id: 5 } });
-        if (url.includes("/permissions")) return Promise.resolve({ data: { id: 20 } });
+        if (url.includes("/permissions/invite"))
+          return Promise.resolve({ data: { status: "granted", user_id: 5, role: "EDITOR" } });
         return Promise.resolve({ data: {} });
       });
 
@@ -305,9 +305,8 @@ describe("DrawerShare", () => {
       await wrapper.find(".invite-group").trigger("keydown.enter");
       await flushPromises();
 
-      expect(mockApi.post).toHaveBeenCalledWith("/users/lookup", { email: "bob@example.com" });
-      expect(mockApi.post).toHaveBeenCalledWith("/files/123/permissions", {
-        user_id: 5,
+      expect(mockApi.post).toHaveBeenCalledWith("/files/123/permissions/invite", {
+        email: "bob@example.com",
         role: "EDITOR",
       });
     });
@@ -346,8 +345,15 @@ describe("DrawerShare", () => {
       expect(wrapper.find(".invite-error").text()).toBe("You can't invite yourself");
     });
 
-    it("shows no-account error on 404", async () => {
-      mockApi.post.mockRejectedValue({ response: { status: 404, data: {} } });
+    it("shows the invite-sent message and copyable link for a new email", async () => {
+      mockApi.post.mockResolvedValue({
+        data: {
+          status: "invited",
+          invited_email: "nobody@example.com",
+          role: "EDITOR",
+          invite_url: "https://studio.test/invitations/xyz",
+        },
+      });
 
       wrapper = createWrapper();
       await flushPromises();
@@ -357,12 +363,14 @@ describe("DrawerShare", () => {
       await wrapper.find(".invite-group").trigger("keydown.enter");
       await flushPromises();
 
-      expect(wrapper.find(".invite-error").text()).toBe("No account found for this email");
+      expect(wrapper.find('[data-testid="invite-success"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="invite-link"]').exists()).toBe(true);
+      expect(wrapper.find(".invite-link-input").element.value).toContain("/invitations/xyz");
     });
 
     it("shows already-has-access error on 400", async () => {
       mockApi.post.mockRejectedValue({
-        response: { status: 400, data: { detail: "User already has permission for this file" } },
+        response: { status: 400, data: { detail: "This person already has access" } },
       });
 
       wrapper = createWrapper();
