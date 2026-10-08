@@ -74,13 +74,22 @@ export function extractSourceAnchor(range, manuscriptEl, ytext) {
     while (tw.nextNode()) {
       const tn = tw.currentNode;
       const len = tn.textContent.length;
-      if (!fs && tn === range.startContainer) { startOffset = cc + range.startOffset; fs = true; }
-      if (fs && tn === range.endContainer) { endOffset = cc + range.endOffset; break; }
+      if (!fs && tn === range.startContainer) {
+        startOffset = cc + range.startOffset;
+        fs = true;
+      }
+      if (fs && tn === range.endContainer) {
+        endOffset = cc + range.endOffset;
+        break;
+      }
       cc += len;
     }
     if (!fs) {
       const idx = block.textContent.indexOf(selectedText);
-      if (idx !== -1) { startOffset = idx; endOffset = idx + selectedText.length; }
+      if (idx !== -1) {
+        startOffset = idx;
+        endOffset = idx + selectedText.length;
+      }
     }
   }
 
@@ -100,22 +109,31 @@ export function extractSourceAnchor(range, manuscriptEl, ytext) {
 }
 
 /**
+ * The real content of a handrail block lives in its .hr-content-zone, next to
+ * chrome zones (hr-collapse/menu/border/spacer/info) that carry their own text.
+ * Offsets must be computed over the content only. Inline spans have no content
+ * zone, so they are their own content root.
+ */
+function getContentRoot(sourceEl) {
+  return sourceEl.querySelector(":scope > .hr-content-zone") || sourceEl;
+}
+
+/**
  * Compute the source byte offset for a position in the DOM.
  *
  * Walks up from the container to find the nearest element with
- * data-source-start, then adds the character offset within that element.
- * Rejects elements that are too broad (manuscript root) — the rendered-text
- * offset within the entire document is meaningless as a source offset
- * because whitespace normalization and markup stripping make them diverge.
+ * data-source-start, then adds the character offset within that element's
+ * content zone. Rejects elements that are too broad (manuscript root) — the
+ * rendered-text offset within the entire document is meaningless as a source
+ * offset because whitespace normalization and markup stripping make them diverge.
  */
 function computeSourceOffset(container, offset, manuscriptEl) {
-  const el =
-    container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+  const el = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
   if (!el || !manuscriptEl.contains(el)) return null;
 
   // Find the nearest ancestor with data-source-start that isn't the manuscript root.
   // Walk up from the element, checking each ancestor.
-  let sourceEl = el.closest("[data-source-start]");
+  const sourceEl = el.closest("[data-source-start]");
   if (!sourceEl) return null;
 
   // Reject if the source element is the manuscript root or too broad
@@ -129,8 +147,10 @@ function computeSourceOffset(container, offset, manuscriptEl) {
   // This catches cases where we matched a section-level element instead of a paragraph
   if (blockSourceEnd - blockSourceStart > 2000) return null;
 
-  // Compute character offset within this element's textContent
-  const charOffset = computeCharOffsetInElement(sourceEl, container, offset);
+  // Walk only the content, not the handrail chrome. Counting the chrome text as
+  // source characters was the drift (about +108 characters per block).
+  const walkRoot = getContentRoot(sourceEl);
+  const charOffset = computeCharOffsetInElement(walkRoot, blockSourceStart, container, offset);
   if (charOffset === null) return null;
 
   return blockSourceStart + charOffset;
@@ -144,20 +164,25 @@ function computeSourceOffset(container, offset, manuscriptEl) {
  * uses the source byte length (not rendered text length) to advance the counter.
  * For bare text nodes, advances by text length (1:1 with source for plain text).
  */
-function computeCharOffsetInElement(element, targetContainer, targetOffset) {
-  const blockStart = parseInt(element.getAttribute("data-source-start") || "0", 10);
-
+function computeCharOffsetInElement(walkRoot, blockStart, targetContainer, targetOffset) {
   // Walk direct and nested children, tracking source bytes
   function walk(node) {
     // If this element has its own source data, use source byte length
-    if (node !== element && node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("data-source-start")) {
+    if (
+      node !== walkRoot &&
+      node.nodeType === Node.ELEMENT_NODE &&
+      node.hasAttribute("data-source-start")
+    ) {
       const srcStart = parseInt(node.getAttribute("data-source-start"), 10);
       const srcEnd = parseInt(node.getAttribute("data-source-end"), 10);
 
       // Check if target is inside this element
       if (node.contains(targetContainer)) {
         // Target is inside a source-mapped inline element — delegate to it
-        return { found: true, offset: (srcStart - blockStart) + computeInner(node, targetContainer, targetOffset) };
+        return {
+          found: true,
+          offset: srcStart - blockStart + computeInner(node, targetContainer, targetOffset),
+        };
       }
       // Skip this subtree, advance by source byte length
       return { found: false, chars: srcEnd - srcStart };
@@ -193,7 +218,7 @@ function computeCharOffsetInElement(element, targetContainer, targetOffset) {
     return { found: false, chars: total };
   }
 
-  const result = walk(element);
+  const result = walk(walkRoot);
   return result.found ? result.offset : null;
 }
 
@@ -280,33 +305,68 @@ export function resolveSourceAnchor(anchorData, manuscriptEl, ydoc) {
   const charStart = sourceStart - blockSourceStart;
   const charEnd = sourceEnd - blockSourceStart;
 
-  // Walk text nodes within the block to find the DOM Range
-  return createRangeFromCharOffsets(targetBlock, charStart, charEnd);
+  // Resolve within the content zone (skip handrail chrome), advancing the source
+  // cursor past inline source-mapped spans by their SOURCE length so the mapping
+  // stays symmetric with extraction.
+  return createRangeFromSourceOffsets(getContentRoot(targetBlock), charStart, charEnd);
 }
 
 /**
- * Create a DOM Range from character offsets within an element.
+ * Create a DOM Range from SOURCE offsets within a content root.
+ *
+ * Mirrors computeCharOffsetInElement: plain text advances the source cursor by
+ * rendered length (1:1 with source), and inline source-mapped spans advance by
+ * their source byte length. Handrail chrome is not present in the content root.
  */
-function createRangeFromCharOffsets(element, startCharOffset, endCharOffset) {
+function createRangeFromSourceOffsets(root, startSrc, endSrc) {
   const range = document.createRange();
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  let charCount = 0;
+  let cursor = 0;
   let startSet = false;
+  let endSet = false;
 
-  while (walker.nextNode()) {
-    const textNode = walker.currentNode;
-    const len = textNode.textContent.length;
+  function walk(node) {
+    if (
+      node !== root &&
+      node.nodeType === Node.ELEMENT_NODE &&
+      node.hasAttribute("data-source-start")
+    ) {
+      const s = parseInt(node.getAttribute("data-source-start"), 10);
+      const e = parseInt(node.getAttribute("data-source-end"), 10);
+      const srcLen = e - s;
+      if (!startSet && cursor + srcLen > startSrc) {
+        range.setStart(node, 0);
+        startSet = true;
+      }
+      if (startSet && cursor + srcLen >= endSrc) {
+        range.setEnd(node, node.childNodes.length);
+        endSet = true;
+        return true;
+      }
+      cursor += srcLen;
+      return false;
+    }
 
-    if (!startSet && charCount + len > startCharOffset) {
-      range.setStart(textNode, startCharOffset - charCount);
-      startSet = true;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent.length;
+      if (!startSet && cursor + len > startSrc) {
+        range.setStart(node, Math.max(0, startSrc - cursor));
+        startSet = true;
+      }
+      if (startSet && cursor + len >= endSrc) {
+        range.setEnd(node, Math.min(len, endSrc - cursor));
+        endSet = true;
+        return true;
+      }
+      cursor += len;
+      return false;
     }
-    if (startSet && charCount + len >= endCharOffset) {
-      range.setEnd(textNode, endCharOffset - charCount);
-      return range;
+
+    for (const child of node.childNodes) {
+      if (walk(child)) return true;
     }
-    charCount += len;
+    return false;
   }
 
-  return null;
+  walk(root);
+  return startSet && endSet ? range : null;
 }

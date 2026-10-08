@@ -451,3 +451,111 @@ describe("extractSourceAnchor → resolveSourceAnchor round-trip", () => {
     expect(resolved.toString()).toBe("quick");
   });
 });
+
+describe("handrail chrome (the +108 drift bug)", () => {
+  let manuscriptEl, ydoc, ytext;
+
+  beforeEach(() => {
+    manuscriptEl = document.createElement("div");
+    document.body.appendChild(manuscriptEl);
+    ydoc = new Y.Doc();
+    ytext = ydoc.getText("text");
+  });
+
+  afterEach(() => {
+    document.body.removeChild(manuscriptEl);
+    ydoc.destroy();
+  });
+
+  // Mirrors the real render (handrails=True, add_source=True): a block carries
+  // data-source-start but wraps its text in .hr-content-zone next to chrome zones
+  // that each carry their own whitespace text. Those chrome characters used to be
+  // counted as source, inflating every plain-text offset.
+  function chromeBlock(contentHtml, dss, dse) {
+    return (
+      `<div class="paragraph hr hr-hidden" data-nodeid="1" data-source-start="${dss}" data-source-end="${dse}">` +
+      '<div class="hr-collapse-zone">\n   \n</div>' +
+      '<div class="hr-menu-zone">\n   menu menu menu   \n</div>' +
+      '<div class="hr-border-zone">\n  \n</div>' +
+      `<div class="hr-content-zone"><p>${contentHtml}</p></div>` +
+      '<div class="hr-spacer-zone">\n  \n</div>' +
+      '<div class="hr-info-zone">\n   \n</div>' +
+      "</div>"
+    );
+  }
+
+  it("extracts the correct source offset for plain text despite chrome", () => {
+    const source = "The quick brown fox jumps over";
+    ytext.insert(0, source);
+    manuscriptEl.innerHTML = chromeBlock(source, 0, source.length);
+
+    const textNode = manuscriptEl.querySelector(".hr-content-zone p").firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 10); // "brown"
+    range.setEnd(textNode, 15);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    expect(anchor).not.toBeNull();
+    expect(source.slice(anchor.source_start, anchor.source_end)).toBe("brown");
+  });
+
+  it("round-trips plain text through resolve despite chrome", () => {
+    const source = "The quick brown fox jumps over";
+    ytext.insert(0, source);
+    manuscriptEl.innerHTML = chromeBlock(source, 0, source.length);
+
+    const textNode = manuscriptEl.querySelector(".hr-content-zone p").firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 10);
+    range.setEnd(textNode, 15);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("brown");
+  });
+
+  it("keeps the anchor on the word after text is inserted above", () => {
+    const source = "The quick brown fox jumps over";
+    ytext.insert(0, source);
+    manuscriptEl.innerHTML = chromeBlock(source, 0, source.length);
+
+    const textNode = manuscriptEl.querySelector(".hr-content-zone p").firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 10);
+    range.setEnd(textNode, 15);
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+
+    // Edit above: insert "NEW " at the start, re-render with shifted offsets.
+    ytext.insert(0, "NEW ");
+    const updated = "NEW " + source;
+    manuscriptEl.innerHTML = chromeBlock(updated, 0, updated.length);
+
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("brown");
+  });
+
+  it("anchors plain text after an inline span (resolve symmetry past the span)", () => {
+    // source: "a *b* cat sat". The span "*b*" is source [2,5], rendered "b".
+    const source = "a *b* cat sat";
+    ytext.insert(0, source);
+    const content =
+      'a <span class="span" data-source-start="2" data-source-end="5"><em>b</em></span> cat sat';
+    manuscriptEl.innerHTML = chromeBlock(content, 0, source.length);
+
+    const p = manuscriptEl.querySelector(".hr-content-zone p");
+    const afterSpan = p.lastChild; // " cat sat"
+    const range = document.createRange();
+    range.setStart(afterSpan, 1); // "cat"
+    range.setEnd(afterSpan, 4);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    expect(anchor).not.toBeNull();
+    expect(source.slice(anchor.source_start, anchor.source_end)).toBe("cat");
+
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("cat");
+  });
+});
