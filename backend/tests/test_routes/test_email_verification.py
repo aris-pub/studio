@@ -5,6 +5,7 @@ and the verify-email endpoint. Resend API is always mocked — no real emails se
 """
 
 import os
+import re
 import sys
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from conftest import TestConstants
 
 from aris.models import User
+from aris.security import hash_token
 
 
 # ---------------------------------------------------------------------------
@@ -90,20 +92,24 @@ class TestRegistrationEmailVerification:
         assert TestConstants.DEFAULT_USER_EMAIL in call_params["to"]
         assert "/verify-email/" in call_params["html"]
 
-    async def test_registration_verification_link_contains_token(
+    async def test_registration_verification_link_hashes_token(
         self, client: AsyncClient, db_session, mock_resend
     ):
-        """The token in the email link must match the stored token."""
+        """The email carries the raw token, the database stores only its hash."""
         data = await _register(client)
         user_id = data["user"]["id"]
 
         result = await db_session.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
-        stored_token = user.email_verification_token
 
         call_params = mock_resend.call_args[0][0]
-        assert stored_token in call_params["html"]
-        assert stored_token in call_params["text"]
+        match = re.search(r"/verify-email/([A-Za-z0-9_-]+)", call_params["html"])
+        assert match, "no verify-email link in the email html"
+        raw_token = match.group(1)
+        assert raw_token in call_params["text"]
+        # The stored value is the hash of the raw token, never the raw token.
+        assert user.email_verification_token == hash_token(raw_token)
+        assert user.email_verification_token != raw_token
 
     async def test_registration_no_email_when_service_disabled(
         self, client: AsyncClient, db_session
@@ -209,7 +215,8 @@ class TestVerifyEmailEndpoint:
 
         result = await db_session.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
-        token = user.email_verification_token
+        token = user.generate_verification_token()
+        await db_session.commit()
         assert token is not None
 
         response = await client.post(f"/users/verify-email/{token}")
@@ -233,7 +240,7 @@ class TestVerifyEmailEndpoint:
 
         result = await db_session.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
-        token = user.email_verification_token
+        token = user.generate_verification_token()
         user.email_verified = True
         await db_session.commit()
 
@@ -248,7 +255,8 @@ class TestVerifyEmailEndpoint:
 
         result = await db_session.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
-        token = user.email_verification_token
+        token = user.generate_verification_token()
+        await db_session.commit()
 
         # No Authorization header
         response = await client.post(f"/users/verify-email/{token}")
@@ -261,7 +269,8 @@ class TestVerifyEmailEndpoint:
 
         result = await db_session.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
-        token = user.email_verification_token
+        token = user.generate_verification_token()
+        await db_session.commit()
 
         first = await client.post(f"/users/verify-email/{token}")
         assert first.status_code == 200

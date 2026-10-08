@@ -17,7 +17,7 @@ from ..authorization import require_self, require_view
 from ..config import settings
 from ..exceptions import bad_request_exception, not_found_exception
 from ..models import AvatarColor, FileRole, ProfilePicture, User
-from ..security import hash_password, verify_password
+from ..security import hash_password, hash_token, verify_password
 from ..services.email import get_email_service
 
 
@@ -332,10 +332,10 @@ async def verify_email(
     Public endpoint - no authentication required.
     Verifies the token and marks the email as verified.
     """
-    # Find user by verification token
+    # Find user by the hash of the verification token (raw token is never stored).
     result = await db.execute(
         select(User).where(
-            User.email_verification_token == token,
+            User.email_verification_token == hash_token(token),
             User.deleted_at.is_(None)
         )
     )

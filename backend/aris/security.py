@@ -1,6 +1,17 @@
 """Password hashing and verification utilities using bcrypt."""
 
+import hashlib
+
 import bcrypt
+
+
+def hash_token(raw_token: str) -> str:
+    """SHA-256 hex of a raw single-use token (email verification, magic-link invite).
+
+    We store this, never the raw token, so a database leak does not hand out usable
+    tokens. The raw value lives only in the email or link sent to the user.
+    """
+    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 def hash_password(password: str) -> str:
