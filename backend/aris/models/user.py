@@ -173,12 +173,16 @@ class User(Base):
         Returns
         -------
         str
-            32-character verification token.
+            The 32-character raw token. Only its SHA-256 hash is stored, so this
+            return value is the only copy of the raw token and must go straight
+            into the email link.
         """
         import secrets
 
+        from aris.security import hash_token
+
         token = secrets.token_urlsafe(24)[:32]  # Ensure exactly 32 chars
-        self.email_verification_token = token
+        self.email_verification_token = hash_token(token)
         return token
 
     def verify_token(self, token: str) -> bool:
@@ -196,7 +200,9 @@ class User(Base):
         """
         if not token or not self.email_verification_token:
             return False
-        return bool(self.email_verification_token == token)
+        from aris.security import hash_token
+
+        return bool(self.email_verification_token == hash_token(token))
 
 
 class ProfilePicture(Base):

@@ -1,6 +1,5 @@
 """CRUD for magic-link collaborator invitations (std-nbpwwn)."""
 
-import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -8,16 +7,12 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import FileInvitation, FilePermission, FileRole, User
+from ..security import hash_token
 from .permissions import get_permission_by_file_and_user
 from .user import build_new_user, get_user_by_email
 
 
 INVITE_TTL_DAYS = 7
-
-
-def hash_token(raw_token: str) -> str:
-    """SHA-256 hex of a raw invite token. We store this, never the raw token."""
-    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 async def create_invitation(

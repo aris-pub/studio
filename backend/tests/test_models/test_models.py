@@ -188,10 +188,15 @@ def test_user_has_email_verification_fields():
 def test_user_generate_verification_token():
     """Test email verification token generation."""
     user = User(name="Test User", email="test@example.com", password_hash="test_hash")
+    from aris.security import hash_token
+
     token = user.generate_verification_token()
     assert len(token) == 32
-    assert user.email_verification_token == token
     assert isinstance(token, str)
+    # The raw token is returned; only its SHA-256 hash is stored.
+    assert user.email_verification_token != token
+    assert user.email_verification_token == hash_token(token)
+    assert len(user.email_verification_token) == 64
 
 
 def test_user_verify_token_method():
