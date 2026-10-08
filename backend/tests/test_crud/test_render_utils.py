@@ -50,7 +50,7 @@ def test_render_with_assets_runs_off_the_event_loop_thread(monkeypatch):
     calling_thread = threading.current_thread()
     seen = {}
 
-    def spy(src, handrails=True, add_source=True, asset_resolver=None):
+    def spy(src, handrails=True, source_offsets=True, copy_source=False, asset_resolver=None):
         seen["off_loop"] = threading.current_thread() is not calling_thread
         return "<p>OK</p>"
 

@@ -100,11 +100,18 @@ async def render_with_assets(src: str, file_id: int, db: AsyncSession, user_id: 
 
         # to_thread: rsm.render is CPU-bound; running it inline would block the
         # event loop (and the whole uvicorn worker) for the length of the compile.
-        # add_source=True stamps data-source-start/-end on blocks and inline spans,
-        # which the annotation anchoring (sourceAnchor.js) needs. Without it the
-        # editor preview carries no source offsets and no annotation can be made.
+        # source_offsets=True stamps data-source-start/-end on blocks and inline
+        # spans, which the annotation anchoring (sourceAnchor.js) needs. Without it
+        # the editor preview carries no source offsets and no annotation can be made.
+        # copy_source=False drops the hidden full-source div (the copy-source modal
+        # feature), which otherwise duplicates the source text into the DOM.
         result = await asyncio.to_thread(
-            rsm.render, src, handrails=True, add_source=True, asset_resolver=asset_resolver
+            rsm.render,
+            src,
+            handrails=True,
+            source_offsets=True,
+            copy_source=False,
+            asset_resolver=asset_resolver,
         )
         render_time = time.time() - start_time
         logger.debug(f"RSM render with assets completed successfully in {render_time:.3f}s")

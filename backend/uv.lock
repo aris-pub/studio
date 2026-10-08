@@ -1748,7 +1748,7 @@ wheels = [
 
 [[package]]
 name = "rsm-lang"
-version = "1.5.1"
+version = "1.5.2"
 source = { editable = "../../rsm" }
 dependencies = [
     { name = "grandalf" },
