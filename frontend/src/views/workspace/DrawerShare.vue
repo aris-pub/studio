@@ -25,6 +25,8 @@
   const inviteEmail = ref("");
   const inviteRole = ref("EDITOR");
   const inviteError = ref("");
+  const inviteSuccess = ref("");
+  const inviteLink = ref("");
   const isAdding = ref(false);
 
   const roleOptions = [
@@ -46,8 +48,14 @@
 
   watch(fileId, fetchCollaborators, { immediate: true });
 
-  watch(inviteEmail, () => {
+  // Clear stale messages when the user types a new address. Skip the empty
+  // value the submit handler sets on success, which must not wipe the success
+  // message and link it just showed.
+  watch(inviteEmail, (val) => {
+    if (!val) return;
     inviteError.value = "";
+    inviteSuccess.value = "";
+    inviteLink.value = "";
   });
 
   async function onAddCollaborator() {
@@ -74,27 +82,31 @@
       return;
     }
 
+    inviteSuccess.value = "";
+    inviteLink.value = "";
     try {
-      const lookupResp = await api.post("/users/lookup", { email });
-      const targetUserId = lookupResp.data.user_id;
-
-      await api.post(`/files/${fileId.value}/permissions`, {
-        user_id: targetUserId,
+      const resp = await api.post(`/files/${fileId.value}/permissions/invite`, {
+        email,
         role: inviteRole.value,
       });
-
       inviteEmail.value = "";
       inviteRole.value = "EDITOR";
+      // New email with no account yet: the backend emailed a magic link and
+      // returned it as a copyable fallback.
+      if (resp.data?.status === "invited") {
+        inviteSuccess.value = `Invitation emailed to ${resp.data.invited_email}.`;
+        inviteLink.value = resp.data.invite_url || "";
+      }
       await fetchCollaborators();
     } catch (err) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail || "";
-      if (status === 404) {
-        inviteError.value = "No account found for this email";
-      } else if (status === 400 && detail.includes("already has permission")) {
+      if (status === 400 && detail.toLowerCase().includes("already has access")) {
         inviteError.value = "This person already has access";
+      } else if (status === 403) {
+        inviteError.value = "Only the owner can invite collaborators";
       } else if (status === 429) {
-        inviteError.value = "Too many lookups. Try again later.";
+        inviteError.value = "Too many invites. Try again in a minute.";
       } else {
         inviteError.value = "Something went wrong. Try again.";
       }
@@ -232,6 +244,20 @@
             />
           </div>
         </div>
+        <p v-if="inviteSuccess" class="invite-success" data-testid="invite-success">
+          {{ inviteSuccess }}
+        </p>
+        <div v-if="inviteLink" class="invite-link" data-testid="invite-link">
+          <span class="label">Or copy this link</span>
+          <input
+            type="text"
+            class="invite-link-input"
+            :value="inviteLink"
+            readonly
+            aria-label="Invitation link"
+            @focus="$event.target.select()"
+          />
+        </div>
       </template>
     </Section>
 
@@ -260,8 +286,8 @@
         </div>
 
         <p class="publish-hint">
-          Your manuscript will be downloaded as HTML. Scroll Press will open in a new tab,
-          where you upload that file and enter these details.
+          Your manuscript will be downloaded as HTML. Scroll Press will open in a new tab, where you
+          upload that file and enter these details.
         </p>
 
         <Button
@@ -355,6 +381,29 @@
   /* Invite controls */
   .invite-group {
     margin-top: 16px;
+  }
+
+  .invite-success {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--success-600);
+  }
+
+  .invite-link {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .invite-link-input {
+    width: 100%;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-primary, var(--gray-300));
+    border-radius: 6px;
+    background: var(--surface-secondary, var(--gray-50));
+    color: var(--gray-700);
   }
 
   .invite-group :deep(.base-input-field::placeholder) {
