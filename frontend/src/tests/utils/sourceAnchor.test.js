@@ -160,6 +160,55 @@ describe("resolveSourceAnchor", () => {
     expect(resolved.toString()).toBe("world");
   });
 
+  // std-49s3: an annotation on plain text in a paragraph that CONTAINS inline math
+  // must resolve to just the phrase, not the whole paragraph. The old guard
+  // short-circuited any block with a <math> descendant and wrapped the whole block.
+  it("resolves plain-text anchors in a paragraph that contains inline math", () => {
+    // source: "The counting argument $x^2$ follows here" ($x^2$ is 5 source bytes)
+    ytext.insert(0, "The counting argument $x^2$ follows here");
+
+    manuscriptEl.innerHTML =
+      '<p data-nodeid="1" data-source-start="0" data-source-end="40">' +
+      "The counting argument " +
+      '<span class="math" data-source-start="22" data-source-end="27"><math><mi>x</mi></math></span>' +
+      " follows here</p>";
+
+    // annotate "counting argument" (first text node, offsets 4..21)
+    const textNode = manuscriptEl.querySelector("p").firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 4);
+    range.setEnd(textNode, 21);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+
+    expect(resolved).not.toBeNull();
+    expect(resolved.toString()).toBe("counting argument");
+    expect(resolved.toString()).not.toContain("follows here");
+  });
+
+  // std-49s3: selecting the inline math itself still wraps the whole math element.
+  it("wraps the whole element for an anchor on inline math (atomic)", () => {
+    ytext.insert(0, "Value $x^2$ end");
+
+    manuscriptEl.innerHTML =
+      '<p data-nodeid="1" data-source-start="0" data-source-end="15">' +
+      "Value " +
+      '<span class="math" data-source-start="6" data-source-end="11"><math><mi>x</mi></math></span>' +
+      " end</p>";
+
+    const mathSpan = manuscriptEl.querySelector("span.math");
+    const range = document.createRange();
+    range.selectNodeContents(mathSpan);
+
+    const anchor = extractSourceAnchor(range, manuscriptEl, ytext);
+    const resolved = resolveSourceAnchor(anchor, manuscriptEl, ydoc);
+
+    expect(resolved).not.toBeNull();
+    // the resolved range wraps the math span, not a slice of it
+    expect(resolved.toString()).toContain("x");
+  });
+
   it("resolves correctly after text is inserted before the anchor", () => {
     const source = "Hello world";
     ytext.insert(0, source);

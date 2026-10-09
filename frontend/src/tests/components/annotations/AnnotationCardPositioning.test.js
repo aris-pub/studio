@@ -59,4 +59,13 @@ describe("AnnotationCardPositioning — reactivity (std-6at4)", () => {
   it("ResizeObserver or resize listener for layout changes", () => {
     expect(dockableSrc).toMatch(/ResizeObserver|resize/i);
   });
+
+  // std-az6k: a card's own height can change (expand/collapse, a message added)
+  // without the dock box changing, so a dock-level observer misses it and the card
+  // overlaps the one below. A per-card ResizeObserver must re-stack on card resize.
+  it("observes each card's height so stacking recomputes on expand (std-az6k)", () => {
+    expect(dockableSrc).toMatch(/cardResizeObserver/);
+    expect(dockableSrc).toMatch(/function observeCards/);
+    expect(dockableSrc).toMatch(/\[data-card-id\][\s\S]*?\.observe\(/);
+  });
 });
