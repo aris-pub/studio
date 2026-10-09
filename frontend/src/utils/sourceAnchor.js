@@ -293,9 +293,17 @@ export function resolveSourceAnchor(anchorData, manuscriptEl, ydoc) {
 
   if (!targetBlock) return null;
 
-  // Math elements: wrap the entire element instead of character-level ranging.
-  // The source bytes are LaTeX ($x^2$) but the DOM contains MathML — offsets don't correspond.
-  if (targetBlock.classList.contains("math") || targetBlock.querySelector("math")) {
+  // Atomic math: the block IS a math element (inline span.math or a mathblock),
+  // whose source is LaTeX ($x^2$) while the DOM is MathML, so character ranging is
+  // meaningless. Wrap the whole element. A paragraph that merely CONTAINS inline
+  // math is NOT atomic (it has a <math> descendant but its own class is
+  // "paragraph"), so it must fall through to source-offset ranging. Checking for a
+  // <math> descendant here was the bug that wrapped whole math-bearing paragraphs.
+  const isAtomicMath =
+    targetBlock.classList.contains("math") ||
+    targetBlock.classList.contains("mathblock") ||
+    targetBlock.tagName.toLowerCase() === "math";
+  if (isAtomicMath) {
     const range = document.createRange();
     range.selectNode(targetBlock);
     return range;

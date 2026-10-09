@@ -129,6 +129,7 @@
     computePositions();
     await nextTick();
     refinePositions();
+    observeCards();
   });
 
   // Recompute when active card changes (expand/collapse changes heights)
@@ -151,24 +152,47 @@
       observer = new MutationObserver((mutations) => {
         const hasMarks = mutations.some((m) => {
           // Detect <mark> elements being added
-          if ([...m.addedNodes].some(
-            (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
-          )) return true;
+          if (
+            [...m.addedNodes].some(
+              (n) => n.nodeType === 1 && (n.tagName === "MARK" || n.querySelector?.("mark"))
+            )
+          )
+            return true;
           // Detect data-highlight-annotation attribute being set (math highlights)
-          if (m.type === "attributes" && m.attributeName === "data-highlight-annotation") return true;
+          if (m.type === "attributes" && m.attributeName === "data-highlight-annotation")
+            return true;
           return false;
         });
         if (!hasMarks) return;
         clearTimeout(sortTimer);
         sortTimer = setTimeout(trySort, 50);
       });
-      observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-highlight-annotation"] });
+      observer.observe(el, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-highlight-annotation"],
+      });
     },
     { immediate: true }
   );
 
   // ResizeObserver on dock container to catch layout reflow
   let resizeObserver = null;
+  // ResizeObserver on each card. A card's own height can change without the dock
+  // box changing (expand/collapse, a message added), and the stacking depends on
+  // card heights. Recompute when a card actually resizes, instead of guessing the
+  // settled height via nextTick after activeAnnotationId changes (std-az6k: a card
+  // expanded over the one below it because the recompute read the pre-expand height).
+  let cardResizeObserver = null;
+  let cardResizeTimer = null;
+  function observeCards() {
+    if (!props.aligned || !cardResizeObserver) return;
+    cardResizeObserver.disconnect();
+    for (const card of document.querySelectorAll("[data-card-id]")) {
+      cardResizeObserver.observe(card);
+    }
+  }
   onMounted(() => {
     if (!props.aligned) return;
     const dock = document.querySelector(".dock.main.middle");
@@ -177,12 +201,19 @@
       refinePositions();
     });
     resizeObserver.observe(dock);
+    cardResizeObserver = new ResizeObserver(() => {
+      clearTimeout(cardResizeTimer);
+      cardResizeTimer = setTimeout(refinePositions, 50);
+    });
+    observeCards();
   });
 
   onUnmounted(() => {
     observer?.disconnect();
     resizeObserver?.disconnect();
+    cardResizeObserver?.disconnect();
     clearTimeout(sortTimer);
+    clearTimeout(cardResizeTimer);
   });
 
   // Deselect when clicking outside any card
@@ -235,7 +266,6 @@
       :search-match-current="searchCurrentMarginaliaId === ann.id"
       :search-query="searchQueryForMarginalia"
       :data-card-id="ann.id"
-      @resize="refinePositions"
       :style="
         aligned && cardPositions.get(ann.id) != null
           ? {
@@ -245,6 +275,7 @@
             }
           : {}
       "
+      @resize="refinePositions"
     />
   </div>
 </template>
