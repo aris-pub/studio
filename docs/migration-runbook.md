@@ -120,6 +120,12 @@ ships in one migration. Do not phase changes that do not need it.
   table without it. Pair a new-table migration with ENABLE RLS, a postgres policy,
   and a REVOKE, and put the REVOKE in a `DO ... EXCEPTION WHEN undefined_object`
   block because the `anon` / `authenticated` roles do not exist on local Docker.
+  This is enforced, not just documented: migration `r3a4b5c6d7e8` backfilled RLS
+  on every existing public table name-free (it loops over `pg_tables`), and the
+  weekly `rls-health-check.yml` workflow fails CI if any public table still lacks
+  RLS. So if you forget, or if a table gets made by hand in the Supabase SQL
+  editor, CI catches it before the advisor email does. Do the inline pattern on
+  new tables anyway, the check is the backstop, not the plan.
 - Tightening a constraint means cleaning the data in the same migration, above the
   constraint (collapse duplicate active rows before building the partial unique
   index). Skip that and the build fails, which fails the boot.

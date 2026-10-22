@@ -1,0 +1,64 @@
+name: RLS Health Check
+
+# Weekly guard against the failure mode Supabase's Security Advisor emails
+# about: a table in the public schema with Row Level Security turned off,
+# readable and writable by anyone holding the anon key. Migration
+# r3a4b5c6d7e8 enables RLS on every public table, and every new-table
+# migration is expected to do the same inline (see docs/migration-runbook.md,
+# "Project gotchas"). This check is the safety net for the case a migration
+# forgets, or a table is created by hand in the Supabase SQL editor: it fails
+# loudly in our own CI instead of waiting for the weekly advisor email.
+#
+# Read-only. Uses the same Supabase session-pooler connection and secrets as
+# the database-backup and purge-deleted-accounts workflows.
+
+on:
+  schedule:
+    # 06:00 UTC Monday, ahead of the weekly advisor digest, so we catch it first.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rls-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          # PostgreSQL 17 client to match the Supabase server version
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Fail if any public table lacks RLS
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DB_HOST: ${{ secrets.DATABASE_HOST }}
+          DB_PORT: ${{ secrets.DATABASE_PORT }}
+          DB_NAME: ${{ secrets.DATABASE_NAME }}
+          DB_USER: ${{ secrets.DATABASE_USER }}
+        run: |
+          PSQL="psql --host=$DB_HOST --port=$DB_PORT --username=$DB_USER --dbname=$DB_NAME --no-password -v ON_ERROR_STOP=1"
+
+          # relkind = 'r' is an ordinary table; relrowsecurity is the RLS flag.
+          MISSING=$($PSQL -tA -c "
+            SELECT string_agg(c.relname, ', ' ORDER BY c.relname)
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relkind = 'r'
+              AND NOT c.relrowsecurity;")
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::Public tables without Row Level Security: $MISSING"
+            echo "Fix: add a migration enabling RLS on these tables (see docs/migration-runbook.md, 'Project gotchas'), or apply the backfill pattern from migration r3a4b5c6d7e8."
+            exit 1
+          fi
+
+          echo "All public tables have RLS enabled."
