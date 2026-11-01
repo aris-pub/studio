@@ -3,13 +3,8 @@
     <h1 class="section-header">Get in Touch</h1>
     <p class="page-subtitle">Questions? Ideas? We'd love to hear from you.</p>
 
-    <h3 class="section-subheader">Community</h3>
-    <p>
-      Join our community discussion on
-      <a href="https://aris-pub.zulipchat.com/" target="_blank" rel="noopener noreferrer">Zulip</a>.
-      This is the best place to ask questions, share ideas, and connect with other researchers using
-      RSM Studio.
-    </p>
+    <h3 class="section-subheader">Email</h3>
+    <p>For direct inquiries, reach out to <a href="mailto:hello@aris.pub">hello@aris.pub</a>.</p>
 
     <h3 class="section-subheader">Development</h3>
     <p>
