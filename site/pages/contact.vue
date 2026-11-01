@@ -5,10 +5,9 @@
 
     <h3 class="section-subheader">Community</h3>
     <p>
-      Join our community discussion on
-      <a href="https://aris-pub.zulipchat.com/" target="_blank" rel="noopener noreferrer">Zulip</a>.
-      This is the best place to ask questions, share ideas, and connect with other researchers using
-      RSM Studio.
+      Join the discussion in the
+      <a href="https://discord.gg/VaaEvXammt" target="_blank" rel="noopener noreferrer">SciUX Discord</a>.
+      This is the best place to ask questions and share ideas about RSM Studio.
     </p>
 
     <h3 class="section-subheader">Development</h3>
