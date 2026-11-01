@@ -5,9 +5,8 @@
 
     <h3 class="section-subheader">Community</h3>
     <p>
-      Join the discussion in the
-      <a href="https://discord.gg/VaaEvXammt" target="_blank" rel="noopener noreferrer">SciUX Discord</a>.
-      This is the best place to ask questions and share ideas about RSM Studio.
+      To talk with the people behind RSM Studio, see the
+      <a href="https://aris.pub/contact/" target="_blank" rel="noopener noreferrer">Aris contact page</a>.
     </p>
 
     <h3 class="section-subheader">Development</h3>
