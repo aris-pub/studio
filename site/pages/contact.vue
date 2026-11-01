@@ -3,11 +3,8 @@
     <h1 class="section-header">Get in Touch</h1>
     <p class="page-subtitle">Questions? Ideas? We'd love to hear from you.</p>
 
-    <h3 class="section-subheader">Community</h3>
-    <p>
-      To talk with the people behind RSM Studio, see the
-      <a href="https://aris.pub/contact/" target="_blank" rel="noopener noreferrer">Aris contact page</a>.
-    </p>
+    <h3 class="section-subheader">Email</h3>
+    <p>For direct inquiries, reach out to <a href="mailto:hello@aris.pub">hello@aris.pub</a>.</p>
 
     <h3 class="section-subheader">Development</h3>
     <p>
