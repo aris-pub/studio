@@ -32,7 +32,7 @@ dependencies = [
     # fresh resolve to 0.26 segfaults the renderer (SIGSEGV). Keep it in the
     # 0.24-0.25 window. The Docker build does `rm -f uv.lock && uv sync`, so this
     # cap must live here, not only in the lockfile.
-    "tree-sitter>=0.23.2,<0.26",
+    "tree-sitter>=0.23.2,<0.27",
     "sentry-sdk[fastapi]>=2.0.0",
     "slowapi>=0.1.10",
 ]
