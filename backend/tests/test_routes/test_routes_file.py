@@ -636,7 +636,8 @@ async def test_download_file_uses_cdn_urls(client: AsyncClient, authenticated_us
 
 
 async def test_download_file_uses_correct_jquery_version(client: AsyncClient, authenticated_user):
-    """Test that downloaded file uses jQuery 3.6.0 from CDN."""
+    """Test that downloaded file holds jQuery 3.6.0, which RSM inlines in a
+    standalone page."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
     create_response = await client.post(
@@ -655,11 +656,12 @@ async def test_download_file_uses_correct_jquery_version(client: AsyncClient, au
     assert response.status_code == 200
 
     # Must use exact jQuery version to match bundled version
-    assert "jquery@3.6.0" in response.text
+    assert "jQuery JavaScript Library v3.6.0" in response.text
 
 
-async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authenticated_user):
-    """Test that downloaded file uses Tooltipster from CDN."""
+async def test_download_file_includes_tooltipster(client: AsyncClient, authenticated_user):
+    """Test that downloaded file holds Tooltipster, which RSM inlines in a
+    standalone page."""
     headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
     create_response = await client.post(
@@ -677,8 +679,7 @@ async def test_download_file_uses_tooltipster_cdn(client: AsyncClient, authentic
     response = await client.post(f"/files/{file_id}/download", headers=headers)
     assert response.status_code == 200
 
-    # Should use Tooltipster 4.x from CDN
-    assert "tooltipster@4" in response.text
+    assert "tooltipster http://calebjacob.github.io/tooltipster/" in response.text
 
 
 async def test_download_file_includes_html_assets(client: AsyncClient, authenticated_user):
