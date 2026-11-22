@@ -9,17 +9,9 @@ on:
       - 'pnpm-lock.yaml'
       - 'package.json'
       - '.github/workflows/preview.yml'
-  push:
-    branches-ignore: [main]
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - '.github/workflows/preview.yml'
 
 concurrency:
-  group: preview-${{ github.head_ref || github.ref_name }}
+  group: preview-${{ github.head_ref }}
   cancel-in-progress: true
 
 permissions:
@@ -37,52 +29,26 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
-    - name: Resolve PR number
-      id: pr
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-        else
-          PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --json number --jq '.[0].number')
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No PR found for branch ${{ github.ref_name }}, skipping"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-        fi
-        echo "skip=false" >> "$GITHUB_OUTPUT"
-
-    - name: Skip if no PR
-      if: steps.pr.outputs.skip == 'true'
-      run: echo "No PR found, skipping deploy"
-
     - uses: actions/checkout@v7
-      if: steps.pr.outputs.skip != 'true'
       with:
         path: studio
         fetch-depth: 0
 
     - name: Resolve backend environment
-      if: steps.pr.outputs.skip != 'true'
       id: backend
       run: |
-        PR_NUM="${{ steps.pr.outputs.number }}"
+        PR_NUM="${{ github.event.pull_request.number }}"
         echo "test_user=preview-pr-${PR_NUM}@aris.pub" >> "$GITHUB_OUTPUT"
         echo "url=https://aris-backend-pr-${PR_NUM}.fly.dev" >> "$GITHUB_OUTPUT"
         echo "app=aris-backend-pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
 
     - name: Setup Fly CLI
-      if: steps.pr.outputs.skip != 'true'
       uses: superfly/flyctl-actions/setup-flyctl@master
 
     - name: Create preview app and database
-      if: steps.pr.outputs.skip != 'true'
       env:
-        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
-        DB_APP: aris-backend-pr-${{ steps.pr.outputs.number }}-db
+        APP_NAME: aris-backend-pr-${{ github.event.pull_request.number }}
+        DB_APP: aris-backend-pr-${{ github.event.pull_request.number }}-db
       run: |
         if ! flyctl status --app "$APP_NAME" 2>/dev/null; then
           flyctl postgres create \
@@ -101,20 +67,19 @@ jobs:
 
           flyctl secrets set --app "$APP_NAME" \
             ENV="PROD" \
-            JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}-jwt-signing-key-32-chars-min" \
-            INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars" \
+            JWT_SECRET_KEY="preview-${{ github.event.pull_request.number }}-jwt-signing-key-32-chars-min" \
+            INTERNAL_SHARED_SECRET="preview-${{ github.event.pull_request.number }}-internal-shared-secret-32chars" \
             TEST_USER_EMAIL="${{ steps.backend.outputs.test_user }}" \
             TEST_USER_PASSWORD="${{ secrets.PREVIEW_TEST_PASSWORD }}" \
             RESEND_API_KEY="" \
             FROM_EMAIL="noreply@updates.aris.pub" \
-            FRONTEND_URL="https://pr-${{ steps.pr.outputs.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app" \
-            BACKEND_URL="https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev"
+            FRONTEND_URL="https://pr-${{ github.event.pull_request.number }}--${{ secrets.NETLIFY_FRONTEND_SITE }}.netlify.app" \
+            BACKEND_URL="https://aris-backend-pr-${{ github.event.pull_request.number }}.fly.dev"
         fi
 
     - name: Ensure required secrets present on existing preview apps
-      if: steps.pr.outputs.skip != 'true'
       env:
-        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        APP_NAME: aris-backend-pr-${{ github.event.pull_request.number }}
       run: |
         # The create-app block above only sets secrets when the app is first
         # created. Older preview apps from before INTERNAL_SHARED_SECRET became
@@ -122,7 +87,7 @@ jobs:
         # already-present secret is a no-op apart from a brief restart.
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q INTERNAL_SHARED_SECRET; then
           flyctl secrets set --app "$APP_NAME" \
-            INTERNAL_SHARED_SECRET="preview-${{ steps.pr.outputs.number }}-internal-shared-secret-32chars"
+            INTERNAL_SHARED_SECRET="preview-${{ github.event.pull_request.number }}-internal-shared-secret-32chars"
         fi
         # FROM_EMAIL is required when ENV=PROD (which previews use). Preview apps
         # created before it became required crash on boot without it. Previews
@@ -145,7 +110,7 @@ jobs:
         # app's own public origin.
         if ! flyctl secrets list --app "$APP_NAME" 2>/dev/null | grep -q BACKEND_URL; then
           flyctl secrets set --app "$APP_NAME" \
-            BACKEND_URL="https://aris-backend-pr-${{ steps.pr.outputs.number }}.fly.dev"
+            BACKEND_URL="https://aris-backend-pr-${{ github.event.pull_request.number }}.fly.dev"
         fi
         # JWT_SECRET_KEY used to be set to "preview-<N>", eleven characters, on an app
         # reachable from the public internet. config.require_prod_config now refuses to
@@ -154,13 +119,12 @@ jobs:
         # would skip them. Fly does not restart when the value is unchanged, so this is
         # a no-op on apps that already have the long one.
         flyctl secrets set --app "$APP_NAME" \
-          JWT_SECRET_KEY="preview-${{ steps.pr.outputs.number }}-jwt-signing-key-32-chars-min"
+          JWT_SECRET_KEY="preview-${{ github.event.pull_request.number }}-jwt-signing-key-32-chars-min"
 
     - name: Deploy backend to Fly
-      if: steps.pr.outputs.skip != 'true'
       working-directory: studio
       env:
-        APP_NAME: aris-backend-pr-${{ steps.pr.outputs.number }}
+        APP_NAME: aris-backend-pr-${{ github.event.pull_request.number }}
       run: |
         # Build context is the studio repo: the Dockerfile git-clones rsm at the
         # pinned RSM_VERSION, so no rsm sibling checkout is needed. Relax npm ci
@@ -175,7 +139,6 @@ jobs:
           --local-only
 
     - name: Seed test user
-      if: steps.pr.outputs.skip != 'true'
       env:
         APP_NAME: ${{ steps.backend.outputs.app }}
         TEST_USER: ${{ steps.backend.outputs.test_user }}
@@ -202,24 +165,20 @@ jobs:
     # --- Frontend: build locally, upload to Netlify ---
 
     - uses: pnpm/action-setup@v6
-      if: steps.pr.outputs.skip != 'true'
       with:
         package_json_file: studio/package.json
 
     - uses: actions/setup-node@v6
-      if: steps.pr.outputs.skip != 'true'
       with:
         node-version: 20
         cache: pnpm
         cache-dependency-path: studio/pnpm-lock.yaml
 
     - name: Install frontend dependencies
-      if: steps.pr.outputs.skip != 'true'
       working-directory: studio
       run: pnpm install --frozen-lockfile --filter aris
 
     - name: Build frontend with preview env vars
-      if: steps.pr.outputs.skip != 'true'
       working-directory: studio
       env:
         VITE_API_BASE_URL: ${{ steps.backend.outputs.url }}
@@ -237,13 +196,12 @@ jobs:
       run: pnpm --filter ./frontend run build
 
     - name: Deploy frontend to Netlify
-      if: steps.pr.outputs.skip != 'true'
       uses: nwtgck/actions-netlify@v4
       with:
         publish-dir: studio/frontend/dist
         production-deploy: false
-        alias: pr-${{ steps.pr.outputs.number }}
-        deploy-message: "PR #${{ steps.pr.outputs.number }}"
+        alias: pr-${{ github.event.pull_request.number }}
+        deploy-message: "PR #${{ github.event.pull_request.number }}"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         enable-commit-comment: false
         enable-pull-request-comment: false
@@ -252,7 +210,6 @@ jobs:
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_FRONTEND_SITE_ID }}
 
     - name: Smoke-test multi-player WS auth handshake
-      if: steps.pr.outputs.skip != 'true'
       working-directory: studio
       # End-to-end check that catches deploy-config drift the unit tests
       # can't see — TLS handler on port 1234, supervisord env forwarding
@@ -263,12 +220,11 @@ jobs:
         python scripts/smoke-test-preview.py "${{ steps.backend.outputs.url }}"
 
     - name: Comment preview URLs
-      if: steps.pr.outputs.skip != 'true'
       uses: actions/github-script@v9
       env:
         BACKEND_URL: ${{ steps.backend.outputs.url }}
         NETLIFY_SITE_NAME: ${{ secrets.NETLIFY_FRONTEND_SITE }}
-        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
         TEST_USER: ${{ steps.backend.outputs.test_user }}
       with:
         script: |
@@ -312,7 +268,7 @@ jobs:
           }
 
   destroy:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     # Use a destroy-specific concurrency group (NOT the workflow-level
     # `preview-<head-ref>` group, which the close event already holds at
