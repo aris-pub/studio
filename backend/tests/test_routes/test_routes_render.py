@@ -1,6 +1,7 @@
 """Test render routes."""
 
 import asyncio
+import re
 import tempfile
 import threading
 from pathlib import Path
@@ -116,7 +117,8 @@ This document demonstrates web-native publishing with interactive figures.
         # Verify the figure content is included in the response
         assert "Test Document with Interactive Chart" in rendered_html
         assert "test-chart" in rendered_html
-        assert "This document demonstrates web-native publishing" in rendered_html
+        # RSM wraps hyphenated words in a span.
+        assert "This document demonstrates web-native publishing" in re.sub(r"<[^>]+>", "", rendered_html)
 
     finally:
         # Clean up test file

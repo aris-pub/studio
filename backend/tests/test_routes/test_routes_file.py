@@ -728,10 +728,10 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
 
 Here is the interactive chart:
 
-:html:{
-  :path: scatter-chart.html
-}
+:figure: {:path: scatter-chart.html}
+
   :caption: Interactive scatter plot.
+
 ::
 """
 
@@ -907,6 +907,30 @@ async def test_pdf_asset_write_failure_logs_warning(client: AsyncClient, authent
     assert response.status_code == 500
     assert "Failed to write asset" in caplog.text
     assert "bad.svg" in caplog.text
+
+
+async def test_download_pdf_422_when_the_source_cannot_be_parsed(
+    client: AsyncClient, authenticated_user
+):
+    """rsm's pandoc_export returns None when the source cannot be parsed."""
+    headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
+    create_response = await client.post(
+        "/files",
+        headers=headers,
+        json={
+            "title": "Broken",
+            "abstract": "",
+            "owner_id": authenticated_user["user_id"],
+            "source": "# Test\n\n:theorem: {:label: t\n",
+        },
+    )
+    file_id = create_response.json()["id"]
+
+    with patch("rsm.app.pandoc_export", return_value=None):
+        response = await client.post(f"/files/{file_id}/download/pdf", headers=headers)
+
+    assert response.status_code == 422
+    assert "could not be parsed" in response.json()["detail"]
 
 
 async def test_download_pdf_413_when_total_size_exceeds_cap(

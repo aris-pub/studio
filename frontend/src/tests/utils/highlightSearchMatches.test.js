@@ -174,7 +174,7 @@ describe("highlightSearchMatches utils", () => {
 
   describe("highlightMathMatches", () => {
     function buildMathDOM(latex) {
-      // Simulate Temml output: <span class="math"><math><mrow><mi>...</mi></mrow></math></span>
+      // Simulate MathML output: <span class="math"><math><mrow><mi>...</mi></mrow></math></span>
       const container = document.createElement("div");
       const span = document.createElement("span");
       span.className = "math";

@@ -26,9 +26,8 @@ aris/
 
 **Platform-specific binaries (tree-sitter-rsm):**
 - `rsm/` and `rsm/tree-sitter-rsm` must be installed from local source (never PyPI/GitHub)
-- tree-sitter-rsm compiles platform-specific binaries (macOS .dylib vs Linux .so)
-- `py_limited_api=False` generates platform-specific names so both coexist in the same directory
-- Docker builds Linux binaries once on startup; local tests use macOS binaries
+- tree-sitter-rsm's compiled files have the same names on macOS and Linux, so the dev container never compiles them in the shared rsm checkout: it installs the Python package non-editable and builds the Node addon inside `rsm-lsp/node_modules` (a container-only volume). See `docker/backend/docker-entrypoint.sh`.
+- Do not run `uv sync` by hand inside the dev backend container: it reinstalls tree-sitter-rsm editable, which overwrites the Mac's `_binding.abi3.so`. The container sets `UV_NO_SYNC=1` so that `uv run` does not sync.
 
 ```bash
 just dev     # Start Docker Compose services

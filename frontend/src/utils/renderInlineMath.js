@@ -1,43 +1,45 @@
 /**
- * Render $...$ inline math in plain text strings using Temml.
+ * Render $...$ inline math in plain text strings with MathJax.
  * Returns an HTML string safe for v-html — non-math segments are HTML-escaped.
  *
- * Loads Temml from CDN on first use if not already available (e.g. onload.js
- * loaded it). Returns a promise that resolves to signal readiness.
+ * Studio uses the MathJax that rsm loads (rsm's static/libraries.js), so a page
+ * has one math renderer. Call ensureMathJax() first; until it resolves,
+ * renderInlineMath returns the escaped text.
  */
 
-const TEMML_JS = "https://cdn.jsdelivr.net/npm/temml/dist/temml.min.js";
-const TEMML_CSS = "https://cdn.jsdelivr.net/npm/temml/dist/Temml.css";
 const INLINE_MATH_RE = /\$([^$]+)\$/g;
 
-let loadPromise = null;
+let libsPromise = null;
+let libs = null;
 
 /**
- * Ensure Temml is loaded. Returns a promise that resolves when ready.
- * Idempotent — safe to call multiple times.
+ * Load rsm's math library module and MathJax. Idempotent.
+ * The module URL is the same one that rsm's onload.js imports, so the browser
+ * shares one module instance and one MathJax with the manuscript.
  */
-export function ensureTemml() {
-  if (window.temml) return Promise.resolve();
-  if (loadPromise) return loadPromise;
-
-  // CSS
-  if (!document.querySelector(`link[href="${TEMML_CSS}"]`)) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = TEMML_CSS;
-    document.head.appendChild(link);
+export function loadRsmLibraries() {
+  if (!libsPromise) {
+    const base = import.meta.env.VITE_API_BASE_URL;
+    libsPromise = import(/* @vite-ignore */ `${base}/static/libraries.js`)
+      .then((mod) => {
+        libs = mod;
+        return mod;
+      })
+      .catch((err) => {
+        libsPromise = null;
+        throw err;
+      });
   }
+  return libsPromise;
+}
 
-  // JS
-  const script = document.createElement("script");
-  script.src = TEMML_JS;
-  document.head.appendChild(script);
-
-  loadPromise = new Promise((resolve) => {
-    script.onload = resolve;
-    script.onerror = resolve;
-  });
-  return loadPromise;
+export async function ensureMathJax() {
+  try {
+    const mod = await loadRsmLibraries();
+    await mod.loadMathJax();
+  } catch (err) {
+    console.error("Loading MathJax failed:", err);
+  }
 }
 
 function escapeHtml(str) {
@@ -53,8 +55,8 @@ export function renderInlineMath(text) {
   if (!text) return "";
   if (!text.includes("$")) return escapeHtml(text);
 
-  const temml = window.temml;
-  if (!temml) return escapeHtml(text);
+  const MathJax = window.MathJax;
+  if (!MathJax?.tex2chtml) return escapeHtml(text);
 
   let result = "";
   let lastIndex = 0;
@@ -62,7 +64,7 @@ export function renderInlineMath(text) {
   for (const match of text.matchAll(INLINE_MATH_RE)) {
     result += escapeHtml(text.slice(lastIndex, match.index));
     try {
-      result += temml.renderToString(match[1], { displayMode: false });
+      result += MathJax.tex2chtml(match[1], { display: false }).outerHTML;
     } catch {
       result += escapeHtml(match[0]);
     }
@@ -70,5 +72,8 @@ export function renderInlineMath(text) {
   }
 
   result += escapeHtml(text.slice(lastIndex));
+  // tex2chtml runs outside a typeset call, so the CSS for the new characters
+  // is added only when the stylesheet is brought up to date.
+  libs?.refreshMathStyles();
   return result;
 }

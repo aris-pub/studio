@@ -81,6 +81,11 @@ async def download_file_pdf(
             status_code=422,
             detail=f"PDF export is not yet supported for this document. The RSM-to-PDF pipeline encountered an error: {e}",
         )
+    if typst_source is None:
+        raise HTTPException(
+            status_code=422,
+            detail="The document could not be parsed, so it cannot be exported to PDF.",
+        )
 
     # Cross-references and citations are now handled by the RSM Pandoc
     # translator with proper labels — no post-processing needed

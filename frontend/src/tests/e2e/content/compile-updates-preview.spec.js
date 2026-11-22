@@ -112,8 +112,10 @@ test.describe("Compile Button Updates Preview @auth", () => {
     await page.goto(`/file/${fileId}`, { waitUntil: "commit" });
     await page.waitForSelector('[data-testid="manuscript-container"]', { timeout: 15000 });
 
-    const initialContent = await page.textContent('[data-testid="manuscript-viewer"]');
-    expect(initialContent).toContain("original text");
+    // The viewer fills in once rsm's onload has run, after the container appears.
+    await expect(page.locator('[data-testid="manuscript-viewer"]')).toContainText("original text", {
+      timeout: 10000,
+    });
 
     await page.click('[data-testid="workspace-sidebar"] .sb-item:has-text("source") button');
     await page.waitForSelector(".cm-editor", { timeout: 15000 });

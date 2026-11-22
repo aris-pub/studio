@@ -50,7 +50,7 @@ export function useHeadInjection(api = null) {
         let src = script.getAttribute("src");
         if (src && !loadedResources.has(src)) {
           // Skip jQuery, Tooltipster, and MathJax — ManuscriptWrapper handles
-          // math rendering via onload.js (which uses Temml with MathJax fallback)
+          // math rendering via onload.js, which loads rsm's own MathJax
           if (src.includes("jquery") || src.includes("tooltipster") || src.includes("mathjax") || src.includes("tex-chtml") || src.includes("tex-mml")) {
             loadedResources.add(src);
             return;
@@ -113,8 +113,8 @@ export function useHeadInjection(api = null) {
     }
 
     // Skip MathJax init scripts — Studio handles math rendering via
-    // onload.js (Temml with MathJax fallback). The backend's init_script
-    // loads MathJax independently which conflicts with Temml.
+    // onload.js, which loads rsm's own MathJax. The backend's init_script would
+    // load a second copy.
     if (initScript.includes("MathJax") || initScript.includes("tex-chtml") || initScript.includes("tex-mml")) {
       return;
     }
@@ -139,7 +139,7 @@ export function useHeadInjection(api = null) {
     const scripts = manuscriptEl.querySelectorAll("script");
     scripts.forEach((script) => {
       if (script.textContent && script.textContent.trim()) {
-        // Skip MathJax config scripts — Studio uses Temml via onload.js
+        // Skip MathJax config scripts: onload.js configures rsm's MathJax
         if (script.textContent.includes("MathJax") || script.textContent.includes("mathjax")) {
           return;
         }

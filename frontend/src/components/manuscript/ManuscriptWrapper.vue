@@ -107,6 +107,9 @@
       await nextTick();
       if (annotationsEnabled) applyHighlights();
     }
+    // The watcher skips a change that arrives while a render is running, so
+    // render the newest HTML now if it changed in the meantime.
+    if (props.htmlString !== lastHtmlString) await executeRender();
   };
 
   watch([onload, () => selfRef.value, () => props.htmlString], executeRender);

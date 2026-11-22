@@ -54,7 +54,9 @@ just dev
   `multiplayer`, `frontend`, `site`, `postgres`.
 - The host's `../../rsm` is volume-mounted to `/workspace/rsm`.
 - `docker/backend/docker-entrypoint.sh` runs `uv sync` against the mounted
-  `rsm`, then builds `tree-sitter-rsm` and `rsm-lsp` from it.
+  `rsm`, then builds `tree-sitter-rsm` and `rsm-lsp` from it. The grammar's
+  compiled files stay in the container (non-editable Python install, Node addon
+  in the `rsm-lsp/node_modules` volume), so they never overwrite the host's.
 - `uvicorn --reload` watches `/workspace/rsm`, so editing `rsm` on the host
   hot-reloads the backend.
 - Process management: `docker/supervisord.dev.conf`.

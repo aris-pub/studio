@@ -132,7 +132,7 @@ test.describe("File Download Tests @auth @desktop-only", () => {
     fs.unlinkSync(downloadPath);
   });
 
-  test("downloaded file uses correct jQuery version from CDN", async ({ page }) => {
+  test("downloaded file includes jQuery 3.6.0", async ({ page }) => {
     await fileHelpers.ensureFileDeselected(testFileId);
     await fileHelpers.openFileMenu(testFileId);
 
@@ -145,8 +145,9 @@ test.describe("File Download Tests @auth @desktop-only", () => {
 
     const content = fs.readFileSync(downloadPath, "utf-8");
 
-    // Must use exact jQuery 3.6.0 version
-    expect(content).toContain("jquery@3.6.0");
+    // rsm 2.0.0 puts jQuery in the standalone file instead of loading it from a CDN
+    expect(content).toContain("jQuery JavaScript Library v3.6.0");
+    expect(content).not.toMatch(/<script[^>]+src="[^"]*jquery/i);
 
     fs.unlinkSync(downloadPath);
   });

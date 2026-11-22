@@ -226,7 +226,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
 
   // Watch annotations — recompute after highlights are painted.
   // The highlight renderer sets data-highlight-annotation on math elements
-  // which may happen asynchronously after Temml renders.
+  // which may happen asynchronously after MathJax renders.
   if (annotations) {
     watch(
       annotations,
@@ -234,7 +234,7 @@ export function useMinimapMarks(manuscriptRef, options = {}) {
         await nextTick();
         await nextTick();
         computeMarks();
-        // Math highlights may render after Temml finishes — recompute again
+        // Math highlights may render after MathJax finishes — recompute again
         setTimeout(() => computeMarks(), 1000);
       },
       { deep: true }

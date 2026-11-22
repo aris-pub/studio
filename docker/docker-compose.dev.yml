@@ -18,6 +18,8 @@ services:
       - backend_venv:/workspace/studio/backend/.venv
       - /workspace/studio/multi-player/node_modules  # Prevent host/container conflicts
       - /workspace/rsm/tree-sitter-rsm/node_modules  # Prevent host/container conflicts
+      # The container compiles its own grammar addon in here (docker-entrypoint.sh)
+      - /workspace/rsm/packages/rsm-lsp/node_modules
     working_dir: /workspace/studio/backend
     environment:
       - DB_PORT=5432
@@ -40,6 +42,10 @@ services:
       # the per-IP limiter would throttle the whole run. Prod (behind Fly) keeps
       # it on because it does not set this flag.
       - RATE_LIMITING_ENABLED=false
+      # uv run would sync the venv and put tree-sitter-rsm back as an editable
+      # install, which compiles it inside the host's rsm checkout (see
+      # docker-entrypoint.sh). The entrypoint runs uv sync itself.
+      - UV_NO_SYNC=1
     depends_on:
       postgres:
         condition: service_healthy

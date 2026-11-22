@@ -6,8 +6,9 @@ import { getBackendURL } from "../utils/test-config.js";
 /**
  * Math Rendering Regression Tests
  *
- * RSM uses Temml as the primary math renderer (synchronous, native MathML).
- * MathJax is a fallback if the Temml CDN fails to load.
+ * RSM renders math with MathJax, which rsm's onload.js loads once from rsm's
+ * static files. Studio's own math (annotations, MathElement) uses the same
+ * MathJax.
  *
  * These tests verify:
  * 1. Studio's onload injection runs exactly once (no infinite loop)
@@ -109,14 +110,16 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
         timeout: 10000,
       });
 
-      // Wait for Temml to load (primary renderer)
-      await page.waitForFunction(() => typeof window.temml !== "undefined", { timeout: 10000 });
+      // Wait for MathJax to load
+      await page.waitForFunction(() => typeof window.MathJax?.typesetPromise === "function", {
+        timeout: 10000,
+      });
 
       // Check the initialization guard is working
       const initState = await page.evaluate(() => ({
         rsmInitialized: window.__rsmInitialized,
-        temmlExists: typeof window.temml !== "undefined",
-        temmlScripts: document.querySelectorAll('script[src*="temml"]').length,
+        mathJaxExists: typeof window.MathJax?.typesetPromise === "function",
+        mathJaxScripts: document.querySelectorAll("script#MathJax-script").length,
       }));
 
       // CRITICAL: onload should only initialize ONCE (catches infinite import loop)
@@ -126,11 +129,9 @@ test.describe("RSM Initialization Guard @auth @desktop-only", () => {
       const stackOverflows = errors.filter((e) => e.includes("Maximum call stack"));
       expect(stackOverflows).toHaveLength(0);
 
-      // Temml should have loaded successfully
-      expect(initState.temmlExists).toBe(true);
-      // 1 from onload.js; ensureTemml reuses the existing script tag
-      expect(initState.temmlScripts).toBeGreaterThanOrEqual(1);
-      expect(initState.temmlScripts).toBeLessThanOrEqual(2);
+      // MathJax loaded once, from rsm's libraries.js
+      expect(initState.mathJaxExists).toBe(true);
+      expect(initState.mathJaxScripts).toBe(1);
 
       // rsmInitialized may still be false if onload() is in progress
       // (especially in slower browsers like Firefox). Not a failure.
@@ -200,9 +201,7 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
    * creates a new one. During Vue's reconciliation both instances can briefly co-exist.
    * This waits until:
    *   1. Exactly one manuscript viewer exists AND it contains the expected new content
-   *   2. Math elements are present (Temml has run on the new content)
-   *
-   * Temml is synchronous so there is no processing-state to poll.
+   *   2. Math elements are present (MathJax has typeset the new content)
    */
   async function waitForCompiledContent(page, contentMarker) {
     await page.waitForFunction(
@@ -210,8 +209,10 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
         const viewers = document.querySelectorAll('[data-testid="manuscript-viewer"]');
         if (viewers.length !== 1) return false;
         if (!viewers[0].textContent?.includes(marker)) return false;
-        const inline = document.querySelectorAll("span.math > math").length;
-        const block = document.querySelectorAll("div.mathblock .hr-content-zone math").length;
+        const inline = document.querySelectorAll("span.math > mjx-container").length;
+        const block = document.querySelectorAll(
+          "div.mathblock .hr-content-zone mjx-container"
+        ).length;
         return inline > 0 && block > 0;
       },
       contentMarker,
@@ -221,14 +222,14 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
 
   /**
    * Wait for math rendering to stabilize by checking element counts.
-   * Temml is synchronous, so stability is reached quickly.
+   * MathJax typesets asynchronously, so the counts settle after a few checks.
    */
   async function waitForMathStable(page) {
     await page.waitForFunction(
       () => {
         const getState = () => ({
-          inline: document.querySelectorAll("span.math > math").length,
-          block: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
+          inline: document.querySelectorAll("span.math > mjx-container").length,
+          block: document.querySelectorAll("div.mathblock .hr-content-zone mjx-container").length,
         });
 
         if (!window.__mathStabilityCheck) {
@@ -267,11 +268,13 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
         timeout: 5000,
       });
 
-      // Wait for Temml to render both inline and block math
+      // Wait for MathJax to render both inline and block math
       await page.waitForFunction(
         () => {
-          const inline = document.querySelectorAll("span.math > math").length;
-          const block = document.querySelectorAll("div.mathblock .hr-content-zone math").length;
+          const inline = document.querySelectorAll("span.math > mjx-container").length;
+          const block = document.querySelectorAll(
+            "div.mathblock .hr-content-zone mjx-container"
+          ).length;
           return inline > 0 && block > 0;
         },
         { timeout: 5000 }
@@ -280,8 +283,8 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
       await waitForMathStable(page);
 
       const initialCounts = await page.evaluate(() => ({
-        inline: document.querySelectorAll("span.math > math").length,
-        block: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
+        inline: document.querySelectorAll("span.math > mjx-container").length,
+        block: document.querySelectorAll("div.mathblock .hr-content-zone mjx-container").length,
       }));
 
       // EXPECTED: 2 inline (span.math) + 2 block (div.mathblock)
@@ -351,10 +354,11 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
           hasRawInlineLatex: text.includes("\\(") || text.includes("\\)"),
           hasRawBlockLatex: text.includes("$$"),
           titleCount: (text.match(/Test Document for Math Bug/g) || []).length,
-          temmlScriptCount: document.querySelectorAll('script[src*="temml"]').length,
-          inlineMathCount: document.querySelectorAll("span.math > math").length,
-          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
-          nestedMathCount: document.querySelectorAll("math math").length,
+          mathJaxScriptCount: document.querySelectorAll("script#MathJax-script").length,
+          inlineMathCount: document.querySelectorAll("span.math > mjx-container").length,
+          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone mjx-container")
+            .length,
+          nestedMathCount: document.querySelectorAll("mjx-container mjx-container").length,
         };
       });
 
@@ -413,9 +417,10 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
           hasRawInlineLatex: text.includes("\\(") || text.includes("\\)"),
           hasRawBlockLatex: text.includes("$$"),
           titleCount: (text.match(/Test Document for Math Bug/g) || []).length,
-          inlineMathCount: document.querySelectorAll("span.math > math").length,
-          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone math").length,
-          nestedMathCount: document.querySelectorAll("math math").length,
+          inlineMathCount: document.querySelectorAll("span.math > mjx-container").length,
+          blockMathCount: document.querySelectorAll("div.mathblock .hr-content-zone mjx-container")
+            .length,
+          nestedMathCount: document.querySelectorAll("mjx-container mjx-container").length,
         };
       });
 
@@ -429,9 +434,8 @@ test.describe("Math Duplication Bug @auth @desktop-only", () => {
       expect(afterFirstEdit.titleCount).toBe(1);
       expect(afterSecondEdit.titleCount).toBe(1);
 
-      // Only ONE Temml script tag
-      expect(afterFirstEdit.temmlScriptCount).toBeGreaterThanOrEqual(1);
-      expect(afterFirstEdit.temmlScriptCount).toBeLessThanOrEqual(2);
+      // Only ONE MathJax script tag
+      expect(afterFirstEdit.mathJaxScriptCount).toBe(1);
 
       // math element counts should stay the same
       expect(afterFirstEdit.inlineMathCount).toBe(initialCounts.inline);
