@@ -4,11 +4,18 @@ Tests the complete RSM processing pipeline from markup to HTML output,
 including complex documents, error handling, and performance scenarios.
 """
 
+import re
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aris.crud.render import render
+
+
+def _text(html: str) -> str:
+    """The text of the page. RSM wraps hyphenated words in a span."""
+    return re.sub(r"<[^>]+>", "", html)
 
 
 class TestRSMIntegration:
@@ -121,7 +128,7 @@ Unclosed enumerate section."""
         assert '<div class="manuscript"' in result
 
         # Check for main title
-        assert 'The Future of Web-Native Publishing' in result
+        assert 'The Future of Web-Native Publishing' in _text(result)
 
         # Check for abstract section
         assert 'abstract' in result.lower()
@@ -159,7 +166,7 @@ Unclosed enumerate section."""
         assert '<main class="manuscriptwrapper">' in result
 
         # Check for content preservation
-        assert 'The Future of Web-Native Publishing' in result
+        assert 'The Future of Web-Native Publishing' in _text(result)
         assert 'Introduction' in result
         assert 'Methodology' in result
 
@@ -195,7 +202,7 @@ Unclosed enumerate section."""
         assert render_response.status_code == 200
 
         rendered_html = render_response.json()
-        assert 'The Future of Web-Native Publishing' in rendered_html
+        assert 'The Future of Web-Native Publishing' in _text(rendered_html)
 
     async def test_rsm_content_with_special_characters(self, db_session: AsyncSession):
         """Test RSM rendering with special characters and unicode."""
@@ -300,7 +307,7 @@ Empty items test:
         assert 'Item with' in result
         assert 'emphasis' in result
         assert 'bold text' in result
-        assert 'Another non-empty item' in result
+        assert 'Another non-empty item' in _text(result)
 
     async def test_rsm_enumerate_variations(self, db_session: AsyncSession):
         """Test various enumerate list configurations."""
