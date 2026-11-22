@@ -728,10 +728,10 @@ async def test_download_file_includes_html_assets(client: AsyncClient, authentic
 
 Here is the interactive chart:
 
-:html:{
-  :path: scatter-chart.html
-}
+:figure: {:path: scatter-chart.html}
+
   :caption: Interactive scatter plot.
+
 ::
 """
 
