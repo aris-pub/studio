@@ -10,7 +10,8 @@ import { getBackendURL } from "../utils/test-config.js";
  * Tooltips are created when hovering over reference links (a.reference) and
  * display content cloned from the referenced element.
  *
- * RSM uses Temml as the primary renderer (synchronous, native MathML).
+ * RSM renders math with MathJax, whose output holds a <math> element for
+ * screen readers, so the counts below look for <math>.
  * The tooltip system calls onrender() on the tooltip content, which runs
  * typesetMath() to render math — this should affect only the tooltip, not
  * the main document.
@@ -78,7 +79,7 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
   }
 
   /**
-   * Wait for tooltip to contain rendered math (native MathML from Temml)
+   * Wait for tooltip to contain rendered math
    */
   async function waitForTooltipMath(page) {
     await page.waitForFunction(
@@ -104,7 +105,7 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
         timeout: 10000,
       });
 
-      // Wait for Temml to render math in the main content
+      // Wait for MathJax to render math in the main content
       await page.waitForFunction(() => document.querySelectorAll("math").length > 0, {
         timeout: 10000,
       });
@@ -169,7 +170,10 @@ test.describe("Tooltip Math Rendering @auth @desktop-only", () => {
     }
   });
 
-  test("showing tooltip should not duplicate math in main document @flaky", async ({ page, request }) => {
+  test("showing tooltip should not duplicate math in main document @flaky", async ({
+    page,
+    request,
+  }) => {
     const fileId = await createTestFile(request, RSM_SOURCE_WITH_MATH_REFERENCE);
 
     try {

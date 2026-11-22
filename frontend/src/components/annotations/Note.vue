@@ -10,18 +10,18 @@
     useTemplateRef,
   } from "vue";
   import { HIGHLIGHT_COLORS, SWATCH_COLORS } from "@/constants/annotationColors.js";
-  import { renderInlineMath, ensureTemml } from "@/utils/renderInlineMath.js";
+  import { renderInlineMath, ensureMathJax } from "@/utils/renderInlineMath.js";
   import Avatar from "@/components/base/Avatar.vue";
   import TextareaInput from "@/components/base/TextareaInput.vue";
   import { toast } from "@/utils/toast.js";
 
-  // Load Temml from CDN if not already loaded (e.g. by onload.js), then
-  // flip a reactive flag so Vue re-renders cards with rendered math.
-  const temmlReady = ref(!!window.temml);
+  // Load MathJax if rsm has not loaded it yet, then flip a reactive flag so
+  // Vue re-renders cards with rendered math.
+  const mathReady = ref(!!window.MathJax?.tex2chtml);
   onMounted(async () => {
-    if (!temmlReady.value) {
-      await ensureTemml();
-      temmlReady.value = true;
+    if (!mathReady.value) {
+      await ensureMathJax();
+      mathReady.value = true;
     }
   });
 
@@ -244,8 +244,8 @@
   });
 
   function highlightMatch(text) {
-    // Access reactive dep so Vue re-renders when temml becomes available
-    void temmlReady.value;
+    // Access reactive dep so Vue re-renders when MathJax becomes available
+    void mathReady.value;
     if (!text) return "";
     if (!props.searchMatch || !props.searchQuery) return renderInlineMath(text);
     const escaped = escapeHtml(text);

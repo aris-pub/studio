@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { renderInlineMath } from "@/utils/renderInlineMath.js";
 
-// Mock window.temml with a minimal renderToString that produces MathML
-const mockTemml = {
-  renderToString(latex, opts) {
+// Mock window.MathJax with a minimal tex2chtml that returns an element
+const mockMathJax = {
+  tex2chtml(latex) {
     if (latex.startsWith("\\invalid")) {
       throw new Error("Invalid LaTeX");
     }
-    return `<math><mi>${latex}</mi></math>`;
+    return { outerHTML: `<math><mi>${latex}</mi></math>` };
   },
 };
 
 beforeAll(() => {
-  window.temml = mockTemml;
+  window.MathJax = mockMathJax;
 });
 
 afterAll(() => {
-  delete window.temml;
+  delete window.MathJax;
 });
 
 describe("renderInlineMath", () => {
@@ -73,12 +73,12 @@ describe("renderInlineMath", () => {
     expect(mathCount).toBe(2);
   });
 
-  it("falls back to escaped text when temml is not available", () => {
-    const saved = window.temml;
-    delete window.temml;
+  it("falls back to escaped text when MathJax is not available", () => {
+    const saved = window.MathJax;
+    delete window.MathJax;
     const result = renderInlineMath("see $x^2$ here");
     expect(result).toBe("see $x^2$ here");
     expect(result).not.toContain("<math");
-    window.temml = saved;
+    window.MathJax = saved;
   });
 });
