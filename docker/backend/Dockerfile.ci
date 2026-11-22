@@ -53,7 +53,7 @@ RUN cd /workspace/rsm && uv sync --quiet \
     && cd /workspace/studio/backend && uv sync --all-groups --quiet
 
 # tree-sitter-rsm Linux native binding + rsm-lsp server, baked.
-RUN cd /workspace/rsm/tree-sitter-rsm && npm install --quiet && npm rebuild --quiet && npm run prebuildify --quiet
+RUN cd /workspace/rsm/tree-sitter-rsm && npm ci --quiet
 RUN cd /workspace/rsm/packages/rsm-lsp && npm install --quiet && npm run build --quiet
 
 # --- app source + runtime config last (cheap layer, changes every PR) ---
